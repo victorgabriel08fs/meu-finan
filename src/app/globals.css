@@ -1,26 +1,557 @@
+/*
+ * Design tokens of the "Sereno" look (doc 02 §3). Raw values live in plain
+ * custom properties on :root (light) and [data-theme="dark"] (set by
+ * next-themes before the first paint); @theme inline maps them to Tailwind
+ * utilities such as bg-surface, text-fg-2 or shadow-card.
+ */
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* §3.1 Semantic colors */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --surface-3: #e5e8ec;
+  --border: #e3e6ea;
+  --border-strong: #8a919e;
+  --text: #0e1116;
+  --text-2: #4a5260;
+  --text-3: #646b78;
+  --primary: #0a7f58;
+  --on-primary: #ffffff;
+  --primary-soft: #e3f4ec;
+  --on-primary-soft: #075e41;
+  --income: #0a7f58;
+  --expense: var(--text);
+  --transfer: #1f5bb5;
+  --transfer-soft: #e5eefa;
+  --warning: #8a5100;
+  --warning-soft: #fff3dc;
+  --warning-fill: #fab219;
+  --danger: #b42318;
+  --danger-soft: #fce9e9;
+  --danger-fill: #d03b3b;
+  --focus-ring: #0a7f58;
+  --scrim: rgb(14 17 22 / 0.45);
+  /* Fixed bars: --surface at 88% under a 16px blur (§3.7 level 2). */
+  --bar: color-mix(in srgb, var(--surface) 88%, transparent);
+  /* Destructive button fill with white text (≥ 4.5:1 in both themes). */
+  --destructive: #b42318;
+  /* Toasts invert the theme (§5.15): the action uses the other theme's primary. */
+  --toast-bg: var(--text);
+  --toast-fg: var(--surface);
+  --toast-action: #3ddc97;
+  --shimmer: rgb(255 255 255 / 0.65);
+
+  /* §3.2 Category colors (icon fg on bg ≥ 3.6:1) */
+  --cat-1-bg: #e1ecf9;
+  --cat-1-fg: #2a78d6;
+  --cat-2-bg: #fceae3;
+  --cat-2-fg: #ca592d;
+  --cat-3-bg: #dff4ec;
+  --cat-3-fg: #168c62;
+  --cat-4-bg: #fcf2db;
+  --cat-4-fg: #ab7400;
+  --cat-5-bg: #fcedf2;
+  --cat-5-fg: #b56080;
+  --cat-6-bg: #dbeedb;
+  --cat-6-fg: #008300;
+  --cat-7-bg: #e9e6f9;
+  --cat-7-fg: #6250d6;
+  --cat-8-bg: #fbe6e5;
+  --cat-8-fg: #d54544;
+  --cat-neutral-bg: var(--surface-2);
+  --cat-neutral-fg: var(--text-2);
+  --cat-transfer-bg: var(--transfer-soft);
+  --cat-transfer-fg: var(--transfer);
+
+  /* §3.3 Chart colors: fixed order, never recycled */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #6250d6;
+  --chart-8: #e34948;
+  --chart-grid: #eaecef;
+  --chart-axis: #c9ced6;
+  --chart-label: var(--text-3);
+
+  /* §3.7 Elevation */
+  --elevation-card:
+    0 1px 2px rgb(14 17 22 / 0.04), 0 2px 8px rgb(14 17 22 / 0.04);
+  --elevation-fab: 0 6px 16px rgb(10 127 88 / 0.35);
+  --elevation-sheet: 0 -12px 40px rgb(14 17 22 / 0.18);
+  --elevation-dialog: 0 12px 40px rgb(14 17 22 / 0.18);
+  --elevation-thumb:
+    0 1px 2px rgb(14 17 22 / 0.08), 0 1px 6px rgb(14 17 22 / 0.06);
+
+  /* §3.8 Motion */
+  --dur-1: 100ms;
+  --dur-2: 160ms;
+  --dur-3: 240ms;
+  --dur-4: 360ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Shell metrics (§3.5, §4.2) */
+  --spacing-gutter: 1rem;
+  --tab-bar-h: 4rem;
+  --app-bar-h: calc(3.25rem + env(safe-area-inset-top));
+  --toast-offset-bottom: calc(
+    var(--tab-bar-h) +
+    env(safe-area-inset-bottom) +
+    0.75rem
+  );
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-2: #1c2027;
+  --surface-3: #252a32;
+  --border: #262b33;
+  --border-strong: #6b7484;
+  --text: #f2f4f7;
+  --text-2: #b4bcc8;
+  --text-3: #8a93a1;
+  --primary: #3ddc97;
+  --on-primary: #04130c;
+  --primary-soft: #1b3730;
+  --on-primary-soft: #7febc0;
+  --income: #3ddc97;
+  --transfer: #9dc4ff;
+  --transfer-soft: #222e40;
+  --warning: #f5c66a;
+  --warning-soft: #383121;
+  --danger: #ff9a9a;
+  --danger-soft: #3a2429;
+  --focus-ring: #3ddc97;
+  --scrim: rgb(0 0 0 / 0.6);
+  --bar: color-mix(in srgb, var(--surface) 85%, transparent);
+  --destructive: #d03b3b;
+  --toast-action: #0a7f58;
+  --shimmer: rgb(255 255 255 / 0.05);
+
+  --cat-1-bg: #1b2d44;
+  --cat-1-fg: #3987e5;
+  --cat-2-bg: #3b241e;
+  --cat-2-fg: #d95926;
+  --cat-3-bg: #15322d;
+  --cat-3-fg: #199e70;
+  --cat-4-bg: #382d16;
+  --cat-4-fg: #c98500;
+  --cat-5-bg: #3b2330;
+  --cat-5-fg: #d55181;
+  --cat-6-bg: #102d16;
+  --cat-6-fg: #1f921f;
+  --cat-7-bg: #2d2d45;
+  --cat-7-fg: #9085e9;
+  --cat-8-bg: #3e272b;
+  --cat-8-fg: #e66767;
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+  --chart-grid: #232830;
+  --chart-axis: #3a404a;
+
+  /* Dark surfaces separate with a hairline instead of a shadow (§3.7). */
+  --elevation-card: 0 0 0 1px rgb(255 255 255 / 0.06);
+  --elevation-fab: 0 6px 16px rgb(61 220 151 / 0.25);
+  --elevation-sheet: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --elevation-dialog:
+    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(255 255 255 / 0.06);
+  --elevation-thumb: 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (width >= 26.875rem) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --spacing-gutter: 1.25rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (width >= 64rem) {
+  :root {
+    --spacing-gutter: 2rem;
+    --toast-offset-bottom: 1.5rem;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-fg-2: var(--text-2);
+  --color-fg-3: var(--text-3);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary-soft: var(--on-primary-soft);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-transfer: var(--transfer);
+  --color-transfer-soft: var(--transfer-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-fill: var(--warning-fill);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-fill: var(--danger-fill);
+  --color-destructive: var(--destructive);
+  --color-focus: var(--focus-ring);
+  --color-scrim: var(--scrim);
+  --color-bar: var(--bar);
+
+  --color-cat-1-bg: var(--cat-1-bg);
+  --color-cat-1-fg: var(--cat-1-fg);
+  --color-cat-2-bg: var(--cat-2-bg);
+  --color-cat-2-fg: var(--cat-2-fg);
+  --color-cat-3-bg: var(--cat-3-bg);
+  --color-cat-3-fg: var(--cat-3-fg);
+  --color-cat-4-bg: var(--cat-4-bg);
+  --color-cat-4-fg: var(--cat-4-fg);
+  --color-cat-5-bg: var(--cat-5-bg);
+  --color-cat-5-fg: var(--cat-5-fg);
+  --color-cat-6-bg: var(--cat-6-bg);
+  --color-cat-6-fg: var(--cat-6-fg);
+  --color-cat-7-bg: var(--cat-7-bg);
+  --color-cat-7-fg: var(--cat-7-fg);
+  --color-cat-8-bg: var(--cat-8-bg);
+  --color-cat-8-fg: var(--cat-8-fg);
+  --color-cat-neutral-bg: var(--cat-neutral-bg);
+  --color-cat-neutral-fg: var(--cat-neutral-fg);
+  --color-cat-transfer-bg: var(--cat-transfer-bg);
+  --color-cat-transfer-fg: var(--cat-transfer-fg);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-label: var(--chart-label);
+
+  --font-sans:
+    var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --shadow-card: var(--elevation-card);
+  --shadow-fab: var(--elevation-fab);
+  --shadow-sheet: var(--elevation-sheet);
+  --shadow-dialog: var(--elevation-dialog);
+  --shadow-thumb: var(--elevation-thumb);
+}
+
+@theme {
+  /* §3.6 Radii (rounded-badge, rounded-chip, rounded-control…) */
+  --radius-badge: 6px;
+  --radius-chip: 10px;
+  --radius-control: 14px;
+  --radius-card: 20px;
+  --radius-sheet: 28px;
+
+  /* §3.5 Page gutter (px-gutter, -mx-gutter): 16px, 20px from 430px, 32px on lg */
+  --spacing-gutter: 1rem;
+
+  /* §3.4 Type scale, in rem so it follows the system font size */
+  --text-amount: 3rem;
+  --text-amount--line-height: 3.25rem;
+  --text-amount--letter-spacing: -0.03em;
+  --text-amount--font-weight: 700;
+  --text-display: 2.5rem;
+  --text-display--line-height: 2.75rem;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 700;
+  --text-title-1: 1.75rem;
+  --text-title-1--line-height: 2.125rem;
+  --text-title-1--letter-spacing: -0.02em;
+  --text-title-1--font-weight: 700;
+  --text-title-2: 1.375rem;
+  --text-title-2--line-height: 1.75rem;
+  --text-title-2--letter-spacing: -0.015em;
+  --text-title-2--font-weight: 700;
+  --text-title-3: 1.125rem;
+  --text-title-3--line-height: 1.5rem;
+  --text-title-3--letter-spacing: -0.01em;
+  --text-title-3--font-weight: 700;
+  --text-headline: 1rem;
+  --text-headline--line-height: 1.375rem;
+  --text-headline--letter-spacing: -0.005em;
+  --text-headline--font-weight: 650;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.375rem;
+  --text-body--font-weight: 500;
+  --text-input: 1rem;
+  --text-input--line-height: 1.5rem;
+  --text-input--font-weight: 500;
+  --text-callout: 0.875rem;
+  --text-callout--line-height: 1.25rem;
+  --text-callout--font-weight: 500;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.125rem;
+  --text-caption--font-weight: 500;
+  --text-overline: 0.75rem;
+  --text-overline--line-height: 1rem;
+  --text-overline--letter-spacing: 0.06em;
+  --text-overline--font-weight: 700;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 0.875rem;
+  --text-micro--letter-spacing: 0.02em;
+  --text-micro--font-weight: 600;
+
+  /* §3.8 Easing (ease-standard, ease-enter, ease-exit) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/* Numbers in columns align (§3.4); `tabular-nums` does the same. */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 45° hatching in the current color: scheduled share of a budget bar (§5.9). */
+@utility bg-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    currentColor 0 2px,
+    transparent 2px 5px
+  );
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Keeps focused elements clear of the fixed bars (WCAG 2.4.11). */
+    scroll-padding-top: var(--app-bar-h);
+    scroll-padding-bottom: calc(
+      var(--tab-bar-h) +
+      env(safe-area-inset-bottom) +
+      0.5rem
+    );
+  }
+
+  @media (width >= 64rem) {
+    html {
+      scroll-padding-bottom: 0;
+    }
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 2px ring with a 2px gap, never removed (§11). */
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background-color: var(--primary-soft);
+    color: var(--on-primary-soft);
+  }
+}
+
+@layer components {
+  /* §5.17 Skeleton: exact shape of the content, diagonal shine every 1.2s. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--surface-2);
+  }
+
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      100deg,
+      transparent 20%,
+      var(--shimmer) 50%,
+      transparent 80%
+    );
+    animation: shimmer 1.2s var(--ease-standard) infinite;
+  }
+
+  /* §3.8: bars and rings grow from zero on first display. */
+  .meter-grow {
+    transform-origin: left center;
+    animation: grow-x 600ms var(--ease-enter) both;
+  }
+
+  .ring-arc {
+    animation: ring-draw 600ms var(--ease-enter) both;
+  }
+
+  /* §5.14 Sheet: slides up on phones, scales in as a dialog from md. */
+  [data-slot="sheet-overlay"][data-state="open"] {
+    animation: fade-in var(--dur-3) var(--ease-standard);
+  }
+
+  [data-slot="sheet-overlay"][data-state="closed"] {
+    animation: fade-out var(--dur-2) var(--ease-exit) forwards;
+  }
+
+  [data-slot="sheet-content"][data-state="open"] {
+    animation: sheet-in var(--dur-4) var(--ease-enter);
+  }
+
+  [data-slot="sheet-content"][data-state="closed"] {
+    animation: sheet-out var(--dur-3) var(--ease-exit) forwards;
+  }
+
+  @media (width >= 48rem) {
+    [data-slot="sheet-content"][data-state="open"] {
+      animation: dialog-in var(--dur-3) var(--ease-enter);
+    }
+
+    [data-slot="sheet-content"][data-state="closed"] {
+      animation: dialog-out var(--dur-2) var(--ease-exit) forwards;
+    }
+  }
+
+  /* Reduced motion: no movement, a 120ms fade instead (§3.8). */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+      display: none;
+    }
+
+    .meter-grow,
+    .ring-arc {
+      animation: none;
+    }
+
+    [data-slot="sheet-overlay"][data-state="open"],
+    [data-slot="sheet-content"][data-state="open"] {
+      animation: fade-in 120ms linear;
+    }
+
+    [data-slot="sheet-overlay"][data-state="closed"],
+    [data-slot="sheet-content"][data-state="closed"] {
+      animation: fade-out 120ms linear forwards;
+    }
+  }
+}
+
+/*
+ * Privacy mode (§2.7): an inline script in the root layout sets
+ * <html data-privacy="on|off"> from the saved choice before the first paint,
+ * so values never flash. Unlayered on purpose: it must beat any utility.
+ */
+[data-privacy-mask] {
+  display: none;
+}
+
+[data-privacy="on"] [data-privacy-value] {
+  display: none;
+}
+
+[data-privacy="on"] [data-privacy-mask] {
+  display: inline;
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-length);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes sheet-out {
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.5rem, 0) scale(0.98);
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 0.5rem, 0) scale(0.98);
+  }
 }
