@@ -12,7 +12,7 @@ Aplicação de controle financeiro pessoal, **mobile-first**, com backend e fron
 
 - **Uso pessoal, um único usuário (o dono)**: sem cadastro público, mas com **autenticação obrigatória** em toda página, action e rota — a URL é pública e os dados são sensíveis.
 - **Next.js 16.4 (App Router, Cache Components) full-stack na Vercel Hobby** (uso pessoal, não comercial), funções em `gru1` (São Paulo), Fluid compute; npm, React 19.3, Zod 4, Vitest 5.
-- **Postgres na Neon** (decidido; `aws-sa-east-1`, via Vercel Marketplace, branch por preview) + **Drizzle ORM** (driver HTTP, escrita atômica com `db.batch`).
+- **Postgres na Neon** (decidido; `aws-sa-east-1`, via Vercel Marketplace, branch por preview) + **Drizzle ORM** (Neon WebSocket Pool em produção, **PGlite embutido** no desenvolvimento local e nos testes — `npm run demo` sobe o app sem nenhuma conta; escrita em transações).
 - **Better Auth**: primeiro acesso único (`SETUP_TOKEN` + `OWNER_EMAIL`), passkey primeiro e e-mail + senha forte como alternativa, rate limit embutido com storage no banco (sem Redis), sessões de 30 dias revogáveis, recuperação de emergência (`RECOVERY_TOKEN`); 2FA TOTP na F1.
 - **Backups**: restauração pontual da Neon + export semanal criptografado (F1).
 - **Custo**: R$ 0/mês dentro dos planos gratuitos.

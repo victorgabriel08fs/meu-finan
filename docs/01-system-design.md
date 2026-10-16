@@ -79,7 +79,7 @@
 | Plataforma | Web responsiva mobile-first; PWA instalável (Android/iOS/desktop) |
 | Performance | LCP ≤ 2,0 s, INP ≤ 200 ms, CLS ≤ 0,05 (p75); JS inicial da rota `/inicio` ≤ 170 KB gz |
 | Disponibilidade | Herdada da Vercel e da Neon; degradação graciosa (offline mostra últimos dados) |
-| Consistência | Saldos e totais sempre derivados do ledger (fonte única da verdade); operações multi-linha atômicas, numa transação de banco (`db.batch`) |
+| Consistência | Saldos e totais sempre derivados do ledger (fonte única da verdade); operações multi-linha atômicas, numa transação de banco (`db.transaction`) |
 | Durabilidade | Dado apagado ou corrompido por engano tem volta: soft delete com Desfazer, restauração pontual da Neon e backup semanal criptografado fora da Neon (§11.7) |
 | Precisão | Valores monetários em centavos inteiros; nenhum `float` persiste dinheiro |
 | Segurança | OWASP ASVS nível 2 como referência; sessão verificada no servidor em toda página, action e rota; checagem de posse (`user_id`) em todas as consultas; rate limiting nas rotas de autenticação |
@@ -167,7 +167,7 @@ sequenceDiagram
   C->>A: input + id
   A->>A: requireUser() (sessão no servidor) · Zod
   A->>DB: valida posse de conta/categoria
-  A->>DB: db.batch: INSERT parcelas/fatura numa transação (ON CONFLICT DO NOTHING)
+  A->>DB: BEGIN · INSERT parcelas/fatura · COMMIT (id do cliente: reenvio não duplica)
   A->>A: updateTag(u:{id}:txns, accounts, budgets, reports)
   A-->>C: { ok: true, ids }
   C->>U: toast "Despesa salva" + Desfazer (5 s) · vibração curta
@@ -193,7 +193,7 @@ sequenceDiagram
 | Dados no cliente | TanStack Query v5 | apenas para lista infinita do extrato, busca e autocomplete |
 | Estado de UI | **Zustand** (com `persist`) | modo discreto, rascunho do lançamento, preferências locais |
 | Datas | date-fns v4 + `@date-fns/tz` | locale `ptBR`, fuso do usuário |
-| ORM | **Drizzle ORM** + drizzle-kit | driver `@neondatabase/serverless` via HTTP (`neon-http`): sem transação interativa; escrita atômica com `db.batch([...])` |
+| ORM | **Drizzle ORM** + drizzle-kit | dois drivers atrás da mesma API: **Neon WebSocket Pool** (`drizzle-orm/neon-serverless`, com `attachDatabasePool` da Vercel) quando há `DATABASE_URL`, e **PGlite** embutido (`drizzle-orm/pglite`) no desenvolvimento local e nos testes; ambos com transações interativas (`db.transaction`) |
 | Banco | **Neon Postgres** (Vercel Marketplace) | `aws-sa-east-1`; extensões `pg_trgm`, `unaccent` |
 | Auth | **Better Auth** | plugin de passkey (`@better-auth/passkey`), `twoFactor` na F1; adapter Drizzle; hooks que fecham o cadastro após o primeiro acesso |
 | Rate limit | limitador embutido do **Better Auth** (`storage: 'database'`) | sem Redis; regras estritas em login, primeiro acesso e recuperação |
@@ -698,7 +698,7 @@ limit 30;
 
 ### 6.6 Volume e crescimento
 
-Uma pessoa gera ~1.500–5.000 lançamentos/ano. Com os índices acima, agregações de 12 meses leem alguns milhares de linhas — milissegundos. Não há tabelas de resumo na v1. Se um relatório ficar lento (p95 > 150 ms), criar `monthly_category_totals` mantida pela própria Server Action (no mesmo `db.batch`) — não por trigger, para manter a lógica testável em TypeScript.
+Uma pessoa gera ~1.500–5.000 lançamentos/ano. Com os índices acima, agregações de 12 meses leem alguns milhares de linhas — milissegundos. Não há tabelas de resumo na v1. Se um relatório ficar lento (p95 > 150 ms), criar `monthly_category_totals` mantida pela própria Server Action (na mesma transação) — não por trigger, para manter a lógica testável em TypeScript.
 
 ---
 
@@ -706,8 +706,9 @@ Uma pessoa gera ~1.500–5.000 lançamentos/ano. Com os índices acima, agregaç
 
 ### 7.1 Princípios
 
-- **Leitura**: Server Components chamam funções de `features/*/queries.ts`, que recebem `userId` explicitamente. Sem chamadas HTTP internas.
-- **Escrita**: Server Actions criadas com `authAction` (next-safe-action). Toda action: autentica (sessão verificada no servidor) → valida com Zod → **verifica posse de todo id referenciado** (conta, categoria, meta, fatura) → executa de forma atômica (`db.batch`) → invalida tags → retorna DTO.
+- **Leitura**: Server Components chamam a camada de domínio (`src/server/domain/*`), cujas funções recebem `userId`/`UserContext` explicitamente. Sem chamadas HTTP internas.
+- **Escrita**: Server Actions (`src/server/actions/*`) criadas com `authAction` (next-safe-action). Toda action: autentica (sessão verificada no servidor) → valida com Zod → chama o domínio, que **verifica a posse de todo id referenciado** (conta, categoria, meta, fatura) e executa numa transação (`db.transaction`) → atualiza a tela com `refresh()` → retorna DTO.
+- **Dentro de uma transação, só o `tx`**: o PGlite tem uma conexão só, então uma consulta pelo `db` global com uma transação aberta trava. Funções auxiliares recebem um `Executor` (`db` ou `tx`).
 - **Rotas**: todo Route Handler começa verificando a sessão (`getSession()` do DAL; sem sessão → 401). Exceções: `/api/auth/*` (Better Auth), `/api/cron/daily` (`CRON_SECRET`) e o aviso de upload concluído do Vercel Blob (assinado, §7.3).
 - **Nunca** aceitar `userId` vindo do cliente. **Nunca** retornar linhas cruas do banco — sempre DTOs com os campos que a tela usa.
 - **Idempotência**: o cliente gera o `id` (UUIDv7) de lançamentos; o insert usa `on conflict (id) do nothing`. Reenvio por rede instável ou fila offline não duplica.
@@ -730,20 +731,28 @@ export const authAction = actionClient.use(async ({ next }) => {
 ```
 
 ```ts
-// src/features/transactions/actions.ts
-export const createTransaction = authAction
-  .inputSchema(createTransactionSchema)
+// src/server/actions/transactions.ts (resumido)
+export const createEntryAction = authAction
+  .inputSchema(z.discriminatedUnion('kind', [entrySchema, transferSchema]))
   .action(async ({ parsedInput: input, ctx: { user } }) => {
-    await assertOwnership(user.id, { accountId: input.accountId, categoryId: input.categoryId });
-    const rows = await buildTransactionRows(user.id, input); // parcelas + faturas via lib/finance
-    // neon-http não tem transação interativa: db.batch executa tudo numa transação só
-    await db.batch([
-      db.insert(transactions).values(rows).onConflictDoNothing(),
-      learnCategorizationRule(user.id, input),               // upsert: "uber" → Transporte
-    ]);
-    invalidate(user.id, ['txns', 'accounts', 'budgets', 'reports', 'cards']);
-    return { ids: rows.map((r) => r.id) };
+    const ctx = await getUserContext(user.id);       // fuso, dia de início do mês, "hoje"
+    const result = input.kind === 'transfer'
+      ? await createTransfer(ctx, input)
+      : await createTransaction(ctx, input);          // posse, parcelas, faturas, recorrência
+    refresh();                                        // a tela atual busca os dados de novo
+    return result;
   });
+
+// src/server/domain/transactions.ts (resumido)
+export async function createTransaction(ctx: UserContext, input: TransactionInput) {
+  return db.transaction(async (tx) => {
+    const account = await requireAccount(tx, ctx.userId, input.accountId);   // posse
+    const category = input.categoryId ? await requireCategory(tx, ctx.userId, input.categoryId, input.kind) : null;
+    const rows = buildRows(input, account, category);                          // via lib/finance
+    await tx.insert(transactions).values(rows);
+    return { ids: rows.map((row) => row.id) };
+  });
+}
 ```
 
 ```ts
@@ -1078,7 +1087,7 @@ Métricas de hábito (calculadas no banco, sem valores monetários): dias com pe
 
 | Ambiente | Banco | Como |
 |---|---|---|
-| Desenvolvimento | branch `dev` da Neon | `vercel env pull` + `npm run dev` |
+| Desenvolvimento | **PGlite embutido** em `.data/pglite` (padrão, sem conta nenhuma) ou branch `dev` da Neon via `DATABASE_URL` | `npm run demo` (dados de exemplo) + `npm run dev`; o `predev` aplica as migrações no banco local |
 | Preview (cada PR) | **branch da Neon criado automaticamente** pela integração da Vercel — **cópia dos dados de produção** | URL própria por PR, protegida por Vercel Authentication (§11.6) |
 | Produção | branch `main` da Neon | merge na `main` → deploy |
 
@@ -1154,6 +1163,8 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 **ADR-08 — Um cron diário orquestrador.** Compatível com o plano Hobby, simples de observar, passos idempotentes. Com um único usuário, o volume cabe com folga num job diário.
 
 **ADR-09 — Usuário único com autenticação obrigatória.** O app é usado só pelo dono, mas fica numa URL pública e guarda dados sensíveis; por isso a autenticação continua obrigatória e de primeira classe. *Decisão*: sem cadastro público; primeiro acesso único com `SETUP_TOKEN` + `OWNER_EMAIL` (falha fechada, reforçado por hooks do Better Auth); passkey primeiro e senha forte como alternativa; rate limit do Better Auth com storage em banco; sessões de 30 dias, deslizantes e revogáveis; sessão recente para operações sensíveis; recuperação de emergência via `RECOVERY_TOKEN`; sessão verificada no servidor em toda página, action e rota; `user_id` mantido nas tabelas de domínio. *Consequências*: o plano Hobby da Vercel serve (uso pessoal, não comercial); nada de Redis, de testes de isolamento entre usuários ou de políticas de banco por usuário; custo de R$ 0 nos planos gratuitos. Se um dia houver mais pessoas, revisar cadastro, isolamento e modelo de acesso antes de abrir o app a elas.
+
+**ADR-10 — Postgres embutido (PGlite) no desenvolvimento local e nos testes.** O mesmo SQL das migrações roda num Postgres compilado para WebAssembly, dentro do próprio processo do Node: `npm run dev` funciona sem Docker nem conta na Neon, `npm run demo` gera dados de exemplo e os testes de integração usam um banco em memória com as mesmas restrições, índices e extensões (pg_trgm, unaccent) da produção. Em produção, o driver WebSocket Pool da Neon (com `attachDatabasePool` da Vercel) dá transações interativas iguais às do PGlite, então o código de escrita é um só (`db.transaction`). *Trade-off*: o PGlite tem uma conexão só — consultas pelo `db` global com uma transação aberta travam, daí a regra de usar sempre o `tx`; e o pacote do PGlite vai junto no bundle das funções (alguns MB, carregado só quando usado).
 
 ---
 
