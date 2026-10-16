@@ -14,7 +14,13 @@ import {
   parse,
 } from "@/lib/finance";
 import { db, type Executor } from "@/server/db/client";
-import { cardInvoices, finAccounts, transactions } from "@/server/db/schema";
+import {
+  cardInvoices,
+  categories,
+  finAccounts,
+  installmentPlans,
+  transactions,
+} from "@/server/db/schema";
 import { listAccounts, requireAccount } from "./accounts";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
@@ -196,7 +202,11 @@ export type InvoiceEntry = {
   status: "pending" | "paid";
   kind: "income" | "expense" | "transfer" | "adjustment";
   categoryId: string | null;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
   installmentNumber: number | null;
+  installmentCount: number | null;
 };
 
 export async function listInvoiceEntries(
@@ -212,9 +222,18 @@ export async function listInvoiceEntries(
       status: transactions.status,
       kind: transactions.kind,
       categoryId: transactions.categoryId,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
       installmentNumber: transactions.installmentNumber,
+      installmentCount: installmentPlans.count,
     })
     .from(transactions)
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .leftJoin(
+      installmentPlans,
+      eq(installmentPlans.id, transactions.installmentPlanId),
+    )
     .where(
       and(
         eq(transactions.userId, ctx.userId),

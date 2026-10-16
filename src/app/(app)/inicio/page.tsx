@@ -1,149 +1,259 @@
-import { ReceiptText, Smartphone, Sprout, Target } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
-import { ComingSoonButton } from "@/components/app/coming-soon-button";
-import { EmptyState } from "@/components/app/empty-state";
-import { InsetList, InsetListItem } from "@/components/app/inset-list";
-import { PrivacyToggle } from "@/components/app/privacy-toggle";
+import { type ReactNode, Suspense } from "react";
 import { SectionHeader } from "@/components/app/section-header";
-import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
-import { fullDateLabel, todayInTimeZone } from "@/lib/format/date";
+import { StatTile } from "@/components/app/stat-tile";
+import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
+import { BalanceHero } from "@/components/dashboard/balance-hero";
+import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
+import {
+  DashboardColumns,
+  DashboardSkeleton,
+  HomeHeader,
+  HomeHeaderSkeleton,
+} from "@/components/dashboard/dashboard-layout";
+import { FirstRunChecklist } from "@/components/dashboard/first-run-checklist";
+import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
+import { InsightCard } from "@/components/dashboard/insight-card";
+import {
+  greetingFor,
+  monthName,
+  weekdayDateLabel,
+} from "@/components/dashboard/labels";
+import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
+import { Money } from "@/components/money/money";
+import { DEFAULT_TIME_ZONE } from "@/lib/finance/dates";
+import { monthLabel, shortDateLabel, todayInTimeZone } from "@/lib/format/date";
 import { requireUser } from "@/server/dal";
+import { getUserContext, resolvePeriod } from "@/server/domain/context";
+import { getDashboard } from "@/server/domain/dashboard";
 
 export const metadata: Metadata = { title: "Início" };
 
-const TIME_ZONE = "America/Sao_Paulo";
-const WEEKDAYS = [
-  "domingo",
-  "segunda",
-  "terça",
-  "quarta",
-  "quinta",
-  "sexta",
-  "sábado",
-] as const;
-
-export default function InicioPage() {
+/**
+ * Início (doc 02 §6.3): "quanto tenho?", "como está o mês?", "o que vence
+ * logo?". The greeting and the summary stream in separate boundaries; with
+ * no account yet, the summary becomes the "Comece por aqui" checklist.
+ */
+export default function InicioPage({ searchParams }: PageProps<"/inicio">) {
   return (
-    <div className="flex flex-col gap-7 pt-[env(safe-area-inset-top)]">
-      <Suspense fallback={<HomeSkeleton />}>
-        <Home />
+    <div className="flex flex-col gap-4 pt-[env(safe-area-inset-top)]">
+      <Suspense fallback={<HomeHeaderSkeleton />}>
+        <Greeting />
+      </Suspense>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <Summary searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function Home() {
+async function Greeting() {
   const user = await requireUser();
   // Request time from here on (after the session read), so the clock is fine.
   const now = new Date();
-  const today = todayInTimeZone(TIME_ZONE);
-  const firstName = user.name.trim().split(/\s+/)[0] || "você";
+  return (
+    <HomeHeader
+      name={user.name}
+      greeting={greetingFor(now, DEFAULT_TIME_ZONE)}
+      dateLabel={weekdayDateLabel(todayInTimeZone(DEFAULT_TIME_ZONE))}
+    />
+  );
+}
+
+async function Summary({
+  searchParams,
+}: {
+  searchParams: PageProps<"/inicio">["searchParams"];
+}) {
+  const user = await requireUser();
+  const [ctx, params] = await Promise.all([
+    getUserContext(user.id),
+    searchParams,
+  ]);
+  const range = resolvePeriod(
+    ctx,
+    typeof params.mes === "string" ? params.mes : null,
+  );
+  const data = await getDashboard(ctx, range);
+
+  if (data.accounts.length === 0) return <FirstRunChecklist />;
+
+  const month = monthName(range.month);
+  const endLabel = shortDateLabel(range.end);
+  /** Keeps a month other than the current one in the links. */
+  const withMonth = (path: string) =>
+    range.isCurrent
+      ? path
+      : `${path}${path.includes("?") ? "&" : "?"}mes=${range.month}`;
+  const { totals } = data;
 
   return (
     <>
-      <header className="flex min-h-14 items-center gap-3 pt-2">
-        <Link
-          href="/ajustes"
-          aria-label="Perfil e ajustes"
-          className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-on-primary-soft after:absolute after:-inset-1"
-        >
-          <span aria-hidden="true">{initials(user.name)}</span>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-title-3 text-fg">
-            {greeting(now)}, {firstName}
-          </h1>
-          <p className="truncate text-caption text-fg-3">
-            {weekdayDateLabel(today)}
+      {range.isCurrent ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-control bg-surface-2 py-1.5 pr-1.5 pl-4">
+          <p className="text-callout text-fg-2">
+            Mostrando{" "}
+            <strong className="font-semibold text-fg">
+              {monthLabel(range.month)}
+            </strong>
           </p>
+          <Link
+            href="/inicio"
+            className="inline-flex h-11 items-center rounded-control px-3 text-callout font-semibold text-primary active:bg-surface-3"
+          >
+            Voltar para hoje
+          </Link>
         </div>
-        <PrivacyToggle className="-mr-2" />
-      </header>
+      )}
 
-      <EmptyState
-        icon={<Sprout />}
-        title="Comece por aqui"
-        description="Registre o primeiro gasto e acompanhe o mês sem planilha."
-        action={
-          <ComingSoonButton size="lg" message="Em breve: registrar lançamentos">
-            Adicionar 1º gasto
-          </ComingSoonButton>
+      <DashboardColumns
+        summary={
+          <>
+            <BalanceHero
+              balanceCents={data.balanceCents}
+              monthChangeCents={data.monthChangeCents}
+              monthName={month}
+              forecast={data.forecast}
+              untilLabel={endLabel}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <StatTile
+                icon={<ArrowDownLeft />}
+                iconClassName="bg-cat-3-bg text-cat-3-fg"
+                label="Receitas"
+                value={
+                  <Money
+                    cents={totals.incomeCents}
+                    variant="title"
+                    tone="neutral"
+                  />
+                }
+                support={
+                  totals.pendingIncomeCents > 0 ? (
+                    <>
+                      <Money
+                        cents={totals.pendingIncomeCents}
+                        variant="caption"
+                        sign="always"
+                        className="text-inherit"
+                      />{" "}
+                      a receber
+                    </>
+                  ) : (
+                    "Nada a receber"
+                  )
+                }
+                href={withMonth("/extrato?tipo=receita")}
+              />
+              <StatTile
+                icon={<ArrowUpRight />}
+                iconClassName="bg-cat-2-bg text-cat-2-fg"
+                label="Despesas"
+                value={
+                  <Money
+                    cents={totals.expenseCents}
+                    variant="title"
+                    tone="neutral"
+                  />
+                }
+                support={
+                  totals.pendingExpenseCents > 0 ? (
+                    <>
+                      <Money
+                        cents={totals.pendingExpenseCents}
+                        variant="caption"
+                        tone="neutral"
+                        className="text-inherit"
+                      />{" "}
+                      agendados
+                    </>
+                  ) : (
+                    "Nada agendado"
+                  )
+                }
+                href={withMonth("/extrato?tipo=despesa")}
+              />
+            </div>
+          </>
         }
-        className="py-6"
+        planning={
+          <>
+            {data.budgets.total ? (
+              <BudgetCard
+                total={data.budgets.total}
+                items={data.budgets.items}
+                monthName={month}
+                isCurrent={range.isCurrent}
+                endLabel={endLabel}
+                href={withMonth("/planejar/orcamentos")}
+              />
+            ) : (
+              <BudgetInvite href={withMonth("/planejar/orcamentos")} />
+            )}
+            <section aria-labelledby="proximas-contas">
+              <SectionHeader
+                id="proximas-contas"
+                title="Próximas contas"
+                action={
+                  <SectionLink href="/extrato?status=pendente">
+                    Ver todas
+                  </SectionLink>
+                }
+              />
+              <UpcomingBills items={data.upcoming} today={ctx.todayIso} />
+            </section>
+          </>
+        }
+        assets={
+          <>
+            <section aria-labelledby="contas-carrossel">
+              <SectionHeader
+                id="contas-carrossel"
+                title="Contas"
+                action={<SectionLink href="/contas">Gerenciar</SectionLink>}
+              />
+              <AccountsCarousel accounts={data.accounts} />
+            </section>
+            <section aria-labelledby="metas-resumo">
+              <SectionHeader
+                id="metas-resumo"
+                title="Metas"
+                action={
+                  data.goals.length > 0 ? (
+                    <SectionLink href="/planejar/metas">Ver todas</SectionLink>
+                  ) : undefined
+                }
+              />
+              {data.goals.length > 0 ? (
+                <GoalsCard goals={data.goals} href="/planejar/metas" />
+              ) : (
+                <GoalsInvite href="/planejar/metas" />
+              )}
+            </section>
+            {data.insight ? <InsightCard insight={data.insight} /> : null}
+          </>
+        }
       />
-
-      <section aria-labelledby="primeiros-passos">
-        <SectionHeader id="primeiros-passos" title="Primeiros passos" />
-        <InsetList aria-labelledby="primeiros-passos">
-          <InsetListItem
-            icon={<ReceiptText />}
-            label="Adicionar o 1º gasto"
-            description="Leva 5 segundos pelo botão +"
-          />
-          <InsetListItem
-            icon={<Target />}
-            label="Criar um orçamento"
-            description="Quanto gastar por categoria no mês"
-            href="/planejar/orcamentos"
-          />
-          <InsetListItem
-            icon={<Smartphone />}
-            label="Instalar o app"
-            description="Compartilhar → Adicionar à Tela de Início"
-          />
-        </InsetList>
-      </section>
     </>
   );
 }
 
-function HomeSkeleton() {
+/** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */
+function SectionLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
   return (
-    <>
-      <h1 className="sr-only">Início</h1>
-      <LoadingRegion className="flex flex-col gap-7">
-        <div className="flex min-h-14 items-center gap-3 pt-2">
-          <Skeleton className="size-9 rounded-full" />
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Skeleton className="h-5 w-44 rounded-chip" />
-            <Skeleton className="h-3.5 w-32 rounded-chip" />
-          </div>
-        </div>
-        <Skeleton className="h-72 rounded-card" />
-        <Skeleton className="h-52 rounded-2xl" />
-      </LoadingRegion>
-    </>
+    <Link
+      href={href}
+      className="-my-2.5 -mr-2 inline-flex h-11 items-center rounded-control px-2 text-callout font-semibold text-primary transition-colors duration-100 hover:bg-primary-soft/60 active:bg-primary-soft"
+    >
+      {children}
+    </Link>
   );
-}
-
-/** "Bom dia" (5h–12h), "Boa tarde" (12h–18h), "Boa noite" — São Paulo time. */
-function greeting(now: Date): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: TIME_ZONE,
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(now),
-  );
-  if (hour >= 5 && hour < 12) return "Bom dia";
-  if (hour >= 12 && hour < 18) return "Boa tarde";
-  return "Boa noite";
-}
-
-/** "terça, 14 de outubro" for "2026-10-14". */
-function weekdayDateLabel(isoDate: string): string {
-  const [year = 1970, month = 1, day = 1] = isoDate.split("-").map(Number);
-  const weekday =
-    WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
-  return `${weekday}, ${fullDateLabel(isoDate).replace(/ de \d+$/, "")}`;
-}
-
-/** "AN" for "Ana Nunes", "A" for "Ana". */
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const first = words[0]?.[0] ?? "";
-  const last = words.length > 1 ? (words[words.length - 1]?.[0] ?? "") : "";
-  return `${first}${last}`.toUpperCase() || "?";
 }
