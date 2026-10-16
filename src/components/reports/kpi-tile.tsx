@@ -1,19 +1,29 @@
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
-import { formatBRL, formatCompactBRL } from "@/lib/format/money";
+import {
+  formatBRL,
+  formatCompactBRL,
+  type SignDisplay,
+} from "@/lib/format/money";
 import { cn } from "@/lib/utils";
 
 /**
  * Amount in compact form ("R$ 105,8 mil") with the full value for screen
  * readers (doc 02 §8: values are never cut); hidden in privacy mode like
- * <Money>.
+ * <Money>. `sign="always"` adds "+" to a positive change.
  */
-export function CompactMoney({ cents }: { cents: number }) {
+export function CompactMoney({
+  cents,
+  sign = "auto",
+}: {
+  cents: number;
+  sign?: SignDisplay;
+}) {
   return (
     <span data-slot="money" className="whitespace-nowrap">
       <span data-privacy-value="">
-        <span aria-hidden="true">{formatCompactBRL(cents)}</span>
-        <span className="sr-only">{formatBRL(cents)}</span>
+        <span aria-hidden="true">{formatCompactBRL(cents, { sign })}</span>
+        <span className="sr-only">{formatBRL(cents, { sign })}</span>
       </span>
       <span data-privacy-mask="" role="img" aria-label="valor oculto">
         <span aria-hidden="true">R$ ••••</span>

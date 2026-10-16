@@ -1,8 +1,9 @@
 "use client";
 
+import { motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { SegmentedLinks } from "@/components/ui/segmented-control";
+import { Suspense, useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_REPORT_PERIOD,
@@ -12,46 +13,138 @@ import {
   REPORT_PERIODS,
   type ReportPeriod,
 } from "./model";
+import {
+  REPORT_VIEWS,
+  type ReportView,
+  reportViewAt,
+  reportViewHref,
+} from "./views";
 
-const VIEWS = [
-  { path: "/relatorios/visao-geral", label: "Visão geral" },
-  { path: "/relatorios/categorias", label: "Categorias" },
-] as const;
+const UNDERLINE_SPRING = {
+  type: "spring",
+  stiffness: 500,
+  damping: 40,
+} as const;
 
 /**
- * Report views (doc 02 §6.12) as route tabs that keep `?periodo=`: the one
- * period filter applies to every view. Reads the URL, so render it inside
- * <Suspense> with <ReportTabsFallback /> (same look, nothing selected).
+ * Report views (doc 02 §6.12) as route tabs that scroll sideways, with an
+ * underline under the current one: Visão geral · Categorias · Fluxo ·
+ * Patrimônio · Calendário. Period views keep `?periodo=` and month views keep
+ * `?mes=`. Reads the URL, so render it inside <Suspense> with
+ * <ReportTabsFallback /> (same tabs, links without the query).
  */
 export function ReportTabs({ className }: { className?: string }) {
   const pathname = usePathname();
-  const period = parseReportPeriod(useSearchParams().get("periodo"));
-  const query = periodQuery(period);
-  const items = VIEWS.map((view) => ({
-    href: `${view.path}${query}`,
-    label: view.label,
-  }));
-  const active = VIEWS.findIndex(
-    (view) => pathname === view.path || pathname.startsWith(`${view.path}/`),
-  );
+  const params = useSearchParams();
+  const current = { periodo: params.get("periodo"), mes: params.get("mes") };
   return (
-    <SegmentedLinks
-      items={items}
-      activeHref={active === -1 ? null : (items[active]?.href ?? null)}
-      ariaLabel="Visões dos relatórios"
+    <ReportTabsView
+      active={reportViewAt(pathname)}
+      hrefFor={(view) => reportViewHref(view, current)}
       className={className}
     />
   );
 }
 
+/** The tabs before the query is known: the current one is already marked. */
 export function ReportTabsFallback({ className }: { className?: string }) {
+  const pathname = usePathname();
   return (
-    <SegmentedLinks
-      items={VIEWS.map((view) => ({ href: view.path, label: view.label }))}
-      activeHref={null}
-      ariaLabel="Visões dos relatórios"
+    <ReportTabsView
+      active={reportViewAt(pathname)}
+      hrefFor={(view) => view.path}
       className={className}
     />
+  );
+}
+
+function ReportTabsView({
+  active,
+  hrefFor,
+  className,
+}: {
+  active: ReportView | null;
+  hrefFor: (view: ReportView) => string;
+  className?: string;
+}) {
+  const layoutId = `report-tab-underline-${useId()}`;
+  const listRef = useRef<HTMLUListElement>(null);
+  const activePath = active?.path ?? null;
+
+  // Bring the current tab into view (Calendário sits past the edge on phones).
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || !activePath) return;
+    const link = list.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!link) return;
+    const start = link.offsetLeft;
+    const end = start + link.offsetWidth;
+    if (start < list.scrollLeft || end > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = start - (list.clientWidth - link.offsetWidth) / 2;
+    }
+  }, [activePath]);
+
+  return (
+    <nav
+      aria-label="Visões dos relatórios"
+      className={cn("-mx-gutter border-b border-border md:mx-0", className)}
+    >
+      <ul
+        ref={listRef}
+        className="relative flex overflow-x-auto scroll-px-gutter px-gutter scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] md:px-0 md:mask-none [&::-webkit-scrollbar]:hidden"
+      >
+        {REPORT_VIEWS.map((view) => {
+          const current = view.path === activePath;
+          return (
+            <li key={view.path} className="shrink-0">
+              <Link
+                href={hrefFor(view)}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "relative flex h-11 items-center px-3 text-callout font-semibold whitespace-nowrap focus-visible:-outline-offset-2",
+                  "transition-colors duration-150 ease-standard",
+                  current ? "text-fg" : "text-fg-2 hover:text-fg",
+                )}
+              >
+                {view.label}
+                {current ? (
+                  <motion.span
+                    layoutId={layoutId}
+                    transition={UNDERLINE_SPRING}
+                    aria-hidden="true"
+                    className="absolute inset-x-3 bottom-0 h-0.75 rounded-full bg-primary"
+                  />
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * The period chips, only on the views that take a window of months
+ * (Visão geral, Categorias, Patrimônio); Fluxo and Calendário switch months
+ * in the page instead. Decides from the pathname, which is known while
+ * prerendering, so a month view never flashes the chips.
+ */
+export function ReportPeriodFilter({ className }: { className?: string }) {
+  const view = reportViewAt(usePathname());
+  if (view?.filter !== "period") return null;
+  return (
+    <Suspense
+      fallback={
+        <PeriodSelectorView
+          active={null}
+          hrefFor={(value) => `${view.path}${periodQuery(value)}`}
+          className={className}
+        />
+      }
+    >
+      <PeriodSelector className={className} />
+    </Suspense>
   );
 }
 
