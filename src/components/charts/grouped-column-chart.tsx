@@ -44,7 +44,8 @@ type GroupedColumnChartProps = {
 
 /**
  * Grouped columns (doc 02 §9.1, §9.2): ≤ 24px bars with a 4px rounded top
- * and a square base, a 2px gap inside each group, one value axis. Every
+ * and a square base, a 2px gap inside each group, one value axis with its
+ * ticks in a gutter on the right, clear of the columns. Every
  * group is a button at least 24px wide; tapping selects it, arrow keys move
  * the selection.
  */
@@ -115,7 +116,7 @@ export function GroupedColumnChart({
           role="toolbar"
           aria-label={label}
           onKeyDown={onKeyDown}
-          className="absolute inset-x-0 top-0 flex"
+          className="absolute top-0 right-11 left-0 flex"
           style={{ bottom: `${100 - zero}%` }}
         >
           {groups.map((group, index) => {
@@ -166,7 +167,7 @@ export function GroupedColumnChart({
         </div>
       </div>
 
-      <div aria-hidden="true" className="mt-1.5 flex">
+      <div aria-hidden="true" className="mt-1.5 mr-11 flex">
         {groups.map((group, index) => (
           <span
             key={group.key}

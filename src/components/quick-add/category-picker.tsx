@@ -43,7 +43,7 @@ export function CategoryChips({
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">Categoria de {kindLabel}</legend>
-      <div className="-mx-5 flex snap-x gap-2 overflow-x-auto scroll-px-5 px-5 pb-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden">
+      <div className="relative -mx-5 flex snap-x gap-2 overflow-x-auto scroll-px-5 px-5 pb-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden">
         {chips.map((category) => {
           const isSelected = category.id === selectedId;
           return (

@@ -70,7 +70,7 @@ export function StatementFilterBar({
   return (
     <fieldset
       data-pending={isPending ? "" : undefined}
-      className="-mx-gutter flex min-w-0 snap-x gap-2 overflow-x-auto scroll-px-gutter px-gutter py-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] [&::-webkit-scrollbar]:hidden [&>:not(legend)]:snap-start"
+      className="relative -mx-gutter flex min-w-0 snap-x gap-2 overflow-x-auto scroll-px-gutter px-gutter py-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] [&::-webkit-scrollbar]:hidden [&>:not(legend)]:snap-start"
     >
       <legend className="sr-only">Filtros</legend>
       <FilterChip

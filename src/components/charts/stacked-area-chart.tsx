@@ -53,7 +53,7 @@ const ANCHOR_SHIFT = { start: "0%", middle: "-50%", end: "-100%" } as const;
 
 /**
  * Stacked area chart with scrub (doc 02 §9.2, §9.4): areas at 12% under 2px
- * lines, solid hairline grid with compact ticks on the right, and a
+ * lines, solid hairline grid with compact ticks in a gutter on the right, and a
  * transparent range input over the plot — drag, tap, arrow keys and screen
  * readers all move the selection, whose values the caller shows above.
  */
@@ -134,100 +134,103 @@ export function StackedAreaChart({
           </div>
         ))}
 
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 size-full overflow-visible"
-        >
+        {/* The data stops short of the tick labels on the right. */}
+        <div className="absolute inset-y-0 right-11 left-0">
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 size-full overflow-visible"
+          >
+            {layers.map((layer, index) => (
+              <path
+                key={`${layer.key}-area`}
+                d={areaPath(edges[index] ?? [], edges[index - 1] ?? baseline)}
+                style={{ fill: layer.color }}
+                fillOpacity={0.12}
+              />
+            ))}
+            {layers.map((layer, index) => (
+              <path
+                key={`${layer.key}-line`}
+                d={linePath(edges[index] ?? [])}
+                fill="none"
+                style={{ stroke: layer.color }}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 w-px -translate-x-1/2 bg-border-strong/60"
+            style={{ left: `${selectedX}%` }}
+          />
+
+          {markerPoint && marker ? (
+            <MarkerLabel
+              x={markerPoint.x}
+              y={markerPoint.y}
+              label={marker.label}
+            />
+          ) : null}
+
           {layers.map((layer, index) => (
-            <path
-              key={`${layer.key}-area`}
-              d={areaPath(edges[index] ?? [], edges[index - 1] ?? baseline)}
-              style={{ fill: layer.color }}
-              fillOpacity={0.12}
+            <Dot
+              key={`${layer.key}-dot`}
+              x={selectedX}
+              y={yPercent(cumulative[index]?.[pointIndex] ?? 0)}
+              color={layer.color}
             />
           ))}
-          {layers.map((layer, index) => (
-            <path
-              key={`${layer.key}-line`}
-              d={linePath(edges[index] ?? [])}
-              fill="none"
-              style={{ stroke: layer.color }}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </svg>
 
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 w-px -translate-x-1/2 bg-border-strong/60"
-          style={{ left: `${selectedX}%` }}
-        />
-
-        {markerPoint && marker ? (
-          <MarkerLabel
-            x={markerPoint.x}
-            y={markerPoint.y}
-            label={marker.label}
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, stops.length - 1)}
+            step={1}
+            value={stopIndex}
+            aria-label={scrubLabel}
+            aria-valuetext={valueText(stopIndex)}
+            onChange={(event) => onSelectedChange(Number(event.target.value))}
+            className="peer pointer-events-none absolute inset-0 m-0 size-full appearance-none opacity-0"
           />
-        ) : null}
-
-        {layers.map((layer, index) => (
-          <Dot
-            key={`${layer.key}-dot`}
-            x={selectedX}
-            y={yPercent(cumulative[index]?.[pointIndex] ?? 0)}
-            color={layer.color}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -inset-1 rounded-chip peer-focus-visible:outline-2 peer-focus-visible:outline-focus"
           />
-        ))}
-
-        <input
-          type="range"
-          min={0}
-          max={Math.max(0, stops.length - 1)}
-          step={1}
-          value={stopIndex}
-          aria-label={scrubLabel}
-          aria-valuetext={valueText(stopIndex)}
-          onChange={(event) => onSelectedChange(Number(event.target.value))}
-          className="peer pointer-events-none absolute inset-0 m-0 size-full appearance-none opacity-0"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-1 rounded-chip peer-focus-visible:outline-2 peer-focus-visible:outline-focus"
-        />
-        {/* Pointer scrub: the range input above handles keys and screen
-            readers; this layer follows the finger anywhere on the plot (iOS
-            range inputs only move by their thumb) and lets vertical swipes
-            scroll the page. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 cursor-ew-resize"
-          style={{ touchAction: "pan-y" }}
-          onPointerDown={(event) => {
-            dragging.current = true;
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-            selectFromPointer(event);
-          }}
-          onPointerMove={(event) => {
-            if (dragging.current || event.pointerType === "mouse") {
+          {/* Pointer scrub: the range input above handles keys and screen
+              readers; this layer follows the finger anywhere on the plot (iOS
+              range inputs only move by their thumb) and lets vertical swipes
+              scroll the page. */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 cursor-ew-resize"
+            style={{ touchAction: "pan-y" }}
+            onPointerDown={(event) => {
+              dragging.current = true;
+              event.currentTarget.setPointerCapture?.(event.pointerId);
               selectFromPointer(event);
-            }
-          }}
-          onPointerUp={() => {
-            dragging.current = false;
-          }}
-          onPointerCancel={() => {
-            dragging.current = false;
-          }}
-        />
+            }}
+            onPointerMove={(event) => {
+              if (dragging.current || event.pointerType === "mouse") {
+                selectFromPointer(event);
+              }
+            }}
+            onPointerUp={() => {
+              dragging.current = false;
+            }}
+            onPointerCancel={() => {
+              dragging.current = false;
+            }}
+          />
+        </div>
       </div>
 
-      <div aria-hidden="true" className="relative mt-1.5 h-4">
+      <div aria-hidden="true" className="relative mt-1.5 mr-11 h-4">
         {xLabels.map((item) => {
           const percent = item.position * 100;
           const anchor = labelAnchor(percent);

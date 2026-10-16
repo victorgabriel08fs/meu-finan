@@ -29,8 +29,9 @@ type LineChartProps = {
 const SHIFT = { start: "0%", middle: "-50%", end: "-100%" } as const;
 
 /**
- * Single-series line (doc 02 §9.2): 2px line, solid hairline grid, a zero
- * baseline in the axis color, selective direct labels with ringed dots.
+ * Single-series line (doc 02 §9.2): 2px line, solid hairline grid with its
+ * ticks in a gutter on the right, a zero baseline in the axis color,
+ * selective direct labels with ringed dots.
  * Static: renders on the server.
  */
 export function LineChart({
@@ -77,49 +78,52 @@ export function LineChart({
             </span>
           </div>
         ))}
-        <svg
-          aria-hidden="true"
-          viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 size-full overflow-visible"
-        >
-          <path
-            d={linePath(points)}
-            fill="none"
-            style={{ stroke: "var(--line)" }}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {labels.map(({ index, text }) => {
-          const value = values[index];
-          if (value === null || value === undefined) return null;
-          const x = xPercent(index);
-          const y = yPercent(value);
-          const below = y < 30;
-          return (
-            <span key={index} aria-hidden="true">
-              <span
-                className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--line) ring-2 ring-surface"
-                style={{ left: `${x}%`, top: `${y}%` }}
-              />
-              <span
-                className="absolute whitespace-nowrap text-micro font-bold text-fg tabular-nums"
-                style={{
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  transform: `translate(${SHIFT[labelAnchor(x)]}, ${below ? "8px" : "calc(-100% - 8px)"})`,
-                }}
-              >
-                {text}
+        {/* The data stops short of the tick labels on the right. */}
+        <div className="absolute inset-y-0 right-11 left-0">
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 size-full overflow-visible"
+          >
+            <path
+              d={linePath(points)}
+              fill="none"
+              style={{ stroke: "var(--line)" }}
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          {labels.map(({ index, text }) => {
+            const value = values[index];
+            if (value === null || value === undefined) return null;
+            const x = xPercent(index);
+            const y = yPercent(value);
+            const below = y < 30;
+            return (
+              <span key={index} aria-hidden="true">
+                <span
+                  className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--line) ring-2 ring-surface"
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                />
+                <span
+                  className="absolute whitespace-nowrap rounded-badge bg-surface/85 px-1 text-micro font-bold text-fg tabular-nums"
+                  style={{
+                    left: `${x}%`,
+                    top: `${y}%`,
+                    transform: `translate(${SHIFT[labelAnchor(x)]}, ${below ? "8px" : "calc(-100% - 8px)"})`,
+                  }}
+                >
+                  {text}
+                </span>
               </span>
-            </span>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-      <div aria-hidden="true" className="relative mt-1.5 h-4">
+      <div aria-hidden="true" className="relative mt-1.5 mr-11 h-4">
         {xLabels.map((item) => {
           const percent = single ? 50 : item.position * 100;
           return (

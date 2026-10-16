@@ -24,7 +24,7 @@ export function AccountsCarousel({
     <ul
       aria-label="Suas contas"
       className={cn(
-        "-mx-gutter flex snap-x snap-mandatory scroll-px-gutter gap-2.5 overflow-x-auto px-gutter py-1",
+        "relative -mx-gutter flex snap-x snap-mandatory scroll-px-gutter gap-2.5 overflow-x-auto px-gutter py-1",
         "scrollbar-none [&::-webkit-scrollbar]:hidden",
         "md:mx-0 md:scroll-px-0 md:px-0",
       )}
