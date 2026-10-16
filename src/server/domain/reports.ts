@@ -2,6 +2,7 @@
 // money went, savings rate and net worth. Accrual basis (purchase date).
 import { and, between, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
+  addMonths,
   iso,
   parse,
   type SavingsRate,
@@ -86,15 +87,13 @@ export function savingsRateOf(
   series: MonthPoint[],
 ): SavingsRate {
   const current = series.find((point) => point.partial);
+  // Without a partial month every point is complete: name one after today's.
   const currentMonth = current
     ? {
         year: Number(current.month.slice(0, 4)),
         month: Number(current.month.slice(5, 7)),
       }
-    : {
-        year: ctx.today.year,
-        month: ctx.today.month + 1 > 12 ? 1 : ctx.today.month + 1,
-      };
+    : addMonths(ctx.today, 1);
   return savingsRate({
     months: series.map((point) => ({
       month: {
