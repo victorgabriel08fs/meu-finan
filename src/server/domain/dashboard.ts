@@ -4,7 +4,9 @@ import {
   addDays,
   type Forecast,
   forecastBalance,
+  invoiceFor,
   iso,
+  isoMonth,
   parse,
   shiftPeriod,
 } from "@/lib/finance";
@@ -52,6 +54,8 @@ export type Dashboard = {
   budgets: BudgetOverview;
   upcoming: UpcomingItem[];
   accounts: AccountListItem[];
+  /** Per card id: total of the invoice a purchase made today goes to. */
+  currentInvoiceCents: Record<string, number>;
   goals: GoalItem[];
   insight: Insight | null;
 };
@@ -158,6 +162,16 @@ export async function getDashboard(
     ),
   ].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 
+  const currentInvoiceCents: Record<string, number> = {};
+  cards.forEach((card, index) => {
+    if (!card.card) return;
+    const month = isoMonth(invoiceFor(ctx.today, card.card).referenceMonth);
+    const invoice = invoicesByCard[index]?.find(
+      (item) => item.referenceMonth === month,
+    );
+    currentInvoiceCents[card.id] = invoice?.totalCents ?? 0;
+  });
+
   return {
     balanceCents,
     monthChangeCents: monthChange,
@@ -166,6 +180,7 @@ export async function getDashboard(
     budgets,
     upcoming,
     accounts,
+    currentInvoiceCents,
     goals,
     insight,
   };

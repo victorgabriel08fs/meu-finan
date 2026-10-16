@@ -374,6 +374,10 @@ describe("planning and overview", () => {
     );
     expect(dashboard.upcoming.map((item) => item.title)).toEqual(["Aluguel"]);
     expect(dashboard.totals.incomeCents).toBe(780_000);
+    // October's invoice: today's ride and the 2nd installment of the shoes.
+    expect(dashboard.currentInvoiceCents).toEqual({
+      [ids.card]: 2_290 + 9_998,
+    });
   });
 
   it("builds the monthly series and the net worth", async () => {

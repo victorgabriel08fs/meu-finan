@@ -247,9 +247,31 @@ describe("AccountsCarousel", () => {
     expect(html).toContain('href="/contas/a1"');
     expect(html).toContain('href="/cartoes/c1"');
     expect(html).toContain('href="/contas/nova"');
-    expect(visible).toContain("Fatura atual");
+    // Without the invoice, a card shows everything owed.
+    expect(visible).toContain("Em aberto");
     expect(visible).toContain("R$ 1.380,42");
     expect(visible).toContain("Adicionar conta");
+  });
+
+  it("shows the current invoice of a card when it is known", () => {
+    const html = renderToStaticMarkup(
+      <AccountsCarousel
+        accounts={[
+          account({
+            id: "c1",
+            name: "Cartão principal",
+            type: "credit_card",
+            balanceCents: -138_042,
+            card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
+          }),
+        ]}
+        currentInvoiceCents={{ c1: 41_290 }}
+      />,
+    );
+    const visible = text(html);
+    expect(visible).toContain("Fatura atual");
+    expect(visible).toContain("R$ 412,90");
+    expect(visible).not.toContain("R$ 1.380,42");
   });
 });
 

@@ -12,13 +12,16 @@ const cardClass =
 /**
  * Accounts carousel of the Início (doc 02 §6.3): 156×112 cards with icon,
  * name and balance, snapping as they scroll; the next card peeks in to hint
- * at the scroll. Credit cards show what is owed and open their invoice. The
- * last card adds an account.
+ * at the scroll. Credit cards show their current invoice (or, without it,
+ * everything owed) and open the card. The last card adds an account.
  */
 export function AccountsCarousel({
   accounts,
+  currentInvoiceCents = {},
 }: {
   accounts: AccountListItem[];
+  /** Per card id: total of the invoice that is open today. */
+  currentInvoiceCents?: Record<string, number>;
 }) {
   return (
     <ul
@@ -31,6 +34,9 @@ export function AccountsCarousel({
     >
       {accounts.map((account) => {
         const isCard = account.type === "credit_card";
+        const invoiceCents = isCard
+          ? currentInvoiceCents[account.id]
+          : undefined;
         return (
           <li key={account.id} className="shrink-0 snap-start">
             <Link
@@ -50,7 +56,7 @@ export function AccountsCarousel({
                 />
                 {isCard ? (
                   <span className="rounded-badge bg-surface-2 px-1.5 py-0.5 text-micro font-bold text-fg-2">
-                    Fatura atual
+                    {invoiceCents === undefined ? "Em aberto" : "Fatura atual"}
                   </span>
                 ) : null}
               </span>
@@ -60,7 +66,9 @@ export function AccountsCarousel({
                 </span>
                 <Money
                   cents={
-                    isCard ? cardUsage(account).owedCents : account.balanceCents
+                    isCard
+                      ? (invoiceCents ?? cardUsage(account).owedCents)
+                      : account.balanceCents
                   }
                   variant="headline"
                   tone="neutral"

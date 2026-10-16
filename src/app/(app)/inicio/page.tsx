@@ -214,7 +214,10 @@ async function Summary({
                 title="Contas"
                 action={<SectionLink href="/contas">Gerenciar</SectionLink>}
               />
-              <AccountsCarousel accounts={data.accounts} />
+              <AccountsCarousel
+                accounts={data.accounts}
+                currentInvoiceCents={data.currentInvoiceCents}
+              />
             </section>
             <section aria-labelledby="metas-resumo">
               <SectionHeader
