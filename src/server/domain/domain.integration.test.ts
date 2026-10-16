@@ -184,6 +184,40 @@ describe("ledger", () => {
     await d.transactions.deleteTransaction(ctx, id);
   });
 
+  it("replays installments and transfers by client id without duplicating", async () => {
+    const t = d.transactions;
+    const purchase = {
+      id: "01900000-0000-7000-8000-00000000beef",
+      kind: "expense" as const,
+      amountCents: 30_000,
+      accountId: ids.wallet,
+      categoryId: ids.shopping,
+      occurredOn: "2026-10-14",
+      installments: 3,
+    };
+    const first = await t.createTransaction(ctx, purchase);
+    const replay = await t.createTransaction(ctx, purchase);
+    expect(first.ids).toHaveLength(3);
+    expect([...replay.ids].sort()).toEqual([...first.ids].sort());
+
+    const transfer = {
+      id: "01900000-0000-7000-8000-00000000cafe",
+      fromAccountId: ids.wallet,
+      toAccountId: ids.reserve,
+      amountCents: 500,
+      occurredOn: "2026-10-14",
+    };
+    const sent = await t.createTransfer(ctx, transfer);
+    expect(await t.createTransfer(ctx, transfer)).toEqual(sent);
+
+    await t.deleteTransaction(ctx, purchase.id, "all");
+    expect(await t.deleteTransaction(ctx, transfer.id)).toHaveLength(2);
+    const accounts = await d.accounts.listAccounts("owner");
+    expect(
+      accounts.find((account) => account.id === ids.wallet)?.balanceCents,
+    ).toBe(15_000);
+  });
+
   it("builds the card invoices from the purchases", async () => {
     const overview = await d.cards.getCardOverview(ctx, ids.card);
     const byMonth = new Map(
@@ -265,7 +299,19 @@ describe("ledger", () => {
     const installment = items.find(
       (item) => item.description === "Tênis de corrida",
     );
-    expect(installment?.installment).toEqual({ number: 2, count: 6 });
+    expect(installment?.installment).toEqual({
+      number: 2,
+      count: 6,
+      totalCents: 59_988,
+    });
+    expect(installment?.recurrence).toBeNull();
+    const rent = items.find((item) => item.description === "Aluguel");
+    expect(rent?.recurrence).toEqual({
+      freq: "monthly",
+      interval: 1,
+      byMonthDay: 15,
+      endOn: null,
+    });
   });
 
   it("deletes a transfer with both legs and restores it", async () => {

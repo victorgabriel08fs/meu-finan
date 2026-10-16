@@ -304,6 +304,7 @@ describe("AccountTransactions", () => {
     counterpartName: null,
     installment: null,
     recurring: false,
+    recurrence: null,
     notes: null,
     ...overrides,
   });

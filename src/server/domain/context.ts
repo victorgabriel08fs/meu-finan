@@ -1,6 +1,7 @@
 // Per-request user context: preferences, "today" in the user's time zone and
 // the financial period (doc 03 §10.2). Domain functions receive it explicitly.
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import {
   iso,
   type LocalDate,
@@ -23,9 +24,26 @@ export type UserContext = {
   todayIso: string;
 };
 
-export async function getUserContext(
+type ContextOptions = { executor?: Executor; now?: number };
+
+/**
+ * The user's context. Without options the result is memoised for the
+ * request, so the layout and the page share one settings query.
+ */
+export function getUserContext(
   userId: string,
-  options: { executor?: Executor; now?: number } = {},
+  options: ContextOptions = {},
+): Promise<UserContext> {
+  return options.executor || options.now !== undefined
+    ? loadUserContext(userId, options)
+    : requestUserContext(userId);
+}
+
+const requestUserContext = cache((userId: string) => loadUserContext(userId));
+
+async function loadUserContext(
+  userId: string,
+  options: ContextOptions = {},
 ): Promise<UserContext> {
   const [settings] = await (options.executor ?? db)
     .select({

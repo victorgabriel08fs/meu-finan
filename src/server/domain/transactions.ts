@@ -37,6 +37,7 @@ import {
   categories,
   finAccounts,
   installmentPlans,
+  type RecurrenceFreq,
   recurrences,
   type TxnKind,
   type TxnStatus,
@@ -87,6 +88,39 @@ function assertAmount(amountCents: number) {
   }
 }
 
+/**
+ * Idempotent replay: when the client resubmits an id that already exists,
+ * returns every row created with it (all installments or occurrences), so
+ * "Desfazer" still discards the whole entry. Null when the id is new.
+ */
+async function idsCreatedWith(
+  tx: Executor,
+  ctx: UserContext,
+  id: string,
+): Promise<string[] | null> {
+  const [existing] = await tx
+    .select({
+      id: transactions.id,
+      planId: transactions.installmentPlanId,
+      recurrenceId: transactions.recurrenceId,
+    })
+    .from(transactions)
+    .where(and(eq(transactions.id, id), eq(transactions.userId, ctx.userId)))
+    .limit(1);
+  if (!existing) return null;
+  const sibling = existing.planId
+    ? eq(transactions.installmentPlanId, existing.planId)
+    : existing.recurrenceId
+      ? eq(transactions.recurrenceId, existing.recurrenceId)
+      : null;
+  if (!sibling) return [existing.id];
+  const rows = await tx
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(and(eq(transactions.userId, ctx.userId), sibling));
+  return rows.map((row) => row.id);
+}
+
 export async function createTransaction(
   ctx: UserContext,
   input: TransactionInput,
@@ -103,17 +137,8 @@ export async function createTransaction(
 
   return db.transaction(async (tx) => {
     if (input.id) {
-      const [existing] = await tx
-        .select({ id: transactions.id })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.id, input.id),
-            eq(transactions.userId, ctx.userId),
-          ),
-        )
-        .limit(1);
-      if (existing) return { ids: [existing.id] };
+      const replay = await idsCreatedWith(tx, ctx, input.id);
+      if (replay) return { ids: replay };
     }
 
     const account = await requireAccount(tx, ctx.userId, input.accountId);
@@ -294,6 +319,21 @@ export async function createTransfer(
   }
   const date = parse(input.occurredOn);
   return db.transaction(async (tx) => {
+    if (input.id) {
+      // Idempotent replay of the same client id: the transfer already exists.
+      const [existing] = await tx
+        .select({ transferId: transactions.transferId })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.id, input.id),
+            eq(transactions.userId, ctx.userId),
+          ),
+        )
+        .limit(1);
+      if (existing?.transferId) return { transferId: existing.transferId };
+      if (existing) throw new DomainError("Este lançamento já existe.");
+    }
     const from = await requireAccount(tx, ctx.userId, input.fromAccountId);
     const to = await requireAccount(tx, ctx.userId, input.toAccountId);
     const status = statusFor(date, ctx.today, input.paid);
@@ -366,9 +406,19 @@ export type TransactionListItem = {
   categoryColor: string | null;
   transferId: string | null;
   counterpartName: string | null;
-  installment: { number: number; count: number } | null;
+  /** `totalCents` is the whole purchase (positive). */
+  installment: { number: number; count: number; totalCents: number } | null;
   recurring: boolean;
+  recurrence: RecurrenceRule | null;
   notes: string | null;
+};
+
+export type RecurrenceRule = {
+  freq: RecurrenceFreq;
+  interval: number;
+  /** 31 means the last day of the month. */
+  byMonthDay: number | null;
+  endOn: string | null;
 };
 
 const counterpart = alias(transactions, "counterpart");
@@ -428,7 +478,12 @@ export async function listTransactions(
       counterpartName: counterpartAccount.name,
       installmentNumber: transactions.installmentNumber,
       installmentCount: installmentPlans.count,
+      installmentTotalCents: installmentPlans.totalCents,
       recurrenceId: transactions.recurrenceId,
+      recurrenceFreq: recurrences.freq,
+      recurrenceInterval: recurrences.interval,
+      recurrenceByMonthDay: recurrences.byMonthDay,
+      recurrenceEndOn: recurrences.endOn,
       notes: transactions.notes,
     })
     .from(transactions)
@@ -438,6 +493,7 @@ export async function listTransactions(
       installmentPlans,
       eq(installmentPlans.id, transactions.installmentPlanId),
     )
+    .leftJoin(recurrences, eq(recurrences.id, transactions.recurrenceId))
     .leftJoin(
       counterpart,
       and(
@@ -471,10 +527,25 @@ export async function listTransactions(
       transferId: row.transferId,
       counterpartName: row.counterpartName,
       installment:
-        row.installmentNumber !== null && row.installmentCount !== null
-          ? { number: row.installmentNumber, count: row.installmentCount }
+        row.installmentNumber !== null &&
+        row.installmentCount !== null &&
+        row.installmentTotalCents !== null
+          ? {
+              number: row.installmentNumber,
+              count: row.installmentCount,
+              totalCents: row.installmentTotalCents,
+            }
           : null,
       recurring: row.recurrenceId !== null,
+      recurrence:
+        row.recurrenceFreq !== null && row.recurrenceInterval !== null
+          ? {
+              freq: row.recurrenceFreq,
+              interval: row.recurrenceInterval,
+              byMonthDay: row.recurrenceByMonthDay,
+              endOn: row.recurrenceEndOn,
+            }
+          : null,
       notes: row.notes,
     })),
     hasMore: rows.length > limit,

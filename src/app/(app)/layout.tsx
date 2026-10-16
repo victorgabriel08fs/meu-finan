@@ -1,14 +1,26 @@
 import { type ReactNode, Suspense } from "react";
 import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
+import { QuickAddLoader } from "@/components/quick-add/quick-add-loader";
+import {
+  QuickAddFab,
+  QuickAddSidebarButton,
+} from "@/components/quick-add/quick-add-trigger";
 
 /**
  * Signed-in shell (doc 02 §4.2, §4.5): sidebar from lg, tab bar below it.
  * No session read here — every page checks it inside its own <Suspense>, so
  * this shell prerenders. The navs read the pathname, which suspends on
  * dynamic params; their fallbacks are the same navs with nothing selected.
+ *
+ * Quick add ("Nova transação", §6.5): the "+" triggers only flip a client
+ * store, so they work from the first paint; the sheet itself streams in
+ * through QuickAddLoader, which checks the session inside its own boundary.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const sidebarButton = <QuickAddSidebarButton />;
+  const fab = <QuickAddFab />;
+
   return (
     <div className="min-h-dvh lg:flex">
       <a
@@ -17,8 +29,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         Pular para o conteúdo
       </a>
-      <Suspense fallback={<SideNavView pathname={null} />}>
-        <SideNav />
+      <Suspense
+        fallback={<SideNavView pathname={null} addButton={sidebarButton} />}
+      >
+        <SideNav addButton={sidebarButton} />
       </Suspense>
       <main
         id="conteudo"
@@ -27,8 +41,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         {children}
       </main>
-      <Suspense fallback={<BottomNavView pathname={null} />}>
-        <BottomNav />
+      <Suspense fallback={<BottomNavView pathname={null} addButton={fab} />}>
+        <BottomNav addButton={fab} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <QuickAddLoader />
       </Suspense>
     </div>
   );
