@@ -71,7 +71,9 @@ export function createPgliteDatabase(client: PGlite): Database {
 function createDatabase(): Database {
   const target = resolveDatabaseTarget();
   if (target.kind === "pglite") {
-    return createPgliteDatabase(createPgliteClient(target.dir));
+    const client = createPgliteClient(target.dir);
+    globalForDb.__meuFinanPglite = client;
+    return createPgliteDatabase(client);
   }
   const pool = new Pool({ connectionString: target.url, max: 5 });
   // On Vercel (Fluid compute) releases idle connections before the instance
@@ -84,7 +86,16 @@ function createDatabase(): Database {
 // single instance per data directory).
 const globalForDb = globalThis as typeof globalThis & {
   __meuFinanDb?: Database;
+  __meuFinanPglite?: PGlite;
 };
+
+/** Closes the embedded database (scripts call it so PGlite flushes to disk). */
+export async function closeDatabase(): Promise<void> {
+  const client = globalForDb.__meuFinanPglite;
+  globalForDb.__meuFinanPglite = undefined;
+  globalForDb.__meuFinanDb = undefined;
+  if (client) await client.close();
+}
 
 function getDatabase(): Database {
   globalForDb.__meuFinanDb ??= createDatabase();

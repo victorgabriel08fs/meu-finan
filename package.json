@@ -19,7 +19,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "check": "npm run lint && npm run typecheck && npm run test",
     "predev": "tsx scripts/db-local.ts migrate",
-    "db:local": "tsx scripts/db-local.ts"
+    "db:local": "tsx scripts/db-local.ts",
+    "demo": "tsx scripts/demo.ts"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.8",
