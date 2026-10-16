@@ -361,3 +361,24 @@ describe("planning and overview", () => {
     ]);
   });
 });
+
+describe("recurrences", () => {
+  it("extends active rules 60 days ahead, idempotently", async () => {
+    const { materializeRecurrences } = await import("./recurrences");
+    // 40 days later the horizon is 22/jan/2027: rent of 15/dez and 15/jan appear.
+    const later = NOW + 40 * 86_400_000;
+    const first = await materializeRecurrences({ now: later });
+    expect(first).toEqual({ recurrences: 1, created: 2 });
+    const again = await materializeRecurrences({ now: later });
+    expect(again.created).toBe(0);
+    const { items } = await d.transactions.listTransactions(ctx, {
+      start: "2026-12-01",
+      end: "2027-01-31",
+      accountId: ids.checking,
+    });
+    expect(items.map((item) => [item.description, item.occurredOn, item.status])).toEqual([
+      ["Aluguel", "2027-01-15", "pending"],
+      ["Aluguel", "2026-12-15", "pending"],
+    ]);
+  });
+});

@@ -2,11 +2,11 @@ import "server-only";
 import { dbJobRunStore } from "./job-run-store";
 import { type JobRunSummary, type JobStep, runJob } from "./runner";
 import {
-  materializeRecurrences,
   rollInvoices,
   sendReminders,
   snapshotBalances,
 } from "./steps/later-phases";
+import { materializeRecurrences } from "./steps/materialize-recurrences";
 import { purgeDeleted } from "./steps/purge-deleted";
 import { syncMarketRates } from "./steps/sync-market-rates";
 

@@ -9,11 +9,6 @@ function laterPhase(name: string, reason: string): JobStep {
   return { name, run: () => Promise.resolve({ status: "skipped", reason }) };
 }
 
-export const materializeRecurrences = laterPhase(
-  "materializeRecurrences",
-  "Lançamentos recorrentes chegam na fase F2.",
-);
-
 export const rollInvoices = laterPhase(
   "rollInvoices",
   "Faturas de cartão de crédito chegam na fase F2.",
