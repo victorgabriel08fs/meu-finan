@@ -326,6 +326,9 @@ describe("GoalsCard", () => {
     expect(visible).toContain("Atrasada");
     expect(visible).not.toContain("Carro");
     expect(html).toContain('aria-label="Reserva de emergência: 62% concluído"');
+    // Each row opens its goal's detail.
+    expect(html).toContain('href="/planejar/metas/g1"');
+    expect(html).toContain('href="/planejar/metas/g2"');
   });
 });
 

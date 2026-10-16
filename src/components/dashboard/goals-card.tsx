@@ -28,13 +28,14 @@ const STATUS: Record<GoalStatus, { label: string; className: string }> = {
 
 /**
  * Metas of the Início (doc 02 §6.3, §5.10): up to two goals with a 44px ring,
- * saved of target and a status pill; the card opens Planejar › Metas.
+ * saved of target and a status pill; each row opens its goal's detail.
  */
 export function GoalsCard({
   goals,
   href,
 }: {
   goals: GoalItem[];
+  /** The goals list, Planejar › Metas; a row links to `${href}/${goal.id}`. */
   href: string;
 }) {
   return (
@@ -51,7 +52,7 @@ export function GoalsCard({
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-body font-semibold text-fg">
                   <Link
-                    href={href}
+                    href={`${href}/${goal.id}`}
                     className="outline-0 after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
                   >
                     {goal.name}

@@ -1,20 +1,12 @@
 "use client";
 
-import {
-  ArrowUpRight,
-  CircleCheck,
-  CircleDashed,
-  Goal,
-  Pencil,
-  Plus,
-  TriangleAlert,
-} from "lucide-react";
+import { ChevronRight, Goal, Pencil, Plus } from "lucide-react";
+import Link from "next/link";
 import { EmptyState } from "@/components/app/empty-state";
 import { SectionHeader } from "@/components/app/section-header";
 import { formatMoneyShort } from "@/components/charts/format";
 import { Ring } from "@/components/finance/ring";
 import { Money } from "@/components/money/money";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sheet } from "@/components/ui/sheet";
@@ -25,12 +17,12 @@ import { type MarketRatesView, marketRateLabel } from "../market";
 import { type GoalAccount, type GoalFormGoal, GoalSheet } from "./goal-sheet";
 import {
   deadlineMonth,
-  GOAL_STATUS,
   type GoalRate,
+  goalHref,
   planLine,
   projectionSentence,
-  type StatusPill,
 } from "./model";
+import { GoalStatusPill } from "./status-pill";
 
 export type GoalCardData = GoalFormGoal & {
   progress: number;
@@ -171,13 +163,11 @@ export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
   );
 }
 
-const PILL_ICON: Record<StatusPill["icon"], typeof CircleCheck> = {
-  check: CircleCheck,
-  ahead: ArrowUpRight,
-  behind: TriangleAlert,
-  none: CircleDashed,
-};
-
+/**
+ * A goal of the list. The name is a link stretched over the whole card (its
+ * ::after covers it), so a tap anywhere opens the detail; the plan button sits
+ * above that layer and keeps its own action, with no control nested in a link.
+ */
 function GoalCard({
   goal,
   onEdit,
@@ -185,8 +175,6 @@ function GoalCard({
   goal: GoalCardData;
   onEdit: (suggestedMonthlyCents?: number | null) => void;
 }) {
-  const pill = GOAL_STATUS[goal.projection.status];
-  const Icon = PILL_ICON[pill.icon];
   const deadline = deadlineMonth(goal.targetDate);
   const sentence = projectionSentence({
     projection: goal.projection,
@@ -199,23 +187,32 @@ function GoalCard({
     goal.projection.requiredMonthlyCents !== null;
 
   return (
-    <Card asChild className="flex flex-col gap-3">
+    <Card
+      asChild
+      className="relative flex flex-col gap-3 transition-colors duration-100 has-[a:active]:bg-surface-2"
+    >
       <article aria-labelledby={titleId}>
         <div className="flex items-center gap-3.5">
           <Ring value={goal.progress} size={56} label={goal.name} />
           <div className="flex min-w-0 flex-1 flex-col">
             <h3 id={titleId} className="truncate text-headline text-fg">
-              {goal.name}
+              <Link
+                href={goalHref(goal.id)}
+                className="outline-0 after:absolute after:inset-0 after:rounded-card focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
+              >
+                {goal.name}
+              </Link>
             </h3>
             <p className="text-caption text-fg-3 tabular-nums">
               {formatMoneyShort(goal.currentCents)} de{" "}
               {formatMoneyShort(goal.targetCents)}
             </p>
           </div>
-          <Badge tone={pill.tone} className="h-6.5 rounded-full px-2.5">
-            <Icon aria-hidden="true" />
-            {pill.label}
-          </Badge>
+          <GoalStatusPill status={goal.projection.status} />
+          <ChevronRight
+            aria-hidden="true"
+            className="-mr-1 size-5 shrink-0 text-fg-3"
+          />
         </div>
         <p className="border-t border-border pt-3 text-callout text-fg-2">
           {sentence.map((segment, index) =>
@@ -243,6 +240,7 @@ function GoalCard({
             <Button
               variant="tonal"
               size="sm"
+              className="z-1"
               onClick={() => onEdit(goal.projection.requiredMonthlyCents)}
               aria-label={`Ajustar plano de ${goal.name}`}
             >
@@ -252,7 +250,7 @@ function GoalCard({
             <Button
               variant="ghost"
               size="sm"
-              className="-mr-2"
+              className="z-1 -mr-2"
               onClick={() => onEdit()}
               aria-label={`Editar ${goal.name}`}
             >

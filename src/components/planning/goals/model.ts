@@ -16,6 +16,10 @@ import type { MarketRatesView } from "../market";
  * in the form, the projection sentence and the status pill. Pure.
  */
 
+/** The goals list and a goal's detail (doc 02 §4.1). */
+export const GOALS_HREF = "/planejar/metas";
+export const goalHref = (id: string) => `${GOALS_HREF}/${id}`;
+
 /** Same shape as goals.expected_rate (decimals: 1.02 = 102% do CDI). */
 export type GoalRate =
   | { index: "fixed"; annual: number }
@@ -147,7 +151,12 @@ export function deadlineMonth(targetDate: string | null): YearMonth | null {
     : null;
 }
 
-export type Segment = { text: string; strong?: boolean };
+export type Segment = {
+  text: string;
+  strong?: boolean;
+  /** An amount: hidden in privacy mode where the sentence is masked. */
+  money?: boolean;
+};
 
 const monthsLabel = (count: number) =>
   count === 1 ? "1 mês" : `${count} meses`;
@@ -190,17 +199,19 @@ export function projectionSentence(input: {
           },
         ];
       }
-      const today =
-        monthlyPlanCents > 0
-          ? `hoje: ${formatMoneyShort(monthlyPlanCents)}`
-          : "hoje: sem aporte";
       const segments: Segment[] = [
         { text: `Para chegar em ${due}, aporte ` },
         {
-          text: `${formatMoneyShort(projection.requiredMonthlyCents)}/mês`,
+          text: formatMoneyShort(projection.requiredMonthlyCents),
           strong: true,
+          money: true,
         },
-        { text: ` (${today}).` },
+        { text: "/mês", strong: true },
+        { text: " (hoje: " },
+        monthlyPlanCents > 0
+          ? { text: formatMoneyShort(monthlyPlanCents), money: true }
+          : { text: "sem aporte" },
+        { text: ")." },
       ];
       if (eta) segments.push({ text: ` No ritmo atual, chega em ${eta}.` });
       return segments;

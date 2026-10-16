@@ -96,7 +96,9 @@ export function GoalSheet({
   market,
   today,
   suggestedMonthlyCents,
+  initialStep = "form",
   onDone,
+  onArchived,
 }: {
   goal: GoalFormGoal | null;
   accounts: GoalAccount[];
@@ -104,7 +106,15 @@ export function GoalSheet({
   today: YearMonth;
   /** "Ajustar plano": starts the monthly field at the amount that meets the deadline. */
   suggestedMonthlyCents?: number | null;
+  /** "archive" opens straight on the confirmation (an "Arquivar" action); Cancelar then closes. */
+  initialStep?: "form" | "archive";
   onDone: () => void;
+  /**
+   * After archiving, instead of `onDone`: the goal's own screen leaves for the
+   * list. The sheet stays open and goes away with the page — closing it first
+   * would step back in history and race the navigation (useBackToClose).
+   */
+  onArchived?: () => void;
 }) {
   const formId = useId();
   const iconLabelId = useId();
@@ -140,7 +150,10 @@ export function GoalSheet({
     initialRate.percent,
   );
   const [errors, setErrors] = useState<Errors>({});
-  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(
+    initialStep === "archive",
+  );
+  const [leaving, setLeaving] = useState(false);
 
   const account = accounts.find((item) => item.id === accountId);
   const currentCents = account
@@ -207,15 +220,25 @@ export function GoalSheet({
   };
   const create = useAction(createGoalAction, { onSuccess, onError });
   const update = useAction(updateGoalAction, { onSuccess, onError });
-  const archive = useAction(archiveGoalAction, {
-    onSuccess: () => {
-      toast(`Meta ${goal?.name ?? ""} arquivada.`);
-      onDone();
-    },
-    onError: ({ error }) =>
-      setErrors({ form: error.serverError ?? NETWORK_ERROR }),
-  });
+  const archive = useAction(archiveGoalAction);
   const pending = create.isPending || update.isPending;
+
+  async function archiveGoal(id: string, goalName: string) {
+    // Awaited rather than onSuccess: the follow-up runs as soon as the action
+    // returns, before the refreshed page can replace this sheet.
+    const result = await archive.executeAsync({ id }).catch(() => undefined);
+    if (result && !result.serverError && !result.validationErrors) {
+      toast(`Meta ${goalName} arquivada.`);
+      if (onArchived) {
+        setLeaving(true);
+        onArchived();
+      } else {
+        onDone();
+      }
+      return;
+    }
+    setErrors({ form: result?.serverError ?? NETWORK_ERROR });
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -281,8 +304,8 @@ export function GoalSheet({
               variant="destructive"
               size="lg"
               className="w-full"
-              loading={archive.isPending}
-              onClick={() => archive.execute({ id: goal.id })}
+              loading={archive.isPending || leaving}
+              onClick={() => void archiveGoal(goal.id, goal.name)}
             >
               Arquivar meta
             </Button>
@@ -290,7 +313,10 @@ export function GoalSheet({
               variant="secondary"
               size="lg"
               className="w-full"
-              onClick={() => setConfirmArchive(false)}
+              disabled={leaving}
+              onClick={() =>
+                initialStep === "archive" ? onDone() : setConfirmArchive(false)
+              }
             >
               Cancelar
             </Button>

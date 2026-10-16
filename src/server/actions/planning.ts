@@ -20,7 +20,13 @@ import {
 import { payInvoice } from "@/server/domain/cards";
 import { createCategory } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
-import { archiveGoal, createGoal, updateGoal } from "@/server/domain/goals";
+import {
+  archiveGoal,
+  contributeToGoal,
+  createGoal,
+  undoGoalContribution,
+  updateGoal,
+} from "@/server/domain/goals";
 import { authAction } from "@/server/safe-action";
 import {
   amountCents,
@@ -256,4 +262,43 @@ export const updatePreferencesAction = authAction
       })
       .where(eq(userSettings.userId, user.id));
     refresh();
+  });
+
+// Aportes --------------------------------------------------------------------
+
+/**
+ * "Aportar" (doc 02 §6.10): a transfer into the goal's linked account, or an
+ * amount added to what was saved by hand when the goal has none.
+ */
+export const contributeToGoalAction = authAction
+  .inputSchema(
+    z.object({
+      goalId: idSchema,
+      amountCents,
+      fromAccountId: idSchema.nullable().optional(),
+      occurredOn: isoDate.optional(),
+      requestId: idSchema.optional(),
+    }),
+  )
+  .action(async ({ parsedInput: { goalId, ...input }, ctx: { user } }) => {
+    const result = await contributeToGoal(
+      await getUserContext(user.id),
+      goalId,
+      input,
+    );
+    refresh();
+    return result;
+  });
+
+/** "Desfazer" of a contribution without a linked account (a transfer is discarded instead). */
+export const undoGoalContributionAction = authAction
+  .inputSchema(z.object({ goalId: idSchema, amountCents }))
+  .action(async ({ parsedInput: { goalId, amountCents }, ctx: { user } }) => {
+    const result = await undoGoalContribution(
+      await getUserContext(user.id),
+      goalId,
+      amountCents,
+    );
+    refresh();
+    return result;
   });

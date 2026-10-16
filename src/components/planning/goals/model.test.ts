@@ -126,6 +126,10 @@ describe("projection sentences (doc 03 §8)", () => {
       "Para chegar em dez/2027, aporte R$ 931/mês (hoje: R$ 800). No ritmo atual, chega em fev/2028.",
     );
     expect(segments.find((segment) => segment.strong)?.text).toContain("931");
+    // The amounts are their own segments, so privacy mode can hide them.
+    expect(
+      segments.filter((segment) => segment.money).map((s) => text([s])),
+    ).toEqual(["R$ 931", "R$ 800"]);
   });
 
   it("behind without a plan or past the deadline", () => {

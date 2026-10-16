@@ -11,7 +11,9 @@ const SECTIONS = [
 
 /**
  * Planejar (doc 02 §4.1): one title and a segmented control that switches
- * between the three sections; kept in the layout so the thumb slides.
+ * between the three sections; kept in the layout so the thumb slides. The
+ * route group leaves out stacked screens such as a goal's detail
+ * (/planejar/metas/[id]), which have their own back + title header.
  */
 export default function PlanejarLayout({ children }: { children: ReactNode }) {
   return (
