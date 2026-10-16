@@ -376,7 +376,9 @@ describe("recurrences", () => {
       end: "2027-01-31",
       accountId: ids.checking,
     });
-    expect(items.map((item) => [item.description, item.occurredOn, item.status])).toEqual([
+    expect(
+      items.map((item) => [item.description, item.occurredOn, item.status]),
+    ).toEqual([
       ["Aluguel", "2027-01-15", "pending"],
       ["Aluguel", "2026-12-15", "pending"],
     ]);

@@ -2,7 +2,6 @@ import { readServerEnv } from "@/server/env";
 import { isAuthorizedCronRequest } from "@/server/jobs/cron-auth";
 import { runDailyJob } from "@/server/jobs/daily";
 
-export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const NO_STORE = { "Cache-Control": "no-store" };
