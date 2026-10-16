@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // On a cold cache (CI, first run) the first render of a screen transforms
+    // Radix and Motion and can take well over the default 5 s.
+    testTimeout: 20_000,
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.{ts,tsx}", "src/server/**/*.{ts,tsx}"],

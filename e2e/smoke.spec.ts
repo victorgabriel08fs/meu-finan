@@ -13,6 +13,9 @@ const SCREENS = [
   "/planejar/simulador",
   "/relatorios/visao-geral",
   "/relatorios/categorias",
+  "/relatorios/fluxo",
+  "/relatorios/patrimonio",
+  "/relatorios/calendario",
   "/ajustes",
   "/ajustes/seguranca",
   "/ajustes/preferencias",
@@ -39,7 +42,7 @@ async function expectLoaded(page: Page, label: string) {
   await expect(page.getByText("Carregando…"), label).toHaveCount(0, {
     timeout: 30_000,
   });
-  await expect(page.locator("h1").first(), label).toBeVisible();
+  await expect(page.locator("h1:visible").first(), label).toBeVisible();
 }
 
 test.describe("sem sessão", () => {
@@ -199,6 +202,55 @@ test("?novo= abre a Nova transação (atalhos do app instalado)", async ({
   await expect(page).toHaveURL(/\/inicio$/);
   await page.goBack();
   await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(/\/inicio$/);
+  expect(errors).toEqual([]);
+});
+
+test("abre uma meta e aporta, com desfazer", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await page.goto("/planejar/metas");
+  await expectLoaded(page, "/planejar/metas");
+  await page
+    .getByRole("link", { name: /Reserva de emergência/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/planejar\/metas\/[0-9a-f-]+$/);
+  await expectLoaded(page, "meta");
+  // The detail has its own header: one visible h1, the goal's name (the
+  // previous route stays mounted but hidden for an instant back).
+  await expect(page.locator("h1:visible")).toHaveCount(1);
+  await expect(page.locator("h1:visible")).toHaveText("Reserva de emergência");
+  await page.getByRole("button", { name: "Aportar" }).first().click();
+  const sheet = page.getByRole("dialog");
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: /^Aportar/ }).click();
+  await expect(page.getByText(/Aporte de R\$/)).toBeVisible();
+  await page.getByRole("button", { name: "Desfazer" }).click();
+  await expect(sheet).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("primeiros passos: categorias e início do mês", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await page.goto("/onboarding");
+  await expect(
+    page.getByRole("heading", { name: "Seu dinheiro, claro como deveria ser" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("button", { name: "Começar" }).click();
+  // The demo already has accounts: the step just confirms it.
+  await expect(page.getByText("Conta pronta")).toBeVisible();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("button", { name: "Pets" }).click();
+  await expect(page.getByRole("button", { name: "Pets" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await page.getByRole("radio", { name: "5", exact: true }).click();
+  await expect(page.getByText(/vai de 5\/\w+ a 4\/\w+\./)).toBeVisible();
+  await page.getByRole("button", { name: "Concluir" }).click();
   await expect(page).toHaveURL(/\/inicio$/);
   expect(errors).toEqual([]);
 });
