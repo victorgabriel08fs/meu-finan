@@ -17,6 +17,7 @@ import { type BudgetOverview, getBudgets } from "./budgets";
 import { listInvoices } from "./cards";
 import type { PeriodRange, UserContext } from "./context";
 import { type GoalItem, listGoals } from "./goals";
+import { liquidPendingFlows } from "./reports";
 import {
   type PeriodTotals,
   pendingEntries,
@@ -99,17 +100,9 @@ export async function getDashboard(
   const invoices = invoicesByCard.flat();
   const forecast = forecastBalance({
     balanceCents,
-    pending: pending
-      .filter(
-        (entry) =>
-          liquidIds.has(entry.accountId) || entry.accountType === "credit_card",
-      )
-      .map((entry) => ({
-        amountCents: entry.amountCents,
-        occurredOn: parse(entry.occurredOn),
-        onCreditCard: entry.accountType === "credit_card",
-        paysInvoice: entry.kind === "transfer" && entry.amountCents < 0,
-      })),
+    // A pending transfer counts by its other leg: between liquid accounts it
+    // nets out, into a card it pays an invoice (already counted below).
+    pending: liquidPendingFlows(pending, liquidIds).map((flow) => flow.entry),
     invoices: invoices.map((invoice) => ({
       dueDate: parse(invoice.dueDate),
       totalCents: invoice.totalCents,

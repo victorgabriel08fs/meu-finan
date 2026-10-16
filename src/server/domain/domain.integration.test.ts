@@ -397,6 +397,27 @@ describe("planning and overview", () => {
     expect(dashboard.currentInvoiceCents).toEqual({
       [ids.card]: 2_290 + 9_998,
     });
+
+    // A scheduled transfer between two liquid accounts does not move the
+    // forecast (it used to count its incoming leg as income).
+    const { transferId } = await d.transactions.createTransfer(ctx, {
+      fromAccountId: ids.checking,
+      toAccountId: ids.reserve,
+      amountCents: 50_000,
+      occurredOn: "2026-10-20",
+    });
+    const withTransfer = await d.dashboard.getDashboard(ctx, range);
+    expect(withTransfer.forecast.forecastCents).toBe(
+      dashboard.forecast.forecastCents,
+    );
+    const { items } = await d.transactions.listTransactions(ctx, {
+      start: "2026-10-20",
+      end: "2026-10-20",
+      kind: "transfer",
+    });
+    const leg = items.find((item) => item.transferId === transferId);
+    if (!leg) throw new Error("transferência agendada");
+    await d.transactions.deleteTransaction(ctx, leg.id);
   });
 
   it("builds the monthly series and the net worth", async () => {
