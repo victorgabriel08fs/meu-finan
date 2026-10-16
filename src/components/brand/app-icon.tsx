@@ -17,6 +17,65 @@ const GLYPH_SCALE: Record<AppIconVariant, number> = {
   maskable: 0.5,
 };
 
+/** Lucide paths (24×24) of the manifest shortcuts (doc 02 §12.1). */
+export const SHORTCUT_GLYPHS = {
+  // arrow-up-right: money going out.
+  despesa: ["M7 7h10v10", "M7 17 17 7"],
+  // arrow-down-left: money coming in.
+  receita: ["M17 7 7 17", "M17 17H7V7"],
+  // list
+  extrato: [
+    "M3 12h.01",
+    "M3 18h.01",
+    "M3 6h.01",
+    "M8 12h13",
+    "M8 18h13",
+    "M8 6h13",
+  ],
+} as const;
+
+/**
+ * 96px icon of a home-screen shortcut ("Nova despesa", "Extrato"): the
+ * brand's rounded square with the action's glyph. Server only.
+ */
+export function shortcutIconResponse(paths: readonly string[]) {
+  const size = 96;
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: BRAND_GREEN,
+        borderRadius: Math.round(size * 0.225),
+      }}
+    >
+      <svg
+        aria-hidden="true"
+        width={56}
+        height={56}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {paths.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+    </div>,
+    {
+      width: size,
+      height: size,
+      headers: { "Cache-Control": "public, max-age=604800" },
+    },
+  );
+}
+
 /**
  * PNG app icon drawn with next/og (no fonts, no network). Used by
  * src/app/icon.tsx, src/app/apple-icon.tsx and the /icons/* routes that the

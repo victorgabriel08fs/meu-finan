@@ -2,7 +2,7 @@
 
 import { CircleAlert, WalletCards } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   type FocusEvent,
   type KeyboardEvent,
@@ -80,6 +80,13 @@ const KIND_LABEL: Record<EntryKind, string> = {
   transfer: "transferência",
 };
 
+/** Values of `?novo=` (doc 02 §4.1). */
+const NOVO_PARAM: Record<string, EntryKind | undefined> = {
+  despesa: "expense",
+  receita: "income",
+  transferencia: "transfer",
+};
+
 /** Desktop shortcuts (doc 02 §4.5): N nova despesa, R receita, T transferência. */
 const SHORTCUTS: Record<string, EntryKind> = {
   n: "expense",
@@ -112,6 +119,7 @@ export function QuickAddSheet({ data }: { data: QuickAddSheetData }) {
   const closeQuickAdd = useQuickAddStore((state) => state.closeQuickAdd);
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
+  const requested = NOVO_PARAM[useSearchParams().get("novo") ?? ""];
 
   useEffect(() => {
     useQuickAddStore.getState().loadPreferences();
@@ -120,12 +128,28 @@ export function QuickAddSheet({ data }: { data: QuickAddSheetData }) {
   // The sheet lives in the layout, so a navigation from inside it ("Criar
   // conta") would leave it open over the new page. Closing once the URL has
   // changed also keeps useBackToClose from stepping back over the navigation.
+  // (Declared before the `?novo=` effect: a navigation to `?novo=` reopens.)
   useEffect(() => {
     if (pathname === pathnameRef.current) return;
     pathnameRef.current = pathname;
     const store = useQuickAddStore.getState();
     if (store.open) store.closeQuickAdd();
   }, [pathname]);
+
+  // `?novo=despesa|receita|transferencia` on any route opens the sheet (doc
+  // 02 §4.1; the manifest shortcuts use it). The parameter is dropped right
+  // away, so reloading the page does not open the sheet again.
+  useEffect(() => {
+    if (!requested) return;
+    openQuickAdd(requested);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("novo");
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [requested, openQuickAdd]);
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {

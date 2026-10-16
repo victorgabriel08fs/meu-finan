@@ -183,3 +183,22 @@ test("arquiva uma conta e volta para Contas", async ({ page }) => {
   await expect(page.getByText("Arquivadas (1)")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("?novo= abre a Nova transação (atalhos do app instalado)", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await page.goto("/inicio?novo=receita");
+  const sheet = page.getByRole("dialog", { name: "Nova transação" });
+  await expect(sheet).toBeVisible({ timeout: 30_000 });
+  await expect(
+    sheet.getByRole("button", { name: "Salvar receita" }),
+  ).toBeVisible();
+  // The parameter is gone, so a reload does not reopen the sheet.
+  await expect(page).toHaveURL(/\/inicio$/);
+  await page.goBack();
+  await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(/\/inicio$/);
+  expect(errors).toEqual([]);
+});
