@@ -358,6 +358,25 @@ describe("planning and overview", () => {
     );
   });
 
+  it("creates several budgets at once, or none", async () => {
+    const range = d.context.resolvePeriod(ctx, "2026-12");
+    await expect(
+      d.budgets.upsertBudgets(ctx, "2026-12", [
+        { categoryId: ids.groceries, amountCents: 50_000 },
+        // An income category cannot have a budget: the whole batch fails.
+        { categoryId: ids.salary, amountCents: 10_000 },
+      ]),
+    ).rejects.toThrow();
+    expect((await d.budgets.getBudgets(ctx, range)).items).toHaveLength(0);
+    expect(
+      await d.budgets.upsertBudgets(ctx, "2026-12", [
+        { categoryId: ids.groceries, amountCents: 50_000 },
+        { categoryId: ids.transport, amountCents: 20_000 },
+      ]),
+    ).toBe(2);
+    expect((await d.budgets.getBudgets(ctx, range)).items).toHaveLength(2);
+  });
+
   it("assembles the dashboard", async () => {
     const range = d.context.resolvePeriod(ctx, null);
     expect(range).toMatchObject({

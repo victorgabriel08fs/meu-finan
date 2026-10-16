@@ -15,6 +15,7 @@ import {
   copyBudgetsFromPreviousMonth,
   deleteBudget,
   upsertBudget,
+  upsertBudgets,
 } from "@/server/domain/budgets";
 import { payInvoice } from "@/server/domain/cards";
 import { createCategory } from "@/server/domain/categories";
@@ -148,6 +149,27 @@ export const upsertBudgetAction = authAction
   .action(async ({ parsedInput, ctx: { user } }) => {
     await upsertBudget(await getUserContext(user.id), parsedInput);
     refresh();
+  });
+
+/** "Usar sugestão": every suggested budget in one go, one refresh. */
+export const upsertBudgetsAction = authAction
+  .inputSchema(
+    z.object({
+      month: yearMonth,
+      items: z
+        .array(z.object({ categoryId: idSchema, amountCents }))
+        .min(1)
+        .max(100),
+    }),
+  )
+  .action(async ({ parsedInput: { month, items }, ctx: { user } }) => {
+    const created = await upsertBudgets(
+      await getUserContext(user.id),
+      month,
+      items,
+    );
+    refresh();
+    return { created };
   });
 
 export const deleteBudgetAction = authAction

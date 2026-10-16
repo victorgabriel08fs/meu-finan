@@ -8,6 +8,7 @@ import type { BudgetPace } from "@/lib/finance";
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/actions/planning", () => ({
   upsertBudgetAction: vi.fn(),
+  upsertBudgetsAction: vi.fn(),
   deleteBudgetAction: vi.fn(),
   copyBudgetsAction: vi.fn(),
   createGoalAction: vi.fn(),

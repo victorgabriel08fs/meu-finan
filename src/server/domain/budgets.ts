@@ -8,7 +8,7 @@ import {
   isoMonth,
   parseMonth,
 } from "@/lib/finance";
-import { db } from "@/server/db/client";
+import { db, type Executor } from "@/server/db/client";
 import { budgets, categories, transactions } from "@/server/db/schema";
 import { requireCategory } from "./categories";
 import type { PeriodRange, UserContext } from "./context";
@@ -130,13 +130,14 @@ export async function getBudgets(
 export async function upsertBudget(
   ctx: UserContext,
   input: { categoryId: string; month: string; amountCents: number },
+  executor: Executor = db,
 ): Promise<void> {
   if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
     throw new DomainError("O orçamento precisa ser maior que zero.");
   }
   const month = `${isoMonth(parseMonth(input.month))}-01`;
-  await requireCategory(db, ctx.userId, input.categoryId, "expense");
-  await db
+  await requireCategory(executor, ctx.userId, input.categoryId, "expense");
+  await executor
     .insert(budgets)
     .values({
       id: uuidv7(),
@@ -149,6 +150,20 @@ export async function upsertBudget(
       target: [budgets.userId, budgets.categoryId, budgets.month],
       set: { amountCents: input.amountCents },
     });
+}
+
+/** Several budgets of one month at once ("Usar sugestão"): all or none. */
+export async function upsertBudgets(
+  ctx: UserContext,
+  month: string,
+  items: readonly { categoryId: string; amountCents: number }[],
+): Promise<number> {
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      await upsertBudget(ctx, { ...item, month }, tx);
+    }
+  });
+  return items.length;
 }
 
 export async function deleteBudget(

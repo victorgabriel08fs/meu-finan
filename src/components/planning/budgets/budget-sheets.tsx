@@ -14,6 +14,7 @@ import { toastWithUndo } from "@/components/ui/toast";
 import {
   deleteBudgetAction,
   upsertBudgetAction,
+  upsertBudgetsAction,
 } from "@/server/actions/planning";
 import { MoneyField } from "../form/money-field";
 import { ChoiceChips } from "../form/pickers";
@@ -334,32 +335,24 @@ export function SuggestionSheet({
 
   function apply() {
     startTransition(async () => {
-      let created = 0;
-      let failure: string | undefined;
-      for (const item of picked) {
-        const result = await upsertBudgetAction({
-          categoryId: item.categoryId,
-          month,
-          amountCents: item.amountCents,
-        }).catch(() => undefined);
-        if (result && !result.serverError && !result.validationErrors)
-          created += 1;
-        else failure = result?.serverError ?? NETWORK_ERROR;
+      // One request for all of them: created together or not at all.
+      const result = await upsertBudgetsAction({
+        month,
+        items: picked.map(({ categoryId, amountCents }) => ({
+          categoryId,
+          amountCents,
+        })),
+      }).catch(() => undefined);
+      const created = result?.data?.created;
+      if (created === undefined) {
+        toast(result?.serverError ?? NETWORK_ERROR);
+        return;
       }
-      if (failure) {
-        toast(
-          created > 0
-            ? `${created} de ${picked.length} orçamentos criados. ${failure}`
-            : failure,
-        );
-        if (created === 0) return;
-      } else {
-        toast(
-          created === 1
-            ? "1 orçamento criado."
-            : `${created} orçamentos criados.`,
-        );
-      }
+      toast(
+        created === 1
+          ? "1 orçamento criado."
+          : `${created} orçamentos criados.`,
+      );
       onDone();
     });
   }
