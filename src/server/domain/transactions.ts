@@ -841,3 +841,53 @@ export async function descriptionSuggestions(
     amountCents: Math.abs(row.amountCents),
   }));
 }
+
+/**
+ * "Desfazer" right after creating: soft-deletes the rows just created (all
+ * installments or occurrences) or both legs of a transfer, and stops the
+ * recurrence they came from.
+ */
+export async function discardCreated(
+  ctx: UserContext,
+  input: { ids?: string[]; transferId?: string | null },
+): Promise<string[]> {
+  return db.transaction(async (tx) => {
+    const where = input.transferId
+      ? eq(transactions.transferId, input.transferId)
+      : input.ids && input.ids.length > 0
+        ? inArray(transactions.id, input.ids)
+        : undefined;
+    if (!where) return [];
+    const deleted = await tx
+      .update(transactions)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(transactions.userId, ctx.userId),
+          isNull(transactions.deletedAt),
+          where,
+        ),
+      )
+      .returning({
+        id: transactions.id,
+        recurrenceId: transactions.recurrenceId,
+      });
+    const recurrenceIds = [
+      ...new Set(
+        deleted.map((row) => row.recurrenceId).filter((id) => id !== null),
+      ),
+    ];
+    if (recurrenceIds.length > 0) {
+      await tx
+        .update(recurrences)
+        .set({ pausedAt: new Date() })
+        .where(
+          and(
+            eq(recurrences.userId, ctx.userId),
+            inArray(recurrences.id, recurrenceIds),
+          ),
+        );
+    }
+    return deleted.map((row) => row.id);
+  });
+}

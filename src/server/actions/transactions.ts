@@ -8,6 +8,7 @@ import {
   createTransfer,
   deleteTransaction,
   descriptionSuggestions,
+  discardCreated,
   restoreTransactions,
   setTransactionPaid,
   updateTransaction,
@@ -122,4 +123,21 @@ export const suggestionsAction = authAction
   .action(async ({ parsedInput: { kind, q }, ctx: { user } }) => {
     const ctx = await getUserContext(user.id);
     return descriptionSuggestions(ctx, kind, q);
+  });
+
+/** "Desfazer" after creating an entry. */
+export const discardCreatedAction = authAction
+  .inputSchema(
+    z.object({
+      ids: z.array(idSchema).max(1000).optional(),
+      transferId: idSchema.nullable().optional(),
+    }),
+  )
+  .action(async ({ parsedInput, ctx: { user } }) => {
+    const ids = await discardCreated(
+      await getUserContext(user.id),
+      parsedInput,
+    );
+    refresh();
+    return { ids };
   });
