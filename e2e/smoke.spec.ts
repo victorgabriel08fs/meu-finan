@@ -1,8 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
+import { EMAIL } from "./demo";
 
-// Demo credentials created by `npm run demo` (local database only).
-const EMAIL = "demo@meu-finan.local";
-const PASSWORD = "meu-finan-demo";
+// Every test runs with the session saved by auth.setup.ts, except those in
+// "sem sessão".
 
 const SCREENS = [
   "/inicio",
@@ -31,14 +31,6 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
-async function signIn(page: Page) {
-  await page.goto("/entrar");
-  await page.getByLabel("E-mail").fill(EMAIL);
-  await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
-  await page.getByRole("button", { name: "Entrar com senha" }).click();
-  await expect(page).toHaveURL(/\/inicio/);
-}
-
 /**
  * The page streamed in: no skeleton left and a title on screen. Prefetches of
  * the other tabs keep the network busy, so "networkidle" would wait for them.
@@ -50,25 +42,28 @@ async function expectLoaded(page: Page, label: string) {
   await expect(page.locator("h1").first(), label).toBeVisible();
 }
 
-test("sem sessão, qualquer tela leva ao login", async ({ page }) => {
-  await page.goto("/extrato?mes=2026-10");
-  await expect(page).toHaveURL(/\/entrar\?voltar=/);
-  await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+test.describe("sem sessão", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("qualquer tela leva ao login", async ({ page }) => {
+    await page.goto("/extrato?mes=2026-10");
+    await expect(page).toHaveURL(/\/entrar\?voltar=/);
+    await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  });
+
+  test("senha errada não entra", async ({ page }) => {
+    await page.goto("/entrar");
+    await page.getByLabel("E-mail").fill(EMAIL);
+    await page.getByLabel("Senha", { exact: true }).fill("uma senha qualquer");
+    await page.getByRole("button", { name: "Entrar com senha" }).click();
+    await expect(page.getByText("E-mail ou senha incorretos.")).toBeVisible();
+    await expect(page).toHaveURL(/\/entrar/);
+  });
 });
 
-test("senha errada não entra", async ({ page }) => {
-  await page.goto("/entrar");
-  await page.getByLabel("E-mail").fill(EMAIL);
-  await page.getByLabel("Senha", { exact: true }).fill("uma senha qualquer");
-  await page.getByRole("button", { name: "Entrar com senha" }).click();
-  await expect(page.getByText("E-mail ou senha incorretos.")).toBeVisible();
-  await expect(page).toHaveURL(/\/entrar/);
-});
-
-test("entra e abre todas as telas sem erros", async ({ page }) => {
+test("abre todas as telas sem erros", async ({ page }) => {
   test.setTimeout(240_000);
   const errors = collectErrors(page);
-  await signIn(page);
   for (const path of SCREENS) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBeLessThan(400);
@@ -88,7 +83,6 @@ test("entra e abre todas as telas sem erros", async ({ page }) => {
 test("lança uma despesa pelo + e ela aparece no extrato", async ({ page }) => {
   test.setTimeout(120_000);
   const errors = collectErrors(page);
-  await signIn(page);
   await page.goto("/extrato");
   await expectLoaded(page, "/extrato");
   await page
@@ -115,7 +109,6 @@ test("lança uma despesa pelo + e ela aparece no extrato", async ({ page }) => {
 test("edita todos os lançamentos de uma recorrência", async ({ page }) => {
   test.setTimeout(120_000);
   const errors = collectErrors(page);
-  await signIn(page);
   await page.goto("/extrato");
   await expectLoaded(page, "/extrato");
   await page
@@ -148,7 +141,8 @@ test("edita todos os lançamentos de uma recorrência", async ({ page }) => {
 test("voltar fecha a folha em vez de sair da tela", async ({ page }) => {
   test.setTimeout(120_000);
   const errors = collectErrors(page);
-  await signIn(page);
+  await page.goto("/inicio");
+  await expectLoaded(page, "/inicio");
   await page.goto("/extrato");
   await expectLoaded(page, "/extrato");
   const plus = page
@@ -169,5 +163,23 @@ test("voltar fecha a folha em vez de sair da tela", async ({ page }) => {
   await expect(sheet).toBeHidden();
   await page.goBack();
   await expect(page).toHaveURL(/\/inicio$/);
+  expect(errors).toEqual([]);
+});
+
+test("arquiva uma conta e volta para Contas", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await page.goto("/contas");
+  await expectLoaded(page, "/contas");
+  await page
+    .getByRole("link", { name: /^Carteira/ })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/\/contas\/[0-9a-f-]+$/);
+  await expectLoaded(page, "Carteira");
+  await page.getByRole("button", { name: "Arquivar", exact: true }).click();
+  await page.getByRole("button", { name: "Arquivar conta" }).click();
+  await expect(page).toHaveURL(/\/contas$/);
+  await expect(page.getByText("Arquivadas (1)")).toBeVisible();
   expect(errors).toEqual([]);
 });

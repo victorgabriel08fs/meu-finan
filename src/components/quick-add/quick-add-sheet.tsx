@@ -2,6 +2,7 @@
 
 import { CircleAlert, WalletCards } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   type FocusEvent,
   type KeyboardEvent,
@@ -109,10 +110,22 @@ export function QuickAddSheet({ data }: { data: QuickAddSheetData }) {
   const open = useQuickAddStore((state) => state.open);
   const openQuickAdd = useQuickAddStore((state) => state.openQuickAdd);
   const closeQuickAdd = useQuickAddStore((state) => state.closeQuickAdd);
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
 
   useEffect(() => {
     useQuickAddStore.getState().loadPreferences();
   }, []);
+
+  // The sheet lives in the layout, so a navigation from inside it ("Criar
+  // conta") would leave it open over the new page. Closing once the URL has
+  // changed also keeps useBackToClose from stepping back over the navigation.
+  useEffect(() => {
+    if (pathname === pathnameRef.current) return;
+    pathnameRef.current = pathname;
+    const store = useQuickAddStore.getState();
+    if (store.open) store.closeQuickAdd();
+  }, [pathname]);
 
   useEffect(() => {
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -705,7 +718,7 @@ function NoAccounts() {
         Crie uma conta primeiro: é nela que os lançamentos entram.
       </p>
       <Button asChild variant="tonal">
-        <Link href="/contas">Criar conta</Link>
+        <Link href="/contas/nova">Criar conta</Link>
       </Button>
     </div>
   );

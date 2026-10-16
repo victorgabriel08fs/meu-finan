@@ -41,12 +41,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# banco local (PGlite) e artefatos de teste
+# banco local (PGlite)
 /.data
-/test-results
-/playwright-report
 
-# Playwright
+# Playwright (a sessão salva pelo setup inclusive)
 /test-results
 /playwright-report
 /blob-report
+/e2e/.auth

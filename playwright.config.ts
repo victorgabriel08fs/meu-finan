@@ -15,7 +15,14 @@ export default defineConfig({
     timezoneId: "America/Sao_Paulo",
     trace: "retain-on-failure",
   },
-  projects: [{ name: "celular", use: { ...devices["Pixel 7"] } }],
+  projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts/, use: devices["Pixel 7"] },
+    {
+      name: "celular",
+      dependencies: ["setup"],
+      use: { ...devices["Pixel 7"], storageState: "e2e/.auth/owner.json" },
+    },
+  ],
   webServer: {
     command: `npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}/manifest.webmanifest`,

@@ -31,6 +31,7 @@ export function ArchiveAccountSheet({
 }: ArchiveAccountSheetProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const { executeAsync, isPending } = useAction(archiveAccountAction);
   const isCard = account.type === "credit_card";
   const noun = isCard ? "cartão" : "conta";
@@ -40,7 +41,9 @@ export function ArchiveAccountSheet({
     const result = await executeAsync({ id: account.id });
     if (result && !result.serverError && !result.validationErrors) {
       toast(isCard ? "Cartão arquivado" : "Conta arquivada");
-      setOpen(false);
+      // The sheet goes away with the page. Closing it first would step back
+      // in history (useBackToClose) and race this navigation.
+      setLeaving(true);
       router.push("/contas");
       return;
     }
@@ -61,7 +64,7 @@ export function ArchiveAccountSheet({
               variant="destructive"
               size="lg"
               className="w-full"
-              loading={isPending}
+              loading={isPending || leaving}
               onClick={archive}
             >
               Arquivar {noun}

@@ -9,6 +9,10 @@ import { useEffect, useRef } from "react";
  * going back pops it and closes the sheet. Closing from the UI steps back
  * over that entry, unless the URL changed meanwhile (a navigation from inside
  * the sheet leaves the entry behind rather than undoing the navigation).
+ *
+ * So a flow that leaves the page after an action should navigate and let
+ * the sheet unmount with the page, not close it first: that step back would
+ * race the navigation (see ArchiveAccountSheet).
  */
 
 type OpenSheet = { close: () => void; href: string };
