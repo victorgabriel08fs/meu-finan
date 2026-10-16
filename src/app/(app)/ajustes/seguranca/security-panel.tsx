@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
@@ -86,6 +87,17 @@ export function SecurityPanel({
       ) : null}
 
       <PasskeysCard passkeys={passkeys} busy={busy} run={run} />
+
+      {firstAccess ? (
+        <Button asChild size="lg" className="w-full">
+          <Link href="/onboarding">
+            {passkeys.length > 0
+              ? "Continuar: primeiros passos"
+              : "Pular e continuar"}
+          </Link>
+        </Button>
+      ) : null}
+
       <PasswordCard />
       <SessionsCard sessions={sessions} busy={busy} run={run} />
 

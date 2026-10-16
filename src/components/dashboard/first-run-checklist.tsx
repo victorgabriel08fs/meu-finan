@@ -39,6 +39,10 @@ export function FirstRunChecklist() {
         </div>
       </div>
 
+      <Button asChild variant="tonal" className="mt-4 w-full">
+        <Link href="/onboarding">Configurar em 1 minuto</Link>
+      </Button>
+
       <ol className="mt-5 flex flex-col [&>li+li]:border-t [&>li+li]:border-border">
         <Step
           number={1}
