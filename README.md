@@ -4,6 +4,17 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 
 > **Uso pessoal.** O app tem uma única pessoa usuária: você. Não existe cadastro público. Mesmo assim, o login é obrigatório em tudo, porque o app fica em uma URL pública e guarda dados financeiros.
 
+## O que já dá para fazer
+
+- **Início**: saldo em contas, previsão para o fim do mês (com agendados e faturas), receitas e despesas, orçamento do mês com ritmo, próximas contas, contas e metas.
+- **Lançamento rápido** ("+" em qualquer tela, atalhos N/R/T no desktop e no ícone do app instalado): despesa, receita ou transferência, com teclado de valor, parcelas, repetição e desfazer.
+- **Extrato** com busca sem acento, filtros na URL, agendados à parte e detalhe para editar, pagar ou excluir — inclusive "este e os próximos" em parcelas e recorrências.
+- **Contas e cartões**: saldos, ajuste de saldo, faturas por mês, pagamento de fatura e melhor dia de compra.
+- **Planejar**: orçamentos por categoria (com sugestão pela média), metas com projeção e "Aportar", e o simulador de juros compostos com CDI, IPCA e IR regressivo.
+- **Relatórios**: visão geral, categorias, fluxo de caixa dia a dia, patrimônio e calendário de gastos.
+- **Dados**: importar extrato OFX/CSV (sem duplicar) e exportar os lançamentos em CSV.
+- **Ajustes**: passkeys, senha e sessões; tema e início do mês; categorias; onboarding em 4 passos.
+
 ## Stack
 
 | Camada | Escolha |
