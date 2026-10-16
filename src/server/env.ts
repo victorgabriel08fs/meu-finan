@@ -23,7 +23,10 @@ const serverEnvSchemas = {
   DATABASE_URL: postgresUrl,
   DATABASE_URL_UNPOOLED: postgresUrl,
   BETTER_AUTH_SECRET: randomSecret,
-  BETTER_AUTH_URL: z.httpUrl({ error: "expected an http:// or https:// URL" }),
+  BETTER_AUTH_URL: z.url({
+    protocol: /^https?$/,
+    error: "expected an http:// or https:// URL",
+  }),
   OWNER_EMAIL: z.email({ error: "expected an e-mail address" }).toLowerCase(),
   SETUP_TOKEN: randomSecret,
   RECOVERY_TOKEN: randomSecret,
