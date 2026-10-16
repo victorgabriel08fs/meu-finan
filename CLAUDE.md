@@ -20,6 +20,7 @@ Personal-finance PWA for a single owner: Next.js 16.4 (App Router, Cache Compone
 - Never take a user id from the client; scope every query by the session user's id and check ownership of every id received.
 - **Cache Components is on.** Read `cookies()`, `headers()`, `searchParams` and the session only inside `<Suspense>`, never as a top-level await in a layout. `'use cache'` functions receive the user id as an argument and tag their data (`u:{id}:…`, `rates`); Server Actions invalidate with `updateTag`, Route Handlers with `revalidateTag(tag, 'max')`. Route segment `dynamic`, `revalidate` and `fetchCache` do not exist in this mode.
 - No database access while prerendering: CI builds with dummy env values.
+- **Inside a transaction use only `tx`**, never the global `db`: PGlite has a single connection, so a query through `db` while a transaction is open deadlocks (Better Auth hooks that run inside its sign-up transaction included). Write paths use `db.transaction()`; helpers take an `Executor` (`db` or `tx`).
 - **Money is integer cents** (`bigint` columns, `number` in TypeScript); format with `formatBRL` from `src/lib/format/money.ts`. Rates are decimal strings or `numeric`, never floats in the database.
 - **Finance logic lives only in `src/lib/finance`**: pure functions, no I/O, no imports from the rest of the project, covered by Vitest and fast-check.
 - Server environment variables go through `src/server/env.ts`; document new ones in `.env.example`. Never use `NEXT_PUBLIC_` for secrets.
