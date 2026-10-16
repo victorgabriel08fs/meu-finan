@@ -164,6 +164,61 @@ export function recurrenceLabel(
   return rule.endOn ? `${label}, até ${fullDateLabel(rule.endOn)}` : label;
 }
 
+/** Where an edit of an installment or a recurring entry applies. */
+export type EditScope = "this" | "future" | "all";
+
+/**
+ * The choices offered when saving an edit of an installment or a recurring
+ * entry (doc 02 §6.6). "Esta e as próximas" only shows up when it differs
+ * from both other choices.
+ */
+export function editScopeOptions(
+  item: StatementItem,
+): { value: EditScope; label: string }[] {
+  const installment = item.installment;
+  if (!installment) {
+    return [
+      { value: "this", label: "Só este" },
+      { value: "future", label: "Este e os próximos" },
+      { value: "all", label: "Todos" },
+    ];
+  }
+  const middle =
+    installment.number > 1 && installment.number < installment.count;
+  return [
+    { value: "this", label: "Só esta parcela" },
+    ...(middle
+      ? [{ value: "future" as const, label: "Esta e as próximas" }]
+      : []),
+    { value: "all", label: "Todas as parcelas" },
+  ];
+}
+
+/** The question above those choices. */
+export function editScopePrompt(item: StatementItem): string {
+  const installment = item.installment;
+  return installment
+    ? `Esta é a parcela ${installment.number} de ${installment.count}. Aplicar a alteração a quais?`
+    : "Este lançamento se repete. Aplicar a alteração a quais? Os já pagos não mudam.";
+}
+
+/**
+ * Why an edit can only apply to this entry: a new date never spreads, and
+ * the amount of an installment purchase doesn't either. Null when the
+ * scope is up to the user (or there is no series).
+ */
+export function editScopeLock(
+  item: StatementItem,
+  change: { date: boolean; amount: boolean },
+): string | null {
+  if (!item.installment && !item.recurring) return null;
+  if (change.date) return "A nova data vale só para este lançamento.";
+  if (item.installment && change.amount) {
+    return "O novo valor vale só para esta parcela.";
+  }
+  return null;
+}
+
 /** Origin and destination of a transfer leg, for the detail sheet. */
 export function transferEnds(item: StatementItem): {
   from: string;

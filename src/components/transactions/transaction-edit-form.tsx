@@ -8,11 +8,13 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseBRLToCents } from "@/lib/finance";
-import { shortDateLabel } from "@/lib/format/date";
-import { cn } from "@/lib/utils";
 import { updateTransactionAction } from "@/server/actions/transactions";
 import { actionErrorMessage, NETWORK_ERROR } from "./action-result";
-import type { StatementItem } from "./statement-data";
+import {
+  type EditScope,
+  editScopeLock,
+  type StatementItem,
+} from "./statement-data";
 import type { FilterCategory } from "./statement-filters";
 
 type TransactionPatch = {
@@ -30,54 +32,23 @@ type TransactionEditFormProps = {
   formId: string;
   onDone: () => void;
   onPendingChange: (pending: boolean) => void;
+  /**
+   * Asks where an edit of an installment or a recurring entry applies (the
+   * sheet footer shows the choices); null when the user goes back.
+   */
+  chooseScope: () => Promise<EditScope | null>;
 };
 
 type Errors = { amount?: string; date?: string; form?: string };
-
-type Scope = "this" | "future" | "all";
-
-type ScopeOption = { value: Scope; label: string; hint?: string };
-
-/** Where an edit of an installment or a recurring entry applies. */
-function scopeOptions(item: StatementItem): ScopeOption[] {
-  const installment = item.installment;
-  if (installment) {
-    const options: ScopeOption[] = [
-      { value: "this", label: "Só esta parcela" },
-    ];
-    if (installment.number > 1 && installment.number < installment.count) {
-      options.push({
-        value: "future",
-        label: "Esta e as próximas",
-        hint: `Parcelas ${installment.number} a ${installment.count}`,
-      });
-    }
-    options.push({
-      value: "all",
-      label: "Todas as parcelas",
-      hint: `As ${installment.count} parcelas da compra`,
-    });
-    return options;
-  }
-  return [
-    { value: "this", label: "Só este" },
-    {
-      value: "future",
-      label: "Este e os próximos",
-      hint: `A repetição muda a partir de ${shortDateLabel(item.occurredOn)}`,
-    },
-    { value: "all", label: "Todos", hint: "Os já pagos ficam como estão" },
-  ];
-}
 
 const selectClass =
   "h-13 w-full appearance-none rounded-control border border-border-strong bg-surface pr-11 pl-4 text-input text-fg outline-none focus-visible:border-primary focus-visible:shadow-[inset_0_0_0_1px_var(--primary)]";
 
 /**
  * Edit of an entry from the detail sheet (doc 02 §6.6): description, amount,
- * category, date and note. Only changed fields are sent. Installments and
- * recurrences pick the scope (Só este · Este e os próximos · Todos); a new
- * date, or a new amount for installments, applies to this one only.
+ * category, date and note. Only changed fields are sent. Saving an
+ * installment or a recurring entry asks for the scope (Só este · Este e os
+ * próximos · Todos), unless the change can only apply to this one.
  */
 export function TransactionEditForm({
   item,
@@ -85,6 +56,7 @@ export function TransactionEditForm({
   formId,
   onDone,
   onPendingChange,
+  chooseScope,
 }: TransactionEditFormProps) {
   const ids = useId();
   const amountRef = useRef<HTMLInputElement>(null);
@@ -94,22 +66,21 @@ export function TransactionEditForm({
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
   const [date, setDate] = useState(item.occurredOn);
   const [notes, setNotes] = useState(item.notes ?? "");
-  const [scope, setScope] = useState<Scope>("this");
   const [errors, setErrors] = useState<Errors>({});
 
   const editsAmount = item.kind !== "adjustment";
   const editsCategory = item.kind === "income" || item.kind === "expense";
   const options = categories.filter((category) => category.kind === item.kind);
   const partOfSeries = item.installment !== null || item.recurring;
+  const dateChanged = date !== item.occurredOn;
   const amountChanged =
     editsAmount && parseBRLToCents(amount) !== Math.abs(item.amountCents);
-  const scopeLock =
-    date !== item.occurredOn
-      ? "Para mudar a data, altere só este lançamento."
-      : item.installment && amountChanged
-        ? "Para mudar o valor de várias parcelas, exclua a compra e lance de novo."
-        : null;
-  const appliedScope: Scope = scopeLock ? "this" : scope;
+  const scopeLock = editScopeLock(item, {
+    date: dateChanged,
+    amount: amountChanged,
+  });
+  // The date hint wins when both changed: it is the one that applies.
+  const amountHint = !dateChanged && amountChanged ? scopeLock : null;
 
   function amountError(cents: number | null): string | undefined {
     if (cents === null) return "Digite um valor válido, como 64,50";
@@ -149,13 +120,20 @@ export function TransactionEditForm({
       return;
     }
 
+    let scope: EditScope = "this";
+    if (partOfSeries && !scopeLock) {
+      const chosen = await chooseScope();
+      if (chosen === null) return;
+      scope = chosen;
+    }
+
     setErrors({});
     onPendingChange(true);
     try {
       const result = await updateTransactionAction({
         id: item.id,
         patch,
-        scope: appliedScope,
+        scope,
       });
       const message = actionErrorMessage(result);
       if (message) {
@@ -163,7 +141,7 @@ export function TransactionEditForm({
         return;
       }
       toast(
-        appliedScope === "this"
+        scope === "this"
           ? "Lançamento atualizado"
           : item.installment
             ? "Parcelas atualizadas"
@@ -215,7 +193,11 @@ export function TransactionEditForm({
               value={amount}
               aria-invalid={errors.amount ? true : undefined}
               aria-describedby={
-                errors.amount ? `${ids}-amount-error` : undefined
+                errors.amount
+                  ? `${ids}-amount-error`
+                  : amountHint
+                    ? `${ids}-amount-hint`
+                    : undefined
               }
               onChange={(event) => setAmount(event.target.value)}
               onBlur={() => {
@@ -230,6 +212,11 @@ export function TransactionEditForm({
             />
           </div>
           <FieldError id={`${ids}-amount-error`}>{errors.amount}</FieldError>
+          {!errors.amount && amountHint ? (
+            <p id={`${ids}-amount-hint`} className="text-caption text-fg-2">
+              {amountHint}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -267,10 +254,21 @@ export function TransactionEditForm({
           required
           value={date}
           aria-invalid={errors.date ? true : undefined}
-          aria-describedby={errors.date ? `${ids}-date-error` : undefined}
+          aria-describedby={
+            errors.date
+              ? `${ids}-date-error`
+              : partOfSeries && dateChanged
+                ? `${ids}-date-hint`
+                : undefined
+          }
           onChange={(event) => setDate(event.target.value)}
         />
         <FieldError id={`${ids}-date-error`}>{errors.date}</FieldError>
+        {!errors.date && partOfSeries && dateChanged && scopeLock ? (
+          <p id={`${ids}-date-hint`} className="text-caption text-fg-2">
+            {scopeLock}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -285,70 +283,6 @@ export function TransactionEditForm({
           placeholder="Opcional"
         />
       </div>
-
-      {partOfSeries ? (
-        <fieldset
-          className="min-w-0"
-          aria-describedby={scopeLock ? `${ids}-scope-lock` : undefined}
-        >
-          <legend className="mb-2 text-callout font-semibold text-fg">
-            {item.installment ? "Alterar quais parcelas" : "Alterar quais"}
-          </legend>
-          <div className="overflow-hidden rounded-control border border-border-strong/40 [&>label+label]:border-t [&>label+label]:border-border">
-            {scopeOptions(item).map((option) => {
-              const checked = appliedScope === option.value;
-              const disabled = scopeLock !== null && option.value !== "this";
-              return (
-                <label
-                  key={option.value}
-                  className={cn(
-                    "flex min-h-13 items-center gap-3 px-3.5 py-2.5 transition-colors duration-100 has-checked:bg-primary-soft/60 has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-focus",
-                    disabled
-                      ? "cursor-not-allowed opacity-50"
-                      : "cursor-pointer",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name={`${ids}-scope`}
-                    value={option.value}
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={() => setScope(option.value)}
-                    className="sr-only"
-                  />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-body font-semibold text-fg">
-                      {option.label}
-                    </span>
-                    {option.hint ? (
-                      <span className="text-caption text-fg-3">
-                        {option.hint}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      "flex size-5.5 shrink-0 items-center justify-center rounded-full border-2",
-                      checked ? "border-primary" : "border-border-strong",
-                    )}
-                  >
-                    {checked ? (
-                      <span className="size-2.5 rounded-full bg-primary" />
-                    ) : null}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-          {scopeLock ? (
-            <p id={`${ids}-scope-lock`} className="mt-2 text-caption text-fg-2">
-              {scopeLock}
-            </p>
-          ) : null}
-        </fieldset>
-      ) : null}
 
       {errors.form ? (
         <FieldError id={`${ids}-form-error`}>{errors.form}</FieldError>

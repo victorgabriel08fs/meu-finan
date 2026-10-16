@@ -15,6 +15,9 @@ const SCREENS = [
   "/relatorios/categorias",
   "/ajustes",
   "/ajustes/seguranca",
+  "/ajustes/preferencias",
+  "/ajustes/categorias",
+  "/ajustes/sobre",
 ];
 
 test.describe.configure({ mode: "serial" });
@@ -36,6 +39,17 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/inicio/);
 }
 
+/**
+ * The page streamed in: no skeleton left and a title on screen. Prefetches of
+ * the other tabs keep the network busy, so "networkidle" would wait for them.
+ */
+async function expectLoaded(page: Page, label: string) {
+  await expect(page.getByText("Carregando…"), label).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  await expect(page.locator("h1").first(), label).toBeVisible();
+}
+
 test("sem sessão, qualquer tela leva ao login", async ({ page }) => {
   await page.goto("/extrato?mes=2026-10");
   await expect(page).toHaveURL(/\/entrar\?voltar=/);
@@ -52,13 +66,76 @@ test("senha errada não entra", async ({ page }) => {
 });
 
 test("entra e abre todas as telas sem erros", async ({ page }) => {
+  test.setTimeout(240_000);
   const errors = collectErrors(page);
   await signIn(page);
   for (const path of SCREENS) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBeLessThan(400);
-    await page.waitForLoadState("networkidle");
-    await expect(page.locator("h1").first(), path).toBeVisible();
+    await expectLoaded(page, path);
   }
+  // Account and card details are reached from Contas.
+  for (const prefix of ["/contas/", "/cartoes/"]) {
+    await page.goto("/contas");
+    await expectLoaded(page, "/contas");
+    await page.locator(`a[href^="${prefix}"]`).first().click();
+    await expect(page).toHaveURL(new RegExp(prefix));
+    await expectLoaded(page, prefix);
+  }
+  expect(errors).toEqual([]);
+});
+
+test("lança uma despesa pelo + e ela aparece no extrato", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await signIn(page);
+  await page.goto("/extrato");
+  await expectLoaded(page, "/extrato");
+  await page
+    .getByRole("button", { name: "Nova transação", exact: true })
+    .and(page.locator(":visible"))
+    .click();
+  const sheet = page.getByRole("dialog", { name: "Nova transação" });
+  await expect(sheet).toBeVisible();
+  for (const key of ["4", "2"]) {
+    await sheet.getByRole("button", { name: key, exact: true }).click();
+  }
+  await sheet
+    .getByPlaceholder("Descrição (opcional)")
+    .fill("Pastel da feira e2e");
+  await sheet.getByRole("button", { name: "Salvar despesa" }).click();
+  await expect(page.getByText("Despesa de R$ 42,00 salva")).toBeVisible();
+  await expect(sheet).toBeHidden();
+  await expect(page.getByText("Pastel da feira e2e").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("edita todos os lançamentos de uma recorrência", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await signIn(page);
+  await page.goto("/extrato");
+  await expectLoaded(page, "/extrato");
+  await page
+    .getByRole("button", { name: /^Internet,/ })
+    .first()
+    .click();
+  const sheet = page.getByRole("dialog", { name: "Internet" });
+  await expect(sheet.getByText("Todo mês, no dia 20")).toBeVisible();
+  await sheet.getByRole("button", { name: "Editar" }).click();
+  await page.getByLabel("Descrição").fill("Internet fibra");
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await page.getByRole("button", { name: "Todos", exact: true }).click();
+  await expect(page.getByText("Lançamentos atualizados")).toBeVisible();
+  // The sheet goes back to the details; close it.
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  // Next month's occurrence (already scheduled) got the new name too.
+  await page.getByRole("link", { name: /^Próximo mês/ }).click();
+  await expect(
+    page.getByRole("button", { name: /^Internet fibra,/ }),
+  ).toBeVisible({ timeout: 30_000 });
   expect(errors).toEqual([]);
 });

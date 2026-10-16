@@ -6,6 +6,7 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
@@ -15,6 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { fullDateLabel, relativeDayLabel } from "@/lib/format/date";
 import {
+  type EditScope,
+  editScopeOptions,
+  editScopePrompt,
   recurrenceLabel,
   type StatementItem,
   transferEnds,
@@ -77,6 +81,9 @@ export function TransactionDetailSheet({
 }: TransactionDetailSheetProps) {
   const [mode, setMode] = useState<Mode>("view");
   const [saving, setSaving] = useState(false);
+  // Saving a series asks where the edit applies; the footer holds the choices.
+  const [askingScope, setAskingScope] = useState(false);
+  const scopeAnswer = useRef<((scope: EditScope | null) => void) | null>(null);
   const formId = useId();
   const itemId = item?.id;
 
@@ -87,6 +94,30 @@ export function TransactionDetailSheet({
       setSaving(false);
     }
   }, [open, itemId]);
+
+  // Closing the sheet drops a pending question.
+  useEffect(() => {
+    if (open) return;
+    const answer = scopeAnswer.current;
+    scopeAnswer.current = null;
+    setAskingScope(false);
+    answer?.(null);
+  }, [open]);
+
+  function chooseScope(): Promise<EditScope | null> {
+    scopeAnswer.current?.(null);
+    return new Promise((resolve) => {
+      scopeAnswer.current = resolve;
+      setAskingScope(true);
+    });
+  }
+
+  function answerScope(scope: EditScope | null) {
+    const answer = scopeAnswer.current;
+    scopeAnswer.current = null;
+    setAskingScope(false);
+    answer?.(scope);
+  }
 
   if (!item) {
     return <Sheet open={false} onOpenChange={onOpenChange} />;
@@ -103,7 +134,31 @@ export function TransactionDetailSheet({
   }
 
   let footer: ReactNode;
-  if (mode === "edit") {
+  if (mode === "edit" && askingScope) {
+    footer = (
+      <>
+        <p className="pb-1 text-callout text-fg-2">{editScopePrompt(item)}</p>
+        {editScopeOptions(item).map((option) => (
+          <Button
+            key={option.value}
+            variant="secondary"
+            size="lg"
+            className="w-full"
+            onClick={() => answerScope(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => answerScope(null)}
+        >
+          Voltar
+        </Button>
+      </>
+    );
+  } else if (mode === "edit") {
     footer = (
       <>
         <Button
@@ -217,6 +272,7 @@ export function TransactionDetailSheet({
             formId={formId}
             onPendingChange={setSaving}
             onDone={() => setMode("view")}
+            chooseScope={chooseScope}
           />
         ) : (
           <div className="flex flex-col gap-5 pb-2">

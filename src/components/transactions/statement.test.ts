@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { actionErrorMessage } from "./action-result";
 import {
+  editScopeLock,
+  editScopeOptions,
+  editScopePrompt,
   groupByDay,
   recurrenceLabel,
   type StatementItem,
@@ -41,6 +44,47 @@ function item(patch: Partial<StatementItem>): StatementItem {
     ...patch,
   };
 }
+
+describe("edit scope", () => {
+  const recurring = item({ recurring: true });
+  const installment = (number: number) =>
+    item({ installment: { number, count: 6, totalCents: 59_988 } });
+
+  it("offers this, the next ones or all of a recurrence", () => {
+    expect(editScopeOptions(recurring).map((option) => option.label)).toEqual([
+      "Só este",
+      "Este e os próximos",
+      "Todos",
+    ]);
+    expect(editScopePrompt(recurring)).toContain("Os já pagos não mudam");
+  });
+
+  it("skips 'the next ones' on the first and last installments", () => {
+    expect(
+      editScopeOptions(installment(1)).map((option) => option.value),
+    ).toEqual(["this", "all"]);
+    expect(
+      editScopeOptions(installment(3)).map((option) => option.value),
+    ).toEqual(["this", "future", "all"]);
+    expect(
+      editScopeOptions(installment(6)).map((option) => option.value),
+    ).toEqual(["this", "all"]);
+    expect(editScopePrompt(installment(3))).toMatch(/^Esta é a parcela 3 de 6/);
+  });
+
+  it("keeps a new date, or an installment's new amount, to this entry", () => {
+    const none = { date: false, amount: false };
+    expect(editScopeLock(item({}), { ...none, date: true })).toBeNull();
+    expect(editScopeLock(recurring, none)).toBeNull();
+    expect(editScopeLock(recurring, { ...none, amount: true })).toBeNull();
+    expect(editScopeLock(recurring, { ...none, date: true })).toContain(
+      "nova data",
+    );
+    expect(editScopeLock(installment(2), { ...none, amount: true })).toContain(
+      "novo valor",
+    );
+  });
+});
 
 describe("recurrenceLabel", () => {
   const monthly = {
