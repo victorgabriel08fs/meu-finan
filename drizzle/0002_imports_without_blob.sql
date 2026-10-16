@@ -1,0 +1,1 @@
+ALTER TABLE "imports" ALTER COLUMN "blob_pathname" DROP NOT NULL;

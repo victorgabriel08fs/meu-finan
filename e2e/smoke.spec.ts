@@ -54,6 +54,11 @@ test.describe("sem sessão", () => {
     await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
   });
 
+  test("a exportação exige sessão", async ({ request }) => {
+    const response = await request.get("/api/export/transactions");
+    expect(response.status()).toBe(401);
+  });
+
   test("senha errada não entra", async ({ page }) => {
     await page.goto("/entrar");
     await page.getByLabel("E-mail").fill(EMAIL);
@@ -253,4 +258,80 @@ test("primeiros passos: categorias e início do mês", async ({ page }) => {
   await page.getByRole("button", { name: "Concluir" }).click();
   await expect(page).toHaveURL(/\/inicio$/);
   expect(errors).toEqual([]);
+});
+
+// A small OFX 1.x statement (SGML: leaf tags without closing tags).
+const OFX = [
+  "OFXHEADER:100",
+  "DATA:OFXSGML",
+  "VERSION:102",
+  "SECURITY:NONE",
+  "ENCODING:USASCII",
+  "CHARSET:1252",
+  "COMPRESSION:NONE",
+  "OLDFILEUID:NONE",
+  "NEWFILEUID:NONE",
+  "",
+  "<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><CURDEF>BRL",
+  "<BANKTRANLIST><DTSTART>20261001<DTEND>20261012",
+  "<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>20261011<TRNAMT>-23.90<FITID>E2E-0001<MEMO>PADARIA E2E</STMTTRN>",
+  "<STMTTRN><TRNTYPE>CREDIT<DTPOSTED>20261012<TRNAMT>150.00<FITID>E2E-0002<MEMO>PIX RECEBIDO E2E</STMTTRN>",
+  "</BANKTRANLIST></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>",
+].join("\r\n");
+
+test("importa um extrato OFX, não duplica e desfaz", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  const file = {
+    name: "extrato.ofx",
+    mimeType: "application/x-ofx",
+    buffer: Buffer.from(OFX, "latin1"),
+  };
+  await page.goto("/importar");
+  await expectLoaded(page, "/importar");
+  await page
+    .getByLabel("Conta ou cartão")
+    .selectOption({ label: "Conta principal" });
+  await page.locator('input[type="file"]').setInputFiles(file);
+  await expect(page.getByText(/padaria e2e/i).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: /^Importar 2 lançamentos/ }).click();
+  await expect(
+    page.getByRole("heading", { name: "2 lançamentos importados" }),
+  ).toBeVisible({ timeout: 30_000 });
+
+  // The same file again: everything already exists.
+  await page.getByRole("button", { name: "Importar outro arquivo" }).click();
+  await page
+    .getByLabel("Conta ou cartão")
+    .selectOption({ label: "Conta principal" });
+  await page.locator('input[type="file"]').setInputFiles(file);
+  await expect(page.getByText("Já existe").first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.goto("/importar");
+  await expectLoaded(page, "/importar");
+  await page
+    .getByRole("button", { name: /^Desfazer importação em Conta principal/ })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /^Desfazer importação em/ }),
+  ).toHaveCount(0, { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test("exporta os lançamentos em CSV", async ({ page }) => {
+  const response = await page.request.get(
+    "/api/export/transactions?inicio=2026-10-01&fim=2026-10-31",
+  );
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/csv");
+  expect(response.headers()["content-disposition"]).toContain(
+    "meu-finan-lancamentos-",
+  );
+  const body = await response.text();
+  expect(body.startsWith("\uFEFFData;Descrição;")).toBe(true);
+  expect(body).toContain("Aluguel");
 });

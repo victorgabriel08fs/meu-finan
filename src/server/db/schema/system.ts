@@ -34,7 +34,12 @@ import type {
   SimulationParams,
 } from "./types";
 
-/** OFX/CSV statement uploads (the file lives in Vercel Blob). */
+/**
+ * OFX/CSV statement imports (doc 02 §6.13). The file is parsed in memory by
+ * the Server Action and never stored, so blob_pathname stays null; the column
+ * is kept for a future attachment store. Its transactions point back here
+ * through transactions.import_id ("Desfazer importação").
+ */
 export const imports = pgTable(
   "imports",
   {
@@ -43,7 +48,7 @@ export const imports = pgTable(
     accountId: uuid("account_id")
       .notNull()
       .references(() => finAccounts.id),
-    blobPathname: text("blob_pathname").notNull(),
+    blobPathname: text("blob_pathname"),
     format: text("format", { enum: IMPORT_FORMATS }).notNull(),
     status: importStatus("status").notNull().default("uploaded"),
     stats: jsonb("stats").$type<ImportStats>(),

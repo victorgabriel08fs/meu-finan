@@ -97,6 +97,11 @@ const nextConfig: NextConfig = {
     },
   },
   poweredByHeader: false,
+  experimental: {
+    // "Importar extrato" sends the OFX/CSV file (up to 2 MB) to a Server
+    // Action; the multipart overhead needs some room above that.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
   // Embedded Postgres for local development: loaded from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite"],
   async headers() {

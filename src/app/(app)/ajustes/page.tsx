@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  FileUp,
   Info,
   Shapes,
   ShieldCheck,
@@ -10,6 +11,7 @@ import { Suspense } from "react";
 import { InsetList, InsetListItem } from "@/components/app/inset-list";
 import { PageHeader } from "@/components/app/page-header";
 import { SectionHeader } from "@/components/app/section-header";
+import { ExportListItem } from "@/components/imports/export-list-item";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
@@ -93,6 +95,19 @@ async function Settings() {
         </InsetList>
       </section>
 
+      <section aria-labelledby="ajustes-dados">
+        <SectionHeader id="ajustes-dados" title="Dados" />
+        <InsetList aria-labelledby="ajustes-dados">
+          <InsetListItem
+            icon={<FileUp />}
+            label="Importar extrato"
+            description="Arquivo OFX ou CSV do seu banco"
+            href="/importar"
+          />
+          <ExportListItem />
+        </InsetList>
+      </section>
+
       <section aria-labelledby="ajustes-sobre">
         <SectionHeader id="ajustes-sobre" title="Sobre" />
         <InsetList aria-labelledby="ajustes-sobre">
@@ -122,6 +137,7 @@ function SettingsSkeleton() {
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
+      <Skeleton className="h-41 rounded-2xl" />
       <Skeleton className="h-36 rounded-2xl" />
     </LoadingRegion>
   );
