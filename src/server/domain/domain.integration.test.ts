@@ -430,3 +430,88 @@ describe("recurrences", () => {
     ]);
   });
 });
+
+describe("series edits", () => {
+  async function rent() {
+    const { items } = await d.transactions.listTransactions(ctx, {
+      start: "2026-10-01",
+      end: "2027-03-31",
+      accountId: ids.checking,
+      categoryId: ids.housing,
+    });
+    return items.sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
+  }
+
+  it("splits a recurrence for this and the next occurrences", async () => {
+    const december = (await rent()).find(
+      (item) => item.occurredOn === "2026-12-15",
+    );
+    if (!december) throw new Error("aluguel de dezembro");
+    await d.transactions.updateTransaction(
+      ctx,
+      december.id,
+      { amountCents: 225_000 },
+      "future",
+    );
+    const after = await rent();
+    expect(after.map((item) => [item.occurredOn, item.amountCents])).toEqual([
+      ["2026-10-15", -210_000],
+      ["2026-11-15", -210_000],
+      ["2026-12-15", -225_000],
+      ["2027-01-15", -225_000],
+    ]);
+    expect(after[0]?.recurrence?.endOn).toBe("2026-12-14");
+    expect(after[2]?.recurrence?.endOn).toBeNull();
+
+    // The new rule keeps materialising with the new amount; the old one stops.
+    const { materializeRecurrences } = await import("./recurrences");
+    const report = await materializeRecurrences({
+      now: NOW + 70 * 86_400_000,
+    });
+    expect(report).toEqual({ recurrences: 1, created: 1 });
+    expect((await rent()).at(-1)).toMatchObject({
+      occurredOn: "2027-02-15",
+      amountCents: -225_000,
+    });
+  });
+
+  it("renames every installment and refuses changes it cannot spread", async () => {
+    const t = d.transactions;
+    const { items } = await t.listTransactions(ctx, {
+      start: "2026-09-01",
+      end: "2027-03-31",
+      accountId: ids.card,
+      categoryId: ids.shopping,
+    });
+    const first = items.find((item) => item.installment?.number === 1);
+    if (!first) throw new Error("primeira parcela");
+    await t.updateTransaction(
+      ctx,
+      first.id,
+      { description: "Tênis de trilha", categoryId: ids.transport },
+      "all",
+    );
+    const renamed = await t.listTransactions(ctx, {
+      start: "2026-09-01",
+      end: "2027-03-31",
+      accountId: ids.card,
+      q: "trilha",
+    });
+    expect(renamed.items).toHaveLength(6);
+    expect(
+      renamed.items.every((item) => item.categoryId === ids.transport),
+    ).toBe(true);
+
+    await expect(
+      t.updateTransaction(ctx, first.id, { amountCents: 1_000 }, "all"),
+    ).rejects.toThrow("exclua a compra");
+    await expect(
+      t.updateTransaction(
+        ctx,
+        first.id,
+        { occurredOn: "2026-09-04" },
+        "future",
+      ),
+    ).rejects.toThrow("altere só este");
+  });
+});

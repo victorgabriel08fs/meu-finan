@@ -683,15 +683,27 @@ export type TransactionPatch = {
   paid?: boolean;
 };
 
-/** Edits one entry ("só este"); transfers keep both legs in sync. */
+/** "Só este", "Este e os próximos" or "Todos" for installments and recurrences. */
+export type EditScope = "this" | "future" | "all";
+
+/**
+ * Edits an entry; transfers keep both legs in sync. For an installment or a
+ * recurring entry, `scope` carries the change to the rest of the series (see
+ * `updateSeries`).
+ */
 export async function updateTransaction(
   ctx: UserContext,
   id: string,
   patch: TransactionPatch,
+  scope: EditScope = "this",
 ): Promise<void> {
   if (patch.amountCents !== undefined) assertAmount(patch.amountCents);
   await db.transaction(async (tx) => {
     const row = await requireOwnedTransaction(tx, ctx, id);
+    if (scope !== "this" && (row.installmentPlanId || row.recurrenceId)) {
+      await updateSeries(tx, ctx, row, patch, scope);
+      return;
+    }
     const occurredOn = patch.occurredOn ?? row.occurredOn;
     const date = parse(occurredOn);
     const status =
@@ -790,6 +802,186 @@ export async function updateTransaction(
       })
       .where(eq(transactions.id, row.id));
   });
+}
+
+/**
+ * Series edit (doc 03 §10.1). "future" covers this entry and the later ones,
+ * "all" every one. Installments share description, category and note, but
+ * keep their amount and account (delete the purchase and enter it again
+ * instead). A recurrence also changes its rule, and its paid entries other
+ * than this one keep their values; "future" from a later occurrence splits
+ * the rule: the old one ends the day before and a new one takes over from
+ * here. Dates change one entry at a time.
+ */
+async function updateSeries(
+  tx: Executor,
+  ctx: UserContext,
+  row: typeof transactions.$inferSelect,
+  patch: TransactionPatch,
+  scope: "future" | "all",
+): Promise<void> {
+  if (patch.occurredOn !== undefined && patch.occurredOn !== row.occurredOn) {
+    throw new DomainError("Para mudar a data, altere só este lançamento.");
+  }
+  if (patch.paid !== undefined) {
+    throw new DomainError("Marque como pago um lançamento de cada vez.");
+  }
+  const kind = row.kind === "income" ? "income" : "expense";
+  if (patch.categoryId) {
+    await requireCategory(tx, ctx.userId, patch.categoryId, kind);
+  }
+  const description = patch.description?.trim() || undefined;
+  const shared = {
+    ...(description ? { description } : {}),
+    ...(patch.categoryId !== undefined ? { categoryId: patch.categoryId } : {}),
+  };
+  const notes =
+    patch.notes === undefined ? {} : { notes: patch.notes?.trim() || null };
+
+  if (row.installmentPlanId) {
+    const accountChanges =
+      patch.accountId !== undefined && patch.accountId !== row.accountId;
+    if (patch.amountCents !== undefined || accountChanges) {
+      throw new DomainError(
+        "Para mudar o valor ou a conta de várias parcelas, exclua a compra e lance de novo.",
+      );
+    }
+    const values = { ...shared, ...notes };
+    if (Object.keys(values).length === 0) return;
+    if (scope === "all" && description) {
+      await tx
+        .update(installmentPlans)
+        .set({ description })
+        .where(
+          and(
+            eq(installmentPlans.id, row.installmentPlanId),
+            eq(installmentPlans.userId, ctx.userId),
+          ),
+        );
+    }
+    await tx
+      .update(transactions)
+      .set(values)
+      .where(
+        and(
+          eq(transactions.userId, ctx.userId),
+          eq(transactions.installmentPlanId, row.installmentPlanId),
+          isNull(transactions.deletedAt),
+          scope === "future"
+            ? gte(transactions.installmentNumber, row.installmentNumber ?? 1)
+            : undefined,
+        ),
+      );
+    return;
+  }
+
+  const [rule] = await tx
+    .select()
+    .from(recurrences)
+    .where(
+      and(
+        eq(recurrences.id, row.recurrenceId as string),
+        eq(recurrences.userId, ctx.userId),
+      ),
+    )
+    .limit(1);
+  if (!rule) throw notFound("Recorrência");
+  const account =
+    patch.accountId !== undefined && patch.accountId !== row.accountId
+      ? await requireAccount(tx, ctx.userId, patch.accountId)
+      : null;
+  const amountCents =
+    patch.amountCents === undefined
+      ? undefined
+      : rule.kind === "expense"
+        ? -patch.amountCents
+        : patch.amountCents;
+  const ruleValues = {
+    ...shared,
+    ...(amountCents !== undefined ? { amountCents } : {}),
+    ...(account ? { accountId: account.id } : {}),
+  };
+
+  const changesRule = Object.keys(ruleValues).length > 0;
+  let ruleId = rule.id;
+  if (changesRule && scope === "future" && row.occurredOn > rule.startOn) {
+    const { id: _id, createdAt: _created, updatedAt: _updated, ...copy } = rule;
+    ruleId = uuidv7();
+    await tx.insert(recurrences).values({
+      ...copy,
+      ...ruleValues,
+      id: ruleId,
+      startOn: row.occurredOn,
+    });
+    await tx
+      .update(recurrences)
+      .set({ endOn: iso(addDays(parse(row.occurredOn), -1)) })
+      .where(eq(recurrences.id, rule.id));
+    // Every occurrence from here on, paid or not, now belongs to the new rule.
+    await tx
+      .update(transactions)
+      .set({ recurrenceId: ruleId })
+      .where(
+        and(
+          eq(transactions.userId, ctx.userId),
+          eq(transactions.recurrenceId, rule.id),
+          gte(transactions.occurredOn, row.occurredOn),
+        ),
+      );
+  } else if (changesRule) {
+    await tx
+      .update(recurrences)
+      .set(ruleValues)
+      .where(eq(recurrences.id, rule.id));
+  }
+
+  const values = {
+    ...shared,
+    ...notes,
+    ...(amountCents !== undefined ? { amountCents } : {}),
+  };
+  const targets = await tx
+    .select({ id: transactions.id, occurredOn: transactions.occurredOn })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, ctx.userId),
+        eq(transactions.recurrenceId, ruleId),
+        isNull(transactions.deletedAt),
+        or(eq(transactions.id, row.id), eq(transactions.status, "pending")),
+        scope === "future"
+          ? gte(transactions.occurredOn, row.occurredOn)
+          : undefined,
+      ),
+    );
+  if (!account) {
+    if (Object.keys(values).length === 0 || targets.length === 0) return;
+    await tx
+      .update(transactions)
+      .set(values)
+      .where(
+        inArray(
+          transactions.id,
+          targets.map((target) => target.id),
+        ),
+      );
+    return;
+  }
+  // Another account: each entry also moves to that card's invoice, if any.
+  for (const target of targets) {
+    const invoiceId = account.cycle
+      ? await ensureInvoice(
+          tx,
+          ctx.userId,
+          account.id,
+          invoiceFor(parse(target.occurredOn), account.cycle),
+        )
+      : null;
+    await tx
+      .update(transactions)
+      .set({ ...values, accountId: account.id, invoiceId })
+      .where(eq(transactions.id, target.id));
+  }
 }
 
 export type DeleteScope = "this" | "future" | "all";

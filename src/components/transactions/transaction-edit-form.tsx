@@ -8,6 +8,8 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseBRLToCents } from "@/lib/finance";
+import { shortDateLabel } from "@/lib/format/date";
+import { cn } from "@/lib/utils";
 import { updateTransactionAction } from "@/server/actions/transactions";
 import { actionErrorMessage, NETWORK_ERROR } from "./action-result";
 import type { StatementItem } from "./statement-data";
@@ -32,13 +34,50 @@ type TransactionEditFormProps = {
 
 type Errors = { amount?: string; date?: string; form?: string };
 
+type Scope = "this" | "future" | "all";
+
+type ScopeOption = { value: Scope; label: string; hint?: string };
+
+/** Where an edit of an installment or a recurring entry applies. */
+function scopeOptions(item: StatementItem): ScopeOption[] {
+  const installment = item.installment;
+  if (installment) {
+    const options: ScopeOption[] = [
+      { value: "this", label: "Só esta parcela" },
+    ];
+    if (installment.number > 1 && installment.number < installment.count) {
+      options.push({
+        value: "future",
+        label: "Esta e as próximas",
+        hint: `Parcelas ${installment.number} a ${installment.count}`,
+      });
+    }
+    options.push({
+      value: "all",
+      label: "Todas as parcelas",
+      hint: `As ${installment.count} parcelas da compra`,
+    });
+    return options;
+  }
+  return [
+    { value: "this", label: "Só este" },
+    {
+      value: "future",
+      label: "Este e os próximos",
+      hint: `A repetição muda a partir de ${shortDateLabel(item.occurredOn)}`,
+    },
+    { value: "all", label: "Todos", hint: "Os já pagos ficam como estão" },
+  ];
+}
+
 const selectClass =
   "h-13 w-full appearance-none rounded-control border border-border-strong bg-surface pr-11 pl-4 text-input text-fg outline-none focus-visible:border-primary focus-visible:shadow-[inset_0_0_0_1px_var(--primary)]";
 
 /**
- * Edit of one entry from the detail sheet (doc 02 §6.6): description, amount,
- * category, date and note. Only changed fields are sent; installments and
- * recurrences change just this occurrence (the server's "só este").
+ * Edit of an entry from the detail sheet (doc 02 §6.6): description, amount,
+ * category, date and note. Only changed fields are sent. Installments and
+ * recurrences pick the scope (Só este · Este e os próximos · Todos); a new
+ * date, or a new amount for installments, applies to this one only.
  */
 export function TransactionEditForm({
   item,
@@ -55,12 +94,22 @@ export function TransactionEditForm({
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
   const [date, setDate] = useState(item.occurredOn);
   const [notes, setNotes] = useState(item.notes ?? "");
+  const [scope, setScope] = useState<Scope>("this");
   const [errors, setErrors] = useState<Errors>({});
 
   const editsAmount = item.kind !== "adjustment";
   const editsCategory = item.kind === "income" || item.kind === "expense";
   const options = categories.filter((category) => category.kind === item.kind);
   const partOfSeries = item.installment !== null || item.recurring;
+  const amountChanged =
+    editsAmount && parseBRLToCents(amount) !== Math.abs(item.amountCents);
+  const scopeLock =
+    date !== item.occurredOn
+      ? "Para mudar a data, altere só este lançamento."
+      : item.installment && amountChanged
+        ? "Para mudar o valor de várias parcelas, exclua a compra e lance de novo."
+        : null;
+  const appliedScope: Scope = scopeLock ? "this" : scope;
 
   function amountError(cents: number | null): string | undefined {
     if (cents === null) return "Digite um valor válido, como 64,50";
@@ -103,13 +152,23 @@ export function TransactionEditForm({
     setErrors({});
     onPendingChange(true);
     try {
-      const result = await updateTransactionAction({ id: item.id, patch });
+      const result = await updateTransactionAction({
+        id: item.id,
+        patch,
+        scope: appliedScope,
+      });
       const message = actionErrorMessage(result);
       if (message) {
         setErrors({ form: message });
         return;
       }
-      toast("Lançamento atualizado");
+      toast(
+        appliedScope === "this"
+          ? "Lançamento atualizado"
+          : item.installment
+            ? "Parcelas atualizadas"
+            : "Lançamentos atualizados",
+      );
       onDone();
     } catch {
       setErrors({ form: NETWORK_ERROR });
@@ -125,12 +184,6 @@ export function TransactionEditForm({
       onSubmit={onSubmit}
       className="flex flex-col gap-4 pb-2"
     >
-      {partOfSeries ? (
-        <p className="rounded-control bg-surface-2 px-3.5 py-2.5 text-callout text-fg-2">
-          A alteração vale só para este lançamento.
-        </p>
-      ) : null}
-
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${ids}-description`}>Descrição</Label>
         <Input
@@ -232,6 +285,70 @@ export function TransactionEditForm({
           placeholder="Opcional"
         />
       </div>
+
+      {partOfSeries ? (
+        <fieldset
+          className="min-w-0"
+          aria-describedby={scopeLock ? `${ids}-scope-lock` : undefined}
+        >
+          <legend className="mb-2 text-callout font-semibold text-fg">
+            {item.installment ? "Alterar quais parcelas" : "Alterar quais"}
+          </legend>
+          <div className="overflow-hidden rounded-control border border-border-strong/40 [&>label+label]:border-t [&>label+label]:border-border">
+            {scopeOptions(item).map((option) => {
+              const checked = appliedScope === option.value;
+              const disabled = scopeLock !== null && option.value !== "this";
+              return (
+                <label
+                  key={option.value}
+                  className={cn(
+                    "flex min-h-13 items-center gap-3 px-3.5 py-2.5 transition-colors duration-100 has-checked:bg-primary-soft/60 has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-focus",
+                    disabled
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name={`${ids}-scope`}
+                    value={option.value}
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => setScope(option.value)}
+                    className="sr-only"
+                  />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-body font-semibold text-fg">
+                      {option.label}
+                    </span>
+                    {option.hint ? (
+                      <span className="text-caption text-fg-3">
+                        {option.hint}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex size-5.5 shrink-0 items-center justify-center rounded-full border-2",
+                      checked ? "border-primary" : "border-border-strong",
+                    )}
+                  >
+                    {checked ? (
+                      <span className="size-2.5 rounded-full bg-primary" />
+                    ) : null}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {scopeLock ? (
+            <p id={`${ids}-scope-lock`} className="mt-2 text-caption text-fg-2">
+              {scopeLock}
+            </p>
+          ) : null}
+        </fieldset>
+      ) : null}
 
       {errors.form ? (
         <FieldError id={`${ids}-form-error`}>{errors.form}</FieldError>

@@ -77,10 +77,11 @@ export const updateTransactionAction = authAction
         notes: z.string().trim().max(500).nullable().optional(),
         paid: z.boolean().optional(),
       }),
+      scope: z.enum(["this", "future", "all"]).default("this"),
     }),
   )
-  .action(async ({ parsedInput: { id, patch }, ctx: { user } }) => {
-    await updateTransaction(await getUserContext(user.id), id, patch);
+  .action(async ({ parsedInput: { id, patch, scope }, ctx: { user } }) => {
+    await updateTransaction(await getUserContext(user.id), id, patch, scope);
     refresh();
   });
 
