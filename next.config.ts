@@ -67,9 +67,27 @@ const securityHeaders = [
   { key: "X-Robots-Tag", value: "noindex, nofollow" },
 ];
 
+/**
+ * Opening `next dev` from a phone on the same network: BETTER_AUTH_URL points
+ * at the computer's address (README, "No celular"), and the dev server must
+ * accept requests from that hostname too. Next loads .env files before this
+ * file, so the value is already here.
+ */
+function lanDevOrigins(): string[] {
+  try {
+    const { hostname } = new URL(process.env.BETTER_AUTH_URL ?? "");
+    return hostname === "localhost" || hostname === "127.0.0.1"
+      ? []
+      : [hostname];
+  } catch {
+    return [];
+  }
+}
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  allowedDevOrigins: lanDevOrigins(),
   turbopack: {
     rules: {
       "*.css": {

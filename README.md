@@ -35,7 +35,13 @@ npm run dev    # http://localhost:3000
 
 Entre com **demo@meu-finan.local** e a senha **meu-finan-demo**. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
 
-> Passkeys funcionam em `localhost`. Pelo celular na mesma rede (`http://IP:3000`) o navegador não libera WebAuthn sem HTTPS: use a senha.
+### No celular (mesma rede Wi‑Fi)
+
+1. Descubra o IP do computador na rede (no Windows, `ipconfig` → "Endereço IPv4", por exemplo `192.168.0.10`).
+2. No `.env.local`, troque `BETTER_AUTH_URL` por `http://192.168.0.10:3000` e reinicie o `npm run dev`. O login confere a origem, então use esse endereço também no computador enquanto ele estiver assim.
+3. No celular, abra `http://192.168.0.10:3000` e entre com a senha. Se o Windows perguntar, libere o Node.js no firewall para redes privadas.
+
+> Passkeys funcionam em `localhost` e no deploy (HTTPS). Pelo IP da rede o navegador não libera WebAuthn sem HTTPS: use a senha.
 
 ## Publicar (Vercel + Neon)
 
