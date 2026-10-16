@@ -20,7 +20,8 @@
     "check": "npm run lint && npm run typecheck && npm run test",
     "predev": "tsx scripts/db-local.ts migrate",
     "db:local": "tsx scripts/db-local.ts",
-    "demo": "tsx scripts/demo.ts"
+    "demo": "tsx scripts/demo.ts",
+    "test:e2e": "npm run demo && next build && playwright test"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.8",
@@ -53,6 +54,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.2",
     "@next/env": "^16.4.1",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
     "@types/react": "^19",
