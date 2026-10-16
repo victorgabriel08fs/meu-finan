@@ -184,15 +184,15 @@ sequenceDiagram
 | Linguagem | TypeScript `strict` | `noUncheckedIndexedAccess` ligado |
 | Estilo | **Tailwind CSS v4** via `@tailwindcss/turbopack` (sem PostCSS) | tokens via `@theme` em CSS (ver doc 02) |
 | Componentes | **shadcn/ui** (primitivas Radix) | código copiado para o repo e adaptado aos tokens |
-| Sheets/drawers | Drawer do shadcn (Vaul) | se a biblioteca seguir sem manutenção ativa, trocar por implementação própria com Motion (drag + snap points) mantendo a mesma API |
+| Sheets/drawers | Sheet próprio sobre o Dialog do Radix + Motion | arrastar para fechar no celular, diálogo centralizado a partir de `md`; o voltar do navegador fecha a folha do topo |
 | Animação | **Motion** (`motion/react`) | sempre respeitando `prefers-reduced-motion` |
-| Gráficos | **Recharts 3** (via shadcn Charts), carregado sob demanda | sparklines e anéis em SVG próprio (sem biblioteca) |
-| Formulários | React Hook Form + **Zod 4** | os mesmos schemas validam cliente e Server Action |
+| Gráficos | SVG/HTML próprios (`src/components/charts`) | colunas, linha, área empilhada com scrub, sparkline e anéis; cada gráfico tem visão em tabela |
+| Formulários | Estado local do React + **Zod 4** | o schema da Server Action valida no servidor; o cliente só dá retorno imediato |
 | Server Actions | **next-safe-action** | middleware de auth (sessão verificada em toda action) e erros padronizados |
 | Estado de URL | **nuqs** | filtros e mês ativo na URL (voltar do navegador funciona, links compartilháveis) |
-| Dados no cliente | TanStack Query v5 | apenas para lista infinita do extrato, busca e autocomplete |
+| Dados no cliente | Server Components + Server Actions com `refresh()` | sem cache de dados no cliente; autocomplete por Server Action |
 | Estado de UI | **Zustand** (com `persist`) | modo discreto, rascunho do lançamento, preferências locais |
-| Datas | date-fns v4 + `@date-fns/tz` | locale `ptBR`, fuso do usuário |
+| Datas | motor próprio (`src/lib/finance/dates`) + `@date-fns/tz` | datas locais sem hora; o fuso do usuário só entra para saber que dia é hoje |
 | ORM | **Drizzle ORM** + drizzle-kit | dois drivers atrás da mesma API: **Neon WebSocket Pool** (`drizzle-orm/neon-serverless`, com `attachDatabasePool` da Vercel) quando há `DATABASE_URL`, e **PGlite** embutido (`drizzle-orm/pglite`) no desenvolvimento local e nos testes; ambos com transações interativas (`db.transaction`) |
 | Banco | **Neon Postgres** (Vercel Marketplace) | `aws-sa-east-1`; extensões `pg_trgm`, `unaccent` |
 | Auth | **Better Auth** | plugin de passkey (`@better-auth/passkey`), `twoFactor` na F1; adapter Drizzle; hooks que fecham o cadastro após o primeiro acesso |

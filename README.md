@@ -9,12 +9,12 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 | Camada | Escolha |
 |---|---|
 | Framework | Next.js 16.4 (App Router, Cache Components, Turbopack) · React 19.3 · TypeScript strict |
-| Interface | Tailwind CSS v4 · Radix UI · Motion · lucide-react · next-themes · Sonner |
-| Formulários e ações | React Hook Form · Zod 4 · next-safe-action · nuqs |
+| Interface | Tailwind CSS v4 · Radix UI · Motion · lucide-react · next-themes · Sonner · zustand |
+| Formulários e ações | Zod 4 · next-safe-action · nuqs (filtros na URL) |
 | Autenticação | Better Auth 1.7 com passkeys (sessão em banco) |
 | Dados | Postgres: Neon em produção (WebSocket Pool) e PGlite embutido no desenvolvimento local · Drizzle ORM e drizzle-kit |
-| Datas | date-fns 4 · @date-fns/tz (fuso `America/Sao_Paulo`) |
-| Qualidade | Biome (lint e formatação) · Vitest · fast-check |
+| Datas | motor próprio em `src/lib/finance` · @date-fns/tz (fuso `America/Sao_Paulo`) |
+| Qualidade | Biome (lint e formatação) · Vitest · fast-check · Playwright (celular emulado) |
 | Hospedagem | Vercel (funções em `gru1`, São Paulo) · Vercel Cron |
 
 ## Requisitos
@@ -105,7 +105,7 @@ A rota só aceita `Authorization: Bearer <CRON_SECRET>`, com comparação em tem
 
 | Passo | O que faz |
 |---|---|
-| `materializeRecurrences` | Lançamentos recorrentes (fase F2; por enquanto, pulado) |
+| `materializeRecurrences` | Cria os lançamentos recorrentes até 60 dias à frente |
 | `rollInvoices` | Fechamento e abertura de faturas (fase F2; por enquanto, pulado) |
 | `syncMarketRates` | Busca CDI (SGS 4389), Selic (SGS 432) e IPCA (SGS 433) na API do Banco Central e atualiza `market_rates` |
 | `snapshotBalances` | Saldo de fim de mês para o patrimônio (fase F3; por enquanto, pulado) |
@@ -130,7 +130,9 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 
 | Comando | O que faz |
 |---|---|
-| `npm run dev` | Servidor de desenvolvimento |
+| `npm run demo` | Cria o `.env.local` (se faltar) e recria o banco local com 13 meses de dados de exemplo |
+| `npm run dev` | Servidor de desenvolvimento (aplica as migrações no banco local antes) |
+| `npm run db:local -- reset` | Apaga e recria o banco local vazio |
 | `npm run build` | Build de produção (não acessa o banco) |
 | `npm run build:vercel` | Migrações e build; é o comando de build da Vercel |
 | `npm run start` | Serve o build de produção |
@@ -141,6 +143,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 | `npm run test:watch` | Testes em modo observação |
 | `npm run test:coverage` | Testes com cobertura |
 | `npm run check` | Lint, tipos e testes (rode antes de abrir um pull request) |
+| `npm run test:e2e` | Recria os dados de demonstração, faz o build e roda o Playwright num celular emulado |
 | `npm run db:generate` | Gera uma migração SQL a partir do schema Drizzle |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:studio` | Abre o Drizzle Studio |
@@ -152,15 +155,21 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 meu-finan/
 ├─ docs/                     # especificação do produto (veja abaixo)
 ├─ drizzle/                  # migrações SQL geradas pelo drizzle-kit (não editar à mão)
+├─ e2e/                      # testes Playwright (celular emulado, build de produção)
 ├─ public/                   # arquivos estáticos
-├─ scripts/                  # scripts de manutenção (ex.: seed)
+├─ scripts/                  # banco local, dados de demonstração e seed
 ├─ src/
 │  ├─ app/
-│  │  ├─ (app)/              # telas autenticadas, dentro do shell com navegação
+│  │  ├─ (auth)/             # entrar, primeiro acesso e recuperação
+│  │  ├─ (app)/              # telas autenticadas: início, extrato, contas, cartões,
+│  │  │                      # planejar, relatórios e ajustes
 │  │  ├─ api/auth/           # rotas do Better Auth
 │  │  ├─ api/cron/daily/     # job diário (Vercel Cron)
 │  │  └─ robots.ts           # bloqueia a indexação
-│  ├─ components/ui/         # componentes base (Button, Input, Card…)
+│  ├─ components/
+│  │  ├─ ui/                 # componentes base (Button, Sheet, SegmentedControl…)
+│  │  ├─ app/ · finance/ · money/ · charts/
+│  │  └─ dashboard/ · accounts/ · transactions/ · quick-add/ · planning/ · reports/
 │  ├─ lib/
 │  │  ├─ finance/            # motor financeiro puro (juros, IR, faturas, orçamento…), com testes
 │  │  └─ format/             # formatação pt-BR (moeda, datas, percentuais)
@@ -169,8 +178,11 @@ meu-finan/
 │  │  ├─ dal.ts              # getSession e requireUser (checagem de sessão no servidor)
 │  │  ├─ safe-action.ts      # cliente das Server Actions (authAction exige sessão)
 │  │  ├─ env.ts              # variáveis de ambiente validadas com Zod
-│  │  ├─ db/                 # cliente Drizzle e schema
+│  │  ├─ domain/             # regras de negócio sobre o banco (lançamentos, faturas…)
+│  │  ├─ actions/            # Server Actions das telas
+│  │  ├─ db/                 # cliente Drizzle (Neon ou PGlite) e schema
 │  │  └─ jobs/               # passos do cron diário
+│  ├─ stores/                # estado do cliente (privacidade, lançamento rápido)
 │  └─ proxy.ts               # redirecionamento otimista para /entrar
 ├─ next.config.ts            # Cache Components e cabeçalhos de segurança
 └─ vercel.json               # região, comando de build e cron

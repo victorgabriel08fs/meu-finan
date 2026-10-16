@@ -1227,7 +1227,7 @@ export default function manifest(): MetadataRoute.Manifest {
 - Gráficos com `next/dynamic` + skeleton de mesma altura.
 - Listas longas: virtualização a partir de 200 linhas (TanStack Virtual) mantendo cabeçalhos fixos.
 - Fonte variável única (Manrope), `display: swap`, pré-carregada pelo `next/font`.
-- Ícones importados individualmente; sem bibliotecas de data/números pesadas (só `Intl` + date-fns modular).
+- Ícones importados individualmente; sem bibliotecas de data/números pesadas (formatação com tabelas próprias e `Intl`).
 - Animações apenas com `transform`/`opacity`; `will-change` só durante o gesto.
 - Orçamento: JS inicial de `/inicio` ≤ 170 KB gz; INP ≤ 200 ms (teclado com handler síncrono e mínimo).
 
