@@ -23,38 +23,38 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - Conta na Vercel. O plano Hobby atende: é gratuito e serve para uso pessoal, não comercial.
 - Vercel CLI: `npm i -g vercel` (ou use `npx vercel` nos comandos abaixo).
 
-## Configuração local
+## Ver o app agora (sem nenhuma conta)
 
-1. Instale as dependências:
+O desenvolvimento local usa um **Postgres embutido (PGlite)** em `.data/pglite`: sem Docker, sem Neon, sem Vercel.
+
+```bash
+npm install
+npm run demo   # cria o .env.local e um banco local com 13 meses de dados de exemplo
+npm run dev    # http://localhost:3000
+```
+
+Entre com **demo@meu-finan.local** e a senha **meu-finan-demo**. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
+
+> Passkeys funcionam em `localhost`. Pelo celular na mesma rede (`http://IP:3000`) o navegador não libera WebAuthn sem HTTPS: use a senha.
+
+## Publicar (Vercel + Neon)
+
+1. Instale as dependências e vincule a pasta a um projeto da Vercel:
 
    ```bash
    npm install
+   npx vercel link
    ```
 
-2. Vincule a pasta a um projeto da Vercel:
+2. Crie o banco pela Vercel: **Storage → Create Database → Neon**, região **São Paulo (aws-sa-east-1)**, conectado ao projeto nos ambientes Development, Preview e Production. Ative os branches de preview: cada deploy de preview ganha um branch próprio do banco. A integração cria `DATABASE_URL` e `DATABASE_URL_UNPOOLED`.
 
-   ```bash
-   vercel link
-   ```
+3. Cadastre as demais variáveis em **Settings → Environment Variables**. O arquivo [`.env.example`](.env.example) explica cada uma e como gerar os segredos. Em produção, `BETTER_AUTH_URL` é o endereço público (ex.: `https://meu-finan.vercel.app`): as passkeys ficam presas a esse domínio.
 
-3. Crie o banco pela Vercel: **Storage → Create Database → Neon**, região **São Paulo (aws-sa-east-1)**, conectado ao projeto nos ambientes Development, Preview e Production. Ative os branches de preview: cada deploy de preview ganha um branch próprio do banco. A integração cria `DATABASE_URL` e `DATABASE_URL_UNPOOLED`.
+4. Faça o deploy (`npx vercel --prod` ou um push na branch conectada). O build roda as migrações (`npm run build:vercel`) antes do `next build`.
 
-4. Para não desenvolver em cima dos dados reais, crie um branch `dev` no console da Neon e use a connection string dele em `DATABASE_URL` e `DATABASE_URL_UNPOOLED` do ambiente **Development**. O driver HTTP da Neon fala com o banco por HTTPS, então o desenvolvimento também usa a Neon, e não um Postgres local.
+5. Faça o primeiro acesso (seção abaixo) e cadastre sua passkey.
 
-5. Cadastre as demais variáveis em **Settings → Environment Variables**. O arquivo [`.env.example`](.env.example) explica cada uma e como gerar os segredos. Em Development, use `BETTER_AUTH_URL=http://localhost:3000`. Depois, baixe tudo para a sua máquina:
-
-   ```bash
-   vercel env pull .env.local
-   ```
-
-6. Aplique as migrações e suba o servidor:
-
-   ```bash
-   npm run db:migrate
-   npm run dev
-   ```
-
-   O app abre em <http://localhost:3000>.
+Para desenvolver contra a Neon em vez do banco embutido, crie um branch `dev` no console da Neon e coloque a connection string dele em `DATABASE_URL` e `DATABASE_URL_UNPOOLED` do `.env.local` (ou use `npx vercel env pull .env.local`). Com `DATABASE_URL` definida o app usa a Neon, e `npm run db:migrate` aplica as migrações.
 
 ## Primeiro acesso
 
