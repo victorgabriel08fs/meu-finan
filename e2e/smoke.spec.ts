@@ -129,13 +129,45 @@ test("edita todos os lançamentos de uma recorrência", async ({ page }) => {
   await page.getByRole("button", { name: "Salvar alterações" }).click();
   await page.getByRole("button", { name: "Todos", exact: true }).click();
   await expect(page.getByText("Lançamentos atualizados")).toBeVisible();
-  // The sheet goes back to the details; close it.
+  // The sheet goes back to the details; close it. Closing steps back in
+  // history, and the list must keep the updated entry (not an older render).
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: /^Internet fibra,/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Internet,/ })).toHaveCount(0);
   // Next month's occurrence (already scheduled) got the new name too.
   await page.getByRole("link", { name: /^Próximo mês/ }).click();
   await expect(
     page.getByRole("button", { name: /^Internet fibra,/ }),
   ).toBeVisible({ timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test("voltar fecha a folha em vez de sair da tela", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await signIn(page);
+  await page.goto("/extrato");
+  await expectLoaded(page, "/extrato");
+  const plus = page
+    .getByRole("button", { name: "Nova transação", exact: true })
+    .and(page.locator(":visible"));
+  const sheet = page.getByRole("dialog", { name: "Nova transação" });
+
+  await plus.click();
+  await expect(sheet).toBeVisible();
+  await page.goBack();
+  await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(/\/extrato$/);
+
+  // Closed by its own button, the sheet leaves no entry behind: back leaves.
+  await plus.click();
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: "Fechar" }).click();
+  await expect(sheet).toBeHidden();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/inicio$/);
   expect(errors).toEqual([]);
 });

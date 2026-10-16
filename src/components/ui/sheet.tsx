@@ -22,13 +22,15 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./icon-button";
+import { useBackToClose } from "./use-back-to-close";
 
 /**
  * Sheet (doc 02 §4.4, §5.14) on a Radix Dialog: a bottom sheet on phones
  * (28px top radius, drag handle, at most 92dvh, inner scroll, footer above the
  * safe area) and a centred 560px dialog from `md` up. Radix traps focus,
  * returns it to the trigger and closes on Esc or a tap on the scrim; on
- * phones the sheet also closes when dragged down by the handle/header.
+ * phones the sheet also closes when dragged down by the handle/header, and
+ * the back button closes it instead of leaving the page.
  */
 
 type SheetContextValue = { setOpen: (open: boolean) => void };
@@ -63,6 +65,7 @@ export function Sheet({
     [controlled, onOpenChange],
   );
   const context = useMemo(() => ({ setOpen }), [setOpen]);
+  useBackToClose(open, () => setOpen(false));
 
   return (
     <SheetContext value={context}>
