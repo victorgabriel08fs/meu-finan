@@ -3,8 +3,10 @@
 // the actions of Administração use `adminAction`, which also checks the role.
 import "server-only";
 import { createSafeActionClient } from "next-safe-action";
+import type { FlagKey } from "@/lib/flags/registry";
 import { getAdmin, requireUser } from "@/server/dal";
 import { DomainError } from "@/server/domain/errors";
+import { isFlagEnabled } from "@/server/flags";
 
 /** An error whose message is safe to show to the user (pt-BR). */
 export class ActionError extends Error {
@@ -44,3 +46,16 @@ export const adminAction = actionClient.use(async ({ next }) => {
   if (!admin) throw new ActionError(NOT_ALLOWED);
   return next({ ctx: { admin } });
 });
+
+/**
+ * `authAction` for a feature behind a flag (doc 01 §11.10): refuses on the
+ * server when the flag is off for the signed-in user, whatever the UI shows.
+ */
+export function flaggedAction(key: FlagKey, offMessage: string) {
+  return authAction.use(async ({ next, ctx }) => {
+    if (!(await isFlagEnabled(key, ctx.user.id))) {
+      throw new ActionError(offMessage);
+    }
+    return next();
+  });
+}

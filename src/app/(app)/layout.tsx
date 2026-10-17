@@ -1,11 +1,13 @@
 import { type ReactNode, Suspense } from "react";
 import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
+import { FlagsProvider } from "@/components/flags/flags-provider";
 import { QuickAddLoader } from "@/components/quick-add/quick-add-loader";
 import {
   QuickAddFab,
   QuickAddSidebarButton,
 } from "@/components/quick-add/quick-add-trigger";
+import { getViewerFlags } from "@/server/flags";
 
 /**
  * Signed-in shell (doc 02 §4.2, §4.5): sidebar from lg, tab bar below it.
@@ -16,37 +18,43 @@ import {
  * Quick add ("Nova transação", §6.5): the "+" triggers only flip a client
  * store, so they work from the first paint; the sheet itself streams in
  * through QuickAddLoader, which checks the session inside its own boundary.
+ *
+ * Feature flags (doc 01 §11.10): the promise starts here without being
+ * awaited, so the shell still prerenders; Client Components unwrap it with
+ * useFlag() inside their own <Suspense>.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarButton = <QuickAddSidebarButton />;
   const fab = <QuickAddFab />;
 
   return (
-    <div className="min-h-dvh lg:flex">
-      <a
-        href="#conteudo"
-        className="sr-only z-50 rounded-control bg-surface px-4 py-3 text-headline text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-      >
-        Pular para o conteúdo
-      </a>
-      <Suspense
-        fallback={<SideNavView pathname={null} addButton={sidebarButton} />}
-      >
-        <SideNav addButton={sidebarButton} />
-      </Suspense>
-      <main
-        id="conteudo"
-        tabIndex={-1}
-        className="mx-auto w-full max-w-300 min-w-0 flex-1 px-gutter pb-[calc(var(--tab-bar-h)+env(safe-area-inset-bottom)+1.5rem)] outline-none lg:pb-12"
-      >
-        {children}
-      </main>
-      <Suspense fallback={<BottomNavView pathname={null} addButton={fab} />}>
-        <BottomNav addButton={fab} />
-      </Suspense>
-      <Suspense fallback={null}>
-        <QuickAddLoader />
-      </Suspense>
-    </div>
+    <FlagsProvider flags={getViewerFlags()}>
+      <div className="min-h-dvh lg:flex">
+        <a
+          href="#conteudo"
+          className="sr-only z-50 rounded-control bg-surface px-4 py-3 text-headline text-primary shadow-card focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Pular para o conteúdo
+        </a>
+        <Suspense
+          fallback={<SideNavView pathname={null} addButton={sidebarButton} />}
+        >
+          <SideNav addButton={sidebarButton} />
+        </Suspense>
+        <main
+          id="conteudo"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-300 min-w-0 flex-1 px-gutter pb-[calc(var(--tab-bar-h)+env(safe-area-inset-bottom)+1.5rem)] outline-none lg:pb-12"
+        >
+          {children}
+        </main>
+        <Suspense fallback={<BottomNavView pathname={null} addButton={fab} />}>
+          <BottomNav addButton={fab} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <QuickAddLoader />
+        </Suspense>
+      </div>
+    </FlagsProvider>
   );
 }

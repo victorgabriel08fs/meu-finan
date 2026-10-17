@@ -16,6 +16,7 @@ import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
+import { getFlags } from "@/server/flags";
 import packageJson from "../../../../package.json";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -33,9 +34,10 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories] = await Promise.all([
+  const [ctx, categories, flags] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
+    getFlags(user.id),
   ]);
   const expenses = categories.filter(
     (category) => category.kind === "expense",
@@ -98,12 +100,14 @@ async function Settings() {
       <section aria-labelledby="ajustes-dados">
         <SectionHeader id="ajustes-dados" title="Dados" />
         <InsetList aria-labelledby="ajustes-dados">
-          <InsetListItem
-            icon={<FileUp />}
-            label="Importar extrato"
-            description="Arquivo OFX ou CSV do seu banco"
-            href="/importar"
-          />
+          {flags.importar_extrato ? (
+            <InsetListItem
+              icon={<FileUp />}
+              label="Importar extrato"
+              description="Arquivo OFX ou CSV do seu banco"
+              href="/importar"
+            />
+          ) : null}
           <ExportListItem />
         </InsetList>
       </section>
