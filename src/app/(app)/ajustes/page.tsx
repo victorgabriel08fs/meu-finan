@@ -1,21 +1,24 @@
 import {
   BookOpen,
+  CalendarRange,
   FileUp,
   Info,
   Shapes,
   ShieldCheck,
-  SlidersHorizontal,
+  SunMoon,
 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { InsetList, InsetListItem } from "@/components/app/inset-list";
 import { PageHeader } from "@/components/app/page-header";
 import { SectionHeader } from "@/components/app/section-header";
+import { ThemeLabel } from "@/components/app/theme-switcher";
 import { ExportListItem } from "@/components/imports/export-list-item";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
+import { getThemePreference } from "@/server/domain/preferences";
 import packageJson from "../../../../package.json";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -33,9 +36,10 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories] = await Promise.all([
+  const [ctx, categories, theme] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
+    getThemePreference(user.id),
   ]);
   const expenses = categories.filter(
     (category) => category.kind === "expense",
@@ -75,9 +79,15 @@ async function Settings() {
         <SectionHeader id="ajustes-preferencias" title="Preferências" />
         <InsetList aria-labelledby="ajustes-preferencias">
           <InsetListItem
-            icon={<SlidersHorizontal />}
-            label="Preferências"
-            description={`Tema e início do mês (dia ${ctx.monthStartDay})`}
+            icon={<SunMoon />}
+            label="Aparência"
+            trailing={<ThemeLabel fallback={theme} />}
+            href="/ajustes/preferencias"
+          />
+          <InsetListItem
+            icon={<CalendarRange />}
+            label="Mês financeiro"
+            trailing={`Começa no dia ${ctx.monthStartDay}`}
             href="/ajustes/preferencias"
           />
         </InsetList>
@@ -135,7 +145,7 @@ function SettingsSkeleton() {
     <LoadingRegion className="flex flex-col gap-7">
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
-      <Skeleton className="h-25 rounded-2xl" />
+      <Skeleton className="h-35.25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-41 rounded-2xl" />
       <Skeleton className="h-36 rounded-2xl" />

@@ -37,8 +37,8 @@ async function Preferences() {
 function PreferencesSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-7">
-      <Skeleton className="h-28 rounded-2xl" />
-      <Skeleton className="h-44 rounded-2xl" />
+      <Skeleton className="h-50 rounded-2xl" />
+      <Skeleton className="h-57.5 rounded-2xl" />
     </LoadingRegion>
   );
 }
