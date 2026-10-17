@@ -43,6 +43,11 @@ test("primeiro acesso: dicas do Início em sequência, a partir do +", async ({
   const first = page.getByRole("dialog", { name: "Registre em segundos" });
   await expect(first).toBeVisible({ timeout: 30_000 });
   await expect(first.getByText("Dica 1 de 3")).toBeVisible();
+  // The focus moves in, and screen readers hear which tip this is.
+  await expect(first).toBeFocused();
+  await expect(
+    page.locator('[aria-live="polite"]').filter({ hasText: "Dica 1 de 3" }),
+  ).toHaveCount(1);
 
   // The balloon sits right above the "+", which stays reachable through the
   // spotlight.
@@ -78,6 +83,12 @@ test("primeiro acesso: dicas do Início em sequência, a partir do +", async ({
   const saved = actionSaved(page, "inicio-modo-discreto");
   await third.getByRole("button", { name: "Entendi" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The focus left with the balloon.
+  expect(
+    await page.evaluate(() =>
+      Boolean(document.activeElement?.closest("[data-coach-mark]")),
+    ),
+  ).toBe(false);
   await saved;
 
   // Seen is seen: a reload does not bring them back.

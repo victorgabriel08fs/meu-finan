@@ -6,12 +6,14 @@ import {
   animate,
   type MotionValue,
   motion,
+  useIsPresent,
   useMotionValue,
   useReducedMotion,
   useTransform,
 } from "motion/react";
 import {
   type KeyboardEvent,
+  type ReactNode,
   useEffect,
   useId,
   useLayoutEffect,
@@ -361,19 +363,7 @@ export function CoachMark({
         className="pointer-events-auto absolute top-0 left-0 w-[min(21rem,calc(100vw-1.5rem))] outline-none"
       >
         <AnimatePresence mode="wait" initial>
-          <motion.div
-            key={tip.id}
-            initial={{ opacity: 0, scale: 0.96, ...ENTER_OFFSET[side] }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              x: 0,
-              y: 0,
-              transition: { duration: 0.24, ease: [0.05, 0.7, 0.1, 1] },
-            }}
-            exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            className="relative rounded-card bg-surface px-4 pt-3.5 pb-3 text-fg shadow-dialog"
-          >
+          <Balloon key={tip.id} side={side}>
             <Arrow side={side} at={arrowAt} />
             <p className="flex items-center gap-1.5 text-overline text-primary uppercase">
               <Icon
@@ -404,11 +394,41 @@ export function CoachMark({
                 {more ? "Próxima" : "Entendi"}
               </Button>
             </div>
-          </motion.div>
+          </Balloon>
         </AnimatePresence>
       </motion.div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * The balloon of one tip. It takes taps only once it has fully come in and
+ * until it starts to leave, so a quick double tap on "Próxima" cannot skip
+ * the next tip unread.
+ */
+function Balloon({ side, children }: { side: TipSide; children: ReactNode }) {
+  const present = useIsPresent();
+  const [entered, setEntered] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, ...ENTER_OFFSET[side] }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        x: 0,
+        y: 0,
+        transition: { duration: 0.24, ease: [0.05, 0.7, 0.1, 1] },
+      }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+      onAnimationComplete={() => setEntered(true)}
+      className={cn(
+        "relative rounded-card bg-surface px-4 pt-3.5 pb-3 text-fg shadow-dialog",
+        (!entered || !present) && "pointer-events-none",
+      )}
+    >
+      {children}
+    </motion.div>
   );
 }
 

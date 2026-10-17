@@ -23,6 +23,8 @@ const QUIET_MS = 400;
 const MAX_WAIT_MS = 4_000;
 /** An anchor that vanished mid-sequence gets this long to come back. */
 const LOST_MS = 1_500;
+/** Steps closer than this are one tap counted twice. */
+const STEP_GUARD_MS = 250;
 const TICK_MS = 150;
 
 type Run = { path: string; tips: Tip[]; index: number };
@@ -100,12 +102,18 @@ function CoachMarks() {
 
   /**
    * Moves to the next tip. `now`: straight there when its anchor is on screen
-   * (the spotlight glides over); otherwise the timer shows it when ready.
+   * (the spotlight glides over); otherwise the timer shows it when ready. A
+   * second call right after the first (a double tap on "Próxima" while the
+   * balloon changes) is ignored, so no tip goes by unread.
    */
+  const lastStep = useRef(0);
   const advance = useCallback(
     ({ mark, now }: { mark: boolean; now: boolean }) => {
       const current = runRef.current;
       if (!current) return;
+      const at = performance.now();
+      if (at - lastStep.current < STEP_GUARD_MS) return;
+      lastStep.current = at;
       const tip = current.tips[current.index];
       if (mark && tip) markSeen([tip.id]);
       const index = current.index + 1;
