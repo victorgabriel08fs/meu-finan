@@ -100,12 +100,17 @@ describe("theme preference", () => {
 
   it("moved the rows of the old default to dark, and only those", async () => {
     // The custom migration, replayed on rows as they were before it ran.
+    // Found by its tag, so renumbering the migrations does not break it.
     await m.preferences.setThemePreference("owner", "system");
     await m.preferences.setThemePreference("outro", "light");
-    const migration = readFileSync(
-      "drizzle/0004_theme_dark_existing_rows.sql",
-      "utf8",
+    const journal = JSON.parse(
+      readFileSync("drizzle/meta/_journal.json", "utf8"),
+    ) as { entries: { tag: string }[] };
+    const entry = journal.entries.find((item) =>
+      item.tag.endsWith("_theme_dark_existing_rows"),
     );
+    expect(entry).toBeDefined();
+    const migration = readFileSync(`drizzle/${entry?.tag}.sql`, "utf8");
     await m.db.execute(m.sql.raw(migration));
     expect(await storedTheme("owner")).toBe("dark");
     expect(await storedTheme("outro")).toBe("light");
