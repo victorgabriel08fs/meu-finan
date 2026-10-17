@@ -5,6 +5,7 @@ import {
   Shapes,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
@@ -12,6 +13,7 @@ import { InsetList, InsetListItem } from "@/components/app/inset-list";
 import { PageHeader } from "@/components/app/page-header";
 import { SectionHeader } from "@/components/app/section-header";
 import { ExportListItem } from "@/components/imports/export-list-item";
+import { NewsBadge } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
@@ -59,6 +61,20 @@ async function Settings() {
         </InsetList>
       </section>
 
+      <section aria-labelledby="ajustes-novidades">
+        <SectionHeader id="ajustes-novidades" title="Novidades" />
+        <InsetList aria-labelledby="ajustes-novidades">
+          <InsetListItem
+            icon={<Sparkles />}
+            label="Novidades"
+            description="O que mudou no app"
+            trailing={<NewsBadge />}
+            href="/ajustes/novidades"
+            data-tip="news"
+          />
+        </InsetList>
+      </section>
+
       <section aria-labelledby="ajustes-seguranca">
         <SectionHeader id="ajustes-seguranca" title="Segurança" />
         <InsetList aria-labelledby="ajustes-seguranca">
@@ -67,6 +83,7 @@ async function Settings() {
             label="Segurança"
             description="Passkeys, senha e sessões ativas"
             href="/ajustes/seguranca"
+            data-tip="security"
           />
         </InsetList>
       </section>
@@ -77,8 +94,9 @@ async function Settings() {
           <InsetListItem
             icon={<SlidersHorizontal />}
             label="Preferências"
-            description={`Tema e início do mês (dia ${ctx.monthStartDay})`}
+            description={`Tema, início do mês (dia ${ctx.monthStartDay}) e dicas`}
             href="/ajustes/preferencias"
+            data-tip="preferences"
           />
         </InsetList>
       </section>
@@ -103,6 +121,7 @@ async function Settings() {
             label="Importar extrato"
             description="Arquivo OFX ou CSV do seu banco"
             href="/importar"
+            data-tip="import"
           />
           <ExportListItem />
         </InsetList>
@@ -133,6 +152,7 @@ async function Settings() {
 function SettingsSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-7">
+      <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />
       <Skeleton className="h-25 rounded-2xl" />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PrivacyToggle } from "@/components/app/privacy-toggle";
+import { NewsDot } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { firstName, initials } from "./labels";
 
@@ -37,16 +38,20 @@ type HomeHeaderProps = {
   dateLabel: string;
 };
 
-/** Top bar of the Início (doc 02 §4.2): avatar, greeting and date, privacy eye. */
+/**
+ * Top bar of the Início (doc 02 §4.2): avatar, greeting and date, privacy eye.
+ * The avatar leads to Ajustes and carries the dot of unread novidades.
+ */
 export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
   return (
     <header className="flex min-h-14 items-center gap-3 pt-2">
       <Link
         href="/ajustes"
-        aria-label="Perfil e ajustes"
         className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-on-primary-soft transition-transform duration-100 after:absolute after:-inset-1 active:scale-94"
       >
         <span aria-hidden="true">{initials(name)}</span>
+        <span className="sr-only">Perfil e ajustes</span>
+        <NewsDot className="-top-0.5 -right-0.5" />
       </Link>
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-title-3 text-fg">

@@ -67,12 +67,15 @@ describe("tips per user", () => {
     let state = await snapshot();
     expect(state.off).toBe(true);
     expect(state.seen).toEqual(["inicio-lancamento-rapido"]);
+    expect(await tips.getTipsOff("owner")).toBe(true);
     expect((await snapshot("other")).off).toBe(false);
+    expect(await tips.getTipsOff("other")).toBe(false);
 
     await tips.setTipsOff("owner", false);
     state = await snapshot();
     expect(state.off).toBe(false);
     expect(state.seen).toEqual(["inicio-lancamento-rapido"]);
+    expect(await tips.getTipsOff("owner")).toBe(false);
   });
 
   it("“Rever dicas” brings the basics back and keeps novidades read", async () => {

@@ -83,6 +83,19 @@ export async function getTipsSnapshot(
   };
 }
 
+/** Whether the user turned the balloons off ("Não mostrar mais dicas"). */
+export async function getTipsOff(
+  userId: string,
+  executor: Executor = db,
+): Promise<boolean> {
+  const rows = await executor
+    .select({ tipId: userTips.tipId })
+    .from(userTips)
+    .where(and(eq(userTips.userId, userId), eq(userTips.tipId, TIPS_OFF_ROW)))
+    .limit(1);
+  return rows.length > 0;
+}
+
 /** Marks tips of the registry as seen; unknown ids are dropped. Idempotent. */
 export async function markTipsSeen(
   userId: string,
