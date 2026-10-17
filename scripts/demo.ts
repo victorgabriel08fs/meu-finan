@@ -96,13 +96,14 @@ async function main(): Promise<void> {
   rmSync(resolve(target.dir), { recursive: true, force: true });
   await migrate(db as never, { migrationsFolder: resolve("drizzle") });
 
-  // Owner (as /primeiro-acesso would create it) ------------------------------
+  // Owner (as /primeiro-acesso would create it: the administrator) -----------
   const userId = randomBytes(16).toString("hex");
   await db.insert(user).values({
     id: userId,
     name: "Ana",
     email: ownerEmail,
     emailVerified: true,
+    role: "admin",
   });
   await db.insert(account).values({
     id: randomBytes(16).toString("hex"),

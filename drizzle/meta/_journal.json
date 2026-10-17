@@ -22,6 +22,20 @@
       "when": 1792119803267,
       "tag": "0002_imports_without_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792274451760,
+      "tag": "0003_admin_and_flags",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792274461123,
+      "tag": "0004_first_account_admin",
+      "breakpoints": true
     }
   ]
 }
