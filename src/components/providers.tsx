@@ -83,7 +83,7 @@ function AppToaster() {
 
 /**
  * <meta name="theme-color"> and <meta name="color-scheme"> start dark (root
- * layout viewport) and the boot script points them at the saved theme before
+ * layout viewport) and THEME_META_SCRIPT points them at the saved theme before
  * the first paint; from then on they follow every change — including
  * "Sistema" when the device switches — so the browser and status bars of the
  * installed app always match the page. Next renders the viewport tags again,

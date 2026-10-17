@@ -67,15 +67,27 @@ export function shouldAdoptAccountTheme({
 }
 
 /**
- * Runs before the first paint (inline in the root layout), next to the
- * script next-themes injects for <html data-theme>: points
+ * The theme this device shows, as next-themes resolves it: the saved choice
+ * or the default, "system" through prefers-color-scheme. Leaves "dark" or
+ * "light" in `t`; throws where storage is blocked (the callers catch).
+ */
+const RESOLVE_THEME = `var t=localStorage.getItem(${JSON.stringify(
+  THEME_STORAGE_KEY,
+)})||${JSON.stringify(DEFAULT_THEME)};if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";if(t!=="light")t="dark";`;
+
+/**
+ * Inline in <head>: puts the saved theme on <html data-theme> before anything
+ * is painted. The server renders the default (dark), so this only changes
+ * something for Claro or Sistema; next-themes' own script, in <body>, sets
+ * the same value a moment later.
+ */
+export const THEME_HEAD_SCRIPT = `try{${RESOLVE_THEME}var d=document.documentElement;d.dataset.theme=t;d.style.colorScheme=t}catch(e){}`;
+
+/**
+ * Inline at the start of <body>, after the viewport tags of <head>: points
  * <meta name="theme-color"> and <meta name="color-scheme"> at the saved
  * theme, so the browser and status bars match the page from the start.
- * Keep the resolution in step with next-themes: saved choice or the default,
- * "system" through prefers-color-scheme.
  */
-export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(
-  THEME_STORAGE_KEY,
-)})||${JSON.stringify(DEFAULT_THEME)};if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";if(t!=="light")t="dark";var c=t==="light"?${JSON.stringify(
+export const THEME_META_SCRIPT = `try{${RESOLVE_THEME}var c=t==="light"?${JSON.stringify(
   THEME_COLORS.light,
 )}:${JSON.stringify(THEME_COLORS.dark)};document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",c)});var s=document.querySelector('meta[name="color-scheme"]');if(s)s.setAttribute("content",t)}catch(e){}`;

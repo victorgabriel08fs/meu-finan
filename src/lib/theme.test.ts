@@ -4,10 +4,11 @@ import {
   DEFAULT_THEME,
   isThemeChoice,
   shouldAdoptAccountTheme,
-  THEME_BOOT_SCRIPT,
   THEME_CHOICES,
   THEME_COLORS,
+  THEME_HEAD_SCRIPT,
   THEME_LABELS,
+  THEME_META_SCRIPT,
   THEME_STORAGE_KEY,
 } from "./theme";
 
@@ -70,7 +71,10 @@ describe("shouldAdoptAccountTheme", () => {
   });
 });
 
-/** Runs the boot script against a minimal document. */
+/**
+ * Runs the two inline theme scripts against a minimal document whose <html>
+ * comes from the server with the default theme.
+ */
 function boot({
   stored,
   prefersDark = false,
@@ -100,51 +104,77 @@ function boot({
   const matchMedia = (query: string) => ({
     matches: query === "(prefers-color-scheme: dark)" && prefersDark,
   });
+  const documentElement = {
+    dataset: { theme: DEFAULT_THEME } as Record<string, string>,
+    style: { colorScheme: "" },
+  };
   const document = {
+    documentElement,
     querySelectorAll: (selector: string) =>
       selector.includes("theme-color") ? themeColors : [],
     querySelector: (selector: string) =>
       selector.includes("color-scheme") ? colorScheme : null,
   };
-  new Function("localStorage", "matchMedia", "document", THEME_BOOT_SCRIPT)(
-    localStorage,
-    matchMedia,
-    document,
-  );
+  for (const script of [THEME_HEAD_SCRIPT, THEME_META_SCRIPT]) {
+    new Function("localStorage", "matchMedia", "document", script)(
+      localStorage,
+      matchMedia,
+      document,
+    );
+  }
   return {
-    themeColors: themeColors.map((meta) => meta.content),
+    theme: documentElement.dataset.theme,
+    colorSchemeStyle: documentElement.style.colorScheme,
+    themeColors: themeColors.map((element) => element.content),
     colorScheme: colorScheme.content,
   };
 }
 
-describe("THEME_BOOT_SCRIPT", () => {
-  it("points the bars at dark on a first visit, whatever the system says", () => {
-    expect(boot({})).toEqual({
+describe("theme scripts", () => {
+  it("keep a first visit dark, whatever the system says", () => {
+    expect(boot({ prefersDark: false })).toEqual({
+      theme: "dark",
+      colorSchemeStyle: "dark",
       themeColors: [THEME_COLORS.dark, THEME_COLORS.dark],
       colorScheme: "dark",
     });
   });
 
-  it("follows the saved choice", () => {
+  it("put the saved choice on <html> and on the bars", () => {
     expect(boot({ stored: "light", prefersDark: true })).toEqual({
+      theme: "light",
+      colorSchemeStyle: "light",
       themeColors: [THEME_COLORS.light, THEME_COLORS.light],
       colorScheme: "light",
     });
-    expect(boot({ stored: "dark" }).colorScheme).toBe("dark");
+    expect(boot({ stored: "dark" }).theme).toBe("dark");
   });
 
-  it("resolves Sistema through prefers-color-scheme", () => {
-    expect(boot({ stored: "system", prefersDark: false }).colorScheme).toBe(
-      "light",
-    );
-    expect(boot({ stored: "system", prefersDark: true }).colorScheme).toBe(
-      "dark",
-    );
+  it("resolve Sistema through prefers-color-scheme", () => {
+    expect(boot({ stored: "system", prefersDark: false })).toMatchObject({
+      theme: "light",
+      colorScheme: "light",
+    });
+    expect(boot({ stored: "system", prefersDark: true })).toMatchObject({
+      theme: "dark",
+      colorScheme: "dark",
+    });
   });
 
-  it("falls back to dark on an unknown value and never throws", () => {
-    expect(boot({ stored: "sepia" }).colorScheme).toBe("dark");
+  it("fall back to dark on an unknown value", () => {
+    expect(boot({ stored: "sepia" })).toMatchObject({
+      theme: "dark",
+      colorScheme: "dark",
+    });
+  });
+
+  it("never throw and leave the server's dark in place without storage", () => {
     expect(() => boot({ storageThrows: true })).not.toThrow();
-    expect(boot({ storageThrows: true }).colorScheme).toBe("");
+    expect(boot({ storageThrows: true })).toEqual({
+      theme: "dark",
+      colorSchemeStyle: "",
+      themeColors: ["", ""],
+      colorScheme: "",
+    });
   });
 });

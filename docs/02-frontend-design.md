@@ -284,7 +284,7 @@ Coreografia:
 
 O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.config.ts` (sem PostCSS). Tema controlado por `next-themes` (`attribute="data-theme"`, `defaultTheme="dark"`, `enableSystem`, `storageKey="meu-finan:tema"`), que resolve o tema antes da hidratação (sem flash).
 
-**Escuro por padrão.** O `<html>` já sai do servidor com `data-theme="dark"` e o viewport declara `color-scheme: dark`, então a primeira visita (login, primeiro acesso, onboarding) é escura sem depender de script. A escolha (Escuro · Claro · Sistema) fica no aparelho (localStorage, aplicada pelo script do next-themes antes da primeira pintura) e **na conta** (`user_settings.theme`): um aparelho novo adota o tema da conta depois de entrar, e uma troca feita em outro aparelho chega no próximo carregamento. Constantes, chaves e o script de boot ficam em `src/lib/theme.ts`.
+**Escuro por padrão.** O `<html>` já sai do servidor com `data-theme="dark"` e o viewport declara `color-scheme: dark`, então a primeira visita (login, primeiro acesso, onboarding) é escura sem depender de script. A escolha (Escuro · Claro · Sistema) fica no aparelho (localStorage, aplicada por um script no `<head>` antes de qualquer pintura e depois pelo next-themes) e **na conta** (`user_settings.theme`): um aparelho novo adota o tema da conta depois de entrar, e uma troca feita em outro aparelho chega no próximo carregamento. Constantes, chaves e os scripts ficam em `src/lib/theme.ts`.
 
 ```css
 /* src/app/globals.css */
@@ -355,7 +355,7 @@ body { background: var(--bg); color: var(--text); }
 .tabular { font-variant-numeric: tabular-nums; }
 ```
 
-`<meta name="theme-color">` e `<meta name="color-scheme">` começam no padrão escuro; um script de boot (no `<body>`, antes do conteúdo) os aponta para o tema salvo e o `ThemeMetaSync` (em `Providers`) os mantém iguais ao tema em uso, inclusive quando o Next recria as metatags em navegações — assim a barra do navegador e a do PWA acompanham o tema:
+`<meta name="theme-color">` e `<meta name="color-scheme">` começam no padrão escuro; um script no início do `<body>` os aponta para o tema salvo e o `ThemeMetaSync` (em `Providers`) os mantém iguais ao tema em uso, inclusive quando o Next recria as metatags em navegações — assim a barra do navegador e a do PWA acompanham o tema:
 
 ```tsx
 export const viewport: Viewport = {
