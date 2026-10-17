@@ -136,6 +136,53 @@ describe("accounts made by an administrator", () => {
       }),
     ).rejects.toMatchObject({ body: { code: "BANNED_USER" } });
   });
+
+  it("cannot make themselves administrators or lift a ban through the auth API", async () => {
+    const signIn = await m.auth.handler(
+      new Request("http://localhost:3000/api/auth/sign-in/email", {
+        method: "POST",
+        headers: {
+          origin: "http://localhost:3000",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "bruno@exemplo.com",
+          password: PASSWORD,
+        }),
+      }),
+    );
+    expect(signIn.status).toBe(200);
+    const cookie = (signIn.headers.get("set-cookie") ?? "")
+      .split(",")
+      .map((part) => part.split(";")[0]?.trim())
+      .filter((part) => part?.includes("session_token"))
+      .join("; ");
+    expect(cookie).toContain("session_token");
+    const updateUser = (data: Record<string, unknown>) =>
+      m.auth.handler(
+        new Request("http://localhost:3000/api/auth/update-user", {
+          method: "POST",
+          headers: {
+            origin: "http://localhost:3000",
+            "content-type": "application/json",
+            cookie,
+          },
+          body: JSON.stringify(data),
+        }),
+      );
+
+    // The session works: the person may change their own name...
+    expect((await updateUser({ name: "Bruno L." })).status).toBe(200);
+    // ...but not the fields the admin plugin owns.
+    for (const data of [{ role: "admin" }, { banned: false }]) {
+      expect((await updateUser(data)).status, JSON.stringify(data)).toBe(400);
+    }
+    const [row] = await m.db
+      .select({ role: m.schema.user.role })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.email, "bruno@exemplo.com"));
+    expect(row?.role).toBe("user");
+  });
 });
 
 describe("admin plugin endpoints", () => {
