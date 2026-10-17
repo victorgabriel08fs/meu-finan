@@ -20,6 +20,7 @@ Aplicação de controle financeiro pessoal, **mobile-first**, com backend e fron
 - **Motor financeiro puro em TypeScript**, compartilhado entre cliente (simulador instantâneo) e servidor (metas, relatórios).
 - **PWA instalável** (Serwist), notificações Web Push, Vercel Cron diário para recorrências, faturas, índices do BCB e lembretes.
 - **UI**: Tailwind CSS v4 (via `@tailwindcss/turbopack`) + shadcn/ui + Motion, fonte Manrope, paleta "Sereno" (neutros + verde-esmeralda), gráficos com paleta validada para daltonismo.
+- **Dicas e novidades em código** (`src/lib/tips`): balões na primeira visita a cada tela e avisos do que chegou ao app, só para contas anteriores a cada novidade; o que cada conta viu fica no banco (`user_tips`).
 
 ## Mockups
 

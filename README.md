@@ -14,6 +14,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - **Relatórios**: visão geral, categorias, fluxo de caixa dia a dia, patrimônio e calendário de gastos.
 - **Dados**: importar extrato OFX/CSV (sem duplicar) e exportar os lançamentos em CSV.
 - **Ajustes**: passkeys, senha e sessões; tema e início do mês; categorias; onboarding em 4 passos.
+- **Dicas e novidades**: balões que apontam o que fazer na primeira visita a cada tela (com "Pular dicas" e "Não mostrar mais") e uma lista do que chegou ao app, com aviso de não lidas; em Preferências, ligar, desligar e "Rever dicas".
 
 ## Stack
 
@@ -44,7 +45,7 @@ npm run demo   # cria o .env.local e um banco local com 13 meses de dados de exe
 npm run dev    # http://localhost:3000
 ```
 
-Entre com **demo@meu-finan.local** e a senha **meu-finan-demo**. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
+Entre com **demo@meu-finan.local** e a senha **meu-finan-demo**. As dicas de primeiro acesso e as novidades aparecem ligadas (a conta da demo é anterior a todas as novidades); `npm run demo -- --sem-dicas` cria a mesma demo com os balões desligados. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
 
 ### No celular (mesma rede Wi‑Fi)
 
@@ -141,7 +142,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 
 | Comando | O que faz |
 |---|---|
-| `npm run demo` | Cria o `.env.local` (se faltar) e recria o banco local com 13 meses de dados de exemplo |
+| `npm run demo` | Cria o `.env.local` (se faltar) e recria o banco local com 13 meses de dados de exemplo; com `-- --sem-dicas`, desliga os balões de dicas |
 | `npm run dev` | Servidor de desenvolvimento (aplica as migrações no banco local antes) |
 | `npm run db:local -- reset` | Apaga e recria o banco local vazio |
 | `npm run build` | Build de produção (não acessa o banco) |
@@ -154,7 +155,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 | `npm run test:watch` | Testes em modo observação |
 | `npm run test:coverage` | Testes com cobertura |
 | `npm run check` | Lint, tipos e testes (rode antes de abrir um pull request) |
-| `npm run test:e2e` | Recria os dados de demonstração, faz o build e roda o Playwright num celular emulado |
+| `npm run test:e2e` | Recria os dados de demonstração (com as dicas desligadas), faz o build e roda o Playwright num celular emulado; `e2e/tips.spec.ts` liga as dicas, testa e desliga de novo |
 | `npm run db:generate` | Gera uma migração SQL a partir do schema Drizzle |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:studio` | Abre o Drizzle Studio |
@@ -180,10 +181,11 @@ meu-finan/
 │  ├─ components/
 │  │  ├─ ui/                 # componentes base (Button, Sheet, SegmentedControl…)
 │  │  ├─ app/ · finance/ · money/ · charts/
-│  │  └─ dashboard/ · accounts/ · transactions/ · quick-add/ · planning/ · reports/
+│  │  └─ dashboard/ · accounts/ · transactions/ · quick-add/ · planning/ · reports/ · tips/
 │  ├─ lib/
 │  │  ├─ finance/            # motor financeiro puro (juros, IR, faturas, orçamento…), com testes
-│  │  └─ format/             # formatação pt-BR (moeda, datas, percentuais)
+│  │  ├─ format/             # formatação pt-BR (moeda, datas, percentuais)
+│  │  └─ tips/               # registro das dicas e novidades, seleção por tela e geometria do balão
 │  ├─ server/
 │  │  ├─ auth.ts             # instância do Better Auth
 │  │  ├─ dal.ts              # getSession e requireUser (checagem de sessão no servidor)

@@ -636,7 +636,7 @@ Indicador de progresso (4 pontos) no topo; "Pular" no canto.
 3. **Categorias** — grade de chips com as categorias padrão, todas ligadas; tocar desliga. "Você pode criar e editar depois."
 4. **Seu mês** — "Seu mês financeiro começa no dia": chips 1 · 5 · 10 · 15 · 20 · Outro. Apoio: "Use o dia em que costuma receber o salário."
 
-Ao concluir: Início com **3 dicas contextuais** sequenciais (balão apontando): botão "+", deslizar o mês, olho do modo discreto. Cada dica some ao tocar fora; nunca reaparece.
+Ao concluir: Início com **3 dicas contextuais** sequenciais (balão apontando): botão "+", previsão do mês, olho do modo discreto. Cada dica some ao tocar fora; nunca reaparece. As regras dos balões e das novidades estão na §6.16.
 
 ### 6.3 Início
 
@@ -965,8 +965,9 @@ Recalcula a cada mudança **sem rede** (motor do doc 03 roda no cliente). Valore
 Listas agrupadas (raio 16, linhas de 52 px):
 
 - **Perfil**: nome, e-mail, foto.
+- **Novidades**: lista do que chegou ao app, por data (§6.16), com a contagem de não lidas na linha.
 - **Segurança**: passkeys (listar com nome e data, criar neste aparelho, renomear, remover), senha (trocar), sessões ativas (aparelho e último uso; encerrar uma ou todas as outras), verificação em 2 etapas (selo "Em breve" até a F1). Ações sensíveis — mexer em passkeys ou senha, encerrar sessões, exportar ou apagar dados — pedem para entrar de novo quando a sessão não é recente.
-- **Preferências**: tema (Sistema · Claro · Escuro), início do mês financeiro, abrir em modo discreto, regime dos relatórios.
+- **Preferências**: tema (Sistema · Claro · Escuro), início do mês financeiro, abrir em modo discreto, regime dos relatórios; dicas de uso ("Mostrar dicas nas telas" e "Rever dicas", §6.16).
 - **Organização**: categorias (editar, mesclar, reordenar), tags, contas e cartões.
 - **Notificações**: contas a vencer (com antecedência), fatura fechando, orçamento 80%/100%, metas, resumo semanal por e-mail (fase posterior); horário silencioso.
 - **Dados**: importar, exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
@@ -975,6 +976,38 @@ Listas agrupadas (raio 16, linhas de 52 px):
 ### 6.15 Notificações (central)
 
 Sheet aberta pelo sino: lista agrupada (Hoje / Esta semana), cada item com ícone, texto curto e ação direta ("Marcar como pago", "Ver orçamento"). Deslizar dispensa. "Marcar todas como lidas".
+
+### 6.16 Dicas e novidades
+
+Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos do que chegou ao app.
+
+| Tipo | Para quem | Rótulo |
+|---|---|---|
+| **Primeiros passos** | todo mundo, na primeira vez que chega à tela | "Dica 1 de 3" com `lightbulb` |
+| **Novidade** | só contas criadas **antes** da data dela (para quem é nova, aquilo sempre existiu) | "Novidade" com `sparkles` |
+
+```
+┌────────────────────────────────────┐
+│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │  destaque suave (scrim a ~70%)
+│ ░░ ┌──────────────────────────┐ ░░ │
+│ ░░ │ 💡 DICA 1 DE 3            │ ░░ │  overline --primary
+│ ░░ │ Registre em segundos     │ ░░ │  headline
+│ ░░ │ Toque no + para lançar…  │ ░░ │  callout --text-2
+│ ░░ │ Pular dicas    [Próxima] │ ░░ │  ghost sm · primary sm
+│ ░░ └────────────▼─────────────┘ ░░ │  seta para o alvo
+│ ░░░░░░░░░░░░ ╭─────╮ ░░░░░░░░░░░░░ │  recorte com anel --primary
+│  Início Extrato │ + │ Planejar Rel.│
+└────────────────────────────────────┘
+```
+
+- **Balão**: `--surface`, raio 20, `shadow-dialog`, largura `min(336px, 100vw − 24px)`, seta de 9 px que aponta o centro do alvo (o início dele, se for muito mais largo que o balão). Fica do lado com espaço (preferência por tela), dentro da área útil: nunca sob a tab bar nem sob o cabeçalho recolhido, a 12 px das bordas; acompanha o alvo na rolagem, no redimensionamento e na rotação.
+- **Destaque**: o resto da tela escurece de leve; o alvo fica num recorte com anel `--primary` e um pulso único (sem pulso com movimento reduzido). Tocar no escuro dispensa a dica; tocar no alvo passa pelo recorte, faz o que o alvo faz e conta como vista.
+- **Sequência**: no máximo 3 por tela, primeiros passos antes das novidades. "Próxima" leva à seguinte (o recorte desliza até ela); a última diz "Entendi". "Pular dicas" encerra a tela e o aviso oferece **"Não mostrar mais"**. Esc e toque fora valem como "Entendi".
+- **Quando aparece**: com a página carregada (nenhum skeleton), depois de ~0,7 s de calma; nunca com folha, diálogo ou aviso na tela nem com alguém digitando. Dica cujo alvo não está visível é pulada em silêncio e continua não vista. No Início, só depois da primeira conta (antes disso, o "Comece por aqui" já guia).
+- **A11y**: `role="dialog"` com título e texto ligados; o foco entra no balão (Tab fica nele) e volta ao sair; uma região `aria-live` anuncia "Dica 1 de 3".
+- **Novidades** (Ajustes › Novidades): lista por data, com selo "Nova" até a visita, que as marca como lidas. Não lidas mostram um ponto `--primary` no avatar do Início e em Ajustes na barra lateral (nunca `--danger`: não é alerta) e a contagem na linha de Ajustes.
+- **Preferências**: "Mostrar dicas nas telas" liga e desliga os balões; "Rever dicas" mostra de novo os primeiros passos, a partir do Início (novidades continuam lidas).
+- **Registro e estado**: as dicas ficam em `src/lib/tips/registry.ts` (id estável, rotas, âncora `data-tip`, textos, data, ordem, condição); o que cada pessoa viu fica na tabela `user_tips` (doc 01 §6.3) e acompanha a conta em qualquer aparelho.
 
 ---
 
