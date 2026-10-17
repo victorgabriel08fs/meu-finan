@@ -37,6 +37,7 @@ process.env.BETTER_AUTH_URL = "http://localhost:3000";
 process.env.OWNER_EMAIL = "ana@exemplo.com";
 
 const PASSWORD = "uma senha bem longa";
+const LINKS = { origin: "http://localhost:3000" };
 const NOT_ALLOWED = "Você não tem permissão para fazer isso.";
 
 type Modules = {
@@ -101,11 +102,11 @@ async function invite(
   email: string,
   role: "admin" | "user" = "user",
 ) {
-  const created = await m.users.createUserWithInvite(ANA.id, {
-    name,
-    email,
-    role,
-  });
+  const created = await m.users.createUserWithInvite(
+    ANA.id,
+    { name, email, role },
+    LINKS,
+  );
   return { id: created.user.id, token: tokenOf(created.url), created };
 }
 
@@ -215,7 +216,10 @@ describe("invites", () => {
   it("refuses an expired link", async () => {
     const { id } = await invite("Elisa", "elisa@exemplo.com");
     const longAgo = new Date(Date.now() - 73 * 3600_000);
-    const old = await m.users.createAccessLink(ANA.id, id, longAgo);
+    const old = await m.users.createAccessLink(ANA.id, id, {
+      ...LINKS,
+      now: longAgo,
+    });
     const token = tokenOf(old.url);
     expect((await m.links.inspectAccessLink(token))?.state).toBe("expired");
     await expect(accept(token)).rejects.toThrow(m.links.LINK_UNAVAILABLE);
@@ -225,7 +229,9 @@ describe("invites", () => {
 
   it("invalidates the previous link when a new one is made", async () => {
     const { id, token: first } = await invite("Fábio", "fabio@exemplo.com");
-    const second = tokenOf((await m.users.createAccessLink(ANA.id, id)).url);
+    const second = tokenOf(
+      (await m.users.createAccessLink(ANA.id, id, LINKS)).url,
+    );
     expect((await m.links.inspectAccessLink(first))?.state).toBe("revoked");
     await expect(accept(first)).rejects.toThrow(m.links.LINK_UNAVAILABLE);
     await accept(second);
@@ -270,7 +276,7 @@ describe("reset links", () => {
     });
     expect(await sessionsOf(id)).toBe(2);
 
-    const reset = await m.users.createAccessLink(ANA.id, id);
+    const reset = await m.users.createAccessLink(ANA.id, id, LINKS);
     expect(reset.purpose).toBe("reset");
     await m.links.acceptAccessLink(tokenOf(reset.url), {
       passwordHash: await hashPassword("a senha nova e longa"),
@@ -306,7 +312,7 @@ describe("deactivation", () => {
     expect(list.find((row) => row.id === id)?.status).toBe("deactivated");
 
     // A link of a deactivated account does not work, and none can be made.
-    await expect(m.users.createAccessLink(ANA.id, id)).rejects.toThrow(
+    await expect(m.users.createAccessLink(ANA.id, id, LINKS)).rejects.toThrow(
       /Reative/,
     );
 
@@ -339,9 +345,9 @@ describe("guards", () => {
     await expect(m.users.revokeUserSessions(ANA.id, ANA.id)).rejects.toThrow(
       /Ajustes › Segurança/,
     );
-    await expect(m.users.createAccessLink(ANA.id, ANA.id)).rejects.toThrow(
-      /Ajustes › Segurança/,
-    );
+    await expect(
+      m.users.createAccessLink(ANA.id, ANA.id, LINKS),
+    ).rejects.toThrow(/Ajustes › Segurança/);
   });
 
   it("keeps an active administrator", async () => {
@@ -370,11 +376,11 @@ describe("guards", () => {
     const { id: mauro, token } = await invite("Mauro", "mauro@exemplo.com");
     await accept(token);
     await expect(
-      m.users.createUserWithInvite(mauro, {
-        name: "X",
-        email: "x@exemplo.com",
-        role: "admin",
-      }),
+      m.users.createUserWithInvite(
+        mauro,
+        { name: "X", email: "x@exemplo.com", role: "admin" },
+        LINKS,
+      ),
     ).rejects.toThrow(NOT_ALLOWED);
     await expect(m.users.setUserRole(mauro, mauro, "admin")).rejects.toThrow(
       NOT_ALLOWED,
@@ -677,7 +683,7 @@ describe("deleting an account", () => {
       key: "importar_extrato",
       enabled: false,
     });
-    await m.users.createAccessLink(ANA.id, rui);
+    await m.users.createAccessLink(ANA.id, rui, LINKS);
     expect(imported.imported).toBe(1);
 
     // Every table with a user_id column, found from the catalog, so a new

@@ -1,6 +1,8 @@
 // Local demo: recreates the embedded database (PGlite) with 13 months of
-// realistic data for the owner "Ana" (the persona of the mockups), so the app
-// can be explored right after `npm run demo`. Never runs against Neon.
+// realistic data for "Ana" (the persona of the mockups, the administrator),
+// plus a regular account (Bruno) and a pending invite (Carla) for
+// Administração, so the app can be explored right after `npm run demo`.
+// Never runs against Neon.
 //
 //   npm run demo      → then npm run dev and sign in with the printed credentials
 import { randomBytes } from "node:crypto";
@@ -26,11 +28,15 @@ import {
   resolveDatabaseTarget,
 } from "../src/server/db/client";
 import {
+  accessLinks,
   account,
   accountYield,
+  auditLog,
   categories,
+  featureFlagOverrides,
   goals,
   marketRates,
+  session,
   user,
   userSettings,
 } from "../src/server/db/schema";
@@ -43,10 +49,17 @@ import {
   createTransaction,
   createTransfer,
 } from "../src/server/domain/transactions";
+import {
+  ACCESS_LINK_TTL_MS,
+  accessLinkUrl,
+  createAccessToken,
+} from "../src/server/security/access-token";
 
 const ENV_FILE = ".env.local";
 const DEMO_EMAIL = "demo@meu-finan.local";
 const DEMO_PASSWORD = "meu-finan-demo";
+const BRUNO_EMAIL = "bruno@meu-finan.local";
+const BRUNO_PASSWORD = "meu-finan-bruno";
 
 /** Creates .env.local with fresh local secrets the first time. */
 function ensureEnvFile(): boolean {
@@ -126,6 +139,7 @@ async function main(): Promise<void> {
       await db
         .select({ id: categories.id, name: categories.name })
         .from(categories)
+        .where(eq(categories.userId, userId))
     ).map((row) => [row.name, row.id]),
   );
   const cat = (name: string) => {
@@ -512,15 +526,221 @@ async function main(): Promise<void> {
   });
   await db.insert(marketRates).values(rates).onConflictDoNothing();
 
+  const origin = new URL(process.env.BETTER_AUTH_URL ?? "http://localhost:3000")
+    .origin;
+  const inviteUrl = await seedPeople({ id: userId, name: "Ana" }, origin);
+
   await closeDatabase();
 
   console.log("");
   console.log("Demo pronta! Agora rode: npm run dev");
-  console.log("  Endereço: http://localhost:3000");
-  console.log(`  E-mail:   ${ownerEmail}`);
-  console.log(`  Senha:    ${DEMO_PASSWORD}`);
-  if (created) console.log(`  (${ENV_FILE} criado com segredos locais novos)`);
+  console.log(`  Endereço: ${origin}`);
   console.log("");
+  console.log("  Ana · administradora");
+  console.log(`    E-mail: ${ownerEmail}`);
+  console.log(`    Senha:  ${DEMO_PASSWORD}`);
+  console.log("  Bruno · usuário comum, com as próprias finanças");
+  console.log(`    E-mail: ${BRUNO_EMAIL}`);
+  console.log(`    Senha:  ${BRUNO_PASSWORD}`);
+  console.log("  Carla · convite pendente (vale 72 horas, uma vez só)");
+  console.log(`    ${inviteUrl}`);
+  if (created) {
+    console.log("");
+    console.log(`  (${ENV_FILE} criado com segredos locais novos)`);
+  }
+  console.log("");
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Administração (doc 01 §11.9): besides Ana, the administrator, a regular
+ * account with a little data of its own (Bruno, who accepted his invite a
+ * while ago) and a pending invite (Carla), plus the activity that led there.
+ * Returns Carla's invite link, the only time its token exists.
+ */
+async function seedPeople(
+  admin: { id: string; name: string },
+  origin: string,
+): Promise<string> {
+  const now = Date.now();
+  const ago = (days: number, hours = 0) =>
+    new Date(now - days * DAY_MS - hours * 60 * 60 * 1000);
+
+  // Bruno: invited 12 days ago, accepted the next day ----------------------
+  const brunoId = randomBytes(16).toString("hex");
+  await db.insert(user).values({
+    id: brunoId,
+    name: "Bruno Lima",
+    email: BRUNO_EMAIL,
+    emailVerified: false,
+    role: "user",
+    createdAt: ago(12, 3),
+    updatedAt: ago(11),
+  });
+  await db.insert(account).values({
+    id: randomBytes(16).toString("hex"),
+    accountId: brunoId,
+    providerId: "credential",
+    userId: brunoId,
+    password: await hashPassword(BRUNO_PASSWORD),
+    createdAt: ago(11),
+    updatedAt: ago(11),
+  });
+  const brunoInvite = createAccessToken();
+  await db.insert(accessLinks).values({
+    userId: brunoId,
+    purpose: "invite",
+    selector: brunoInvite.selector,
+    verifierHash: brunoInvite.verifierHash,
+    createdBy: admin.id,
+    createdAt: ago(12, 3),
+    expiresAt: new Date(ago(12, 3).getTime() + ACCESS_LINK_TTL_MS),
+    usedAt: ago(11),
+  });
+  await ensureOwnerDefaults(brunoId);
+  await db
+    .update(userSettings)
+    .set({ onboardingDoneAt: ago(11) })
+    .where(eq(userSettings.userId, brunoId));
+  // Last seen two days ago on his phone.
+  await db.insert(session).values({
+    id: randomBytes(16).toString("hex"),
+    token: randomBytes(32).toString("base64url"),
+    userId: brunoId,
+    createdAt: ago(11),
+    updatedAt: ago(2, 5),
+    expiresAt: new Date(ago(2, 5).getTime() + 30 * DAY_MS),
+    userAgent:
+      "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36",
+  });
+
+  const brunoCtx = await getUserContext(brunoId);
+  const brunoCategories = new Map(
+    (
+      await db
+        .select({ id: categories.id, name: categories.name })
+        .from(categories)
+        .where(eq(categories.userId, brunoId))
+    ).map((row) => [row.name, row.id]),
+  );
+  const checking = await createAccount(brunoId, {
+    name: "Conta corrente",
+    type: "checking",
+    initialBalanceCents: 120_000,
+    color: "cat-6",
+  });
+  const today = brunoCtx.today;
+  const thisMonth = (day: number) => {
+    const date = atDay(today.year, today.month, Math.min(day, today.day));
+    return iso(date);
+  };
+  for (const [kind, description, category, cents, day] of [
+    ["income", "Salário", "Salário", 450_000, 5],
+    ["expense", "Aluguel", "Moradia", 140_000, 6],
+    ["expense", "Supermercado", "Mercado", 32_050, 9],
+    ["expense", "Restaurante", "Restaurantes", 8_690, 12],
+    ["expense", "Farmácia", "Saúde", 4_250, 14],
+  ] as const) {
+    await createTransaction(brunoCtx, {
+      kind,
+      amountCents: cents,
+      accountId: checking,
+      categoryId: brunoCategories.get(category) ?? null,
+      description,
+      occurredOn: thisMonth(day),
+    });
+  }
+  // Importar extrato turned off for Bruno only (a per-person flag).
+  await db.insert(featureFlagOverrides).values({
+    userId: brunoId,
+    key: "importar_extrato",
+    enabled: false,
+    updatedBy: admin.id,
+    updatedAt: ago(6),
+  });
+
+  // Carla: invited yesterday, still pending -------------------------------------
+  const carlaId = randomBytes(16).toString("hex");
+  await db.insert(user).values({
+    id: carlaId,
+    name: "Carla Mendes",
+    email: "carla@meu-finan.local",
+    emailVerified: false,
+    role: "user",
+    createdAt: ago(1),
+    updatedAt: ago(1),
+  });
+  const carlaInvite = createAccessToken();
+  await db.insert(accessLinks).values({
+    userId: carlaId,
+    purpose: "invite",
+    selector: carlaInvite.selector,
+    verifierHash: carlaInvite.verifierHash,
+    createdBy: admin.id,
+    createdAt: ago(1),
+    expiresAt: new Date(ago(1).getTime() + ACCESS_LINK_TTL_MS),
+  });
+
+  // Activity, oldest first (ids are time-ordered) --------------------------------
+  const bruno = { id: brunoId, name: "Bruno Lima", email: BRUNO_EMAIL };
+  const carla = {
+    id: carlaId,
+    name: "Carla Mendes",
+    email: "carla@meu-finan.local",
+  };
+  const entries: (typeof auditLog.$inferInsert)[] = [
+    {
+      action: "setup.completed",
+      actorId: admin.id,
+      actorName: admin.name,
+      metadata: { role: "admin" },
+      createdAt: ago(395),
+    },
+    {
+      action: "user.created",
+      actorId: admin.id,
+      actorName: admin.name,
+      targetUserId: bruno.id,
+      targetName: bruno.name,
+      targetEmail: bruno.email,
+      metadata: { role: "user" },
+      createdAt: ago(12, 3),
+    },
+    {
+      action: "access_link.accepted",
+      actorId: bruno.id,
+      actorName: bruno.name,
+      targetUserId: bruno.id,
+      targetName: bruno.name,
+      targetEmail: bruno.email,
+      metadata: { purpose: "invite" },
+      createdAt: ago(11),
+    },
+    {
+      action: "flag.user_set",
+      actorId: admin.id,
+      actorName: admin.name,
+      targetUserId: bruno.id,
+      targetName: bruno.name,
+      targetEmail: bruno.email,
+      metadata: { flag: "importar_extrato", value: false },
+      createdAt: ago(6),
+    },
+    {
+      action: "user.created",
+      actorId: admin.id,
+      actorName: admin.name,
+      targetUserId: carla.id,
+      targetName: carla.name,
+      targetEmail: carla.email,
+      metadata: { role: "user" },
+      createdAt: ago(1),
+    },
+  ];
+  for (const entry of entries) await db.insert(auditLog).values(entry);
+
+  return accessLinkUrl(origin, carlaInvite.token);
 }
 
 main().catch(async (error: unknown) => {

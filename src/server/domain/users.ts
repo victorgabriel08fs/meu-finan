@@ -31,7 +31,6 @@ import {
   session,
   user,
 } from "@/server/db/schema";
-import { readServerEnv } from "@/server/env";
 import {
   accessLinkExpiry,
   accessLinkUrl,
@@ -294,10 +293,8 @@ export type CreatedLink = {
   expiresAt: string;
 };
 
-function appOrigin(): string {
-  return new URL(readServerEnv("BETTER_AUTH_URL") ?? "http://localhost:3000")
-    .origin;
-}
+/** Where links point: the app's public origin (BETTER_AUTH_URL), and "now". */
+export type LinkOptions = { origin: string; now?: Date };
 
 /**
  * Creates a link for `target`, revoking the open one (a new link replaces the
@@ -308,6 +305,7 @@ async function issueLink(
   tx: Transaction,
   actor: LockedAccount,
   target: LockedAccount,
+  origin: string,
   now: Date,
 ): Promise<CreatedLink> {
   const [credential] = await tx
@@ -351,7 +349,7 @@ async function issueLink(
   });
   return {
     purpose,
-    url: accessLinkUrl(appOrigin(), token.token),
+    url: accessLinkUrl(origin, token.token),
     expiresAt: expiresAt.toISOString(),
   };
 }
@@ -382,7 +380,7 @@ const EMAIL_TAKEN = "Já existe uma conta com este e-mail.";
 export async function createUserWithInvite(
   actorId: string,
   input: NewUserInput,
-  now = new Date(),
+  { origin, now = new Date() }: LinkOptions,
 ): Promise<
   { user: { id: string; name: string; email: string } } & CreatedLink
 > {
@@ -415,7 +413,7 @@ export async function createUserWithInvite(
         createdAt: now,
         updatedAt: now,
       });
-      const link = await issueLink(tx, actor, created, now);
+      const link = await issueLink(tx, actor, created, origin, now);
       await recordAudit(tx, {
         action: "user.created",
         actor,
@@ -434,7 +432,7 @@ export async function createUserWithInvite(
 export async function createAccessLink(
   actorId: string,
   targetId: string,
-  now = new Date(),
+  { origin, now = new Date() }: LinkOptions,
 ): Promise<CreatedLink> {
   return db.transaction(async (tx) => {
     const { actor, target } = await guarded(
@@ -443,7 +441,7 @@ export async function createAccessLink(
       targetId,
       "create_link",
     );
-    const link = await issueLink(tx, actor, target, now);
+    const link = await issueLink(tx, actor, target, origin, now);
     await recordAudit(tx, {
       action: "access_link.created",
       actor,

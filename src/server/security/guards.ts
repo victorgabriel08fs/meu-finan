@@ -31,7 +31,7 @@ export function isOwnerEmail(
   return normalizeEmail(email) === normalizeEmail(ownerEmail);
 }
 
-const AUTH_PAGES = ["/entrar", "/primeiro-acesso", "/recuperar"];
+const AUTH_PAGES = ["/entrar", "/primeiro-acesso", "/recuperar", "/convite"];
 const PROBE_ORIGIN = "http://meu-finan.invalid";
 
 /**

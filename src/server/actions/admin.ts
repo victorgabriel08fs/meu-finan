@@ -16,6 +16,7 @@ import {
   setUserBanned,
   setUserRole,
 } from "@/server/domain/users";
+import { appOrigin } from "@/server/env";
 import { adminAction } from "@/server/safe-action";
 
 /** Better Auth's ids: random letters and digits. */
@@ -45,7 +46,9 @@ export const createUserAction = adminAction
     }),
   )
   .action(async ({ parsedInput, ctx: { admin } }) => {
-    const created = await createUserWithInvite(admin.id, parsedInput);
+    const created = await createUserWithInvite(admin.id, parsedInput, {
+      origin: appOrigin(),
+    });
     refresh();
     return created;
   });
@@ -54,7 +57,9 @@ export const createUserAction = adminAction
 export const createAccessLinkAction = adminAction
   .inputSchema(target)
   .action(async ({ parsedInput, ctx: { admin } }) => {
-    const link = await createAccessLink(admin.id, parsedInput.userId);
+    const link = await createAccessLink(admin.id, parsedInput.userId, {
+      origin: appOrigin(),
+    });
     refresh();
     return link;
   });

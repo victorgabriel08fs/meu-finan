@@ -10,6 +10,12 @@ const TOKEN_GATED: Record<string, "SETUP_TOKEN" | "RECOVERY_TOKEN"> = {
   "/recuperar": "RECOVERY_TOKEN",
 };
 
+/**
+ * Invite and reset links (/convite/<token>): public, gated by the link's own
+ * token, which the page checks (rate-limited, constant-time comparison).
+ */
+const ACCESS_LINK_PREFIX = "/convite/";
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
@@ -20,6 +26,8 @@ export function proxy(request: NextRequest) {
       ? NextResponse.next()
       : new NextResponse("Not Found", { status: 404 });
   }
+
+  if (pathname.startsWith(ACCESS_LINK_PREFIX)) return NextResponse.next();
 
   if (getSessionCookie(request)) return NextResponse.next();
 
