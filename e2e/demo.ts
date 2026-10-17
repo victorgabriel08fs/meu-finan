@@ -6,6 +6,10 @@ export const EMAIL = "demo@meu-finan.local";
 export const PASSWORD = "meu-finan-demo";
 export const OWNER_STATE = "e2e/.auth/owner.json";
 
+/** A regular account (not an administrator) with its own data. */
+export const BRUNO_EMAIL = "bruno@meu-finan.local";
+export const BRUNO_PASSWORD = "meu-finan-bruno";
+
 /**
  * Resolves once a Server Action carrying `text` (a tip id, say) got its
  * answer. Start it before the click: a full navigation right after a click

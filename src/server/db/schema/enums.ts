@@ -70,7 +70,29 @@ export type ImportFormat = (typeof IMPORT_FORMATS)[number];
 export const SNAPSHOT_SOURCES = ["auto", "manual"] as const;
 export type SnapshotSource = (typeof SNAPSHOT_SOURCES)[number];
 
+/** access_links.purpose: first password of a new account, or a new one. */
+export const ACCESS_LINK_PURPOSES = ["invite", "reset"] as const;
+export type AccessLinkPurpose = (typeof ACCESS_LINK_PURPOSES)[number];
+
 // Text columns typed only in TypeScript (the DDL has no CHECK for them) ---------
+
+/** audit_log.action; new actions need no migration. */
+export const AUDIT_ACTIONS = [
+  "setup.completed",
+  "user.created",
+  "user.banned",
+  "user.unbanned",
+  "user.sessions_revoked",
+  "user.role_changed",
+  "user.deleted",
+  "access_link.created",
+  "access_link.revoked",
+  "access_link.accepted",
+  "access.recovered",
+  "flag.global_set",
+  "flag.user_set",
+] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export const JOB_RUN_STATUSES = ["running", "ok", "partial", "failed"] as const;
 export type JobRunStatus = (typeof JOB_RUN_STATUSES)[number];

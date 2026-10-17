@@ -9,6 +9,7 @@ import { auth, SETUP_TOKEN_HEADER } from "@/server/auth";
 import { db } from "@/server/db/client";
 import { user } from "@/server/db/schema";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
+import { recordAudit } from "@/server/domain/audit";
 import { readServerEnv } from "@/server/env";
 import { ActionError, actionClient } from "@/server/safe-action";
 import {
@@ -39,9 +40,10 @@ const setupSchema = z
   });
 
 /**
- * One-time owner setup (doc 01 §11.1). Fails closed without SETUP_TOKEN or
- * OWNER_EMAIL, once a user exists, or with a wrong token; Better Auth's own
- * hooks repeat the token and owner checks.
+ * One-time setup of the first account, the administrator (doc 01 §11.1).
+ * Fails closed without SETUP_TOKEN or OWNER_EMAIL, once a user exists, or
+ * with a wrong token; Better Auth's own hooks repeat the token and owner
+ * checks and make the account an administrator.
  */
 export const setupOwner = actionClient
   .inputSchema(setupSchema)
@@ -99,5 +101,10 @@ export const setupOwner = actionClient
     }
 
     await ensureOwnerDefaults(userId);
+    await recordAudit(db, {
+      action: "setup.completed",
+      actor: { id: userId, name: input.name },
+      metadata: { role: "admin" },
+    });
     redirect("/ajustes/seguranca?primeiro=1");
   });

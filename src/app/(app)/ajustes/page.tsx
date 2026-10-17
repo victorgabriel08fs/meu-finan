@@ -2,15 +2,19 @@ import {
   BookOpen,
   CalendarRange,
   FileUp,
+  History,
   Info,
   Lightbulb,
   Shapes,
   ShieldCheck,
   Sparkles,
   SunMoon,
+  ToggleRight,
+  UsersRound,
 } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { plural } from "@/components/admin/labels";
 import { InsetList, InsetListItem } from "@/components/app/inset-list";
 import { PageHeader } from "@/components/app/page-header";
 import { SectionHeader } from "@/components/app/section-header";
@@ -21,7 +25,10 @@ import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
+import { flagsOverview } from "@/server/domain/flag-admin";
 import { getThemePreference } from "@/server/domain/preferences";
+import { usersOverview } from "@/server/domain/users";
+import { getFlags } from "@/server/flags";
 import packageJson from "../../../../package.json";
 
 export const metadata: Metadata = { title: "Ajustes" };
@@ -39,10 +46,14 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, theme] = await Promise.all([
+  const [ctx, categories, theme, flags, admin] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
     getThemePreference(user.id),
+    getFlags(user.id),
+    user.role === "admin"
+      ? Promise.all([usersOverview(), flagsOverview()])
+      : null,
   ]);
   const expenses = categories.filter(
     (category) => category.kind === "expense",
@@ -133,16 +144,59 @@ async function Settings() {
       <section aria-labelledby="ajustes-dados">
         <SectionHeader id="ajustes-dados" title="Dados" />
         <InsetList aria-labelledby="ajustes-dados">
-          <InsetListItem
-            icon={<FileUp />}
-            label="Importar extrato"
-            description="Arquivo OFX ou CSV do seu banco"
-            href="/importar"
-            data-tip="import"
-          />
+          {flags.importar_extrato ? (
+            <InsetListItem
+              icon={<FileUp />}
+              label="Importar extrato"
+              description="Arquivo OFX ou CSV do seu banco"
+              href="/importar"
+              data-tip="import"
+            />
+          ) : null}
           <ExportListItem />
         </InsetList>
       </section>
+
+      {admin ? (
+        <section aria-labelledby="ajustes-administracao">
+          <SectionHeader id="ajustes-administracao" title="Administração" />
+          <InsetList aria-labelledby="ajustes-administracao">
+            <InsetListItem
+              icon={<UsersRound />}
+              label="Usuários"
+              description={[
+                plural(admin[0].accounts, "conta", "contas"),
+                admin[0].pendingInvites > 0
+                  ? plural(
+                      admin[0].pendingInvites,
+                      "convite pendente",
+                      "convites pendentes",
+                    )
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              href="/admin/usuarios"
+            />
+            <InsetListItem
+              icon={<ToggleRight />}
+              label="Flags"
+              description={
+                admin[1].changed === 0
+                  ? "Todas no padrão"
+                  : plural(admin[1].changed, "flag ajustada", "flags ajustadas")
+              }
+              href="/admin/flags"
+            />
+            <InsetListItem
+              icon={<History />}
+              label="Atividade"
+              description="Quem fez o quê na administração"
+              href="/admin/atividade"
+            />
+          </InsetList>
+        </section>
+      ) : null}
 
       <section aria-labelledby="ajustes-sobre">
         <SectionHeader id="ajustes-sobre" title="Sobre" />

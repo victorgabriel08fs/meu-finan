@@ -26,15 +26,22 @@
     {
       "idx": 3,
       "version": "7",
-      "when": 1792279943325,
-      "tag": "0003_tema_e_dicas",
+      "when": 1792280748473,
+      "tag": "0003_admin_tema_e_dicas",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
-      "when": 1792279951053,
+      "when": 1792280750033,
       "tag": "0004_theme_dark_existing_rows",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792280751688,
+      "tag": "0005_first_account_admin",
       "breakpoints": true
     }
   ]

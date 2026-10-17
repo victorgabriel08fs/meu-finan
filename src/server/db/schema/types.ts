@@ -111,3 +111,23 @@ export type JobStepReport = {
 
 /** job_runs.report */
 export type JobRunReport = { durationMs: number; steps: JobStepReport[] };
+
+/**
+ * audit_log.metadata: the details of an action that the sentence in
+ * Administração › Atividade needs. Never a token, a password, a session or
+ * financial data.
+ */
+export type AuditMetadata = {
+  /** The account's role after user.created / user.role_changed. */
+  role?: "admin" | "user";
+  /** access_link.*: invite (first password) or reset. */
+  purpose?: "invite" | "reset";
+  /** access_link.accepted (reset): the person also removed their passkeys. */
+  removedPasskeys?: boolean;
+  /** user.sessions_revoked, user.banned: how many sessions ended. */
+  sessions?: number;
+  /** flag.*: the registry key. */
+  flag?: string;
+  /** flag.*: on, off, or null for back to the default. */
+  value?: boolean | null;
+};

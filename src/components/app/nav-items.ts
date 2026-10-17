@@ -4,6 +4,7 @@ import {
   type LucideIcon,
   ReceiptText,
   Settings,
+  ShieldUser,
   Target,
 } from "lucide-react";
 
@@ -40,6 +41,14 @@ export const SETTINGS_NAV: NavItem = {
   match: "/ajustes",
   label: "Ajustes",
   icon: Settings,
+};
+
+/** Administrators only: from Ajustes on phones, in the sidebar on desktop. */
+export const ADMIN_NAV: NavItem = {
+  href: "/admin/usuarios",
+  match: "/admin",
+  label: "Administração",
+  icon: ShieldUser,
 };
 
 export function isNavActive(pathname: string | null, match: string): boolean {

@@ -1,13 +1,20 @@
-// Better Auth for a single owner (doc 01 §11). There is no public sign-up: the
-// only way to create the user is the one-time setup at /primeiro-acesso, and the
-// two layers below enforce it even if someone calls the auth API directly.
+// Better Auth (doc 01 §11). There is no public sign-up: the only way to create
+// an account through Better Auth is the one-time setup at /primeiro-acesso,
+// which creates the first account (an administrator), and the two layers below
+// enforce it even if someone calls the auth API directly. Every other account
+// is created by an administrator in the panel (src/server/domain/users.ts),
+// outside Better Auth, and gets an invite link instead of a password.
 import "server-only";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { admin } from "better-auth/plugins/admin";
+import { defaultAc } from "better-auth/plugins/admin/access";
 import { count } from "drizzle-orm";
+import { ADMIN_ROLE } from "@/lib/admin/roles";
+import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { readServerEnv } from "@/server/env";
@@ -38,8 +45,38 @@ function authSecret(): string | undefined {
 
 const signUpClosed = () =>
   new APIError("FORBIDDEN", {
-    message: "Cadastro desativado: este app tem um único dono.",
+    message: "Cadastro desativado: contas novas só por convite.",
   });
+
+/**
+ * Better Auth's admin plugin supplies the role and ban columns, the default
+ * role of new accounts and, above all, refuses to create a session for a
+ * deactivated account (password and passkey sign-in alike). An administrator
+ * manages accounts, never another person's money: the roles below leave out
+ * impersonation and setting someone's password or e-mail.
+ */
+const adminPlugin = admin({
+  roles: {
+    admin: defaultAc.newRole({
+      user: ["create", "list", "set-role", "ban", "delete", "get"],
+      session: ["list", "revoke", "delete"],
+    }),
+    user: defaultAc.newRole({ user: [], session: [] }),
+  },
+  defaultRole: "user",
+  adminRoles: [ADMIN_ROLE],
+  bannedUserMessage: DEACTIVATED_MESSAGE,
+});
+
+/**
+ * The plugin's own HTTP endpoints (/api/auth/admin/*) stay off: the panel's
+ * Server Actions are the only door, because they check the guards (nobody
+ * demotes, deactivates or deletes themself or the last administrator) and
+ * write the audit trail in the same transaction as the change.
+ */
+const ADMIN_HTTP_PATHS = Object.values(adminPlugin.endpoints).map(
+  (endpoint) => endpoint.path,
+);
 
 const url = appUrl();
 
@@ -59,6 +96,7 @@ export const auth = betterAuth({
       rateLimit: schema.rateLimit,
     },
   }),
+  disabledPaths: ADMIN_HTTP_PATHS,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -70,8 +108,9 @@ export const auth = betterAuth({
     updateAge: DAY,
     // Operations such as changing the password need a sign-in from the last day.
     freshAge: DAY,
-    // No cookie cache: every request checks the session row, so revoking a
-    // session takes effect immediately (one indexed query for a single user).
+    // No cookie cache: every request checks the session row (and the role and
+    // ban on the user row), so revoking a session, deactivating an account or
+    // removing an administrator takes effect on the next request.
     cookieCache: { enabled: false },
   },
   rateLimit: {
@@ -105,13 +144,17 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        // Layer 2, for every path that could create a user: it must be the
-        // owner's e-mail. With user.email unique, that also means at most one
-        // user ever. No queries here: this runs inside the sign-up transaction.
+        // Layer 2, for every path that could create a user through Better
+        // Auth (only sign-up is enabled): it must be the owner's e-mail, and
+        // that first account is the administrator. With layer 1 this means
+        // OWNER_EMAIL only ever applies to the first account. No queries
+        // here: this runs inside the sign-up transaction. Runs after the admin
+        // plugin's hook, so the role set here wins over its default.
         before: async (user) => {
           if (!isOwnerEmail(user.email, readServerEnv("OWNER_EMAIL"))) {
             throw signUpClosed();
           }
+          return { data: { role: ADMIN_ROLE } };
         },
       },
     },
@@ -122,6 +165,7 @@ export const auth = betterAuth({
       rpName: "Meu Finan",
       origin: url.origin,
     }),
+    adminPlugin,
     // Must stay last: sets cookies from Server Actions.
     nextCookies(),
   ],

@@ -11,3 +11,6 @@ export class DomainError extends Error {
 
 export const notFound = (what: string) =>
   new DomainError(`${what} não encontrado(a).`);
+
+/** Refusal for anyone who is not an active administrator (Administração). */
+export const NOT_ALLOWED = "Você não tem permissão para fazer isso.";

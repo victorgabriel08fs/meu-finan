@@ -381,10 +381,11 @@ export const viewport: Viewport = {
 | Tab **Relatórios** | `/relatorios/visao-geral` · `categorias` · `fluxo` · `patrimonio` · `calendario` | abas roláveis |
 | Pelo avatar / Início | `/contas` · `/contas/[id]` · `/cartoes/[id]` · `/cartoes/[id]/faturas/[yyyy-mm]` | contas e cartões |
 | Pelo avatar | `/ajustes/*` · `/importar` | perfil e preferências |
-| Onboarding | `/onboarding` | 4 passos, logo depois do primeiro acesso |
-| Sem sessão | `/entrar` · `/primeiro-acesso` · `/recuperar` | login · configuração única do acesso do dono · recuperação de emergência (§6.1) |
+| Administradores (Ajustes; barra lateral no desktop) | `/admin/usuarios` · `/admin/flags` · `/admin/atividade` | contas e convites · feature flags · auditoria (§6.17) |
+| Onboarding | `/onboarding` | 4 passos, logo depois do primeiro acesso ou do convite |
+| Sem sessão | `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
 
-O app tem um único usuário, o dono: não há landing pública nem "Criar conta". `/` leva ao Início, e todas as rotas fora das três acima exigem sessão, verificada no servidor (doc 01 §11).
+Não há landing pública nem "Criar conta": a primeira conta é a do dono, que administra, e as outras chegam por convite (doc 01 §11). `/` leva ao Início, e todas as rotas fora das quatro acima exigem sessão, verificada no servidor; as de Administração exigem também o papel de administrador, e quem não o tem vê a página 404.
 
 Filtros e período vivem na URL (`?mes=2026-10&conta=…&categoria=…`) com **nuqs**: o botão voltar desfaz filtros e links podem ser compartilhados.
 
@@ -609,7 +610,7 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 
 ### 6.1 Entrar, primeiro acesso e recuperação
 
-O app tem um único usuário, o dono: **não existe "Criar conta"**. Estas são as únicas telas sem sessão (doc 01 §11). Layout mínimo: logo pequeno, título `title-1` e um card centrado, sem tab bar. Erros sempre genéricos — nunca revelar se um e-mail existe nem qual campo estava errado. Colar e gerenciadores de senha sempre permitidos (WCAG 2.2, critério 3.3.8).
+**Não existe "Criar conta"**: a primeira conta é a do dono e as outras chegam por convite. Estas são as únicas telas sem sessão (doc 01 §11). Layout mínimo: logo pequeno, título `title-1` e um card centrado, sem tab bar. Erros sempre genéricos — nunca revelar se um e-mail existe nem qual campo estava errado. Colar e gerenciadores de senha sempre permitidos (WCAG 2.2, critério 3.3.8).
 
 **Entrar** (`/entrar`)
 
@@ -631,6 +632,16 @@ O app tem um único usuário, o dono: **não existe "Criar conta"**. Estas são 
 - Existe só enquanto o `RECOVERY_TOKEN` está configurado na Vercel (doc 01 §11.4); sem ele, 404.
 - Campos: e-mail, código de recuperação, nova senha (12+ caracteres) e o switch "Remover também as passkeys" (desligado; apoio: "Use se perdeu um aparelho.").
 - Botão primário "Redefinir acesso". Sucesso: "Acesso redefinido. Todas as sessões foram encerradas." + botão "Entrar", com o lembrete em `--warning-soft`: "Agora remova o código de recuperação da Vercel."
+- Vale para a conta do dono (`OWNER_EMAIL`), que volta a ser administradora.
+
+**Convite e link de redefinição** (`/convite/[token]`)
+
+- Link de uso único gerado por um administrador (§6.17), válido por 72 h. Token desconhecido ou adulterado: 404, sem dizer por quê.
+- **Convite**: "Olá, Bruno" + "Você recebeu um convite para o Meu Finan. Crie uma senha para entrar: suas finanças ficam só na sua conta." E-mail só leitura (oferecido ao gerenciador de senhas), senha e confirmação (12+ caracteres, indicador com ✓) e "Criar senha e entrar" → entra na hora e segue para o onboarding (§6.2). Embaixo, com relógio: "O link vale até ter, 20/out, 14:32 e funciona uma única vez."
+- **Redefinição**: "Redefinir acesso" + "Bruno, defina uma nova senha. As sessões abertas da sua conta serão encerradas.", com "Remover todas as passkeys" como em `/recuperar`; "Redefinir e entrar" leva a Ajustes › Segurança, com o aviso para cadastrar uma passkey.
+- **Link que não serve mais**, com ícone num círculo `--surface-2`: "Este link expirou" (72 h; "Peça um novo a quem administra o app."), "Este link já foi usado" (botão "Entrar") ou "Este link não funciona mais" (trocado por um mais novo ou cancelado).
+- **Aparelho já conectado** a outra conta: "Este aparelho está conectado à conta …" + "Sair e continuar" — nunca troca de conta sem a pessoa perceber.
+- Muitas visitas do mesmo endereço: "Muitas tentativas" + "Espere alguns minutos e abra o link de novo."
 
 ### 6.2 Onboarding (4 passos, < 1 minuto)
 
@@ -975,7 +986,8 @@ Listas agrupadas (raio 16, linhas de 52 px):
 - **Preferências**: tema (Escuro · Claro · Sistema; escuro por padrão, salvo na conta e aplicado em todos os aparelhos), início do mês financeiro, abrir em modo discreto, regime dos relatórios; dicas de uso ("Mostrar dicas nas telas" e "Rever dicas", §6.16). No índice de Ajustes, as linhas "Aparência", "Mês financeiro" e "Dicas de uso" mostram o valor atual à direita.
 - **Organização**: categorias (editar, mesclar, reordenar), tags, contas e cartões.
 - **Notificações**: contas a vencer (com antecedência), fatura fechando, orçamento 80%/100%, metas, resumo semanal por e-mail (fase posterior); horário silencioso.
-- **Dados**: importar, exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
+- **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
+- **Administração** (só administradores, antes de Sobre): Usuários ("3 contas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada") e Atividade — §6.17.
 - **Sobre**: versão, "Instalar app".
 
 ### 6.15 Notificações (central)
@@ -1013,6 +1025,48 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 - **Novidades** (Ajustes › Novidades): lista por data, com selo "Nova" até a visita, que as marca como lidas. Não lidas mostram um ponto `--primary` no avatar do Início e em Ajustes na barra lateral (nunca `--danger`: não é alerta) e a contagem na linha de Ajustes.
 - **Preferências**: "Mostrar dicas nas telas" liga e desliga os balões; "Rever dicas" mostra de novo os primeiros passos, a partir do Início (novidades continuam lidas).
 - **Registro e estado**: as dicas ficam em `src/lib/tips/registry.ts` (id estável, rotas, âncora `data-tip`, textos, data, ordem, condição); o que cada pessoa viu fica na tabela `user_tips` (doc 01 §6.3) e acompanha a conta em qualquer aparelho.
+
+### 6.17 Administração (`/admin`)
+
+Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida das contas, dos convites e das flags, e nunca vê as finanças de outra pessoa."
+
+**Usuários**
+
+```
+3 contas · 1 convite pendente
+┌──────────────────────────────────────┐
+│ ＋  Convidar pessoa                    │  primary, largura total no celular
+└──────────────────────────────────────┘
+CONTAS
+┌──────────────────────────────────────┐
+│ (AN) Ana (você) [Admin]            › │
+│      demo@meu-finan.local            │
+│      [Ativo] acesso agora · criada em 17/set/25
+├──────────────────────────────────────┤
+│ (CM) Carla Mendes                  › │
+│      carla@meu-finan.local           │
+│      [Convite pendente] vale até seg, 19/out, 14:32
+└──────────────────────────────────────┘
+```
+
+- Status com selo e palavra, nunca só cor: **Ativo** (`primary`), **Convite pendente** (`transfer`), **Convite expirado** (`warning`), **Desativado** (`neutral`, avatar apagado). Papel: selo "Admin" com escudo.
+- Toque abre a conta numa **sheet** (sobre a lista): nome, e-mail, selos, e um quadro com conta criada, último acesso ("há 2 dias · Android · Chrome"), sessões abertas, como entra ("Senha e 2 passkeys") e o link aberto ("Vale até…" + "Invalidar").
+- **Ações** (linhas com ícone, título e uma linha explicando o efeito): Gerar novo convite / Gerar link de redefinição · Encerrar sessões · Tornar administrador / Remover administrador · Desativar acesso / Reativar acesso. Desativar e mudar o papel executam na hora com toast + "Desfazer"; uma ação que não se aplica fica apagada **com o motivo** ("Reative a conta antes de gerar um link.").
+- **Zona de perigo**: "Excluir conta" leva à confirmação "Excluir a conta de Bruno?", que explica o que some (contas, cartões, lançamentos, metas, orçamentos, importações) e libera o botão `destructive` só quando o e-mail digitado confere.
+- Na própria conta, as ações dão lugar a "Esta é a sua conta…" + "Abrir Segurança".
+- **Convidar pessoa** (sheet): Nome, E-mail ("É com ele que a pessoa vai entrar."), Papel (segmented Usuário · Administrador, com a explicação de cada um) e "Criar convite". A sheet vira **"Convite pronto"**: o link inteiro (quebrado em linhas, selecionável), "Copiar link" (primary), "Compartilhar" (só onde existe `navigator.share`), "Concluir" e o aviso "Por segurança, o link não aparece de novo…". O mesmo vale para "Link de redefinição pronto".
+
+**Flags**
+
+- Um card por flag do registro: rótulo (`headline`), chave em mono, selo do valor efetivo para todos (Ligado/Desligado), descrição, padrão, área e data; **Para todos**: segmented Padrão · Ligado · Desligado, com a explicação ("Segue o padrão do código: ligado."); **Exceções por pessoa**: as pessoas com valor próprio e "Ajustar", que abre uma sheet com cada conta e o mesmo segmented.
+- A mudança aparece na hora (otimista) com toast "Importar extrato desligado para todos." + "Desfazer"; vale na próxima tela que cada pessoa abrir.
+
+**Atividade**
+
+- A auditoria, da mais nova para a mais antiga, um card por dia sob o `DayHeader` do extrato ("Hoje · sáb, 17 out"). Cada linha: ícone num círculo (`--danger-soft` só para exclusão), frase ("Você desativou Bruno Lima", "Carla aceitou o convite", "Ana desligou Importar extrato para todos"), detalhe em `caption` e a hora.
+- "Ver ações mais antigas" pagina; vazio: "Nenhuma ação ainda".
+
+**Estados**: skeletons com a forma de cada tela; erros das ações em toast com a mensagem do servidor ("É preciso manter pelo menos um administrador ativo.").
 
 ---
 

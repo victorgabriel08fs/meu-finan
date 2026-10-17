@@ -55,10 +55,13 @@ export function SecurityPanel({
   passkeys,
   sessions,
   firstAccess,
+  accessReset = false,
 }: {
   passkeys: PasskeyItem[];
   sessions: SessionItem[];
   firstAccess: boolean;
+  /** Arrived from a reset link (/convite): the new password is set. */
+  accessReset?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -83,6 +86,18 @@ export function SecurityPanel({
           Acesso criado. Agora cadastre uma passkey para entrar com Face ID,
           digital ou o PIN do aparelho — é mais rápido e mais seguro que a
           senha.
+        </output>
+      ) : null}
+
+      {accessReset ? (
+        <output
+          aria-live="polite"
+          className="rounded-card bg-primary-soft px-5 py-4 text-[15px] text-on-primary-soft leading-[22px]"
+        >
+          Acesso redefinido e sessões antigas encerradas.{" "}
+          {passkeys.length === 0
+            ? "Cadastre uma passkey neste aparelho para entrar sem digitar a senha."
+            : "Confira abaixo as passkeys que continuam valendo."}
         </output>
       ) : null}
 

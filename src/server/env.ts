@@ -68,3 +68,12 @@ export function requireServerEnv(key: ServerEnvKey): string {
   if (value === undefined) throw new EnvError(key, "is not set");
   return value;
 }
+
+/**
+ * The app's public origin (BETTER_AUTH_URL), e.g. "https://app.exemplo.com":
+ * links sent to people (invites) must point at the domain the passkeys use.
+ */
+export function appOrigin(): string {
+  return new URL(readServerEnv("BETTER_AUTH_URL") ?? "http://localhost:3000")
+    .origin;
+}

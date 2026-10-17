@@ -17,8 +17,17 @@ import {
   reviewImport,
   undoImport,
 } from "@/server/domain/imports";
-import { ActionError, authAction } from "@/server/safe-action";
+import { ActionError, flaggedAction } from "@/server/safe-action";
 import { idSchema, isoDate } from "./schemas";
+
+/**
+ * Every step of "Importar extrato" sits behind the importar_extrato flag
+ * (doc 01 §11.10): with it off, the server refuses even if the UI is stale.
+ */
+const importAction = flaggedAction(
+  "importar_extrato",
+  "A importação de extratos está desativada no momento.",
+);
 
 const column = z.number().int().min(0).max(199);
 
@@ -71,7 +80,7 @@ function parseOptions(text: string | null): StatementOptions {
  * returns either the CSV columns to confirm or the rows to review, compared
  * with the ledger. Read-only.
  */
-export const analyzeImportAction = authAction
+export const analyzeImportAction = importAction
   .inputSchema(z.instanceof(FormData, { error: "Envio inválido." }))
   .action(async ({ parsedInput: form, ctx: { user } }) => {
     const fields = analyzeFields.safeParse({
@@ -140,7 +149,7 @@ const confirmRow = z.object({
 });
 
 /** Step 4: imports the rows kept in the review, re-validated one by one. */
-export const confirmImportAction = authAction
+export const confirmImportAction = importAction
   .inputSchema(
     z.object({
       accountId: idSchema,
@@ -165,7 +174,7 @@ export const confirmImportAction = authAction
   });
 
 /** "Desfazer importação" (24 h). */
-export const undoImportAction = authAction
+export const undoImportAction = importAction
   .inputSchema(z.object({ importId: idSchema }))
   .action(async ({ parsedInput: { importId }, ctx: { user } }) => {
     const result = await undoImport(await getUserContext(user.id), importId);

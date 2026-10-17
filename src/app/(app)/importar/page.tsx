@@ -1,6 +1,7 @@
 import { Landmark } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
@@ -14,6 +15,7 @@ import { listAccounts } from "@/server/domain/accounts";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { listRecentImports } from "@/server/domain/imports";
+import { isFlagEnabled } from "@/server/flags";
 
 export const metadata: Metadata = { title: "Importar extrato" };
 
@@ -42,6 +44,8 @@ async function ImportScreen({
   searchParams: PageProps<"/importar">["searchParams"];
 }) {
   const user = await requireUser();
+  // Behind the importar_extrato flag (doc 01 §11.10); the actions check it too.
+  if (!(await isFlagEnabled("importar_extrato", user.id))) notFound();
   const ctx = await getUserContext(user.id);
   const [accounts, categories, recent, params] = await Promise.all([
     listAccounts(user.id),

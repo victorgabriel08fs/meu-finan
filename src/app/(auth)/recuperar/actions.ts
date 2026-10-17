@@ -1,12 +1,10 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/server/auth";
-import { db } from "@/server/db/client";
-import { account, passkey, session, user } from "@/server/db/schema";
+import { recoverOwnerAccess } from "@/server/domain/recovery";
 import { readServerEnv } from "@/server/env";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress, secretMatches } from "@/server/security/guards";
@@ -28,8 +26,10 @@ const recoverSchema = z
   });
 
 /**
- * Break-glass recovery (doc 01 §11.4): only while RECOVERY_TOKEN is set. Sets a
- * new password, ends every session and optionally removes all passkeys.
+ * Break-glass recovery (doc 01 §11.4): only while RECOVERY_TOKEN is set. For
+ * the owner's account (OWNER_EMAIL, or the oldest administrator): sets a new
+ * password, ends every session, optionally removes all passkeys and restores
+ * the account as an active administrator.
  */
 export const recoverAccess = actionClient
   .inputSchema(recoverSchema)
@@ -50,44 +50,17 @@ export const recoverAccess = actionClient
       throw new ActionError("Código de recuperação inválido.");
     }
 
-    const [owner] = await db.select({ id: user.id }).from(user).limit(1);
-    if (!owner) {
+    const context = await auth.$context;
+    const recovered = await recoverOwnerAccess({
+      ownerEmail: readServerEnv("OWNER_EMAIL"),
+      passwordHash: await context.password.hash(input.password),
+      removePasskeys: input.removePasskeys,
+    });
+    if (!recovered) {
       throw new ActionError(
         "Ainda não há acesso configurado. Use o primeiro acesso.",
       );
     }
-
-    const context = await auth.$context;
-    const hash = await context.password.hash(input.password);
-    const now = new Date();
-
-    await db.transaction(async (tx) => {
-      const updated = await tx
-        .update(account)
-        .set({ password: hash, updatedAt: now })
-        .where(
-          and(
-            eq(account.userId, owner.id),
-            eq(account.providerId, "credential"),
-          ),
-        )
-        .returning({ id: account.id });
-      if (updated.length === 0) {
-        await tx.insert(account).values({
-          id: crypto.randomUUID(),
-          accountId: owner.id,
-          providerId: "credential",
-          userId: owner.id,
-          password: hash,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-      await tx.delete(session).where(eq(session.userId, owner.id));
-      if (input.removePasskeys) {
-        await tx.delete(passkey).where(eq(passkey.userId, owner.id));
-      }
-    });
 
     console.warn("[auth] acesso recuperado com RECOVERY_TOKEN", {
       removedPasskeys: input.removePasskeys,

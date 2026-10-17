@@ -1,34 +1,41 @@
+import { Compass } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/brand-mark";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Página não encontrada" };
 
 /**
- * 404 of the whole app (doc 02 §8), on the app's tokens, so it follows the
- * chosen theme: the framework's page follows only the system scheme (white
- * or black) and speaks English. Gives no reason on purpose — closed pages
- * such as /primeiro-acesso land here too (doc 01 §11).
+ * 404 in pt-BR (doc 02 §8): unmatched URLs, notFound() and the areas a person
+ * cannot see (Administração for a regular account, a feature behind a flag
+ * that is off, an invalid invite link). It never says which one it was. Shows
+ * on its own or inside the app shell, so it is not a <main> of its own.
  */
 export default function NotFound() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-bg px-6 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] text-center">
-      <BrandMark className="size-12" />
-      <p className="mt-8 text-overline text-fg-3 uppercase">Erro 404</p>
-      <h1 className="mt-2 text-title-1 text-balance text-fg">
-        Página não encontrada
-      </h1>
-      <p className="mt-3 max-w-sm text-body text-pretty text-fg-2">
-        O endereço pode estar incompleto ou a página não existe mais.
-      </p>
-      <Link
-        href="/inicio"
-        className={cn(buttonVariants({ size: "lg" }), "mt-8 min-w-56")}
-      >
-        Ir para o Início
-      </Link>
-    </main>
+    // Inside the app shell, <main> already has the side gutter.
+    <div className="flex min-h-[80dvh] flex-col items-center px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 in-[main]:px-0 sm:justify-center">
+      <div className="flex w-full max-w-[400px] flex-col">
+        <div className="mb-10 flex items-center gap-3">
+          <BrandMark />
+          <span className="font-bold text-[17px] text-fg">Meu Finan</span>
+        </div>
+        <span
+          aria-hidden="true"
+          className="flex size-14 items-center justify-center rounded-full bg-surface-2 text-fg-2 [&_svg]:size-7"
+        >
+          <Compass strokeWidth={1.75} />
+        </span>
+        <h1 className="mt-5 text-title-1 text-fg">Página não encontrada</h1>
+        <p className="mt-2 text-body text-fg-2">
+          O endereço pode estar incompleto, ou esta página não está disponível
+          para a sua conta.
+        </p>
+        <Button asChild size="lg" className="mt-8 w-full">
+          <Link href="/inicio">Ir para o Início</Link>
+        </Button>
+      </div>
+    </div>
   );
 }

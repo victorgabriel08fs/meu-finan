@@ -1,8 +1,11 @@
-// Better Auth tables (better-auth 1.7 + @better-auth/passkey + database rate-limit
-// storage). Generated with `npx auth@1.7.10 generate` against the config in
+// Better Auth tables (better-auth 1.7 + @better-auth/passkey + the admin plugin
+// + database rate-limit storage). Generated with `npx auth@1.7.10 generate
+// --adapter drizzle --dialect postgresql` against the plugins and options of
 // src/server/auth.ts and kept verbatim except for `withTimezone` timestamps,
-// which match the rest of the schema. Regenerate after upgrading Better Auth or
-// adding plugins, then run `npm run db:generate`.
+// which match the rest of the schema. The CLI cannot load src/server/auth.ts
+// itself (server-only, database client): point --config at a temporary file
+// with the same plugins. Regenerate after upgrading Better Auth or adding
+// plugins, then run `npm run db:generate`.
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -27,6 +30,10 @@ export const user = pgTable("user", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
+  role: text("role"),
+  banned: boolean("banned").default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires", tz),
 });
 
 export const session = pgTable(
@@ -44,6 +51,7 @@ export const session = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    impersonatedBy: text("impersonated_by"),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );

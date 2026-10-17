@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
 import { authClient } from "@/lib/auth-client";
 
 type Pending = "passkey" | "password" | null;
@@ -17,6 +18,8 @@ function messageFor(
   if (error.status === 429) {
     return "Muitas tentativas. Espere um minuto e tente de novo.";
   }
+  // Only reached with the right password or passkey: it reveals nothing.
+  if (error.code === "BANNED_USER") return DEACTIVATED_MESSAGE;
   return "E-mail ou senha incorretos.";
 }
 
@@ -70,9 +73,11 @@ export function LoginForm({
     try {
       const result = await authClient.signIn.passkey();
       if (result?.error) {
+        const { status } = result.error;
+        const code = "code" in result.error ? result.error.code : undefined;
         setError(
-          result.error.status === 429
-            ? messageFor(result.error)
+          status === 429 || code === "BANNED_USER"
+            ? messageFor({ status, code })
             : "Não foi possível entrar com a passkey. Tente de novo ou use a senha.",
         );
         return;

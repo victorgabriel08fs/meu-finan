@@ -64,6 +64,7 @@ async function SecurityContent({
       passkeys={passkeyItems}
       sessions={sessionItems}
       firstAccess={params.primeiro === "1"}
+      accessReset={params.redefinido === "1"}
     />
   );
 }
