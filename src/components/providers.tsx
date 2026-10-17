@@ -3,19 +3,27 @@
 import { MotionConfig } from "motion/react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { type CSSProperties, type ReactNode, useEffect } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import { Toaster } from "sonner";
+import { DEFAULT_THEME, THEME_COLORS, THEME_STORAGE_KEY } from "@/lib/theme";
 import { usePrivacyStore } from "@/stores/privacy";
 
 /**
- * App-wide client providers: theme (next-themes on <html data-theme>), URL
- * state (nuqs), motion that honours prefers-reduced-motion, and the toaster.
+ * App-wide client providers: theme (next-themes on <html data-theme>, dark
+ * by default; see src/lib/theme.ts), URL state (nuqs), motion that honours
+ * prefers-reduced-motion, and the toaster.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider
       attribute="data-theme"
-      defaultTheme="system"
+      storageKey={THEME_STORAGE_KEY}
+      defaultTheme={DEFAULT_THEME}
       enableSystem
       disableTransitionOnChange
     >
@@ -23,7 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <MotionConfig reducedMotion="user">
           {children}
           <AppToaster />
-          <ThemeColorSync />
+          <ThemeMetaSync />
           <PrivacyRehydrate />
         </MotionConfig>
       </NuqsAdapter>
@@ -73,32 +81,39 @@ function AppToaster() {
   );
 }
 
-const THEME_COLORS = { light: "#F4F5F7", dark: "#0B0D10" } as const;
-
 /**
- * <meta name="theme-color"> follows the system scheme by default (viewport in
- * the root layout); when the user picks Claro or Escuro, both tags follow the
- * choice so the browser and PWA status bars match the app.
+ * <meta name="theme-color"> and <meta name="color-scheme"> start dark (root
+ * layout viewport) and THEME_META_SCRIPT points them at the saved theme before
+ * the first paint; from then on they follow every change — including
+ * "Sistema" when the device switches — so the browser and status bars of the
+ * installed app always match the page. Next renders the viewport tags again,
+ * with the server's (default) values, on hydration, navigations and
+ * refreshes: an observer puts the theme's values back before the next paint.
  */
-function ThemeColorSync() {
-  const { theme, resolvedTheme } = useTheme();
+function ThemeMetaSync() {
+  const { resolvedTheme } = useTheme();
 
-  useEffect(() => {
-    const metas = document.querySelectorAll<HTMLMetaElement>(
-      'meta[name="theme-color"]',
-    );
-    for (const meta of metas) {
-      const scheme =
-        theme === "system" || !resolvedTheme
-          ? meta.media.includes("dark")
-            ? "dark"
-            : "light"
-          : resolvedTheme === "dark"
-            ? "dark"
-            : "light";
-      meta.content = THEME_COLORS[scheme];
-    }
-  }, [theme, resolvedTheme]);
+  useLayoutEffect(() => {
+    const scheme = resolvedTheme === "light" ? "light" : "dark";
+    const apply = () => {
+      for (const meta of document.querySelectorAll<HTMLMetaElement>(
+        'meta[name="theme-color"], meta[name="color-scheme"]',
+      )) {
+        const content =
+          meta.name === "theme-color" ? THEME_COLORS[scheme] : scheme;
+        if (meta.content !== content) meta.content = content;
+      }
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["content"],
+    });
+    return () => observer.disconnect();
+  }, [resolvedTheme]);
 
   return null;
 }

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL } from "./demo";
+import { EMAIL, PASSWORD } from "./demo";
 
 // Every test runs with the session saved by auth.setup.ts, except those in
 // "sem sessão".
@@ -45,6 +45,33 @@ async function expectLoaded(page: Page, label: string) {
   await expect(page.locator("h1:visible").first(), label).toBeVisible();
 }
 
+const THEME_NAMES = { dark: "Escuro", light: "Claro" } as const;
+type Theme = keyof typeof THEME_NAMES;
+
+/**
+ * Picks the theme in Ajustes › Preferências and waits until it is saved on
+ * the account (the Server Action's response), like a user would.
+ */
+async function chooseTheme(page: Page, theme: Theme) {
+  await page.goto("/ajustes/preferencias");
+  await expectLoaded(page, "/ajustes/preferencias");
+  // The desktop sidebar has its own switch: use the one on the page.
+  const option = page
+    .locator("#conteudo")
+    .getByRole("radio", { name: THEME_NAMES[theme] });
+  if ((await option.getAttribute("aria-checked")) !== "true") {
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().headers()["next-action"] !== undefined,
+    );
+    await option.click();
+    expect((await saved).ok()).toBe(true);
+  }
+  await expect(option).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+}
+
 test.describe("sem sessão", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -59,6 +86,26 @@ test.describe("sem sessão", () => {
     expect(response.status()).toBe(401);
   });
 
+  test("a primeira visita abre no escuro, mesmo com o sistema claro", async ({
+    page,
+  }) => {
+    // The server already renders dark: nothing to fix before the first paint.
+    const html = await (await page.request.get("/entrar")).text();
+    expect(html).toMatch(/<html[^>]*data-theme="dark"/);
+    expect(html).toContain('<meta name="color-scheme" content="dark"/>');
+
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/entrar");
+    await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    for (const meta of await page.locator('meta[name="theme-color"]').all()) {
+      await expect(meta).toHaveAttribute("content", "#0B0D10");
+    }
+    expect(
+      await page.evaluate(() => localStorage.getItem("meu-finan:tema")),
+    ).toBeNull();
+  });
+
   test("senha errada não entra", async ({ page }) => {
     await page.goto("/entrar");
     await page.getByLabel("E-mail").fill(EMAIL);
@@ -69,22 +116,90 @@ test.describe("sem sessão", () => {
   });
 });
 
-test("abre todas as telas sem erros", async ({ page }) => {
-  test.setTimeout(240_000);
+test("abre todas as telas sem erros, nos dois temas", async ({ page }) => {
+  test.setTimeout(480_000);
   const errors = collectErrors(page);
-  for (const path of SCREENS) {
-    const response = await page.goto(path);
-    expect(response?.status(), path).toBeLessThan(400);
-    await expectLoaded(page, path);
+  // Light first, so the account ends on the default (dark) for what follows.
+  for (const theme of ["light", "dark"] as const) {
+    await chooseTheme(page, theme);
+    for (const path of SCREENS) {
+      const response = await page.goto(path);
+      expect(response?.status(), path).toBeLessThan(400);
+      await expectLoaded(page, path);
+      await expect(page.locator("html"), path).toHaveAttribute(
+        "data-theme",
+        theme,
+      );
+    }
+    // Account and card details are reached from Contas.
+    for (const prefix of ["/contas/", "/cartoes/"]) {
+      await page.goto("/contas");
+      await expectLoaded(page, "/contas");
+      await page.locator(`a[href^="${prefix}"]`).first().click();
+      await expect(page).toHaveURL(new RegExp(prefix));
+      await expectLoaded(page, prefix);
+    }
   }
-  // Account and card details are reached from Contas.
-  for (const prefix of ["/contas/", "/cartoes/"]) {
-    await page.goto("/contas");
-    await expectLoaded(page, "/contas");
-    await page.locator(`a[href^="${prefix}"]`).first().click();
-    await expect(page).toHaveURL(new RegExp(prefix));
-    await expectLoaded(page, prefix);
-  }
+  expect(errors).toEqual([]);
+});
+
+test("o tema escolhido fica na conta: vale depois de recarregar e em outro aparelho", async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await chooseTheme(page, "light");
+  await page.reload();
+  await expectLoaded(page, "/ajustes/preferencias");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(
+    page.locator("#conteudo").getByRole("radio", { name: "Claro" }),
+  ).toHaveAttribute("aria-checked", "true");
+
+  // Ajustes shows the current value.
+  await page.goto("/ajustes");
+  await expectLoaded(page, "/ajustes");
+  await expect(page.getByRole("link", { name: /^Aparência/ })).toContainText(
+    "Claro",
+  );
+
+  // A new device starts dark and adopts the account's theme after signing in.
+  const device = await browser.newContext({
+    storageState: { cookies: [], origins: [] },
+  });
+  const other = await device.newPage();
+  const otherErrors = collectErrors(other);
+  await other.goto("/entrar");
+  await expect(other.locator("html")).toHaveAttribute("data-theme", "dark");
+  await other.getByLabel("E-mail").fill(EMAIL);
+  await other.getByLabel("Senha", { exact: true }).fill(PASSWORD);
+  await other.getByRole("button", { name: "Entrar com senha" }).click();
+  await expect(other).toHaveURL(/\/inicio/);
+  await expect(other.locator("html")).toHaveAttribute("data-theme", "light", {
+    timeout: 30_000,
+  });
+  await expectLoaded(other, "/inicio");
+
+  // The quick switch of the Início goes back to dark, on the account too.
+  const saved = other.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
+  await other.getByRole("button", { name: "Tema escuro" }).click();
+  await expect(other.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect((await saved).ok()).toBe(true);
+  await expect(
+    other.getByRole("button", { name: "Tema escuro" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await device.close();
+  expect(otherErrors).toEqual([]);
+
+  // The first device picks the change up on its next load.
+  await page.goto("/inicio");
+  await expectLoaded(page, "/inicio");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(errors).toEqual([]);
 });
 

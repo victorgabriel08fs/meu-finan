@@ -178,7 +178,7 @@ function CategorySheet({
                       color={category.color}
                       size="md"
                     />
-                    <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word">
+                    <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word hyphens-auto">
                       {category.name}
                     </span>
                   </button>

@@ -30,7 +30,7 @@ export function Switch({
       <span
         aria-hidden="true"
         className={cn(
-          "size-7 rounded-full bg-surface shadow-thumb transition-transform duration-150 ease-standard",
+          "size-7 rounded-full bg-switch-thumb shadow-thumb transition-transform duration-150 ease-standard",
           checked && "translate-x-5",
         )}
       />

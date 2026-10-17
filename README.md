@@ -13,7 +13,8 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - **Planejar**: orçamentos por categoria (com sugestão pela média), metas com projeção e "Aportar", e o simulador de juros compostos com CDI, IPCA e IR regressivo.
 - **Relatórios**: visão geral, categorias, fluxo de caixa dia a dia, patrimônio e calendário de gastos.
 - **Dados**: importar extrato OFX/CSV (sem duplicar) e exportar os lançamentos em CSV.
-- **Ajustes**: passkeys, senha e sessões; tema e início do mês; categorias; onboarding em 4 passos.
+- **Tema escuro por padrão**, com Claro e Sistema: a escolha fica salva na conta e vale em todos os aparelhos (troca rápida no Início e na barra lateral).
+- **Ajustes**: passkeys, senha e sessões; aparência e início do mês; categorias; onboarding em 4 passos.
 
 ## Stack
 

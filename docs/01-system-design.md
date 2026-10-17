@@ -359,7 +359,7 @@ create table user_settings (
   locale               text     not null default 'pt-BR',
   timezone             text     not null default 'America/Sao_Paulo',
   month_start_day      smallint not null default 1 check (month_start_day between 1 and 28),
-  theme                text     not null default 'system' check (theme in ('system','light','dark')),
+  theme                text     not null default 'dark' check (theme in ('system','light','dark')),  -- escuro por padrão; salvo ao trocar o tema
   privacy_mode_default boolean  not null default false,
   report_basis         text     not null default 'accrual' check (report_basis in ('accrual','cash')),
   onboarding_done_at   timestamptz,

@@ -1,41 +1,66 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import type { ReactNode } from "react";
 import {
   SegmentedControl,
   type SegmentedOption,
 } from "@/components/ui/segmented-control";
+import {
+  isThemeChoice,
+  THEME_CHOICES,
+  THEME_LABELS,
+  type ThemeChoice,
+} from "@/lib/theme";
+import { useThemeChoice, useThemePreference } from "./theme-sync";
 
-const OPTIONS: SegmentedOption[] = [
-  { value: "system", label: "Sistema", icon: <Monitor aria-hidden="true" /> },
-  { value: "light", label: "Claro", icon: <Sun aria-hidden="true" /> },
-  { value: "dark", label: "Escuro", icon: <Moon aria-hidden="true" /> },
-];
+const ICONS: Record<ThemeChoice, ReactNode> = {
+  dark: <Moon aria-hidden="true" />,
+  light: <Sun aria-hidden="true" />,
+  system: <Monitor aria-hidden="true" />,
+};
 
-const subscribeNothing = () => () => {};
+const OPTIONS: SegmentedOption[] = THEME_CHOICES.map((choice) => ({
+  value: choice,
+  label: THEME_LABELS[choice],
+  icon: ICONS[choice],
+}));
 
 /**
- * Theme preference (doc 02 §6.14): Sistema · Claro · Escuro, saved by
- * next-themes on this device. The saved choice is only known in the browser,
- * so nothing is selected during SSR and hydration.
+ * Theme preference (doc 02 §6.14): Escuro · Claro · Sistema. Applies at once
+ * on this device and is saved on the account. The device's choice is only
+ * known in the browser, so nothing is selected during SSR and hydration.
+ * `compact` shows the icons only (desktop sidebar).
  */
-export function ThemeSwitcher({ className }: { className?: string }) {
-  const { theme, setTheme } = useTheme();
-  const hydrated = useSyncExternalStore(
-    subscribeNothing,
-    () => true,
-    () => false,
-  );
+export function ThemeSwitcher({
+  compact = false,
+  className,
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
+  const { theme, choose } = useThemePreference();
 
   return (
     <SegmentedControl
       ariaLabel="Tema"
       options={OPTIONS}
-      value={hydrated ? (theme ?? "system") : undefined}
-      onValueChange={setTheme}
+      value={theme}
+      onValueChange={(value) => {
+        if (isThemeChoice(value) && value !== theme) choose(value);
+      }}
+      iconOnly={compact}
       className={className}
     />
   );
+}
+
+/**
+ * Name of the device's theme ("Escuro"), for a row that shows the current
+ * value. Until hydration it shows `fallback`, the account's theme, which the
+ * device follows unless it was changed here.
+ */
+export function ThemeLabel({ fallback }: { fallback: ThemeChoice }) {
+  const { theme } = useThemeChoice();
+  return THEME_LABELS[theme ?? fallback];
 }

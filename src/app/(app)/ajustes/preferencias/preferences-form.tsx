@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarRange, Palette } from "lucide-react";
+import { CalendarRange, SunMoon } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -67,12 +67,15 @@ export function PreferencesForm({
               aria-hidden="true"
               className="flex size-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-5"
             >
-              <Palette />
+              <SunMoon />
             </span>
             <span className="text-body font-semibold text-fg">Tema</span>
           </span>
           <ThemeSwitcher />
-          <p className="text-caption text-fg-3">Vale para este aparelho.</p>
+          <p className="text-caption text-fg-3">
+            Fica salvo na sua conta e vale em todos os aparelhos. Em Sistema, o
+            app acompanha o tema de cada aparelho.
+          </p>
         </div>
       </section>
 

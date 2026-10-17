@@ -63,7 +63,7 @@ export const DEFAULT_CATEGORIES: readonly DefaultCategory[] = [
 
 /**
  * Creates the owner's user_settings (column defaults: BRL, pt-BR,
- * America/Sao_Paulo, month starting on day 1, system theme) and the default
+ * America/Sao_Paulo, month starting on day 1, dark theme) and the default
  * categories. Safe to call again: existing settings are kept, and categories
  * are only created while the owner has none, so later edits are never undone.
  */

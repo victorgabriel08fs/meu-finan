@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PrivacyToggle } from "@/components/app/privacy-toggle";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { firstName, initials } from "./labels";
 
@@ -37,7 +38,11 @@ type HomeHeaderProps = {
   dateLabel: string;
 };
 
-/** Top bar of the Início (doc 02 §4.2): avatar, greeting and date, privacy eye. */
+/**
+ * Top bar of the Início (doc 02 §4.2): avatar, greeting and date; on the
+ * right the theme toggle (below lg, where the sidebar has its own) and the
+ * privacy eye.
+ */
 export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
   return (
     <header className="flex min-h-14 items-center gap-3 pt-2">
@@ -54,7 +59,10 @@ export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
         </h1>
         <p className="truncate text-caption text-fg-3">{dateLabel}</p>
       </div>
-      <PrivacyToggle className="-mr-2" />
+      <div className="-mr-2 flex items-center">
+        <ThemeToggle className="lg:hidden" />
+        <PrivacyToggle />
+      </div>
     </header>
   );
 }

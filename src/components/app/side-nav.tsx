@@ -15,6 +15,7 @@ import {
   PRIMARY_NAV,
   SETTINGS_NAV,
 } from "./nav-items";
+import { ThemeSwitcher } from "./theme-switcher";
 
 const SELECTION_SPRING = {
   type: "spring",
@@ -29,9 +30,9 @@ type SideNavProps = {
 
 /**
  * Desktop sidebar (doc 02 §4.5): 248px from lg up, with labels, the
- * "Nova transação" button and the same areas as the tab bar plus Ajustes.
- * Reads the pathname, so render it inside <Suspense> with
- * <SideNavView pathname={null} /> as the fallback.
+ * "Nova transação" button and the same areas as the tab bar plus Ajustes;
+ * the theme switch sits at the foot. Reads the pathname, so render it inside
+ * <Suspense> with <SideNavView pathname={null} /> as the fallback.
  */
 export function SideNav({ addButton }: SideNavProps) {
   return <SideNavView pathname={usePathname()} addButton={addButton} />;
@@ -61,6 +62,12 @@ export function SideNavView({
           <SideNavLink item={SETTINGS_NAV} pathname={pathname} />
         </ul>
       </nav>
+      <div className="mt-2 flex h-11 items-center justify-between gap-3 pr-1 pl-3">
+        <span aria-hidden="true" className="text-callout text-fg-3">
+          Tema
+        </span>
+        <ThemeSwitcher compact />
+      </div>
     </aside>
   );
 }

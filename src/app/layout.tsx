@@ -1,6 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Providers } from "@/components/providers";
+import {
+  DEFAULT_THEME,
+  THEME_COLORS,
+  THEME_HEAD_SCRIPT,
+  THEME_META_SCRIPT,
+} from "@/lib/theme";
 import { PRIVACY_BOOT_SCRIPT } from "@/stores/privacy-boot";
 import "./globals.css";
 
@@ -29,20 +35,39 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F4F5F7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0B0D10" },
-  ],
+  // Dark by default (doc 02 §3.11): the canvas before the styles load and the
+  // status bar start dark; THEME_META_SCRIPT and ThemeMetaSync (in Providers)
+  // point both at the saved theme.
+  colorScheme: DEFAULT_THEME,
+  themeColor: THEME_COLORS[DEFAULT_THEME],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // next-themes and the privacy script set attributes on <html> before hydration.
-    <html lang="pt-BR" className={manrope.variable} suppressHydrationWarning>
+    // Rendered dark, the default, so a first visit (or a page whose scripts
+    // cannot read storage) is dark with no script at all. The theme scripts,
+    // next-themes and the privacy script set attributes on <html> before
+    // hydration.
+    <html
+      lang="pt-BR"
+      data-theme={DEFAULT_THEME}
+      className={manrope.variable}
+      suppressHydrationWarning
+    >
+      <head>
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: constant boot script, no user input
+          dangerouslySetInnerHTML={{ __html: THEME_HEAD_SCRIPT }}
+        />
+      </head>
       <body className="bg-bg font-sans text-fg antialiased">
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: constant boot script, no user input
           dangerouslySetInnerHTML={{ __html: PRIVACY_BOOT_SCRIPT }}
+        />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: constant boot script, no user input
+          dangerouslySetInnerHTML={{ __html: THEME_META_SCRIPT }}
         />
         <Providers>{children}</Providers>
       </body>
