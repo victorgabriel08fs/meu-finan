@@ -9,11 +9,12 @@ export const metadata: Metadata = { title: "Página não encontrada" };
 /**
  * 404 in pt-BR (doc 02 §8): unmatched URLs, notFound() and the areas a person
  * cannot see (Administração for a regular account, a feature behind a flag
- * that is off, an invalid invite link). It never says which one it was.
+ * that is off, an invalid invite link). It never says which one it was. Shows
+ * on its own or inside the app shell, so it is not a <main> of its own.
  */
 export default function NotFound() {
   return (
-    <main className="flex min-h-dvh flex-col items-center bg-bg px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 sm:justify-center">
+    <div className="flex min-h-[80dvh] flex-col items-center px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 sm:justify-center">
       <div className="flex w-full max-w-[400px] flex-col">
         <div className="mb-10 flex items-center gap-3">
           <BrandMark />
@@ -34,6 +35,6 @@ export default function NotFound() {
           <Link href="/inicio">Ir para o Início</Link>
         </Button>
       </div>
-    </main>
+    </div>
   );
 }

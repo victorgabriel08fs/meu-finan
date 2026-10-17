@@ -21,6 +21,10 @@ const SCREENS = [
   "/ajustes/preferencias",
   "/ajustes/categorias",
   "/ajustes/sobre",
+  // The demo account is the administrator.
+  "/admin/usuarios",
+  "/admin/flags",
+  "/admin/atividade",
 ];
 
 test.describe.configure({ mode: "serial" });

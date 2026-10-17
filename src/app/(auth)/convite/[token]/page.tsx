@@ -17,8 +17,8 @@ import { SignedInNotice } from "./signed-in-notice";
 
 export const metadata: Metadata = { title: "Convite" };
 
-// Blocking route: an unknown or forged link answers a real 404 before
-// anything renders, like /primeiro-acesso and /recuperar.
+// Blocking route, like /primeiro-acesso and /recuperar: the link is checked
+// before any of the page renders; an unknown or forged one gets the 404 page.
 export const instant = false;
 
 /**

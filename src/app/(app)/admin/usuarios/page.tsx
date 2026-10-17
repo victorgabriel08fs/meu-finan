@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { UsersManager } from "@/components/admin/users-manager";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
@@ -8,23 +7,22 @@ import { listUsersForAdmin } from "@/server/domain/users";
 
 export const metadata: Metadata = { title: "Usuários" };
 
-// Blocking route: anyone but an administrator gets a real 404 before
-// anything renders (requireAdmin at the top); the list then streams in.
-export const instant = false;
-
-export default async function UsuariosPage() {
-  await connection();
-  const admin = await requireAdmin();
+/**
+ * Administração › Usuários (doc 02 §6.16). The role is checked before any
+ * data is read: anyone but an administrator gets the 404 page.
+ */
+export default function UsuariosPage() {
   return (
     <Suspense fallback={<UsersSkeleton />}>
-      <Users adminId={admin.id} />
+      <Users />
     </Suspense>
   );
 }
 
-async function Users({ adminId }: { adminId: string }) {
+async function Users() {
+  const admin = await requireAdmin();
   const now = new Date();
-  const users = await listUsersForAdmin(adminId, now);
+  const users = await listUsersForAdmin(admin.id, now);
   return <UsersManager users={users} now={now.toISOString()} />;
 }
 

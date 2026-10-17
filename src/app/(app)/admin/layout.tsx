@@ -11,8 +11,9 @@ const SECTIONS = [
 
 /**
  * Administração (doc 02 §6.16): reached from Ajustes (and the sidebar on
- * desktop) by administrators only. No session read here: each page checks the
- * role at its top and answers a real 404 to anyone else before this renders.
+ * desktop) by administrators only. No session read here, so the title and
+ * the tabs prerender; each page checks the role inside its <Suspense> before
+ * reading anything, and anyone else gets the 404 page instead of the content.
  */
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (

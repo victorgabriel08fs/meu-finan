@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { FlagsManager } from "@/components/admin/flags-manager";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
@@ -9,12 +8,8 @@ import { listUserNames } from "@/server/domain/users";
 
 export const metadata: Metadata = { title: "Flags" };
 
-// Blocking route: a real 404 for anyone but an administrator.
-export const instant = false;
-
-export default async function FlagsPage() {
-  await connection();
-  await requireAdmin();
+/** Administração › Flags (doc 02 §6.16); 404 for anyone but an administrator. */
+export default function FlagsPage() {
   return (
     <Suspense fallback={<FlagsSkeleton />}>
       <Flags />
@@ -23,6 +18,7 @@ export default async function FlagsPage() {
 }
 
 async function Flags() {
+  await requireAdmin();
   const [flags, people] = await Promise.all([
     listFlagsForAdmin(),
     listUserNames(),

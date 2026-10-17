@@ -53,9 +53,9 @@ export async function getAdmin(): Promise<CurrentUser | null> {
 
 /**
  * For the pages of Administração: signed out goes to /entrar, and anyone who
- * is not an administrator gets a 404, with no hint that the area exists.
- * Call it at the top of a blocking page (`instant = false`), so the 404 is a
- * real status code sent before anything renders.
+ * is not an administrator gets the 404 page (notFound), before any data is
+ * read. Like requireUser, call it inside <Suspense>; once the response is
+ * streaming, the status stays 200 while the 404 page replaces the content.
  */
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireUser();
