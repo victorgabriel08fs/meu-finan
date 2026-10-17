@@ -41,3 +41,16 @@ export function accountStatus(
   }
   return "invite_expired";
 }
+
+/** An access link (invite or reset) as /convite sees it. */
+export type AccessLinkState = "valid" | "expired" | "used" | "revoked";
+
+export function accessLinkState(
+  link: { usedAt: Date | null; revokedAt: Date | null; expiresAt: Date },
+  now: Date,
+): AccessLinkState {
+  if (link.usedAt) return "used";
+  if (link.revokedAt) return "revoked";
+  if (link.expiresAt <= now) return "expired";
+  return "valid";
+}

@@ -5,7 +5,7 @@ import "server-only";
 import { createSafeActionClient } from "next-safe-action";
 import type { FlagKey } from "@/lib/flags/registry";
 import { getAdmin, requireUser } from "@/server/dal";
-import { DomainError } from "@/server/domain/errors";
+import { DomainError, NOT_ALLOWED } from "@/server/domain/errors";
 import { isFlagEnabled } from "@/server/flags";
 
 /** An error whose message is safe to show to the user (pt-BR). */
@@ -32,9 +32,6 @@ export const authAction = actionClient.use(async ({ next }) => {
   const user = await requireUser();
   return next({ ctx: { user } });
 });
-
-/** Shown when a non-administrator calls an action of Administração. */
-export const NOT_ALLOWED = "Você não tem permissão para fazer isso.";
 
 /**
  * Actions of Administração. The role is read again from the database on every

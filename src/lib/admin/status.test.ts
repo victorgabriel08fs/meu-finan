@@ -1,6 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { hasAdminRole, toUserRole } from "./roles";
-import { accountStatus } from "./status";
+import { accessLinkState, accountStatus } from "./status";
+
+describe("accessLinkState", () => {
+  const now = new Date("2026-10-17T12:00:00Z");
+  const link = {
+    usedAt: null,
+    revokedAt: null,
+    expiresAt: new Date("2026-10-20T12:00:00Z"),
+  };
+
+  it("is valid until it expires, is used or is revoked", () => {
+    expect(accessLinkState(link, now)).toBe("valid");
+    expect(accessLinkState({ ...link, expiresAt: now }, now)).toBe("expired");
+    expect(accessLinkState({ ...link, usedAt: now }, now)).toBe("used");
+    expect(accessLinkState({ ...link, revokedAt: now }, now)).toBe("revoked");
+    // Used wins: the person already got in with it.
+    expect(accessLinkState({ ...link, usedAt: now, expiresAt: now }, now)).toBe(
+      "used",
+    );
+  });
+});
 
 describe("roles", () => {
   it("recognises admin in a single role or a role list", () => {
