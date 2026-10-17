@@ -2,7 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 // End-to-end tests against the production build and the local demo database.
 // Run with `npm run test:e2e` (resets the demo data, builds, then tests).
-const PORT = 3100;
+// E2E_PORT lets several checkouts (git worktrees) run their suites at once.
+const PORT = Number(process.env.E2E_PORT) || 3100;
 
 export default defineConfig({
   testDir: "e2e",
