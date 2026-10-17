@@ -314,6 +314,7 @@ erDiagram
   USER ||--o{ SIMULATION : salva
   USER ||--o{ RECURRENCE : agenda
   USER ||--o{ IMPORT : envia
+  USER ||--o{ USER_TIP : "viu (dicas)"
   ACCOUNT ||--o| CREDIT_CARD_DETAILS : "se cartão"
   ACCOUNT ||--o| ACCOUNT_YIELD : "se investimento"
   ACCOUNT ||--o{ CARD_INVOICE : "fatura (cartão)"
@@ -607,6 +608,14 @@ create table notifications (
   read_at     timestamptz,
   created_at  timestamptz not null default now(),
   unique (user_id, dedupe_key)
+);
+
+create table user_tips (               -- dicas e novidades vistas (doc 02 §6.16)
+  user_id  text not null references "user"(id) on delete cascade,
+  tip_id   text not null check (char_length(tip_id) between 1 and 80),
+                                       -- id do registro em src/lib/tips; '*' = dicas desligadas
+  seen_at  timestamptz not null default now(),
+  primary key (user_id, tip_id)
 );
 
 create table job_runs (

@@ -63,7 +63,10 @@ export function BalanceHero({
 
       <div aria-hidden="true" className="mt-4 mb-3 h-px bg-border" />
 
-      <div className="flex items-center justify-between gap-3">
+      <div
+        data-tip="forecast"
+        className="flex items-center justify-between gap-3"
+      >
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="text-caption text-fg-3">
             Previsto para {untilLabel}

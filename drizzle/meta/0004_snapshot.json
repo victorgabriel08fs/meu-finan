@@ -1,6 +1,6 @@
 {
-  "id": "48d26a3d-1784-434d-a568-97a366c14d30",
-  "prevId": "72ff8c04-98c9-4d14-afb5-2d5efda6af64",
+  "id": "bb769f80-267a-4805-8f49-6267ff0f9f99",
+  "prevId": "f73aca44-a8b7-4eba-a8e9-a81e6be37dbc",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2271,6 +2271,65 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_tips": {
+      "name": "user_tips",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tip_id": {
+          "name": "tip_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seen_at": {
+          "name": "seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_tips_user_id_user_id_fk": {
+          "name": "user_tips_user_id_user_id_fk",
+          "tableFrom": "user_tips",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_tips_pkey": {
+          "name": "user_tips_pkey",
+          "columns": [
+            "user_id",
+            "tip_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "user_tips_tip_id_check": {
+          "name": "user_tips_tip_id_check",
+          "value": "char_length(\"user_tips\".\"tip_id\") between 1 and 80"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.transaction_tags": {

@@ -29,6 +29,7 @@ export function StatementSearch({ className }: { className?: string }) {
   return (
     <search
       data-pending={isPending ? "" : undefined}
+      data-tip="statement-search"
       className={cn("relative", className)}
     >
       <form

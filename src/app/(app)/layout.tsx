@@ -7,6 +7,7 @@ import {
   QuickAddFab,
   QuickAddSidebarButton,
 } from "@/components/quick-add/quick-add-trigger";
+import { TipsLoader } from "@/components/tips/tips-loader";
 
 /**
  * Signed-in shell (doc 02 §4.2, §4.5): sidebar from lg, tab bar below it.
@@ -18,6 +19,7 @@ import {
  * store, so they work from the first paint; the sheet itself streams in
  * through QuickAddLoader, which checks the session inside its own boundary.
  * ThemeAccount does the same for the account's theme (§6.14).
+ * Tips (§6.16) stream in the same way, through TipsLoader.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarButton = <QuickAddSidebarButton />;
@@ -51,6 +53,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <ThemeAccount />
+      </Suspense>
+      <Suspense fallback={null}>
+        <TipsLoader />
       </Suspense>
     </div>
   );

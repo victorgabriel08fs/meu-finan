@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { NewsDot } from "@/components/tips/news";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -59,7 +60,11 @@ export function SideNavView({
           ))}
         </ul>
         <ul className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
-          <SideNavLink item={SETTINGS_NAV} pathname={pathname} />
+          <SideNavLink
+            item={SETTINGS_NAV}
+            pathname={pathname}
+            trailing={<NewsDot className="static ring-0" />}
+          />
         </ul>
       </nav>
       <div className="mt-2 flex h-11 items-center justify-between gap-3 pr-1 pl-3">
@@ -75,9 +80,12 @@ export function SideNavView({
 function SideNavLink({
   item,
   pathname,
+  trailing,
 }: {
   item: NavItem;
   pathname: string | null;
+  /** At the right end of the row (e.g. the dot of unread novidades). */
+  trailing?: ReactNode;
 }) {
   const active = isNavActive(pathname, item.match);
   const Icon = item.icon;
@@ -106,6 +114,9 @@ function SideNavLink({
           strokeWidth={1.75}
         />
         <span className="relative">{item.label}</span>
+        {trailing ? (
+          <span className="relative ml-auto flex items-center">{trailing}</span>
+        ) : null}
       </Link>
     </li>
   );

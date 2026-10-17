@@ -41,6 +41,8 @@ type InsetListItemProps = {
   /** Makes the row a link with a chevron. */
   href?: string;
   className?: string;
+  /** Anchor of a tip balloon (doc 02 §6.16). */
+  "data-tip"?: string;
 };
 
 export function InsetListItem({
@@ -50,6 +52,7 @@ export function InsetListItem({
   trailing,
   href,
   className,
+  "data-tip": tip,
 }: InsetListItemProps) {
   const content = (
     <>
@@ -90,7 +93,7 @@ export function InsetListItem({
   );
 
   return (
-    <li>
+    <li data-tip={tip}>
       {href ? (
         <Link
           href={href}

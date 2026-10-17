@@ -3,6 +3,13 @@
 // can be explored right after `npm run demo`. Never runs against Neon.
 //
 //   npm run demo      → then npm run dev and sign in with the printed credentials
+//   npm run demo -- --sem-dicas
+//                     → the same, with the tip balloons off ("Não mostrar mais
+//                       dicas"): what the e2e suite runs, so balloons never
+//                       sit over the screens it drives
+//
+// Ana's account predates the history (and every novidade), so the demo shows
+// the first-access tips and the novidades alike.
 import { randomBytes } from "node:crypto";
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -18,8 +25,10 @@ import {
   iso,
   type LocalDate,
   monthEnd,
+  parse,
   toYearMonth,
 } from "../src/lib/finance";
+import { TIPS } from "../src/lib/tips";
 import {
   closeDatabase,
   db,
@@ -39,6 +48,7 @@ import { createAccount } from "../src/server/domain/accounts";
 import { upsertBudget } from "../src/server/domain/budgets";
 import { listInvoices, payInvoice } from "../src/server/domain/cards";
 import { getUserContext } from "../src/server/domain/context";
+import { setTipsOff } from "../src/server/domain/tips";
 import {
   createTransaction,
   createTransfer,
@@ -140,6 +150,18 @@ async function main(): Promise<void> {
     addMonths(toYearMonth(today), -12).month,
     1,
   );
+  // The account dates from the start of the history, or from before the
+  // first novidade if that is earlier: novidades reach only older accounts.
+  const firstNews = TIPS.filter((tip) => tip.kind === "novidade")
+    .map((tip) => iso(addDays(parse(tip.since), -1)))
+    .sort()[0];
+  const createdOn =
+    firstNews && firstNews < iso(start) ? firstNews : iso(start);
+  await db
+    .update(user)
+    .set({ createdAt: new Date(`${createdOn}T12:00:00-03:00`) })
+    .where(eq(user.id, userId));
+
   const checking = await createAccount(userId, {
     name: "Conta principal",
     type: "checking",
@@ -511,6 +533,10 @@ async function main(): Promise<void> {
   });
   await db.insert(marketRates).values(rates).onConflictDoNothing();
 
+  // Tips -----------------------------------------------------------------------
+  const tipsOff = process.argv.includes("--sem-dicas");
+  if (tipsOff) await setTipsOff(userId, true);
+
   await closeDatabase();
 
   console.log("");
@@ -518,6 +544,11 @@ async function main(): Promise<void> {
   console.log("  Endereço: http://localhost:3000");
   console.log(`  E-mail:   ${ownerEmail}`);
   console.log(`  Senha:    ${DEMO_PASSWORD}`);
+  console.log(
+    tipsOff
+      ? "  Dicas:    desligadas (religue em Ajustes › Preferências)"
+      : "  Dicas:    ligadas, como num primeiro acesso",
+  );
   if (created) console.log(`  (${ENV_FILE} criado com segredos locais novos)`);
   console.log("");
 }

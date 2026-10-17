@@ -133,14 +133,15 @@ export function CompoundSimulator({ market, today }: CompoundSimulatorProps) {
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[22.5rem_minmax(0,1fr)] lg:items-start lg:gap-x-6">
-      <ChoiceChips
-        label="O que você quer saber"
-        layout="grid"
-        options={MODES}
-        value={state.mode}
-        onChange={(mode) => update({ mode })}
-        className="lg:col-start-1 lg:row-start-1"
-      />
+      <div data-tip="simulator-modes" className="lg:col-start-1 lg:row-start-1">
+        <ChoiceChips
+          label="O que você quer saber"
+          layout="grid"
+          options={MODES}
+          value={state.mode}
+          onChange={(mode) => update({ mode })}
+        />
+      </div>
 
       <div className="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         {error && notice ? (

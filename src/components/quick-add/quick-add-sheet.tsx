@@ -167,7 +167,9 @@ export function QuickAddSheet({ data }: { data: QuickAddSheetData }) {
       if (!kind) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest(TEXT_FIELDS)) return;
-      if (document.querySelector("[role='dialog']")) return;
+      // A tip balloon is a dialog too, but N while it shows is the tip's point.
+      if (document.querySelector("[role='dialog']:not([data-coach-mark] *)"))
+        return;
       event.preventDefault();
       openQuickAdd(kind);
     }
