@@ -178,8 +178,8 @@ function DetailsContent({
       () =>
         toastWithUndo(
           role === "admin"
-            ? `${firstName} agora é administrador.`
-            : `${firstName} não é mais administrador.`,
+            ? `${firstName} agora tem acesso de administrador.`
+            : `${firstName} não tem mais acesso de administrador.`,
           undo(() => setUserRoleAction({ userId: user.id, role: user.role })),
         ),
     );
@@ -192,8 +192,8 @@ function DetailsContent({
       () =>
         toastWithUndo(
           banned
-            ? `${firstName} foi desativado e saiu de todos os aparelhos.`
-            : `${firstName} pode entrar de novo.`,
+            ? `Acesso de ${firstName} desativado, em todos os aparelhos.`
+            : `Acesso de ${firstName} reativado.`,
           undo(() =>
             setUserBannedAction({ userId: user.id, banned: user.banned }),
           ),

@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Página não encontrada" };
  */
 export default function NotFound() {
   return (
-    <div className="flex min-h-[80dvh] flex-col items-center px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 sm:justify-center">
+    // Inside the app shell, <main> already has the side gutter.
+    <div className="flex min-h-[80dvh] flex-col items-center px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 in-[main]:px-0 sm:justify-center">
       <div className="flex w-full max-w-[400px] flex-col">
         <div className="mb-10 flex items-center gap-3">
           <BrandMark />

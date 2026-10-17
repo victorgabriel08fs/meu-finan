@@ -28,9 +28,9 @@ export function SignedInNotice({ email }: { email: string }) {
   return (
     <div className="mt-8 flex flex-col gap-3">
       <p className="rounded-control bg-surface-2 px-4 py-3 text-callout text-fg-2">
-        Você está conectado como{" "}
+        Este aparelho está conectado à conta{" "}
         <span className="font-semibold break-all text-fg">{email}</span>. Para
-        usar este link, saia desta conta neste aparelho.
+        usar este link, saia dela primeiro.
       </p>
       <Button size="lg" className="w-full" loading={pending} onClick={signOut}>
         Sair e continuar

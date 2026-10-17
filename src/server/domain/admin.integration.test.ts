@@ -301,6 +301,9 @@ describe("deactivation", () => {
     await accept(token);
     await signIn("joao@exemplo.com");
     expect(await sessionsOf(id)).toBe(1);
+    const reset = tokenOf(
+      (await m.users.createAccessLink(ANA.id, id, LINKS)).url,
+    );
 
     const result = await m.users.setUserBanned(ANA.id, id, true);
     expect(result.sessions).toBe(1);
@@ -311,7 +314,9 @@ describe("deactivation", () => {
     const list = await m.users.listUsersForAdmin(ANA.id);
     expect(list.find((row) => row.id === id)?.status).toBe("deactivated");
 
-    // A link of a deactivated account does not work, and none can be made.
+    // The open link stops working, and no new one can be made.
+    expect((await m.links.inspectAccessLink(reset))?.state).toBe("revoked");
+    await expect(accept(reset)).rejects.toThrow(m.links.LINK_UNAVAILABLE);
     await expect(m.users.createAccessLink(ANA.id, id, LINKS)).rejects.toThrow(
       /Reative/,
     );

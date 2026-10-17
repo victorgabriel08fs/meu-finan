@@ -513,9 +513,9 @@ export async function revokeAccessLink(
 }
 
 /**
- * Desativar (banned) ends every session and blocks new sign-ins (the admin
- * plugin refuses to create a session); Reativar lets the person in again with
- * the same password and passkeys.
+ * Desativar (banned) ends every session, invalidates the open link and blocks
+ * new sign-ins (the admin plugin refuses to create a session); Reativar lets
+ * the person in again with the same password and passkeys.
  */
 export async function setUserBanned(
   actorId: string,
@@ -542,6 +542,16 @@ export async function setUserBanned(
           .where(eq(session.userId, target.id))
           .returning({ id: session.id })
       ).length;
+      await tx
+        .update(accessLinks)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(accessLinks.userId, target.id),
+            isNull(accessLinks.usedAt),
+            isNull(accessLinks.revokedAt),
+          ),
+        );
     }
     await recordAudit(tx, {
       action: banned ? "user.banned" : "user.unbanned",
