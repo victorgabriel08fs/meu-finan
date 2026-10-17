@@ -1,4 +1,5 @@
 import { type ReactNode, Suspense } from "react";
+import { AdminNavItem } from "@/components/admin/admin-nav-item";
 import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
 import { FlagsProvider } from "@/components/flags/flags-provider";
@@ -26,6 +27,12 @@ import { getViewerFlags } from "@/server/flags";
 export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarButton = <QuickAddSidebarButton />;
   const fab = <QuickAddFab />;
+  // "Administração" in the sidebar: the session decides, in its own boundary.
+  const adminItem = (
+    <Suspense fallback={null}>
+      <AdminNavItem />
+    </Suspense>
+  );
 
   return (
     <FlagsProvider flags={getViewerFlags()}>
@@ -37,9 +44,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           Pular para o conteúdo
         </a>
         <Suspense
-          fallback={<SideNavView pathname={null} addButton={sidebarButton} />}
+          fallback={
+            <SideNavView
+              pathname={null}
+              addButton={sidebarButton}
+              extraItem={adminItem}
+            />
+          }
         >
-          <SideNav addButton={sidebarButton} />
+          <SideNav addButton={sidebarButton} extraItem={adminItem} />
         </Suspense>
         <main
           id="conteudo"

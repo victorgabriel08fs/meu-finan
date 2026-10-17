@@ -67,6 +67,20 @@ export async function listFlagsForAdmin(): Promise<FlagAdminItem[]> {
   }));
 }
 
+/** For the Administração entry in Ajustes: flags away from their default. */
+export async function flagsOverview(): Promise<{
+  flags: number;
+  changed: number;
+}> {
+  const items = await listFlagsForAdmin();
+  return {
+    flags: items.length,
+    changed: items.filter(
+      (item) => item.global !== null || item.overrides.length > 0,
+    ).length,
+  };
+}
+
 async function lockAdmin(tx: Transaction, actorId: string) {
   const [actor] = await tx
     .select({

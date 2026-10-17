@@ -111,12 +111,16 @@ async function main(): Promise<void> {
 
   // Owner (as /primeiro-acesso would create it: the administrator) -----------
   const userId = randomBytes(16).toString("hex");
+  // The account dates from the start of the history (13 months ago).
+  const since = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
   await db.insert(user).values({
     id: userId,
     name: "Ana",
     email: ownerEmail,
     emailVerified: true,
     role: "admin",
+    createdAt: since,
+    updatedAt: since,
   });
   await db.insert(account).values({
     id: randomBytes(16).toString("hex"),

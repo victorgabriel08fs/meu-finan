@@ -10,6 +10,7 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  ADMIN_NAV,
   isNavActive,
   type NavItem,
   PRIMARY_NAV,
@@ -25,6 +26,11 @@ const SELECTION_SPRING = {
 type SideNavProps = {
   /** Replaces the "Nova transação" placeholder once quick-add exists. */
   addButton?: ReactNode;
+  /**
+   * Extra item above Ajustes (Administração), decided on the server: an
+   * <AdminSideNavLink> inside its own <Suspense>, or nothing.
+   */
+  extraItem?: ReactNode;
 };
 
 /**
@@ -33,13 +39,28 @@ type SideNavProps = {
  * Reads the pathname, so render it inside <Suspense> with
  * <SideNavView pathname={null} /> as the fallback.
  */
-export function SideNav({ addButton }: SideNavProps) {
-  return <SideNavView pathname={usePathname()} addButton={addButton} />;
+export function SideNav({ addButton, extraItem }: SideNavProps) {
+  return (
+    <SideNavView
+      pathname={usePathname()}
+      addButton={addButton}
+      extraItem={extraItem}
+    />
+  );
+}
+
+/**
+ * "Administração" for the sidebar's extra slot: reads the pathname itself, so
+ * a Server Component can render it (in <Suspense>) for administrators only.
+ */
+export function AdminSideNavLink() {
+  return <SideNavLink item={ADMIN_NAV} pathname={usePathname()} />;
 }
 
 export function SideNavView({
   pathname,
   addButton,
+  extraItem,
 }: SideNavProps & { pathname: string | null }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col border-r border-border bg-surface px-3 pt-6 pb-4 lg:flex">
@@ -58,6 +79,7 @@ export function SideNavView({
           ))}
         </ul>
         <ul className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
+          {extraItem}
           <SideNavLink item={SETTINGS_NAV} pathname={pathname} />
         </ul>
       </nav>

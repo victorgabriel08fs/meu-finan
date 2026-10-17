@@ -177,6 +177,30 @@ export async function listUsersForAdmin(
     .sort(byName);
 }
 
+/** Counts for the Administração entry in Ajustes. */
+export async function usersOverview(
+  now = new Date(),
+): Promise<{ accounts: number; pendingInvites: number }> {
+  const [[accounts], [invites]] = await Promise.all([
+    db.select({ total: count() }).from(user),
+    db
+      .select({ total: count() })
+      .from(accessLinks)
+      .where(
+        and(
+          eq(accessLinks.purpose, "invite"),
+          isNull(accessLinks.usedAt),
+          isNull(accessLinks.revokedAt),
+          gt(accessLinks.expiresAt, now),
+        ),
+      ),
+  ]);
+  return {
+    accounts: accounts?.total ?? 0,
+    pendingInvites: invites?.total ?? 0,
+  };
+}
+
 const collator = new Intl.Collator("pt-BR", { sensitivity: "base" });
 const byName = (a: AdminUserItem, b: AdminUserItem) =>
   collator.compare(a.name, b.name) || collator.compare(a.email, b.email);

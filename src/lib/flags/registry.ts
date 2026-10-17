@@ -29,7 +29,7 @@ export const FLAGS = {
   importar_extrato: {
     label: "Importar extrato",
     description:
-      "Importar arquivos OFX e CSV do banco em Ajustes › Dados. Desligada, a entrada some e a importação é recusada no servidor.",
+      "Importar arquivos OFX e CSV do banco em Ajustes › Dados. Quando desligado, a entrada some e o servidor recusa a importação.",
     defaultValue: true,
     owner: "Dados",
     since: "2026-10-17",
