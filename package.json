@@ -21,7 +21,7 @@
     "predev": "tsx scripts/db-local.ts migrate",
     "db:local": "tsx scripts/db-local.ts",
     "demo": "tsx scripts/demo.ts",
-    "test:e2e": "npm run demo && next build && playwright test"
+    "test:e2e": "npm run demo -- --sem-dicas && next build && playwright test"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.8",
