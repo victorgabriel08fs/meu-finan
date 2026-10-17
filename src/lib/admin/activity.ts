@@ -103,6 +103,14 @@ export function describeActivity(
         };
       }
       return { kind: "accepted", title: `${target} aceitou o convite` };
+    case "access.recovered":
+      return {
+        kind: "accepted",
+        title: `${target} recuperou o acesso com o código de emergência`,
+        detail: meta.removedPasskeys
+          ? "Senha nova, sessões encerradas e passkeys removidas"
+          : "Senha nova e sessões encerradas",
+      };
     case "user.banned":
       return {
         kind: "ban",

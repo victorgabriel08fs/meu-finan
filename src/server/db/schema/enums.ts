@@ -88,6 +88,7 @@ export const AUDIT_ACTIONS = [
   "access_link.created",
   "access_link.revoked",
   "access_link.accepted",
+  "access.recovered",
   "flag.global_set",
   "flag.user_set",
 ] as const;

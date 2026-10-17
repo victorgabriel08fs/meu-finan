@@ -797,3 +797,55 @@ describe("deleting an account", () => {
     await expect(signIn("rui@exemplo.com")).rejects.toThrow();
   });
 });
+
+describe("break-glass recovery", () => {
+  it("is for the owner's account and gives the administration back", async () => {
+    const { id: paula, token } = await invite(
+      "Paula",
+      "paula@exemplo.com",
+      "admin",
+    );
+    await accept(token);
+    // Another administrator takes Ana's role and access away.
+    await m.users.setUserRole(paula, ANA.id, "user");
+    await m.users.setUserBanned(paula, ANA.id, true);
+    await expect(signIn(ANA.email)).rejects.toMatchObject({
+      body: { code: "BANNED_USER" },
+    });
+
+    const recovery = await import("./recovery");
+    // OWNER_EMAIL first, never whichever account comes first.
+    expect((await recovery.recoveryTarget(ANA.email))?.id).toBe(ANA.id);
+    // Without OWNER_EMAIL: the oldest administrator (Ana is not one now).
+    const [oldestAdmin] = await m.db
+      .select({ id: m.schema.user.id })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.role, "admin"))
+      .orderBy(m.schema.user.createdAt, m.schema.user.id)
+      .limit(1);
+    expect(oldestAdmin?.id).not.toBe(ANA.id);
+    expect((await recovery.recoveryTarget(undefined))?.id).toBe(
+      oldestAdmin?.id,
+    );
+    expect(paula).toBeTruthy();
+    const recovered = await recovery.recoverOwnerAccess({
+      ownerEmail: ANA.email,
+      passwordHash: await hashPassword("a senha de emergência"),
+      removePasskeys: false,
+    });
+    expect(recovered?.id).toBe(ANA.id);
+    const [row] = await m.db
+      .select({ role: m.schema.user.role, banned: m.schema.user.banned })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.id, ANA.id));
+    expect(row).toEqual({ role: "admin", banned: false });
+    expect(
+      (await signIn(ANA.email, "a senha de emergência")).token,
+    ).toBeTruthy();
+    const { items } = await m.audit.listAuditLog({ limit: 1 });
+    expect(items[0]).toMatchObject({
+      action: "access.recovered",
+      actorId: ANA.id,
+    });
+  });
+});

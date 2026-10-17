@@ -123,6 +123,22 @@ describe("describeActivity", () => {
     );
   });
 
+  it("describes the break-glass recovery", () => {
+    expect(
+      line({
+        action: "access.recovered",
+        actorId: "ana",
+        actorName: "Ana",
+        targetName: "Ana",
+        metadata: { removedPasskeys: false },
+      }),
+    ).toEqual({
+      kind: "accepted",
+      title: "Ana recuperou o acesso com o código de emergência",
+      detail: "Senha nova e sessões encerradas",
+    });
+  });
+
   it("describes the first access", () => {
     expect(
       line({ action: "setup.completed", targetName: null }, "ana"),

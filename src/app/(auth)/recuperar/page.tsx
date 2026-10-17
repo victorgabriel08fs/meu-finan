@@ -19,8 +19,9 @@ export default async function RecoverPage() {
         Recuperar acesso
       </h1>
       <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
-        Defina uma nova senha com o código de recuperação. Todas as sessões
-        abertas serão encerradas.
+        Defina uma nova senha para a conta do dono do app (a do OWNER_EMAIL) com
+        o código de recuperação. Todas as sessões abertas serão encerradas, e a
+        conta volta a ser administradora.
       </p>
       <p
         role="note"
