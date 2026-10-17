@@ -10,10 +10,16 @@ import { type EntryKind, useQuickAddStore } from "@/stores/quick-add";
  * they work from the first paint, before the sheet's data has streamed in.
  */
 
-/** The "+" of the tab bar (doc 02 §4.2). */
+/** The "+" of the tab bar (doc 02 §4.2). Anchor of the quick-add tip. */
 export function QuickAddFab() {
   const openQuickAdd = useQuickAddStore((state) => state.openQuickAdd);
-  return <AddFab aria-haspopup="dialog" onClick={() => openQuickAdd()} />;
+  return (
+    <AddFab
+      aria-haspopup="dialog"
+      data-tip="quick-add"
+      onClick={() => openQuickAdd()}
+    />
+  );
 }
 
 /** "Nova transação" at the top of the desktop sidebar (§4.5). */
@@ -23,6 +29,7 @@ export function QuickAddSidebarButton() {
     <Button
       className="w-full"
       aria-haspopup="dialog"
+      data-tip="quick-add"
       onClick={() => openQuickAdd()}
     >
       <Plus aria-hidden="true" />

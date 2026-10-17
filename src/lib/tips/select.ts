@@ -140,7 +140,7 @@ export function selectTips(
 export type NewsItem = { tip: Tip; unread: boolean };
 
 /**
- * Ajustes › Novidades e dicas: every novidade whose condition holds, newest
+ * Ajustes › Novidades: every novidade whose condition holds, newest
  * first, flagged unread when the account predates it and it was not seen. A
  * newer account still finds the list as the app's history, all read.
  */

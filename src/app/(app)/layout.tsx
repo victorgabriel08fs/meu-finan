@@ -6,6 +6,7 @@ import {
   QuickAddFab,
   QuickAddSidebarButton,
 } from "@/components/quick-add/quick-add-trigger";
+import { TipsLoader } from "@/components/tips/tips-loader";
 
 /**
  * Signed-in shell (doc 02 §4.2, §4.5): sidebar from lg, tab bar below it.
@@ -16,6 +17,7 @@ import {
  * Quick add ("Nova transação", §6.5): the "+" triggers only flip a client
  * store, so they work from the first paint; the sheet itself streams in
  * through QuickAddLoader, which checks the session inside its own boundary.
+ * Tips (§6.16) stream in the same way, through TipsLoader.
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarButton = <QuickAddSidebarButton />;
@@ -46,6 +48,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <QuickAddLoader />
+      </Suspense>
+      <Suspense fallback={null}>
+        <TipsLoader />
       </Suspense>
     </div>
   );

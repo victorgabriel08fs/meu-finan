@@ -9,7 +9,7 @@ import type { Tip } from "./types";
  * 2. Add an entry below with a new, stable `id` and today's date as `since`.
  *    A `novidade` reaches only accounts created before `since`; give it an
  *    `icon` and, when there is a place to go, a `link`. Without `routes` and
- *    `anchor` it lives only in Ajustes › Novidades e dicas.
+ *    `anchor` it lives only in Ajustes › Novidades.
  * 3. Keep a screen at three tips at most, and write like doc 02 §10: "você",
  *    short sentences, no jargon.
  *
@@ -86,7 +86,7 @@ export const TIPS: readonly Tip[] = [
     routes: ["/planejar/simulador"],
     anchor: "simulator-modes",
     title: "Pergunte do seu jeito",
-    body: "Escolha a pergunta — quanto vai ter, quanto investir por mês ou em quanto tempo chega lá — e ajuste os valores.",
+    body: "Quanto vai ter, quanto investir por mês ou em quanto tempo chega lá: escolha a pergunta e ajuste os valores.",
     since: "2026-10-17",
     order: 2,
   },
@@ -106,16 +106,6 @@ export const TIPS: readonly Tip[] = [
 
   // Ajustes -------------------------------------------------------------------
   {
-    id: "ajustes-novidades",
-    kind: "primeiros-passos",
-    routes: ["/ajustes"],
-    anchor: "news",
-    title: "Novidades e dicas",
-    body: "Tudo o que chega ao app aparece aqui, com data. Também dá para rever estas dicas ou desligá-las.",
-    since: "2026-10-17",
-    order: 1,
-  },
-  {
     id: "ajustes-passkey",
     kind: "primeiros-passos",
     routes: ["/ajustes"],
@@ -123,8 +113,18 @@ export const TIPS: readonly Tip[] = [
     title: "Entre sem senha",
     body: "Em Segurança, cadastre uma passkey para entrar com a digital, o rosto ou o PIN do aparelho.",
     since: "2026-10-17",
-    order: 2,
+    order: 1,
     when: { hasPasskey: false },
+  },
+  {
+    id: "ajustes-dicas",
+    kind: "primeiros-passos",
+    routes: ["/ajustes"],
+    anchor: "preferences",
+    title: "Dicas do seu jeito",
+    body: "Em Preferências você desliga estas dicas ou vê todas de novo, além de escolher o tema e o dia em que o mês começa.",
+    since: "2026-10-17",
+    order: 2,
   },
 
   // Novidades de 16/out/2026 --------------------------------------------------
@@ -148,7 +148,7 @@ export const TIPS: readonly Tip[] = [
     title: "Três relatórios novos",
     body: "Fluxo mostra o saldo dia a dia até o fim do mês; Patrimônio, como ele evolui; e o Calendário, em que dias você gasta mais.",
     since: "2026-10-16",
-    order: 10,
+    order: 11,
     when: { hasAccounts: true },
     replaces: ["relatorios-abas"],
     icon: "chart",
@@ -162,7 +162,7 @@ export const TIPS: readonly Tip[] = [
     title: "Importe o extrato do banco",
     body: "Traga os lançamentos de um arquivo OFX ou CSV, sem duplicar o que já existe. E, se precisar, exporte tudo em CSV.",
     since: "2026-10-16",
-    order: 10,
+    order: 12,
     icon: "file-up",
     link: { href: "/importar", label: "Importar extrato" },
   },
@@ -174,7 +174,7 @@ export const TIPS: readonly Tip[] = [
     title: "Atalhos no ícone do app",
     body: "Com o app instalado, toque e segure o ícone dele para abrir direto uma nova despesa, uma nova receita ou o extrato.",
     since: "2026-10-16",
-    order: 10,
+    order: 13,
     icon: "smartphone",
   },
 ];

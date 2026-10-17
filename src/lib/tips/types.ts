@@ -14,7 +14,7 @@ export type TipKind = "primeiros-passos" | "novidade";
 /** Roles of the signed-in user (filled in once the app has roles). */
 export type TipRole = "admin" | "user";
 
-/** Icon of a novidade in Ajustes › Novidades e dicas (mapped to Lucide there). */
+/** Icon of a novidade in Ajustes › Novidades (mapped to Lucide there). */
 export type TipIcon =
   | "target"
   | "chart"
@@ -63,7 +63,7 @@ export type Tip = {
   /**
    * Screens where it shows, as path patterns: "/inicio", "/planejar/metas/:id"
    * (one segment), "/relatorios/*" (anything below). Empty: only listed in
-   * Ajustes › Novidades e dicas.
+   * Ajustes › Novidades.
    */
   routes: readonly string[];
   /**
@@ -90,9 +90,9 @@ export type Tip = {
   replaces?: readonly string[];
   /** Sides to try first; defaults to below, above, right, left. */
   placement?: readonly TipSide[];
-  /** novidade: icon in Ajustes › Novidades e dicas. */
+  /** novidade: icon in Ajustes › Novidades. */
   icon?: TipIcon;
-  /** novidade: link in Ajustes › Novidades e dicas ("Ver relatórios"). */
+  /** novidade: link in Ajustes › Novidades ("Ver relatórios"). */
   link?: { href: string; label: string };
 };
 

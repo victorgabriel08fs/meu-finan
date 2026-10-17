@@ -125,10 +125,12 @@ export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
                 </Button>
               }
             />
-            {goals.map((goal) => (
+            {goals.map((goal, index) => (
               <GoalCard
                 key={goal.id}
                 goal={goal}
+                // The first card is where the "detalhe da meta" novidade points.
+                tip={index === 0 ? "goal-card" : undefined}
                 onEdit={(suggestedMonthlyCents) =>
                   sheet.show({ goal, suggestedMonthlyCents })
                 }
@@ -170,9 +172,12 @@ export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
  */
 function GoalCard({
   goal,
+  tip,
   onEdit,
 }: {
   goal: GoalCardData;
+  /** `data-tip` anchor for a tip balloon. */
+  tip?: string;
   onEdit: (suggestedMonthlyCents?: number | null) => void;
 }) {
   const deadline = deadlineMonth(goal.targetDate);
@@ -189,6 +194,7 @@ function GoalCard({
   return (
     <Card
       asChild
+      data-tip={tip}
       className="relative flex flex-col gap-3 transition-colors duration-100 has-[a:active]:bg-surface-2"
     >
       <article aria-labelledby={titleId}>

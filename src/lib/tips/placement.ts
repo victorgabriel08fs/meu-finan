@@ -70,10 +70,21 @@ function room(input: PlacementInput, side: TipSide): number {
   return Math.min(along - needed, across);
 }
 
+/**
+ * The point of the anchor's edge the arrow aims at: its middle, or, on an
+ * anchor much longer than the balloon (a full-width row or field), the middle
+ * of its first balloon-length, where its label and icon sit.
+ */
+function focus(start: number, length: number, bubbleLength: number): number {
+  return length > 1.5 * bubbleLength
+    ? start + bubbleLength / 2
+    : start + length / 2;
+}
+
 function place(input: PlacementInput, side: TipSide, fits: boolean): Placement {
   const { anchor: a, bubble, bounds: b, gap, margin, arrowInset } = input;
   if (isVertical(side)) {
-    const centre = a.left + a.width / 2;
+    const centre = focus(a.left, a.width, bubble.width);
     const left = clamp(
       centre - bubble.width / 2,
       b.left + margin,
@@ -96,7 +107,7 @@ function place(input: PlacementInput, side: TipSide, fits: boolean): Placement {
       fits,
     };
   }
-  const centre = a.top + a.height / 2;
+  const centre = focus(a.top, a.height, bubble.height);
   const top = clamp(
     centre - bubble.height / 2,
     b.top + margin,
@@ -122,9 +133,10 @@ function place(input: PlacementInput, side: TipSide, fits: boolean): Placement {
 
 /**
  * The first preferred side with room for the whole balloon, centred on the
- * anchor and slid along the edge to stay inside the bounds; the arrow keeps
- * pointing at the anchor's centre. Sides left out of `sides` are tried after
- * it. With no room anywhere, the side with the most room, kept on screen.
+ * anchor (on the start of a very long one) and slid along the edge to stay
+ * inside the bounds; the arrow keeps pointing at that spot. Sides left out of
+ * `sides` are tried after them. With no room anywhere, the side with the most
+ * room, kept on screen.
  */
 export function placeBubble(input: PlacementInput): Placement {
   const preferred = input.sides ?? DEFAULT_SIDES;

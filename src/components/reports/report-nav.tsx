@@ -87,6 +87,7 @@ function ReportTabsView({
   return (
     <nav
       aria-label="Visões dos relatórios"
+      data-tip="report-tabs"
       className={cn("-mx-gutter border-b border-border md:mx-0", className)}
     >
       <ul
@@ -100,6 +101,8 @@ function ReportTabsView({
               <Link
                 href={hrefFor(view)}
                 aria-current={current ? "page" : undefined}
+                // Tips point at a tab: "report-tab-fluxo".
+                data-tip={`report-tab-${view.path.split("/").at(-1)}`}
                 className={cn(
                   "relative flex h-11 items-center px-3 text-callout font-semibold whitespace-nowrap focus-visible:-outline-offset-2",
                   "transition-colors duration-150 ease-standard",

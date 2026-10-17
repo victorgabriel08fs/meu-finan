@@ -18,6 +18,7 @@ export function PrivacyToggle({ className }: { className?: string }) {
       label="Ocultar valores"
       aria-pressed={hidden}
       onClick={toggle}
+      data-tip="privacy"
       className={className}
     >
       <Eye data-privacy-value="" />

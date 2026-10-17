@@ -68,6 +68,20 @@ describe("placeBubble", () => {
     expect(placement.top + placement.arrow).toBe(106);
   });
 
+  it("aims at the start of a very long anchor, where its label is", () => {
+    const desktop = { left: 0, top: 0, width: 1440, height: 900 };
+    // A full-width row of the desktop Ajustes.
+    const row = { left: 274, top: 260, width: 1140, height: 76 };
+    const placement = placeBubble(input(row, { bounds: desktop }));
+    expect(placement.side).toBe("bottom");
+    expect(placement.left).toBe(row.left);
+    expect(placement.left + placement.arrow).toBe(row.left + BUBBLE.width / 2);
+    // On a phone the same row is barely wider than the balloon: centred.
+    const phoneRow = { left: 14, top: 260, width: 384, height: 76 };
+    const onPhone = placeBubble(input(phoneRow));
+    expect(onPhone.left + onPhone.arrow).toBe(206);
+  });
+
   it("keeps the arrow off the rounded corners", () => {
     const edge = { left: 0, top: 100, width: 8, height: 30 };
     const placement = placeBubble(input(edge, { sides: ["bottom"] }));

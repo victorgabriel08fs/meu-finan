@@ -19,17 +19,19 @@ export default function PlanejarLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title="Planejar" />
-      <Suspense
-        fallback={
-          <SegmentedLinks
-            items={SECTIONS}
-            activeHref={null}
-            ariaLabel="Seções de Planejar"
-          />
-        }
-      >
-        <RouteTabs items={SECTIONS} ariaLabel="Seções de Planejar" />
-      </Suspense>
+      <div data-tip="planning-sections">
+        <Suspense
+          fallback={
+            <SegmentedLinks
+              items={SECTIONS}
+              activeHref={null}
+              ariaLabel="Seções de Planejar"
+            />
+          }
+        >
+          <RouteTabs items={SECTIONS} ariaLabel="Seções de Planejar" />
+        </Suspense>
+      </div>
       {children}
     </div>
   );
