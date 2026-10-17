@@ -55,6 +55,20 @@ export function currentResolvedTheme(): ResolvedTheme {
 }
 
 /**
+ * Runs a theme change with CSS transitions off, so every color switches in
+ * the same frame (as next-themes' disableTransitionOnChange does).
+ */
+function withoutTransitions(change: () => void) {
+  const style = document.createElement("style");
+  style.textContent = "*,*::before,*::after{transition:none!important}";
+  document.head.appendChild(style);
+  change();
+  // Forces the new styles before transitions come back.
+  window.getComputedStyle(document.body);
+  setTimeout(() => style.remove(), 1);
+}
+
+/**
  * Puts a choice on screen: the attribute at once, inside a short cross-fade
  * where the browser has view transitions and motion is welcome, then
  * next-themes' state and storage (its effect sets the same attribute).
@@ -62,9 +76,11 @@ export function currentResolvedTheme(): ResolvedTheme {
 function applyTheme(choice: ThemeChoice, setTheme: (theme: string) => void) {
   const resolved = resolveTheme(choice);
   const update = () => {
-    const root = document.documentElement;
-    root.dataset.theme = resolved;
-    root.style.colorScheme = resolved;
+    withoutTransitions(() => {
+      const root = document.documentElement;
+      root.dataset.theme = resolved;
+      root.style.colorScheme = resolved;
+    });
     setTheme(choice);
   };
   const animate =
