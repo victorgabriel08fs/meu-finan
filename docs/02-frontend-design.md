@@ -86,6 +86,11 @@ Todos os pares texto/fundo abaixo foram medidos (WCAG 2.x): texto ≥ 4,5:1, com
 | `--danger-fill` | `#D03B3B` | `#D03B3B` | barra estourada (3,6:1 no escuro) |
 | `--focus-ring` | `#0A7F58` | `#3DDC97` | anel de foco 2 px + 2 px de afastamento |
 | `--scrim` | `rgb(14 17 22 / .45)` | `rgb(0 0 0 / .60)` | atrás de sheets e diálogos |
+| `--thumb` | `= --surface` | `#323946` | polegar do segmented control: no escuro, mais claro que o trilho (`--surface-2`), para o item selecionado parecer elevado |
+| `--switch-thumb` | `#FFFFFF` | `#F2F4F7` | polegar do switch, quase branco nos dois temas |
+| `--autofill` | `--primary` 7% sobre `--surface` | `--primary` 9% sobre `--surface` | fundo de campo preenchido pelo navegador (no lugar do azul do Chrome) |
+
+O app abre **escuro por padrão** (§3.11): os valores da coluna "Escuro" são os da primeira visita em qualquer aparelho.
 
 ### 3.2 Cores de categoria
 
@@ -277,7 +282,9 @@ Coreografia:
 
 ### 3.11 Implementação (Tailwind CSS v4)
 
-O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.config.ts` (sem PostCSS). Tema controlado por `next-themes` (`attribute="data-theme"`, `enableSystem`), que resolve o tema antes da hidratação (sem flash).
+O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.config.ts` (sem PostCSS). Tema controlado por `next-themes` (`attribute="data-theme"`, `defaultTheme="dark"`, `enableSystem`, `storageKey="meu-finan:tema"`), que resolve o tema antes da hidratação (sem flash).
+
+**Escuro por padrão.** O `<html>` já sai do servidor com `data-theme="dark"` e o viewport declara `color-scheme: dark`, então a primeira visita (login, primeiro acesso, onboarding) é escura sem depender de script. A escolha (Escuro · Claro · Sistema) fica no aparelho (localStorage, aplicada pelo script do next-themes antes da primeira pintura) e **na conta** (`user_settings.theme`): um aparelho novo adota o tema da conta depois de entrar, e uma troca feita em outro aparelho chega no próximo carregamento. Constantes, chaves e o script de boot ficam em `src/lib/theme.ts`.
 
 ```css
 /* src/app/globals.css */
@@ -348,14 +355,12 @@ body { background: var(--bg); color: var(--text); }
 .tabular { font-variant-numeric: tabular-nums; }
 ```
 
-`<meta name="theme-color">` por esquema (barra do navegador e do PWA acompanham o tema):
+`<meta name="theme-color">` e `<meta name="color-scheme">` começam no padrão escuro; um script de boot (no `<body>`, antes do conteúdo) os aponta para o tema salvo e o `ThemeMetaSync` (em `Providers`) os mantém iguais ao tema em uso, inclusive quando o Next recria as metatags em navegações — assim a barra do navegador e a do PWA acompanham o tema:
 
 ```tsx
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#F4F5F7' },
-    { media: '(prefers-color-scheme: dark)', color: '#0B0D10' },
-  ],
+  colorScheme: 'dark',
+  themeColor: '#0B0D10',
   viewportFit: 'cover',
   interactiveWidget: 'resizes-content',
 };
@@ -412,7 +417,7 @@ Filtros e período vivem na URL (`?mes=2026-10&conta=…&categoria=…`) com **n
 
 **TopBar**
 
-- Início: avatar (iniciais sobre `--primary-soft`, 36 px), saudação `title-3` + data `caption`; à direita, botões de 44 px: modo discreto (`eye`/`eye-off`) e notificações (`bell` com ponto).
+- Início: avatar (iniciais sobre `--primary-soft`, 36 px), saudação `title-3` + data `caption`; à direita, botões de 44 px: tema (`moon`/`sun`, alterna escuro e claro; só abaixo de `lg`, onde não há sidebar), modo discreto (`eye`/`eye-off`) e notificações (`bell` com ponto).
 - Demais abas: **título grande** (`title-1`) que, após 40 px de rolagem, colapsa num título centralizado `headline` numa barra de 52 px com hairline.
 - Telas empilhadas: voltar (`chevron-left` + rótulo da tela anterior em telas largas), título, até 2 ações.
 
@@ -441,7 +446,7 @@ Sheets: alça de 36 × 4 px no topo, cabeçalho com título `title-2` e botão f
 
 | Elemento | Celular | Tablet (`md`) | Desktop (`lg`+) |
 |---|---|---|---|
-| Navegação | tab bar inferior | nav rail 80 px à esquerda, "+" no topo do rail | sidebar 248 px com rótulos e botão "Nova transação" |
+| Navegação | tab bar inferior | nav rail 80 px à esquerda, "+" no topo do rail | sidebar 248 px com rótulos, botão "Nova transação" e, no rodapé, o tema (segmented só de ícones) |
 | Início | 1 coluna | 2 colunas (herói ocupa 2) | 3 colunas: [herói + tiles] [orçamento + próximas contas] [contas + metas] |
 | Extrato | lista | lista + filtros em barra | lista à esquerda, detalhe fixo à direita (master–detail) |
 | Sheets | inferior | diálogo centrado 560 px | diálogo; detalhe em painel lateral |
@@ -966,7 +971,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
 
 - **Perfil**: nome, e-mail, foto.
 - **Segurança**: passkeys (listar com nome e data, criar neste aparelho, renomear, remover), senha (trocar), sessões ativas (aparelho e último uso; encerrar uma ou todas as outras), verificação em 2 etapas (selo "Em breve" até a F1). Ações sensíveis — mexer em passkeys ou senha, encerrar sessões, exportar ou apagar dados — pedem para entrar de novo quando a sessão não é recente.
-- **Preferências**: tema (Sistema · Claro · Escuro), início do mês financeiro, abrir em modo discreto, regime dos relatórios.
+- **Preferências**: tema (Escuro · Claro · Sistema; escuro por padrão, salvo na conta e aplicado em todos os aparelhos), início do mês financeiro, abrir em modo discreto, regime dos relatórios. No índice de Ajustes, as linhas "Aparência" e "Mês financeiro" mostram o valor atual à direita.
 - **Organização**: categorias (editar, mesclar, reordenar), tags, contas e cartões.
 - **Notificações**: contas a vencer (com antecedência), fatura fechando, orçamento 80%/100%, metas, resumo semanal por e-mail (fase posterior); horário silencioso.
 - **Dados**: importar, exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
@@ -1180,8 +1185,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#F4F5F7',
-    theme_color: '#F4F5F7',
+    background_color: '#0B0D10', // splash e barra de status no padrão escuro
+    theme_color: '#0B0D10',
     icons: [
       { src: '/icons/192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/512.png', sizes: '512x512', type: 'image/png' },
