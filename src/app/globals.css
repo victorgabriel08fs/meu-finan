@@ -46,8 +46,13 @@
   --toast-fg: var(--surface);
   --toast-action: #3ddc97;
   --shimmer: rgb(255 255 255 / 0.65);
-  /* Thumb of the segmented control (§5.13): lifts off its --surface-2 track. */
+  /* Thumbs (§5.13): the segmented one lifts off its --surface-2 track; the
+     switch one stays near white on the track in both themes. */
   --thumb: var(--surface);
+  --switch-thumb: #ffffff;
+  /* Fields the browser autofilled: a faint primary tint instead of Chrome's
+     own (light-blue or grey-blue) fill. */
+  --autofill: color-mix(in srgb, var(--primary) 7%, var(--surface));
 
   /* §3.2 Category colors (icon fg on bg ≥ 3.6:1) */
   --cat-1-bg: #e1ecf9;
@@ -144,6 +149,8 @@
   --shimmer: rgb(255 255 255 / 0.05);
   /* Lighter than the track, so the selected segment reads as raised. */
   --thumb: #323946;
+  --switch-thumb: #f2f4f7;
+  --autofill: color-mix(in srgb, var(--primary) 9%, var(--surface));
 
   --cat-1-bg: #1b2d44;
   --cat-1-fg: #3987e5;
@@ -224,6 +231,7 @@
   --color-scrim: var(--scrim);
   --color-bar: var(--bar);
   --color-thumb: var(--thumb);
+  --color-switch-thumb: var(--switch-thumb);
 
   --color-cat-1-bg: var(--cat-1-bg);
   --color-cat-1-fg: var(--cat-1-fg);
@@ -486,6 +494,36 @@
       animation: fade-out 120ms linear forwards;
     }
   }
+}
+
+/*
+ * Autofilled fields (passwords, e-mail): Chrome paints its own fill and text
+ * color, light blue or grey blue, ignoring the theme. An inset shadow covers
+ * the fill with --autofill and the text keeps --text; the focus and error
+ * rings of the fields are repeated on top. Unlayered: it must beat the
+ * field utilities.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+select:-webkit-autofill,
+textarea:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: inset 0 0 0 100vmax var(--autofill);
+}
+
+input:-webkit-autofill:focus-visible,
+select:-webkit-autofill:focus-visible,
+textarea:-webkit-autofill:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--primary),
+    inset 0 0 0 100vmax var(--autofill);
+}
+
+input:-webkit-autofill[aria-invalid="true"]:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--danger),
+    inset 0 0 0 100vmax var(--autofill);
 }
 
 /*

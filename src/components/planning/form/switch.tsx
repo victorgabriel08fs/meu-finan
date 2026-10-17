@@ -49,7 +49,7 @@ export function Switch({
       >
         <span
           className={cn(
-            "absolute top-0.5 left-0.5 size-6.75 rounded-full bg-white shadow-thumb transition-transform duration-150 ease-standard",
+            "absolute top-0.5 left-0.5 size-6.75 rounded-full bg-switch-thumb shadow-thumb transition-transform duration-150 ease-standard",
             checked && "translate-x-5",
           )}
         />
