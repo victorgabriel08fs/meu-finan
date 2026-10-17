@@ -8,5 +8,6 @@ export * from "./planning";
 export * from "./relations";
 export * from "./settings";
 export * from "./system";
+export * from "./tips";
 export * from "./transactions";
 export * from "./types";
