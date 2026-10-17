@@ -1,6 +1,7 @@
 import { type ReactNode, Suspense } from "react";
 import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
+import { ThemeAccount } from "@/components/app/theme-account";
 import { QuickAddLoader } from "@/components/quick-add/quick-add-loader";
 import {
   QuickAddFab,
@@ -16,6 +17,7 @@ import {
  * Quick add ("Nova transação", §6.5): the "+" triggers only flip a client
  * store, so they work from the first paint; the sheet itself streams in
  * through QuickAddLoader, which checks the session inside its own boundary.
+ * ThemeAccount does the same for the account's theme (§6.14).
  */
 export default function AppLayout({ children }: { children: ReactNode }) {
   const sidebarButton = <QuickAddSidebarButton />;
@@ -46,6 +48,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </Suspense>
       <Suspense fallback={null}>
         <QuickAddLoader />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ThemeAccount />
       </Suspense>
     </div>
   );

@@ -20,7 +20,7 @@ const SELECTION_SPRING = {
 const trackClass = "flex h-10 w-full rounded-xl bg-surface-2 p-1";
 const segmentClass =
   "relative flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip px-3 text-callout font-semibold transition-colors duration-150 ease-standard [&_svg]:size-4 [&_svg]:shrink-0";
-const thumbClass = "absolute inset-0 rounded-chip bg-surface shadow-thumb";
+const thumbClass = "absolute inset-0 rounded-chip bg-thumb shadow-thumb";
 
 export type SegmentedOption = {
   value: string;
@@ -34,6 +34,11 @@ type SegmentedControlProps = {
   value: string | undefined;
   onValueChange: (value: string) => void;
   ariaLabel: string;
+  /**
+   * Icons only (each option needs one): a 36px track for toolbars and the
+   * sidebar. The label stays the accessible name and the tooltip.
+   */
+  iconOnly?: boolean;
   className?: string;
 };
 
@@ -43,6 +48,7 @@ export function SegmentedControl({
   value,
   onValueChange,
   ariaLabel,
+  iconOnly = false,
   className,
 }: SegmentedControlProps) {
   const layoutId = `segmented-thumb-${useId()}`;
@@ -85,7 +91,7 @@ export function SegmentedControl({
       role="radiogroup"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={cn(trackClass, className)}
+      className={cn(trackClass, iconOnly && "h-9 w-auto", className)}
     >
       {options.map((option, index) => {
         const selected = index === selectedIndex;
@@ -100,9 +106,11 @@ export function SegmentedControl({
             role="radio"
             aria-checked={selected}
             tabIndex={index === focusIndex ? 0 : -1}
+            title={iconOnly ? option.label : undefined}
             onClick={() => onValueChange(option.value)}
             className={cn(
               segmentClass,
+              iconOnly && "w-9 flex-none px-0",
               selected ? "text-fg" : "text-fg-2 hover:text-fg",
             )}
           >
@@ -115,7 +123,9 @@ export function SegmentedControl({
             ) : null}
             <span className="relative flex min-w-0 items-center gap-1.5">
               {option.icon}
-              <span className="truncate">{option.label}</span>
+              <span className={iconOnly ? "sr-only" : "truncate"}>
+                {option.label}
+              </span>
             </span>
           </button>
         );

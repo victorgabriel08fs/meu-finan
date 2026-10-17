@@ -22,7 +22,8 @@ export const userSettings = pgTable(
     locale: text("locale").notNull().default("pt-BR"),
     timezone: text("timezone").notNull().default("America/Sao_Paulo"),
     monthStartDay: smallint("month_start_day").notNull().default(1),
-    theme: text("theme", { enum: THEMES }).notNull().default("system"),
+    // The app is dark by default (doc 02 §3.11); see src/lib/theme.ts.
+    theme: text("theme", { enum: THEMES }).notNull().default("dark"),
     privacyModeDefault: boolean("privacy_mode_default")
       .notNull()
       .default(false),

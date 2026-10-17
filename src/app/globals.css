@@ -46,6 +46,8 @@
   --toast-fg: var(--surface);
   --toast-action: #3ddc97;
   --shimmer: rgb(255 255 255 / 0.65);
+  /* Thumb of the segmented control (§5.13): lifts off its --surface-2 track. */
+  --thumb: var(--surface);
 
   /* §3.2 Category colors (icon fg on bg ≥ 3.6:1) */
   --cat-1-bg: #e1ecf9;
@@ -140,6 +142,8 @@
   --destructive: #d03b3b;
   --toast-action: #0a7f58;
   --shimmer: rgb(255 255 255 / 0.05);
+  /* Lighter than the track, so the selected segment reads as raised. */
+  --thumb: #323946;
 
   --cat-1-bg: #1b2d44;
   --cat-1-fg: #3987e5;
@@ -219,6 +223,7 @@
   --color-focus: var(--focus-ring);
   --color-scrim: var(--scrim);
   --color-bar: var(--bar);
+  --color-thumb: var(--thumb);
 
   --color-cat-1-bg: var(--cat-1-bg);
   --color-cat-1-fg: var(--cat-1-fg);
