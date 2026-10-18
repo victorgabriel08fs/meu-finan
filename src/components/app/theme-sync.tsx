@@ -9,6 +9,7 @@ import {
   isThemeChoice,
   type ResolvedTheme,
   shouldAdoptAccountTheme,
+  syncedTheme,
   THEME_STORAGE_KEY,
   THEME_SYNCED_KEY,
   type ThemeChoice,
@@ -24,6 +25,12 @@ import { setThemeAction } from "@/server/actions/preferences";
 
 /** Saves on their way to the server: the account's theme waits for them. */
 let pendingSaves = 0;
+
+/**
+ * The signed-in account, set by ThemeAccountSync, whose id marks the synced
+ * value a choice writes (THEME_SYNCED_KEY). Null until it mounts.
+ */
+let accountId: string | null = null;
 
 function readStorage(key: string): string | null {
   try {
@@ -133,7 +140,9 @@ export function useThemePreference() {
       applyTheme(next, setTheme);
       // Marked as the account's value before the server confirms, so the
       // refresh that follows the save is recognised as ours.
-      writeStorage(THEME_SYNCED_KEY, next);
+      if (accountId) {
+        writeStorage(THEME_SYNCED_KEY, syncedTheme(accountId, next));
+      }
       pendingSaves += 1;
       executeAsync({ theme: next })
         .then((result) => {
@@ -163,15 +172,24 @@ export function useThemePreference() {
 
 /**
  * Adopts the account's theme on this device when it differs from what the
- * device last saw: right after signing in on a new device, or after a change
- * made on another one. Rendered by ThemeAccount, inside <Suspense>.
+ * device last saw: right after signing in on a new device, after a change
+ * made on another one, or when another account used this device last.
+ * Rendered by ThemeAccount, inside <Suspense>.
  */
-export function ThemeAccountSync({ saved }: { saved: ThemeChoice }) {
+export function ThemeAccountSync({
+  userId,
+  saved,
+}: {
+  userId: string;
+  saved: ThemeChoice;
+}) {
   const { setTheme } = useTheme();
 
   useEffect(() => {
+    accountId = userId;
     if (
       !shouldAdoptAccountTheme({
+        userId,
         saved,
         synced: readStorage(THEME_SYNCED_KEY),
         pending: pendingSaves > 0,
@@ -179,11 +197,11 @@ export function ThemeAccountSync({ saved }: { saved: ThemeChoice }) {
     ) {
       return;
     }
-    writeStorage(THEME_SYNCED_KEY, saved);
+    writeStorage(THEME_SYNCED_KEY, syncedTheme(userId, saved));
     const stored = readStorage(THEME_STORAGE_KEY);
     const current = isThemeChoice(stored) ? stored : DEFAULT_THEME;
     if (current !== saved) applyTheme(saved, setTheme);
-  }, [saved, setTheme]);
+  }, [userId, saved, setTheme]);
 
   return null;
 }

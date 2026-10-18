@@ -24,7 +24,13 @@ async function Simulator() {
     getUserContext(user.id),
     getMarketRates(),
   ]);
-  return <CompoundSimulator market={market} today={toYearMonth(ctx.today)} />;
+  return (
+    <CompoundSimulator
+      market={market}
+      today={toYearMonth(ctx.today)}
+      userId={user.id}
+    />
+  );
 }
 
 function SimulatorSkeleton() {

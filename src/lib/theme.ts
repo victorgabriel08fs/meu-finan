@@ -26,10 +26,17 @@ export const THEME_STORAGE_KEY = "meu-finan:tema";
 
 /**
  * localStorage key of the account's theme as this device last saw or saved
- * it. The account's theme is adopted only when it differs from this value,
- * i.e. on a new device or after a change made on another one.
+ * it, stored as "{userId}:{theme}" (syncedTheme) because a device can be
+ * shared by several accounts. The account's theme is adopted only when it
+ * differs from this value, i.e. on a new device, after a change made on
+ * another one, or when another account synced this device last.
  */
 export const THEME_SYNCED_KEY = "meu-finan:tema-da-conta";
+
+/** The value of THEME_SYNCED_KEY for an account's theme. */
+export function syncedTheme(userId: string, theme: ThemeChoice): string {
+  return `${userId}:${theme}`;
+}
 
 /**
  * Page background of each theme (= --bg): <meta name="theme-color">, the
@@ -49,21 +56,24 @@ export function isThemeChoice(value: unknown): value is ThemeChoice {
 
 /**
  * Whether a device adopts the account's theme. Only when it differs from the
- * value the device last saw or saved (`synced`): a new device has none, and a
- * change made on another device shows up as a different value. Never while a
- * save from this device is on its way, or a stale value from before it would
- * undo the user's choice.
+ * value the device last saw or saved (`synced`, see THEME_SYNCED_KEY): a new
+ * device has none, a change made on another device shows up as a different
+ * theme, and another account that used this device last as a different id,
+ * even with the same theme. Never while a save from this device is on its
+ * way, or a stale value from before it would undo the user's choice.
  */
 export function shouldAdoptAccountTheme({
+  userId,
   saved,
   synced,
   pending,
 }: {
+  userId: string;
   saved: ThemeChoice;
   synced: string | null;
   pending: boolean;
 }): boolean {
-  return !pending && synced !== saved;
+  return !pending && synced !== syncedTheme(userId, saved);
 }
 
 /**

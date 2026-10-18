@@ -152,7 +152,11 @@ describe("Simulador", () => {
   it("renders the default simulation", async () => {
     const { CompoundSimulator } = await import("./simulator/simulator");
     const html = renderToStaticMarkup(
-      <CompoundSimulator market={market} today={{ year: 2026, month: 10 }} />,
+      <CompoundSimulator
+        market={market}
+        today={{ year: 2026, month: 10 }}
+        userId="u1"
+      />,
     );
     expect(html).toContain("Em 10 anos você terá");
     expect(html).toContain("Líquido de IR");

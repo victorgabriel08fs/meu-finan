@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
@@ -12,17 +12,23 @@ import { authClient } from "@/lib/auth-client";
  * sign out first instead of doing it silently.
  */
 export function SignedInNotice({ email }: { email: string }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
 
   const signOut = async () => {
     setPending(true);
     try {
-      await authClient.signOut();
-      router.refresh();
-    } finally {
-      setPending(false);
+      const { error } = await authClient.signOut();
+      if (!error) {
+        // A full page load: the link opens again with nothing that account
+        // left in memory (forms, stores, pages the router keeps mounted).
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // Offline: the session is still here, like a refused sign-out.
     }
+    toast.error("Não foi possível sair. Tente de novo.");
+    setPending(false);
   };
 
   return (

@@ -4,6 +4,7 @@ import {
   DEFAULT_THEME,
   isThemeChoice,
   shouldAdoptAccountTheme,
+  syncedTheme,
   THEME_CHOICES,
   THEME_COLORS,
   THEME_HEAD_SCRIPT,
@@ -34,17 +35,27 @@ describe("theme choices", () => {
 });
 
 describe("shouldAdoptAccountTheme", () => {
+  it("marks the synced value with the account", () => {
+    expect(syncedTheme("ana", "dark")).toBe("ana:dark");
+  });
+
   it("adopts the account's theme on a device that never synced", () => {
     expect(
-      shouldAdoptAccountTheme({ saved: "light", synced: null, pending: false }),
+      shouldAdoptAccountTheme({
+        userId: "ana",
+        saved: "light",
+        synced: null,
+        pending: false,
+      }),
     ).toBe(true);
   });
 
   it("adopts a change made on another device", () => {
     expect(
       shouldAdoptAccountTheme({
+        userId: "ana",
         saved: "light",
-        synced: "dark",
+        synced: "ana:dark",
         pending: false,
       }),
     ).toBe(true);
@@ -53,18 +64,31 @@ describe("shouldAdoptAccountTheme", () => {
   it("leaves the device alone when the account did not change", () => {
     expect(
       shouldAdoptAccountTheme({
+        userId: "ana",
         saved: "dark",
-        synced: "dark",
+        synced: "ana:dark",
         pending: false,
       }),
     ).toBe(false);
   });
 
+  it("adopts when another account synced the device last, even with the same theme", () => {
+    expect(
+      shouldAdoptAccountTheme({
+        userId: "bruno",
+        saved: "dark",
+        synced: "ana:dark",
+        pending: false,
+      }),
+    ).toBe(true);
+  });
+
   it("never fights a save that is still on its way", () => {
     expect(
       shouldAdoptAccountTheme({
+        userId: "ana",
         saved: "dark",
-        synced: "light",
+        synced: "ana:light",
         pending: true,
       }),
     ).toBe(false);
