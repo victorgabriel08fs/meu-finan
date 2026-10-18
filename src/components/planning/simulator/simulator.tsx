@@ -22,8 +22,14 @@ import {
   YearTableCard,
 } from "./simulator-results";
 
-/** The last inputs, per device (doc 02 §6.11); never shared, never required. */
-const STORAGE_KEY = "meu-finan:simulador:v1";
+/**
+ * The last inputs, per account on this device (doc 02 §6.11); never shared,
+ * never required. The key carries the user id: a device can be shared.
+ */
+const storageKey = (userId: string) => `meu-finan:simulador:v1:${userId}`;
+
+/** The key before it carried the account: whose inputs it holds is unknown. */
+const UNSCOPED_STORAGE_KEY = "meu-finan:simulador:v1";
 
 const MODES: { value: SimulatorMode; label: string }[] = [
   { value: "future", label: "Quanto terei" },
@@ -41,6 +47,8 @@ type CompoundSimulatorProps = {
   market: MarketRatesView;
   /** The owner's current month (server clock, in their time zone). */
   today: YearMonth;
+  /** The signed-in account: scopes the inputs kept on this device. */
+  userId: string;
 };
 
 /**
@@ -48,7 +56,12 @@ type CompoundSimulatorProps = {
  * doc 03 in the browser on every change — no network after the page loads.
  * Invalid inputs show an inline error and keep the last valid result, dimmed.
  */
-export function CompoundSimulator({ market, today }: CompoundSimulatorProps) {
+export function CompoundSimulator({
+  market,
+  today,
+  userId,
+}: CompoundSimulatorProps) {
+  const inputsKey = storageKey(userId);
   const [state, setState] = useState<SimulatorState>(DEFAULT_STATE);
   const [lastValid, setLastValid] = useState<SimulatorState>(DEFAULT_STATE);
   const [selected, setSelected] = useState<number | null>(null);
@@ -63,7 +76,9 @@ export function CompoundSimulator({ market, today }: CompoundSimulatorProps) {
     restoring.current = true;
     let saved: SimulatorState | null = null;
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      // Dropped, not migrated: it could be another account's.
+      window.localStorage.removeItem(UNSCOPED_STORAGE_KEY);
+      const raw = window.localStorage.getItem(inputsKey);
       saved = raw ? restoreState(JSON.parse(raw)) : null;
     } catch {
       saved = null;
@@ -73,16 +88,16 @@ export function CompoundSimulator({ market, today }: CompoundSimulatorProps) {
       if (computeSimulation(saved, market, today).ok) setLastValid(saved);
     }
     setRestored(true);
-  }, [market, today]);
+  }, [inputsKey, market, today]);
 
   useEffect(() => {
     if (!restored) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      window.localStorage.setItem(inputsKey, JSON.stringify(state));
     } catch {
       // Private mode or blocked storage: the simulation still works.
     }
-  }, [restored, state]);
+  }, [inputsKey, restored, state]);
 
   useEffect(() => {
     const node = heroRef.current;
