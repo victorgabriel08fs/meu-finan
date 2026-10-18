@@ -1,4 +1,6 @@
-// Creates the owner's preferences and default categories.
+// Creates the preferences and default categories the owner's account is
+// missing; the owner is the OWNER_EMAIL account or, without it, the oldest
+// administrator. Other accounts get theirs when they accept their invite.
 // Usage: npm run db:seed (reads DATABASE_URL from the environment or .env.local).
 // Imports are evaluated before loadEnvConfig runs; that is fine because the db
 // client only reads DATABASE_URL on the first query.
@@ -8,10 +10,10 @@ import { db } from "@/server/db/client";
 import {
   type CategoryKind,
   categories,
-  user,
   userSettings,
 } from "@/server/db/schema";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
+import { recoveryTarget } from "@/server/domain/recovery";
 
 loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
@@ -21,21 +23,12 @@ class SeedError extends Error {}
 type CategoryCounts = Record<CategoryKind, number>;
 
 async function findOwner() {
-  const found = await db
-    .select({ id: user.id, name: user.name, email: user.email })
-    .from(user)
-    .limit(2);
-  const [owner, another] = found;
-
+  // The same rule as /recuperar. process.env directly: src/server/env.ts is
+  // server-only and does not load under tsx.
+  const owner = await recoveryTarget(process.env.OWNER_EMAIL);
   if (!owner) {
     throw new SeedError(
       "Nenhum usuário encontrado. Crie a conta do dono em /primeiro-acesso e rode o seed de novo.",
-    );
-  }
-  if (another) {
-    const [row] = await db.select({ total: count() }).from(user);
-    throw new SeedError(
-      `Encontrei ${row?.total ?? found.length} usuários, mas o Meu Finan tem um único dono. Remova as contas que sobraram e rode o seed de novo.`,
     );
   }
   return owner;
@@ -100,7 +93,7 @@ async function main() {
   console.log(
     settingsExisted
       ? "Preferências: já existiam, nada mudou."
-      : "Preferências: criadas (BRL, pt-BR, America/Sao_Paulo, mês começando no dia 1, tema do sistema).",
+      : "Preferências: criadas (BRL, pt-BR, America/Sao_Paulo, mês começando no dia 1, tema escuro).",
   );
   console.log(
     created > 0
