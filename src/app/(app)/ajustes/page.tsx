@@ -219,16 +219,29 @@ async function Settings() {
   );
 }
 
+/**
+ * One block per section, in page order, each with its section's height
+ * (header 36px, rows of 52 or 64px, 1px hairlines between rows).
+ * Administração is left out: the role is unknown here, and it streams in
+ * below the fold.
+ */
 function SettingsSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-7">
+      {/* Perfil */}
       <Skeleton className="h-25 rounded-2xl" />
+      {/* Novidades */}
       <Skeleton className="h-25 rounded-2xl" />
-      <Skeleton className="h-48.25 rounded-2xl" />
+      {/* Segurança */}
       <Skeleton className="h-25 rounded-2xl" />
+      {/* Preferências: 36 + 3 × 52 + 2 hairlines = 194 */}
+      <Skeleton className="h-48.5 rounded-2xl" />
+      {/* Organização */}
       <Skeleton className="h-25 rounded-2xl" />
-      <Skeleton className="h-41 rounded-2xl" />
-      <Skeleton className="h-36 rounded-2xl" />
+      {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
+      <Skeleton className="h-41.25 rounded-2xl" />
+      {/* Sobre: 36 + 64 + 1 + 52 = 153 */}
+      <Skeleton className="h-38.25 rounded-2xl" />
     </LoadingRegion>
   );
 }
