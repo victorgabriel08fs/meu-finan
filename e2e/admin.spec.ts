@@ -66,9 +66,11 @@ test("convida uma pessoa e o convite oferece passkey e leva ao onboarding num na
   await expect(guest).toHaveURL(/\/ajustes\/seguranca\?primeiro=1$/, {
     timeout: 30_000,
   });
-  await expect(guest.getByText(/Acesso criado/)).toBeVisible({
-    timeout: 30_000,
-  });
+  // Visible only: while React reveals the streamed panel, a hidden copy of it
+  // can still sit at the end of <body>.
+  await expect(
+    guest.getByText(/Acesso criado/).filter({ visible: true }),
+  ).toBeVisible({ timeout: 30_000 });
   await expect(
     guest.getByRole("button", { name: "Cadastrar passkey neste aparelho" }),
   ).toBeVisible();
@@ -79,6 +81,30 @@ test("convida uma pessoa e o convite oferece passkey e leva ao onboarding num na
       name: "Seu dinheiro, claro como deveria ser",
     }),
   ).toBeVisible({ timeout: 30_000 });
+
+  // The whole onboarding, account step included (the demo's own accounts
+  // skip it), then the first Início of a brand-new account: the three
+  // first-access tips, and no novidade, since it joined after all of them.
+  await guest.getByRole("button", { name: "Começar" }).click();
+  await expect(
+    guest.getByRole("heading", { name: "Sua primeira conta" }),
+  ).toBeVisible();
+  await guest.getByRole("button", { name: "Continuar" }).click();
+  await expect(guest.getByRole("heading", { name: "Categorias" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await guest.getByRole("button", { name: "Continuar" }).click();
+  await expect(guest.getByRole("heading", { name: "Seu mês" })).toBeVisible();
+  await guest.getByRole("button", { name: "Concluir" }).click();
+  await expect(guest).toHaveURL(/\/inicio$/, { timeout: 30_000 });
+  const tip = guest.getByRole("dialog", { name: "Registre em segundos" });
+  await expect(tip).toBeVisible({ timeout: 30_000 });
+  await expect(tip.getByText("Dica 1 de 3")).toBeVisible();
+  await tip.getByRole("button", { name: "Pular dicas" }).click();
+  await expect(guest.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    guest.getByRole("link", { name: "Perfil e ajustes", exact: true }),
+  ).toBeVisible();
   expect(guestErrors).toEqual([]);
 
   // The link works once.
