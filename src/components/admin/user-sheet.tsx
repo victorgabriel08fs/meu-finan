@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
+import { OWNER_DELETE_MESSAGE, OWNER_LINK_MESSAGE } from "@/lib/admin/guards";
 import { fullDateLabel } from "@/lib/format/date";
 import {
   deadlineLabel,
@@ -304,16 +305,18 @@ function DetailsContent({
                       : "Gerar link de redefinição"
                   }
                   description={
-                    user.banned
-                      ? "Reative a conta antes de gerar um link."
-                      : link && !linkExpired
-                        ? "O link atual deixa de funcionar na hora."
-                        : isInvite
-                          ? "Para a pessoa criar a senha. Vale por 72 horas."
-                          : "Para quem perdeu o acesso: senha nova e sessões encerradas."
+                    user.isOwner
+                      ? OWNER_LINK_MESSAGE
+                      : user.banned
+                        ? "Reative a conta antes de gerar um link."
+                        : link && !linkExpired
+                          ? "O link atual deixa de funcionar na hora."
+                          : isInvite
+                            ? "Para a pessoa criar a senha. Vale por 72 horas."
+                            : "Para quem perdeu o acesso: senha nova e sessões encerradas."
                   }
                   busy={busy === "link"}
-                  disabled={busy !== null || user.banned}
+                  disabled={busy !== null || user.isOwner || user.banned}
                   onClick={makeLink}
                 />
                 {user.sessions > 0 ? (
@@ -375,9 +378,13 @@ function DetailsContent({
                 <ActionRow
                   icon={<Trash2 />}
                   label="Excluir conta"
-                  description="Apaga a conta e todas as finanças dela. Não dá para desfazer."
+                  description={
+                    user.isOwner
+                      ? OWNER_DELETE_MESSAGE
+                      : "Apaga a conta e todas as finanças dela. Não dá para desfazer."
+                  }
                   danger
-                  disabled={busy !== null}
+                  disabled={busy !== null || user.isOwner}
                   onClick={onDelete}
                 />
               </ul>

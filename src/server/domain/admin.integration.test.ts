@@ -377,6 +377,64 @@ describe("guards", () => {
     await m.users.setUserRole(ANA.id, lia, "user");
   });
 
+  it("never lets another administrator delete or reset the owner's account", async () => {
+    // OWNER_EMAIL is Ana's: the account /recuperar restores.
+    const { id: lara, token } = await invite(
+      "Lara",
+      "lara@exemplo.com",
+      "admin",
+    );
+    await accept(token);
+    const audits = await auditCount();
+    await expect(
+      m.users.deleteUserAccount(lara, ANA.id, ANA.email),
+    ).rejects.toThrow("A conta do dono do app não pode ser excluída.");
+    await expect(m.users.createAccessLink(lara, ANA.id, LINKS)).rejects.toThrow(
+      "O dono redefine o próprio acesso em Ajustes › Segurança ou pela recuperação de emergência.",
+    );
+    // The same through the panel's Server Actions.
+    caller.current = {
+      id: lara,
+      name: "Lara",
+      email: "lara@exemplo.com",
+      role: "admin",
+    };
+    const refused = [
+      await m.actions.deleteUserAction({
+        userId: ANA.id,
+        confirmEmail: ANA.email,
+      }),
+      await m.actions.createAccessLinkAction({ userId: ANA.id }),
+    ];
+    caller.current = null;
+    for (const result of refused) {
+      expect(result?.serverError).toMatch(/dono/);
+      expect(result?.data).toBeUndefined();
+    }
+    // Nothing happened: no audit entry, no link, Ana is still there.
+    expect(await auditCount()).toBe(audits);
+    const [links] = await m.db
+      .select({ total: count() })
+      .from(m.schema.accessLinks)
+      .where(eq(m.schema.accessLinks.userId, ANA.id));
+    expect(links?.total).toBe(0);
+    const [ana] = await m.db
+      .select({ total: count() })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.id, ANA.id));
+    expect(ana?.total).toBe(1);
+
+    // What can be undone stays allowed (deactivating and demoting: see the
+    // break-glass test), and the panel knows which account is the owner's.
+    await m.users.revokeUserSessions(lara, ANA.id);
+    expect(await auditCount()).toBe(audits + 1);
+    const list = await m.users.listUsersForAdmin(lara);
+    expect(list.filter((row) => row.isOwner).map((row) => row.id)).toEqual([
+      ANA.id,
+    ]);
+    await m.users.setUserRole(ANA.id, lara, "user");
+  });
+
   it("refuses the domain to anyone who is not an active administrator", async () => {
     const { id: mauro, token } = await invite("Mauro", "mauro@exemplo.com");
     await accept(token);
