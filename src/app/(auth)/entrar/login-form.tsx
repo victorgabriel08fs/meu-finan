@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
@@ -30,7 +29,6 @@ export function LoginForm({
   redirectTo: string;
   notice?: string;
 }) {
-  const router = useRouter();
   const errorId = useId();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,11 +36,15 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const done = useRef(false);
 
+  // Signed in: a full page load, not a client navigation. The router keeps
+  // recently visited pages mounted (hidden), so only a new page guarantees
+  // that nothing a previous account left in memory (this form's fields,
+  // stores, pages) reaches this one. redirectTo is a same-origin path
+  // (safeRedirectPath).
   const finish = () => {
     if (done.current) return;
     done.current = true;
-    router.replace(redirectTo);
-    router.refresh();
+    window.location.replace(redirectTo);
   };
 
   // Conditional UI: the browser offers saved passkeys as soon as the e-mail
@@ -84,7 +86,8 @@ export function LoginForm({
       }
       finish();
     } finally {
-      setPending(null);
+      // Once signed in, the spinner stays until the page unloads.
+      if (!done.current) setPending(null);
     }
   };
 
@@ -103,7 +106,7 @@ export function LoginForm({
       }
       finish();
     } finally {
-      setPending(null);
+      if (!done.current) setPending(null);
     }
   };
 

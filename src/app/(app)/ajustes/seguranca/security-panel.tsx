@@ -76,6 +76,24 @@ export function SecurityPanel({
     }
   };
 
+  // Outside run(): no refresh while the page unloads. A full page load, not a
+  // client navigation, so nothing this account left in memory (forms, stores,
+  // pages the router keeps mounted) reaches whoever signs in next.
+  const signOut = async () => {
+    setBusy("sign-out");
+    try {
+      const { error } = await authClient.signOut();
+      if (!error) {
+        window.location.replace("/entrar");
+        return;
+      }
+    } catch {
+      // Offline: the session is still here, like a refused sign-out.
+    }
+    toast.error("Não foi possível sair. Tente de novo.");
+    setBusy(null);
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {firstAccess && passkeys.length === 0 ? (
@@ -121,12 +139,7 @@ export function SecurityPanel({
         size="lg"
         className="w-full"
         loading={busy === "sign-out"}
-        onClick={() =>
-          run("sign-out", async () => {
-            await authClient.signOut();
-            router.replace("/entrar");
-          })
-        }
+        onClick={signOut}
       >
         Sair deste aparelho
       </Button>
