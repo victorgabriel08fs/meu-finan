@@ -48,9 +48,10 @@ export const OWNER_LINK_MESSAGE =
 
 /**
  * What no administrator does to the owner's account: deleting it cannot be
- * undone (and /recuperar would then restore someone else), and a reset link
- * would let whoever holds it sign in as the owner. Deactivating, demoting and
- * ending sessions stay allowed: they can be undone, and /recuperar undoes them.
+ * undone (the finances are gone, and /recuperar finds no account to give
+ * back), and a reset link would let whoever holds it sign in as the owner.
+ * Deactivating, demoting and ending sessions stay allowed: they can be
+ * undone, and /recuperar undoes them.
  */
 const OWNER_MESSAGES: Partial<Record<AccountAction, string>> = {
   delete: OWNER_DELETE_MESSAGE,
