@@ -12,6 +12,7 @@ import {
   THEME_LABELS,
   type ThemeChoice,
 } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 import { useThemeChoice, useThemePreference } from "./theme-sync";
 
 const ICONS: Record<ThemeChoice, ReactNode> = {
@@ -30,7 +31,8 @@ const OPTIONS: SegmentedOption[] = THEME_CHOICES.map((choice) => ({
  * Theme preference (doc 02 §6.14): Escuro · Claro · Sistema. Applies at once
  * on this device and is saved on the account. The device's choice is only
  * known in the browser, so nothing is selected during SSR and hydration.
- * `compact` shows the icons only (desktop sidebar).
+ * `compact` shows the icons only (desktop sidebar); the labeled control drops
+ * its icons below 380px, so "Sistema" fits whole on 360px phones.
  */
 export function ThemeSwitcher({
   compact = false,
@@ -50,7 +52,7 @@ export function ThemeSwitcher({
         if (isThemeChoice(value) && value !== theme) choose(value);
       }}
       iconOnly={compact}
-      className={className}
+      className={cn(!compact && "max-[23.75rem]:[&_svg]:hidden", className)}
     />
   );
 }

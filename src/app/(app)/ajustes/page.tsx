@@ -116,7 +116,7 @@ async function Settings() {
           <InsetListItem
             icon={<CalendarRange />}
             label="Mês financeiro"
-            trailing={`Começa no dia ${ctx.monthStartDay}`}
+            trailing={`Dia ${ctx.monthStartDay}`}
             href="/ajustes/preferencias"
           />
           <InsetListItem
