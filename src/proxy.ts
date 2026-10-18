@@ -16,15 +16,22 @@ const TOKEN_GATED: Record<string, "SETUP_TOKEN" | "RECOVERY_TOKEN"> = {
  */
 const ACCESS_LINK_PREFIX = "/convite/";
 
+/**
+ * Deliberately matches no route: rewriting a request here makes Next render
+ * app/not-found.tsx (the app's theme, in pt-BR) with a 404 status.
+ */
+const NOT_FOUND_PATH = "/nao-encontrada";
+
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   const gate = TOKEN_GATED[pathname];
   if (gate) {
-    // A real 404 when the token is not set; the page itself checks the rest.
+    // Without its token the page answers a real 404 and never renders; with
+    // it, the page itself checks the rest.
     return process.env[gate]?.trim()
       ? NextResponse.next()
-      : new NextResponse("Not Found", { status: 404 });
+      : NextResponse.rewrite(new URL(NOT_FOUND_PATH, request.url));
   }
 
   if (pathname.startsWith(ACCESS_LINK_PREFIX)) return NextResponse.next();

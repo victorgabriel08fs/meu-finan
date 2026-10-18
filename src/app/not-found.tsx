@@ -5,10 +5,12 @@ import { BrandMark } from "@/components/brand/brand-mark";
 export const metadata: Metadata = { title: "Página não encontrada" };
 
 /**
- * 404 in pt-BR (doc 02 §8) for addresses that match no route. Only the root
- * layout is around it, so it brings its own <main> and the brand, like the
- * (auth) layout. A notFound() inside the app shell or the public pages
- * renders the not-found of that route group instead.
+ * 404 in pt-BR (doc 02 §8) for addresses that match no route, including
+ * /primeiro-acesso and /recuperar while their token is unset (src/proxy.ts
+ * rewrites them here, with a 404 status). Only the root layout is around it,
+ * so it brings its own <main> and the brand, like the (auth) layout. A
+ * notFound() inside the app shell or the public pages renders the not-found
+ * of that route group instead.
  */
 export default function NotFound() {
   return (
