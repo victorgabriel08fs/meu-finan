@@ -10,8 +10,9 @@ type DayHeaderProps = {
 };
 
 /**
- * Day header of a statement list (doc 02 §5.8): sticks under the app bar while
- * its day scrolls by, on --bg at 92% with a blur.
+ * Day header of a statement list (doc 02 §5.8), also used by the other lists
+ * grouped by day (Administração › Atividade, Ajustes › Novidades): sticks
+ * under the app bar while its day scrolls by, on --bg at 92% with a blur.
  */
 export function DayHeader({ label, totalCents, className }: DayHeaderProps) {
   return (

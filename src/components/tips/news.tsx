@@ -58,10 +58,12 @@ export function NewsBadge() {
   );
 }
 
-/** "Ligadas" or "Desligadas" on the Ajustes row of the tips; empty until they load. */
-export function TipsStateLabel() {
+/**
+ * "Ligadas" or "Desligadas" on the Ajustes row of the tips: `fallback`, the
+ * server's value, until the tips load (or when they fail to).
+ */
+export function TipsStateLabel({ fallback }: { fallback: boolean }) {
   const loaded = useTipsStore((store) => store.loaded);
   const off = useTipsStore((store) => store.off);
-  if (!loaded) return null;
-  return off ? "Desligadas" : "Ligadas";
+  return (loaded ? off : fallback) ? "Desligadas" : "Ligadas";
 }

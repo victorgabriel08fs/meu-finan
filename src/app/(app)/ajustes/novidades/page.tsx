@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/app/page-header";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { newsFeed } from "@/lib/tips";
 import { requireUser } from "@/server/dal";
+import { getUserContext } from "@/server/domain/context";
 import { getTipsSnapshot } from "@/server/domain/tips";
+import { getFlags } from "@/server/flags";
 import { type NewsEntry, NewsList } from "./news-list";
 
 export const metadata: Metadata = { title: "Novidades" };
@@ -29,7 +31,13 @@ export default function NovidadesPage() {
 
 async function News() {
   const user = await requireUser();
-  const snapshot = await getTipsSnapshot(user.id);
+  // The same role and flags as the tips in the layout: a novidade about a
+  // feature that is off for this person is not listed.
+  const viewer = { role: user.role, flags: await getFlags(user.id) };
+  const [snapshot, ctx] = await Promise.all([
+    getTipsSnapshot(user.id, viewer),
+    getUserContext(user.id),
+  ]);
   const entries: NewsEntry[] = newsFeed({
     seen: new Set(snapshot.seen),
     createdOn: snapshot.createdOn,
@@ -43,13 +51,14 @@ async function News() {
     link: tip.link ?? null,
     unread,
   }));
-  return <NewsList entries={entries} />;
+  return <NewsList entries={entries} today={ctx.todayIso} />;
 }
 
+/** The first day header (40px, like DayHeader) and the list below it. */
 function NewsSkeleton() {
   return (
-    <LoadingRegion className="flex flex-col gap-3">
-      <Skeleton className="h-4 w-44 rounded-chip" />
+    <LoadingRegion className="flex flex-col">
+      <Skeleton className="my-3 h-4 w-36 rounded-chip" />
       <Skeleton className="h-128 rounded-2xl" />
     </LoadingRegion>
   );

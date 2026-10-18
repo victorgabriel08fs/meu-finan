@@ -47,7 +47,8 @@ function PreferencesSkeleton() {
     <LoadingRegion className="flex flex-col gap-7">
       <Skeleton className="h-50 rounded-2xl" />
       <Skeleton className="h-57.5 rounded-2xl" />
-      <Skeleton className="h-32 rounded-2xl" />
+      {/* Dicas de uso: 36 + two rows of 64px, 74/75px when the captions wrap */}
+      <Skeleton className="h-46.25 rounded-2xl sm:h-41" />
     </LoadingRegion>
   );
 }

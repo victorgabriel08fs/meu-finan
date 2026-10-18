@@ -1,3 +1,4 @@
+import type { FlagKey } from "@/lib/flags/registry";
 import type { Tip } from "./types";
 
 /**
@@ -7,9 +8,11 @@ import type { Tip } from "./types";
  *    first one visible on screen wins, so a phone and a desktop version of
  *    the same control can share the name).
  * 2. Add an entry below with a new, stable `id` and today's date as `since`.
- *    A `novidade` reaches only accounts created before `since`; give it an
+ *    A `novidade` reaches only accounts in use before `since`; give it an
  *    `icon` and, when there is a place to go, a `link`. Without `routes` and
- *    `anchor` it lives only in Ajustes › Novidades.
+ *    `anchor` it lives only in Ajustes › Novidades. A feature behind a
+ *    feature flag takes `when: { flag: "<key>" }`: while the flag is off for
+ *    someone, its tips and links never reach them.
  * 3. Keep a screen at three tips at most, and write like doc 02 §10: "você",
  *    short sentences, no jargon.
  *
@@ -157,12 +160,15 @@ export const TIPS: readonly Tip[] = [
   {
     id: "novidade-importar-extrato",
     kind: "novidade",
-    routes: ["/ajustes"],
-    anchor: "import",
+    // Only in Ajustes › Novidades: its row sits below the fold of Ajustes,
+    // where a balloon would always be skipped.
+    routes: [],
+    anchor: null,
     title: "Importe o extrato do banco",
     body: "Traga os lançamentos de um arquivo OFX ou CSV, sem duplicar o que já existe. E, se precisar, exporte tudo em CSV.",
     since: "2026-10-16",
     order: 12,
+    when: { flag: "importar_extrato" },
     icon: "file-up",
     link: { href: "/importar", label: "Importar extrato" },
   },
@@ -176,6 +182,20 @@ export const TIPS: readonly Tip[] = [
     since: "2026-10-16",
     order: 13,
     icon: "smartphone",
+  },
+
+  // Novidades de 17/out/2026 --------------------------------------------------
+  {
+    id: "novidade-tema-escuro",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "O app agora abre no escuro",
+    body: "Prefere o claro? Escolha Claro ou Sistema em Preferências. A escolha fica na sua conta e vale em todos os aparelhos.",
+    since: "2026-10-17",
+    order: 10,
+    icon: "sun-moon",
+    link: { href: "/ajustes/preferencias", label: "Escolher o tema" },
   },
 ];
 
@@ -195,7 +215,7 @@ export const NOVIDADE_IDS: readonly string[] = TIPS.filter(
  * Feature flags some tip depends on: the server resolves just these for the
  * user (TipContext.flags).
  */
-export const TIP_FLAG_KEYS: readonly string[] = [
+export const TIP_FLAG_KEYS: readonly FlagKey[] = [
   ...new Set(TIPS.flatMap((tip) => (tip.when?.flag ? [tip.when.flag] : []))),
 ];
 

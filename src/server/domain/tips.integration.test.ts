@@ -2,6 +2,8 @@
 // snapshot the browser starts from, marking seen, turning tips off and
 // "Rever dicas" (doc 02 §6.16).
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { unreadNewsIds } from "@/lib/tips";
+import type { TipViewer } from "./tips";
 
 vi.mock("server-only", () => ({}));
 process.env.DATABASE_URL = "pglite:memory";
@@ -32,8 +34,11 @@ beforeAll(async () => {
   accounts = await import("./accounts");
 }, 120_000);
 
-const snapshot = (userId = "owner") =>
-  tips.getTipsSnapshot(userId, { timeZone: ZONE });
+/** A regular account with importar_extrato on (the flag's default). */
+const VIEWER: TipViewer = { role: "user", flags: { importar_extrato: true } };
+
+const snapshot = (userId = "owner", viewer = VIEWER) =>
+  tips.getTipsSnapshot(userId, viewer, { timeZone: ZONE });
 
 describe("tips per user", () => {
   it("starts with nothing seen, tips on and the account's creation day", async () => {
@@ -41,8 +46,22 @@ describe("tips per user", () => {
       seen: [],
       off: false,
       createdOn: "2026-10-14",
-      context: { hasAccounts: false, hasPasskey: false, role: null, flags: [] },
+      context: {
+        hasAccounts: false,
+        hasPasskey: false,
+        role: "user",
+        flags: ["importar_extrato"],
+      },
     });
+  });
+
+  it("takes the role and the flags tips ask about from the viewer", async () => {
+    const admin = await snapshot("owner", {
+      role: "admin",
+      flags: { importar_extrato: false },
+    });
+    expect(admin.context.role).toBe("admin");
+    expect(admin.context.flags).toEqual([]);
   });
 
   it("marks registry tips seen once, ignoring anything else", async () => {
@@ -115,14 +134,60 @@ describe("tips per user", () => {
     expect((await snapshot()).context).toEqual({
       hasAccounts: true,
       hasPasskey: true,
-      role: null,
-      flags: [],
+      role: "user",
+      flags: ["importar_extrato"],
     });
     expect((await snapshot("other")).context.hasAccounts).toBe(false);
 
     // An archived account does not count: the Início is the checklist again.
     await accounts.archiveAccount("owner", id);
     expect((await snapshot()).context.hasAccounts).toBe(false);
+  });
+
+  it("counts an invited account from the day it accepted the invite", async () => {
+    // An administrator created the account on the 10th; that invite was
+    // revoked and a second one accepted on the 20th. A later reset link does
+    // not move the day.
+    await db.insert(schema.user).values({
+      id: "invited",
+      name: "Caio",
+      email: "caio@exemplo.com",
+      createdAt: new Date("2026-10-10T15:00:00Z"),
+    });
+    const link = (selector: string, createdAt: string) => ({
+      userId: "invited",
+      selector,
+      verifierHash: "hash",
+      createdAt: new Date(createdAt),
+      expiresAt: new Date(Date.parse(createdAt) + 72 * 60 * 60 * 1000),
+    });
+    await db.insert(schema.accessLinks).values([
+      {
+        ...link("convite-1", "2026-10-10T15:00:00Z"),
+        purpose: "invite",
+        revokedAt: new Date("2026-10-13T12:00:00Z"),
+      },
+      {
+        ...link("convite-2", "2026-10-20T14:00:00Z"),
+        purpose: "invite",
+        usedAt: new Date("2026-10-20T15:00:00Z"),
+      },
+      {
+        ...link("senha-1", "2026-11-01T12:00:00Z"),
+        purpose: "reset",
+        usedAt: new Date("2026-11-01T13:00:00Z"),
+      },
+    ]);
+    const state = await snapshot("invited");
+    expect(state.createdOn).toBe("2026-10-20");
+    // Every novidade of the registry came before: none is new to this person.
+    expect(
+      unreadNewsIds({
+        seen: new Set(),
+        createdOn: state.createdOn,
+        context: state.context,
+      }),
+    ).toEqual([]);
   });
 
   it("has no creation day for an unknown user", async () => {

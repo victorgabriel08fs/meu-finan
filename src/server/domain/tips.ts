@@ -2,30 +2,45 @@
 // starts from, and the writes behind "Entendi", "Pular dicas", "Não mostrar
 // mais dicas" and "Rever dicas". Valid ids come from the registry in
 // src/lib/tips; anything else is ignored.
-import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { and, eq, isNull, min, notInArray } from "drizzle-orm";
+import type { UserRole } from "@/lib/admin/roles";
 import { iso, localDateIn } from "@/lib/finance";
+import type { Flags } from "@/lib/flags/registry";
 import {
   isTipId,
   NOVIDADE_IDS,
+  TIP_FLAG_KEYS,
   type TipContext,
   type TipsSnapshot,
 } from "@/lib/tips";
 import { db, type Executor } from "@/server/db/client";
-import { finAccounts, passkey, user, userTips } from "@/server/db/schema";
+import {
+  accessLinks,
+  finAccounts,
+  passkey,
+  user,
+  userTips,
+} from "@/server/db/schema";
 import { getUserContext } from "./context";
 
 /** Row that turns every balloon off ("Não mostrar mais dicas"). Not a tip id. */
 export const TIPS_OFF_ROW = "*";
 
 /**
- * The facts tip conditions read (TipContext), from single-table queries.
- *
- * Roles and feature flags come with the admin branch: set `role` from the
- * user's role and fill `flags` with the keys of TIP_FLAG_KEYS (src/lib/tips)
- * for which `isFlagEnabled` holds for this user.
+ * Who is looking, as the request already knows it: the session's role and
+ * the effective feature flags (`getFlags` in src/server/flags). Callers pass
+ * it in, so this module stays clear of the request-bound server code
+ * (scripts/demo.ts loads it under tsx).
+ */
+export type TipViewer = { role: UserRole; flags: Flags };
+
+/**
+ * The facts tip conditions read (TipContext): accounts and passkeys from
+ * single-table queries, the role and the flags tips ask about from the viewer.
  */
 export async function getTipContext(
   userId: string,
+  viewer: TipViewer,
   executor: Executor = db,
 ): Promise<TipContext> {
   const [account, key] = await Promise.all([
@@ -45,40 +60,50 @@ export async function getTipContext(
   return {
     hasAccounts: account.length > 0,
     hasPasskey: key.length > 0,
-    role: null,
-    flags: [],
+    role: viewer.role,
+    flags: TIP_FLAG_KEYS.filter((key) => viewer.flags[key]),
   };
 }
 
 type SnapshotOptions = {
   executor?: Executor;
-  /** IANA zone for the account's creation day; defaults to the user's. */
+  /** IANA zone for the day the account came into use; defaults to the user's. */
   timeZone?: string;
 };
 
 /** Everything the browser needs to pick tips, read once per page load. */
 export async function getTipsSnapshot(
   userId: string,
+  viewer: TipViewer,
   { executor = db, timeZone }: SnapshotOptions = {},
 ): Promise<TipsSnapshot> {
-  const [owner, rows, context, zone] = await Promise.all([
+  const [owner, joined, rows, context, zone] = await Promise.all([
     executor
       .select({ createdAt: user.createdAt })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1),
     executor
+      .select({ usedAt: min(accessLinks.usedAt) })
+      .from(accessLinks)
+      .where(
+        and(eq(accessLinks.userId, userId), eq(accessLinks.purpose, "invite")),
+      ),
+    executor
       .select({ tipId: userTips.tipId })
       .from(userTips)
       .where(eq(userTips.userId, userId)),
-    getTipContext(userId, executor),
+    getTipContext(userId, viewer, executor),
     timeZone ?? getUserContext(userId).then((ctx) => ctx.timeZone),
   ]);
-  const createdAt = owner[0]?.createdAt;
+  // An invited person starts using the app when they accept the invite, not
+  // when an administrator created the account; reset links do not count.
+  // Without an invite (the first administrator), the account's creation.
+  const startedAt = joined[0]?.usedAt ?? owner[0]?.createdAt;
   return {
     seen: rows.map((row) => row.tipId).filter(isTipId),
     off: rows.some((row) => row.tipId === TIPS_OFF_ROW),
-    createdOn: createdAt ? iso(localDateIn(createdAt, zone)) : null,
+    createdOn: startedAt ? iso(localDateIn(startedAt, zone)) : null,
     context,
   };
 }

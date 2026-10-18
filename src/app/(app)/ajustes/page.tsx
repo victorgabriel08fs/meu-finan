@@ -27,6 +27,7 @@ import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
 import { getThemePreference } from "@/server/domain/preferences";
+import { getTipsOff } from "@/server/domain/tips";
 import { usersOverview } from "@/server/domain/users";
 import { getFlags } from "@/server/flags";
 import packageJson from "../../../../package.json";
@@ -46,10 +47,11 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, theme, flags, admin] = await Promise.all([
+  const [ctx, categories, theme, tipsOff, flags, admin] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
     getThemePreference(user.id),
+    getTipsOff(user.id),
     getFlags(user.id),
     user.role === "admin"
       ? Promise.all([usersOverview(), flagsOverview()])
@@ -116,13 +118,13 @@ async function Settings() {
           <InsetListItem
             icon={<CalendarRange />}
             label="Mês financeiro"
-            trailing={`Começa no dia ${ctx.monthStartDay}`}
+            trailing={`Dia ${ctx.monthStartDay}`}
             href="/ajustes/preferencias"
           />
           <InsetListItem
             icon={<Lightbulb />}
             label="Dicas de uso"
-            trailing={<TipsStateLabel />}
+            trailing={<TipsStateLabel fallback={tipsOff} />}
             href="/ajustes/preferencias#preferencias-dicas"
             data-tip="preferences"
           />
@@ -150,7 +152,6 @@ async function Settings() {
               label="Importar extrato"
               description="Arquivo OFX ou CSV do seu banco"
               href="/importar"
-              data-tip="import"
             />
           ) : null}
           <ExportListItem />
@@ -220,16 +221,29 @@ async function Settings() {
   );
 }
 
+/**
+ * One block per section, in page order, each with its section's height
+ * (header 36px, rows of 52 or 64px, 1px hairlines between rows).
+ * Administração is left out: the role is unknown here, and it streams in
+ * below the fold.
+ */
 function SettingsSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-7">
+      {/* Perfil */}
       <Skeleton className="h-25 rounded-2xl" />
+      {/* Novidades */}
       <Skeleton className="h-25 rounded-2xl" />
-      <Skeleton className="h-48.25 rounded-2xl" />
+      {/* Segurança */}
       <Skeleton className="h-25 rounded-2xl" />
+      {/* Preferências: 36 + 3 × 52 + 2 hairlines = 194 */}
+      <Skeleton className="h-48.5 rounded-2xl" />
+      {/* Organização */}
       <Skeleton className="h-25 rounded-2xl" />
-      <Skeleton className="h-41 rounded-2xl" />
-      <Skeleton className="h-36 rounded-2xl" />
+      {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
+      <Skeleton className="h-41.25 rounded-2xl" />
+      {/* Sobre: 36 + 64 + 1 + 52 = 153 */}
+      <Skeleton className="h-38.25 rounded-2xl" />
     </LoadingRegion>
   );
 }

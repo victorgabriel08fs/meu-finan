@@ -4,7 +4,7 @@ import { NewsList } from "@/app/(app)/ajustes/novidades/news-list";
 import { TIPS, type TipsSnapshot } from "@/lib/tips";
 import { useTipsStore } from "@/stores/tips";
 import { tipLabel } from "./coach-mark";
-import { NewsBadge, NewsDot } from "./news";
+import { NewsBadge, NewsDot, TipsStateLabel } from "./news";
 import { TipsPreferences } from "./tips-preferences";
 
 // Server Actions are not importable outside Next; nothing is saved here.
@@ -52,6 +52,16 @@ describe("unread novidades", () => {
     expect(renderToStaticMarkup(<NewsDot />)).toBe("");
     expect(renderToStaticMarkup(<NewsBadge />)).toBe("");
   });
+
+  it("names the server's tips state before the tips load", () => {
+    useTipsStore.getState().hydrate(snapshot({ off: false }));
+    expect(renderToStaticMarkup(<TipsStateLabel fallback />)).toBe(
+      "Desligadas",
+    );
+    expect(renderToStaticMarkup(<TipsStateLabel fallback={false} />)).toBe(
+      "Ligadas",
+    );
+  });
 });
 
 describe("NewsList", () => {
@@ -78,10 +88,12 @@ describe("NewsList", () => {
             unread: false,
           },
         ]}
+        today="2026-10-18"
       />,
     );
     const visible = text(html);
-    expect(visible).toContain("16 de outubro de 2026");
+    // The statement's day header, as in Administração › Atividade.
+    expect(visible).toContain("sex, 16 out");
     expect(visible.match(/Nova/g)).toHaveLength(1);
     expect(html).toContain('href="/relatorios/fluxo"');
     expect(html.match(/<section/g)).toHaveLength(1);
@@ -89,9 +101,9 @@ describe("NewsList", () => {
   });
 
   it("says so when there is nothing yet", () => {
-    expect(text(renderToStaticMarkup(<NewsList entries={[]} />))).toContain(
-      "Nada de novo por aqui",
-    );
+    expect(
+      text(renderToStaticMarkup(<NewsList entries={[]} today="2026-10-18" />)),
+    ).toContain("Nada de novo por aqui");
   });
 });
 

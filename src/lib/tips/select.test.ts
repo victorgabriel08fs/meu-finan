@@ -82,11 +82,11 @@ describe("meetsCondition", () => {
     expect(
       meetsCondition({ roles: ["admin"] }, { ...CONTEXT, role: "admin" }),
     ).toBe(true);
-    expect(meetsCondition({ flag: "nova-tela" }, CONTEXT)).toBe(false);
+    expect(meetsCondition({ flag: "importar_extrato" }, CONTEXT)).toBe(false);
     expect(
       meetsCondition(
-        { flag: "nova-tela" },
-        { ...CONTEXT, flags: ["nova-tela"] },
+        { flag: "importar_extrato" },
+        { ...CONTEXT, flags: ["importar_extrato"] },
       ),
     ).toBe(true);
   });
@@ -314,17 +314,24 @@ describe("novidades feed", () => {
   });
 
   it("covers the app's own novidades", () => {
-    const unread = unreadNewsIds({
-      seen: new Set(),
-      createdOn: "2026-01-01",
-      context: CONTEXT,
-    });
+    const old = { seen: new Set<string>(), createdOn: "2026-01-01" };
+    const withImport: TipContext = { ...CONTEXT, flags: ["importar_extrato"] };
+    const unread = unreadNewsIds({ ...old, context: withImport });
     expect(unread).toContain("novidade-relatorios");
+    expect(unread).toContain("novidade-importar-extrato");
+    // With importar_extrato off, the import is neither listed nor counted:
+    // its link would lead to a page the person cannot open.
+    expect(
+      newsFeed({ ...old, context: CONTEXT }).map((item) => item.tip.id),
+    ).not.toContain("novidade-importar-extrato");
+    expect(unreadNewsIds({ ...old, context: CONTEXT })).not.toContain(
+      "novidade-importar-extrato",
+    );
     expect(
       unreadNewsIds({
         seen: new Set(),
         createdOn: "2026-10-17",
-        context: CONTEXT,
+        context: withImport,
       }),
     ).toEqual([]);
   });

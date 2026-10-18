@@ -6,8 +6,9 @@ import { type KeyboardEvent, type ReactNode, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Segmented control (doc 02 §5.13): 40px track in --surface-2 with a --surface
- * thumb that slides between options (selection spring, motion `layoutId`).
+ * Segmented control (doc 02 §5.13): 40px track in --surface-2; the thumb
+ * (--thumb + shadow-thumb: --surface in light, lighter than the track in dark)
+ * slides between options (selection spring, motion `layoutId`).
  * 2–4 options; labels in callout 600.
  */
 

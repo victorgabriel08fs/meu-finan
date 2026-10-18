@@ -6,12 +6,14 @@ import {
   FileUp,
   Smartphone,
   Sparkles,
+  SunMoon,
   Target,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef } from "react";
+import { DayHeader } from "@/components/finance/day-header";
 import { Badge } from "@/components/ui/badge";
-import { fullDateLabel } from "@/lib/format/date";
+import { dayHeaderLabel } from "@/lib/format/date";
 import type { TipIcon } from "@/lib/tips";
 import { useTipsStore } from "@/stores/tips";
 
@@ -33,6 +35,7 @@ const ICONS: Record<TipIcon, ReactNode> = {
   "file-up": <FileUp />,
   smartphone: <Smartphone />,
   sparkles: <Sparkles />,
+  "sun-moon": <SunMoon />,
 };
 
 /** Entries grouped by day, newest day first (the feed comes sorted). */
@@ -45,11 +48,19 @@ function byDay(entries: NewsEntry[]): [string, NewsEntry[]][] {
 }
 
 /**
- * Ajustes › Novidades (doc 02 §6.16). Opening the page reads the novidades:
- * the dot goes away at once, and they keep the "Nova" badge until the next
- * visit, so it is clear what was new.
+ * Ajustes › Novidades (doc 02 §6.16): one card per day under the statement's
+ * day headers, like Administração › Atividade. Opening the page reads the
+ * novidades: the dot goes away at once, and they keep the "Nova" badge until
+ * the next visit, so it is clear what was new.
  */
-export function NewsList({ entries }: { entries: NewsEntry[] }) {
+export function NewsList({
+  entries,
+  today,
+}: {
+  entries: NewsEntry[];
+  /** YYYY-MM-DD in the user's time zone, for "Hoje" and "Ontem". */
+  today: string;
+}) {
   const markSeen = useTipsStore((store) => store.markSeen);
   const unread = useRef(
     entries.filter((entry) => entry.unread).map((entry) => entry.id),
@@ -66,25 +77,21 @@ export function NewsList({ entries }: { entries: NewsEntry[] }) {
           lista.
         </p>
       ) : (
-        byDay(entries).map(([day, items]) => (
-          <section
-            key={day}
-            aria-labelledby={`novidades-${day}`}
-            className="flex flex-col gap-3"
-          >
-            <h2
-              id={`novidades-${day}`}
-              className="text-overline text-fg-3 uppercase"
-            >
-              <time dateTime={day}>{fullDateLabel(day)}</time>
-            </h2>
-            <ul className="overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border">
-              {items.map((entry) => (
-                <NewsItem key={entry.id} entry={entry} />
-              ))}
-            </ul>
-          </section>
-        ))
+        <div className="flex flex-col gap-2">
+          {byDay(entries).map(([day, items]) => {
+            const label = dayHeaderLabel(day, today);
+            return (
+              <section key={day} aria-label={label}>
+                <DayHeader label={label} />
+                <ul className="overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border">
+                  {items.map((entry) => (
+                    <NewsItem key={entry.id} entry={entry} />
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       )}
       <p className="px-1 text-caption text-fg-3">
         As dicas de cada tela você desliga ou revê em{" "}
