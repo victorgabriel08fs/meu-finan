@@ -746,11 +746,23 @@ describe("deleting an account", () => {
       key: "importar_extrato",
       enabled: false,
     });
+    // "Não mostrar mais dicas" (the '*' row of user_tips).
+    await m.db.insert(s.userTips).values({ userId: rui, tipId: "*" });
+    await m.db.insert(s.passkey).values({
+      id: "passkey-rui",
+      publicKey: "chave",
+      userId: rui,
+      credentialID: "credencial-rui",
+      counter: 0,
+      deviceType: "singleDevice",
+      backedUp: false,
+    });
     await m.users.createAccessLink(ANA.id, rui, LINKS);
     expect(imported.imported).toBe(1);
 
-    // Every table with a user_id column, found from the catalog, so a new
-    // table without ON DELETE CASCADE makes this test fail.
+    // Every table with a user_id column, found from the catalog, must have
+    // rows here before the delete: a new table fails until it is seeded
+    // above, and then a missing ON DELETE CASCADE fails the delete.
     const tables = (
       await rawRows<{ table_name: string }>(sql`
         select table_name from information_schema.columns
@@ -769,27 +781,7 @@ describe("deleting an account", () => {
       return counts;
     };
     const ruiBefore = await rowsOf(rui);
-    for (const table of [
-      "fin_accounts",
-      "transactions",
-      "card_invoices",
-      "installment_plans",
-      "recurrences",
-      "goals",
-      "budgets",
-      "categories",
-      "tags",
-      "imports",
-      "categorization_rules",
-      "simulations",
-      "notifications",
-      "push_subscriptions",
-      "user_settings",
-      "session",
-      "account",
-      "access_links",
-      "feature_flag_overrides",
-    ]) {
+    for (const table of tables) {
       expect(ruiBefore[table], table).toBeGreaterThan(0);
     }
     const anaBefore = await rowsOf(ANA.id);
