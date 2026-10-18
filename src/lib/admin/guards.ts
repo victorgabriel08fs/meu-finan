@@ -20,6 +20,11 @@ export type GuardInput = {
   target: GuardAccount;
   /** Administrators that are not deactivated, read with the target. */
   activeAdminIds: readonly string[];
+  /**
+   * The target is the owner's account: the one the emergency recovery
+   * (/recuperar) restores, i.e. OWNER_EMAIL's.
+   */
+  targetIsOwner: boolean;
 };
 
 export const LAST_ADMIN_MESSAGE =
@@ -34,21 +39,45 @@ const SELF_MESSAGES: Partial<Record<AccountAction, string>> = {
   revoke_link: "Para trocar a sua senha, use Ajustes › Segurança.",
 };
 
+/** Why the owner's account offers no "Excluir conta" (also in the sheet). */
+export const OWNER_DELETE_MESSAGE =
+  "A conta do dono do app não pode ser excluída.";
+/** Why the owner's account offers no reset link (also in the sheet). */
+export const OWNER_LINK_MESSAGE =
+  "O dono redefine o próprio acesso em Ajustes › Segurança ou pela recuperação de emergência.";
+
+/**
+ * What no administrator does to the owner's account: deleting it cannot be
+ * undone (the finances are gone, and /recuperar finds no account to give
+ * back), and a reset link would let whoever holds it sign in as the owner.
+ * Deactivating, demoting and ending sessions stay allowed: they can be
+ * undone, and /recuperar undoes them.
+ */
+const OWNER_MESSAGES: Partial<Record<AccountAction, string>> = {
+  delete: OWNER_DELETE_MESSAGE,
+  create_link: OWNER_LINK_MESSAGE,
+};
+
 /** Actions that would leave the app without an active administrator. */
 const REMOVES_AN_ADMIN: readonly AccountAction[] = ["ban", "demote", "delete"];
 
 /**
  * Why the action is not allowed, or null when it is. Nobody deactivates,
- * demotes or deletes themself, and the last active administrator stays
- * (with the self rule this only matters for two administrators acting on
- * each other at the same time, which the row lock serialises).
+ * demotes or deletes themself, nobody deletes or resets the owner's account,
+ * and the last active administrator stays (with the self rule this only
+ * matters for two administrators acting on each other at the same time,
+ * which the row lock serialises).
  */
 export function accountActionBlocker(
   action: AccountAction,
-  { actorId, target, activeAdminIds }: GuardInput,
+  { actorId, target, activeAdminIds, targetIsOwner }: GuardInput,
 ): string | null {
   if (target.id === actorId) {
     const message = SELF_MESSAGES[action];
+    if (message) return message;
+  }
+  if (targetIsOwner) {
+    const message = OWNER_MESSAGES[action];
     if (message) return message;
   }
 

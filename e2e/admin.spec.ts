@@ -15,7 +15,7 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
-test("convida uma pessoa e o convite leva ao onboarding num navegador novo", async ({
+test("convida uma pessoa e o convite oferece passkey e leva ao onboarding num navegador novo", async ({
   page,
   browser,
 }) => {
@@ -62,6 +62,17 @@ test("convida uma pessoa e o convite leva ao onboarding num navegador novo", asy
   await guest.getByLabel("Senha", { exact: true }).fill("a senha da elisa e2e");
   await guest.getByLabel("Confirme a senha").fill("a senha da elisa e2e");
   await guest.getByRole("button", { name: "Criar senha e entrar" }).click();
+  // Like the owner's first access: Segurança offers a passkey first.
+  await expect(guest).toHaveURL(/\/ajustes\/seguranca\?primeiro=1$/, {
+    timeout: 30_000,
+  });
+  await expect(guest.getByText(/Acesso criado/)).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    guest.getByRole("button", { name: "Cadastrar passkey neste aparelho" }),
+  ).toBeVisible();
+  await guest.getByRole("link", { name: "Pular e continuar" }).click();
   await expect(guest).toHaveURL(/\/onboarding$/, { timeout: 30_000 });
   await expect(
     guest.getByRole("heading", {

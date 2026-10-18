@@ -31,6 +31,7 @@ import {
   session,
   user,
 } from "@/server/db/schema";
+import { readServerEnv } from "@/server/env";
 import {
   accessLinkExpiry,
   accessLinkUrl,
@@ -39,6 +40,7 @@ import {
 import { normalizeEmail } from "@/server/security/guards";
 import { recordAudit } from "./audit";
 import { DomainError, NOT_ALLOWED } from "./errors";
+import { recoveryTarget } from "./recovery";
 
 const NOT_FOUND = "Conta não encontrada.";
 
@@ -66,6 +68,11 @@ export type AdminUserItem = {
     expiresAt: string;
   } | null;
   isSelf: boolean;
+  /**
+   * The owner's account (OWNER_EMAIL, the one /recuperar restores): no other
+   * administrator deletes it or makes a reset link for it.
+   */
+  isOwner: boolean;
 };
 
 /**
@@ -78,7 +85,7 @@ export async function listUsersForAdmin(
   actorId: string,
   now = new Date(),
 ): Promise<AdminUserItem[]> {
-  const [users, sessions, latest, passwords, passkeys, links] =
+  const [users, sessions, latest, passwords, passkeys, links, owner] =
     await Promise.all([
       db
         .select({
@@ -129,6 +136,7 @@ export async function listUsersForAdmin(
         })
         .from(accessLinks)
         .where(and(isNull(accessLinks.usedAt), isNull(accessLinks.revokedAt))),
+      recoveryTarget(readServerEnv("OWNER_EMAIL")),
     ]);
 
   const sessionsBy = new Map(sessions.map((row) => [row.userId, row]));
@@ -172,6 +180,7 @@ export async function listUsersForAdmin(
             }
           : null,
         isSelf: row.id === actorId,
+        isOwner: row.id === owner?.id,
       };
     })
     .sort(byName);
@@ -279,7 +288,10 @@ async function lockAccounts(
   };
 }
 
-/** Locks, finds the target and applies the guard for `action`. */
+/**
+ * Locks, finds the target and applies the guard for `action`. The owner is
+ * the account /recuperar restores (OWNER_EMAIL), read in this transaction.
+ */
 async function guarded(
   tx: Transaction,
   actorId: string,
@@ -292,10 +304,12 @@ async function guarded(
     targetId,
   );
   if (!target) throw new DomainError(NOT_FOUND);
+  const owner = await recoveryTarget(readServerEnv("OWNER_EMAIL"), tx);
   const blocker = accountActionBlocker(action, {
     actorId,
     target,
     activeAdminIds,
+    targetIsOwner: owner?.id === target.id,
   });
   if (blocker) throw new DomainError(blocker);
   return { actor, target };

@@ -34,8 +34,10 @@ const acceptSchema = z
  * Uses an invite or reset link (doc 01 §11.9): public, so rate-limited per
  * address; the token is checked again (constant time) and claimed in the same
  * transaction that sets the password. Then the person is signed in: an invite
- * gets the default categories and goes to the onboarding, a reset goes to
- * Segurança to register a passkey again. Never logs the token.
+ * gets the default categories and, like the first access, goes to Segurança
+ * to be offered a passkey and then on to the onboarding; a reset goes to
+ * Segurança to register one again. Right after signing in the session is
+ * fresh, so registering a passkey needs no new sign-in. Never logs the token.
  */
 export const acceptAccessLinkAction = actionClient
   .inputSchema(acceptSchema)
@@ -81,7 +83,7 @@ export const acceptAccessLinkAction = actionClient
     }
     redirect(
       accepted.purpose === "invite"
-        ? "/onboarding"
+        ? "/ajustes/seguranca?primeiro=1"
         : "/ajustes/seguranca?redefinido=1",
     );
   });

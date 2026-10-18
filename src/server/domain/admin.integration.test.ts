@@ -377,6 +377,64 @@ describe("guards", () => {
     await m.users.setUserRole(ANA.id, lia, "user");
   });
 
+  it("never lets another administrator delete or reset the owner's account", async () => {
+    // OWNER_EMAIL is Ana's: the account /recuperar restores.
+    const { id: lara, token } = await invite(
+      "Lara",
+      "lara@exemplo.com",
+      "admin",
+    );
+    await accept(token);
+    const audits = await auditCount();
+    await expect(
+      m.users.deleteUserAccount(lara, ANA.id, ANA.email),
+    ).rejects.toThrow("A conta do dono do app não pode ser excluída.");
+    await expect(m.users.createAccessLink(lara, ANA.id, LINKS)).rejects.toThrow(
+      "O dono redefine o próprio acesso em Ajustes › Segurança ou pela recuperação de emergência.",
+    );
+    // The same through the panel's Server Actions.
+    caller.current = {
+      id: lara,
+      name: "Lara",
+      email: "lara@exemplo.com",
+      role: "admin",
+    };
+    const refused = [
+      await m.actions.deleteUserAction({
+        userId: ANA.id,
+        confirmEmail: ANA.email,
+      }),
+      await m.actions.createAccessLinkAction({ userId: ANA.id }),
+    ];
+    caller.current = null;
+    for (const result of refused) {
+      expect(result?.serverError).toMatch(/dono/);
+      expect(result?.data).toBeUndefined();
+    }
+    // Nothing happened: no audit entry, no link, Ana is still there.
+    expect(await auditCount()).toBe(audits);
+    const [links] = await m.db
+      .select({ total: count() })
+      .from(m.schema.accessLinks)
+      .where(eq(m.schema.accessLinks.userId, ANA.id));
+    expect(links?.total).toBe(0);
+    const [ana] = await m.db
+      .select({ total: count() })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.id, ANA.id));
+    expect(ana?.total).toBe(1);
+
+    // What can be undone stays allowed (deactivating and demoting: see the
+    // break-glass test), and the panel knows which account is the owner's.
+    await m.users.revokeUserSessions(lara, ANA.id);
+    expect(await auditCount()).toBe(audits + 1);
+    const list = await m.users.listUsersForAdmin(lara);
+    expect(list.filter((row) => row.isOwner).map((row) => row.id)).toEqual([
+      ANA.id,
+    ]);
+    await m.users.setUserRole(ANA.id, lara, "user");
+  });
+
   it("refuses the domain to anyone who is not an active administrator", async () => {
     const { id: mauro, token } = await invite("Mauro", "mauro@exemplo.com");
     await accept(token);
@@ -688,11 +746,23 @@ describe("deleting an account", () => {
       key: "importar_extrato",
       enabled: false,
     });
+    // "Não mostrar mais dicas" (the '*' row of user_tips).
+    await m.db.insert(s.userTips).values({ userId: rui, tipId: "*" });
+    await m.db.insert(s.passkey).values({
+      id: "passkey-rui",
+      publicKey: "chave",
+      userId: rui,
+      credentialID: "credencial-rui",
+      counter: 0,
+      deviceType: "singleDevice",
+      backedUp: false,
+    });
     await m.users.createAccessLink(ANA.id, rui, LINKS);
     expect(imported.imported).toBe(1);
 
-    // Every table with a user_id column, found from the catalog, so a new
-    // table without ON DELETE CASCADE makes this test fail.
+    // Every table with a user_id column, found from the catalog, must have
+    // rows here before the delete: a new table fails until it is seeded
+    // above, and then a missing ON DELETE CASCADE fails the delete.
     const tables = (
       await rawRows<{ table_name: string }>(sql`
         select table_name from information_schema.columns
@@ -711,27 +781,7 @@ describe("deleting an account", () => {
       return counts;
     };
     const ruiBefore = await rowsOf(rui);
-    for (const table of [
-      "fin_accounts",
-      "transactions",
-      "card_invoices",
-      "installment_plans",
-      "recurrences",
-      "goals",
-      "budgets",
-      "categories",
-      "tags",
-      "imports",
-      "categorization_rules",
-      "simulations",
-      "notifications",
-      "push_subscriptions",
-      "user_settings",
-      "session",
-      "account",
-      "access_links",
-      "feature_flag_overrides",
-    ]) {
+    for (const table of tables) {
       expect(ruiBefore[table], table).toBeGreaterThan(0);
     }
     const anaBefore = await rowsOf(ANA.id);
@@ -818,16 +868,69 @@ describe("break-glass recovery", () => {
     expect((await recovery.recoveryTarget(ANA.email))?.id).toBe(ANA.id);
     // Without OWNER_EMAIL: the oldest administrator (Ana is not one now).
     const [oldestAdmin] = await m.db
-      .select({ id: m.schema.user.id })
+      .select({ id: m.schema.user.id, email: m.schema.user.email })
       .from(m.schema.user)
       .where(eq(m.schema.user.role, "admin"))
       .orderBy(m.schema.user.createdAt, m.schema.user.id)
       .limit(1);
-    expect(oldestAdmin?.id).not.toBe(ANA.id);
-    expect((await recovery.recoveryTarget(undefined))?.id).toBe(
-      oldestAdmin?.id,
-    );
+    if (!oldestAdmin) throw new Error("administrador mais antigo");
+    expect(oldestAdmin.id).not.toBe(ANA.id);
+    expect((await recovery.recoveryTarget(undefined))?.id).toBe(oldestAdmin.id);
     expect(paula).toBeTruthy();
+
+    // OWNER_EMAIL set but matching no account (deleted, or a typo in the
+    // variable): nothing, never the oldest administrator in its place.
+    expect(await recovery.recoveryTarget("ninguem@exemplo.com")).toBeNull();
+    await signIn(oldestAdmin.email);
+    await m.db.insert(m.schema.passkey).values({
+      id: "passkey-admin-antigo",
+      publicKey: "chave",
+      userId: oldestAdmin.id,
+      credentialID: "credencial-admin-antigo",
+      counter: 0,
+      deviceType: "singleDevice",
+      backedUp: false,
+    });
+    const accessOf = async (userId: string) => {
+      const s = m.schema;
+      const [person] = await m.db
+        .select({ role: s.user.role, banned: s.user.banned })
+        .from(s.user)
+        .where(eq(s.user.id, userId));
+      const [credential] = await m.db
+        .select({ password: s.account.password })
+        .from(s.account)
+        .where(
+          and(
+            eq(s.account.userId, userId),
+            eq(s.account.providerId, "credential"),
+          ),
+        );
+      const [keys] = await m.db
+        .select({ total: count() })
+        .from(s.passkey)
+        .where(eq(s.passkey.userId, userId));
+      return {
+        ...person,
+        password: credential?.password,
+        sessions: await sessionsOf(userId),
+        passkeys: keys?.total ?? 0,
+      };
+    };
+    const untouched = await accessOf(oldestAdmin.id);
+    expect(untouched).toMatchObject({ role: "admin", passkeys: 1 });
+    expect(untouched.sessions).toBeGreaterThan(0);
+    const audits = await auditCount();
+    expect(
+      await recovery.recoverOwnerAccess({
+        ownerEmail: "ninguem@exemplo.com",
+        passwordHash: await hashPassword("a senha de emergência"),
+        removePasskeys: true,
+      }),
+    ).toBeNull();
+    expect(await accessOf(oldestAdmin.id)).toEqual(untouched);
+    expect(await auditCount()).toBe(audits);
+
     const recovered = await recovery.recoverOwnerAccess({
       ownerEmail: ANA.email,
       passwordHash: await hashPassword("a senha de emergência"),

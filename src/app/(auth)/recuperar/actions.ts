@@ -27,9 +27,11 @@ const recoverSchema = z
 
 /**
  * Break-glass recovery (doc 01 §11.4): only while RECOVERY_TOKEN is set. For
- * the owner's account (OWNER_EMAIL, or the oldest administrator): sets a new
- * password, ends every session, optionally removes all passkeys and restores
- * the account as an active administrator.
+ * the owner's account: the OWNER_EMAIL one; only when that variable is unset,
+ * the oldest administrator; if it matches no account (e.g. a typo in the
+ * variable), nothing changes and the operator is told. Sets a new password,
+ * ends every session, optionally removes all passkeys and restores the
+ * account as an active administrator.
  */
 export const recoverAccess = actionClient
   .inputSchema(recoverSchema)
@@ -50,19 +52,25 @@ export const recoverAccess = actionClient
       throw new ActionError("Código de recuperação inválido.");
     }
 
+    const ownerEmail = readServerEnv("OWNER_EMAIL");
     const context = await auth.$context;
     const recovered = await recoverOwnerAccess({
-      ownerEmail: readServerEnv("OWNER_EMAIL"),
+      ownerEmail,
       passwordHash: await context.password.hash(input.password),
       removePasskeys: input.removePasskeys,
     });
     if (!recovered) {
       throw new ActionError(
-        "Ainda não há acesso configurado. Use o primeiro acesso.",
+        ownerEmail
+          ? "Nenhuma conta usa o e-mail de OWNER_EMAIL. Confira a variável na Vercel e faça um novo deploy."
+          : "Ainda não há acesso configurado. Use o primeiro acesso.",
       );
     }
 
+    // Server log only (the deployment's owner reads it); never in the URL.
     console.warn("[auth] acesso recuperado com RECOVERY_TOKEN", {
+      userId: recovered.id,
+      email: recovered.email,
       removedPasskeys: input.removePasskeys,
     });
     redirect("/entrar?recuperado=1");
