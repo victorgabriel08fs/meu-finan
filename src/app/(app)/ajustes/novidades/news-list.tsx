@@ -6,6 +6,7 @@ import {
   FileUp,
   Smartphone,
   Sparkles,
+  SunMoon,
   Target,
 } from "lucide-react";
 import Link from "next/link";
@@ -33,6 +34,7 @@ const ICONS: Record<TipIcon, ReactNode> = {
   "file-up": <FileUp />,
   smartphone: <Smartphone />,
   sparkles: <Sparkles />,
+  "sun-moon": <SunMoon />,
 };
 
 /** Entries grouped by day, newest day first (the feed comes sorted). */

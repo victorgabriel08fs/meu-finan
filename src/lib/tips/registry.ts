@@ -183,6 +183,20 @@ export const TIPS: readonly Tip[] = [
     order: 13,
     icon: "smartphone",
   },
+
+  // Novidades de 17/out/2026 --------------------------------------------------
+  {
+    id: "novidade-tema-escuro",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "O app agora abre no escuro",
+    body: "Prefere o claro? Escolha Claro ou Sistema em Preferências. A escolha fica na sua conta e vale em todos os aparelhos.",
+    since: "2026-10-17",
+    order: 10,
+    icon: "sun-moon",
+    link: { href: "/ajustes/preferencias", label: "Escolher o tema" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

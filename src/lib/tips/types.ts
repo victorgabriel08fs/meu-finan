@@ -22,7 +22,8 @@ export type TipIcon =
   | "chart"
   | "file-up"
   | "smartphone"
-  | "sparkles";
+  | "sparkles"
+  | "sun-moon";
 
 /** Side of the anchor the balloon prefers (it flips when there is no room). */
 export type TipSide = "top" | "bottom" | "left" | "right";
