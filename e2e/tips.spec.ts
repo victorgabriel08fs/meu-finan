@@ -177,3 +177,36 @@ test("com as dicas desligadas, nenhum balão aparece", async ({ page }) => {
   await page.waitForTimeout(BALLOON_DELAY_MS);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("“Dicas de uso” em Ajustes abre Preferências já na seção das dicas", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // A short phone: the section sits below the fold of Preferências, and the
+  // tap comes from a scrolled Ajustes.
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/ajustes");
+  await expectLoaded(page);
+  await expect(page.getByRole("link", { name: /^Dicas de uso/ })).toContainText(
+    "Desligadas",
+  );
+  await page.getByRole("link", { name: /^Dicas de uso/ }).click();
+  await expect(page).toHaveURL(/\/ajustes\/preferencias#preferencias-dicas$/);
+  // "Rever dicas" whole on screen, above the tab bar.
+  const review = page.getByRole("button", { name: /^Rever dicas/ });
+  const tabBar = page.locator('[data-slot="tab-bar"]');
+  await expect
+    .poll(
+      async () => {
+        const [button, bar] = await Promise.all([
+          review.boundingBox(),
+          tabBar.boundingBox(),
+        ]);
+        return Boolean(
+          button && bar && button.y >= 0 && button.y + button.height <= bar.y,
+        );
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+});

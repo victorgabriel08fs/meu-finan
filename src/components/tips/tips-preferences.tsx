@@ -2,7 +2,7 @@
 
 import { ChevronRight, Lightbulb, LoaderCircle, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
 import { Switch } from "@/components/planning/form/switch";
@@ -27,6 +27,16 @@ export function TipsPreferences({ initiallyOff }: { initiallyOff: boolean }) {
   const [resetting, setResetting] = useState(false);
   const off = loaded ? storeOff : initiallyOff;
 
+  // Ajustes links here with #preferencias-dicas, but this section streams in
+  // after the skeleton, and Next drops a hash whose target is missing (it
+  // also skips its scroll to the top): scroll here once it is on the page.
+  const section = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (window.location.hash === "#preferencias-dicas") {
+      section.current?.scrollIntoView({ block: "start" });
+    }
+  }, []);
+
   async function toggle(show: boolean) {
     if (!(await setOff(!show))) toast(NETWORK_ERROR);
   }
@@ -43,7 +53,7 @@ export function TipsPreferences({ initiallyOff }: { initiallyOff: boolean }) {
   }
 
   return (
-    <section aria-labelledby="preferencias-dicas">
+    <section ref={section} aria-labelledby="preferencias-dicas">
       <SectionHeader id="preferencias-dicas" title="Dicas de uso" />
       <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
         <div className="flex min-h-16 items-center gap-3 py-2 pr-2 pl-4">
