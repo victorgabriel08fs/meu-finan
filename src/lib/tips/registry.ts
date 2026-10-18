@@ -1,3 +1,4 @@
+import type { FlagKey } from "@/lib/flags/registry";
 import type { Tip } from "./types";
 
 /**
@@ -9,7 +10,9 @@ import type { Tip } from "./types";
  * 2. Add an entry below with a new, stable `id` and today's date as `since`.
  *    A `novidade` reaches only accounts created before `since`; give it an
  *    `icon` and, when there is a place to go, a `link`. Without `routes` and
- *    `anchor` it lives only in Ajustes › Novidades.
+ *    `anchor` it lives only in Ajustes › Novidades. A feature behind a
+ *    feature flag takes `when: { flag: "<key>" }`: while the flag is off for
+ *    someone, its tips and links never reach them.
  * 3. Keep a screen at three tips at most, and write like doc 02 §10: "você",
  *    short sentences, no jargon.
  *
@@ -163,6 +166,7 @@ export const TIPS: readonly Tip[] = [
     body: "Traga os lançamentos de um arquivo OFX ou CSV, sem duplicar o que já existe. E, se precisar, exporte tudo em CSV.",
     since: "2026-10-16",
     order: 12,
+    when: { flag: "importar_extrato" },
     icon: "file-up",
     link: { href: "/importar", label: "Importar extrato" },
   },
@@ -195,7 +199,7 @@ export const NOVIDADE_IDS: readonly string[] = TIPS.filter(
  * Feature flags some tip depends on: the server resolves just these for the
  * user (TipContext.flags).
  */
-export const TIP_FLAG_KEYS: readonly string[] = [
+export const TIP_FLAG_KEYS: readonly FlagKey[] = [
   ...new Set(TIPS.flatMap((tip) => (tip.when?.flag ? [tip.when.flag] : []))),
 ];
 

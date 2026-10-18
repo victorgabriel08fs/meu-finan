@@ -2,6 +2,7 @@
 // snapshot the browser starts from, marking seen, turning tips off and
 // "Rever dicas" (doc 02 §6.16).
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import type { TipViewer } from "./tips";
 
 vi.mock("server-only", () => ({}));
 process.env.DATABASE_URL = "pglite:memory";
@@ -32,8 +33,11 @@ beforeAll(async () => {
   accounts = await import("./accounts");
 }, 120_000);
 
-const snapshot = (userId = "owner") =>
-  tips.getTipsSnapshot(userId, { timeZone: ZONE });
+/** A regular account with importar_extrato on (the flag's default). */
+const VIEWER: TipViewer = { role: "user", flags: { importar_extrato: true } };
+
+const snapshot = (userId = "owner", viewer = VIEWER) =>
+  tips.getTipsSnapshot(userId, viewer, { timeZone: ZONE });
 
 describe("tips per user", () => {
   it("starts with nothing seen, tips on and the account's creation day", async () => {
@@ -41,8 +45,22 @@ describe("tips per user", () => {
       seen: [],
       off: false,
       createdOn: "2026-10-14",
-      context: { hasAccounts: false, hasPasskey: false, role: null, flags: [] },
+      context: {
+        hasAccounts: false,
+        hasPasskey: false,
+        role: "user",
+        flags: ["importar_extrato"],
+      },
     });
+  });
+
+  it("takes the role and the flags tips ask about from the viewer", async () => {
+    const admin = await snapshot("owner", {
+      role: "admin",
+      flags: { importar_extrato: false },
+    });
+    expect(admin.context.role).toBe("admin");
+    expect(admin.context.flags).toEqual([]);
   });
 
   it("marks registry tips seen once, ignoring anything else", async () => {
@@ -115,8 +133,8 @@ describe("tips per user", () => {
     expect((await snapshot()).context).toEqual({
       hasAccounts: true,
       hasPasskey: true,
-      role: null,
-      flags: [],
+      role: "user",
+      flags: ["importar_extrato"],
     });
     expect((await snapshot("other")).context.hasAccounts).toBe(false);
 

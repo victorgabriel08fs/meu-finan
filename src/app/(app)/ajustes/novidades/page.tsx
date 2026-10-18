@@ -5,6 +5,7 @@ import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { newsFeed } from "@/lib/tips";
 import { requireUser } from "@/server/dal";
 import { getTipsSnapshot } from "@/server/domain/tips";
+import { getFlags } from "@/server/flags";
 import { type NewsEntry, NewsList } from "./news-list";
 
 export const metadata: Metadata = { title: "Novidades" };
@@ -29,7 +30,12 @@ export default function NovidadesPage() {
 
 async function News() {
   const user = await requireUser();
-  const snapshot = await getTipsSnapshot(user.id);
+  // The same role and flags as the tips in the layout: a novidade about a
+  // feature that is off for this person is not listed.
+  const snapshot = await getTipsSnapshot(user.id, {
+    role: user.role,
+    flags: await getFlags(user.id),
+  });
   const entries: NewsEntry[] = newsFeed({
     seen: new Set(snapshot.seen),
     createdOn: snapshot.createdOn,

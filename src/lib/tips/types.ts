@@ -3,6 +3,8 @@
  * of the registry in ./registry and of the per-user state the selection in
  * ./select works on. Pure data, shared by the server and the browser.
  */
+import type { UserRole } from "@/lib/admin/roles";
+import type { FlagKey } from "@/lib/flags/registry";
 
 /**
  * - `primeiros-passos`: for everyone, the first time they reach the screen.
@@ -11,8 +13,8 @@
  */
 export type TipKind = "primeiros-passos" | "novidade";
 
-/** Roles of the signed-in user (filled in once the app has roles). */
-export type TipRole = "admin" | "user";
+/** Role of the signed-in user (src/lib/admin/roles). */
+export type TipRole = UserRole;
 
 /** Icon of a novidade in Ajustes › Novidades (mapped to Lucide there). */
 export type TipIcon =
@@ -34,10 +36,13 @@ export type TipCondition = {
   hasAccounts?: boolean;
   /** The user has (true) or has no (false) passkey. */
   hasPasskey?: boolean;
-  /** Only for these roles. While `TipContext.role` is null, never. */
+  /** Only for these roles; never while the role is unknown (null). */
   roles?: readonly TipRole[];
-  /** Only while this feature flag is on for the user. */
-  flag?: string;
+  /**
+   * Only while this feature flag (src/lib/flags) is on for the user: a tip
+   * about a flagged feature never points at it while it is off.
+   */
+  flag?: FlagKey;
 };
 
 /**
@@ -47,10 +52,13 @@ export type TipCondition = {
 export type TipContext = {
   hasAccounts: boolean;
   hasPasskey: boolean;
-  /** null until the app has roles. */
+  /**
+   * The user's role. null only before the server's snapshot arrives (the
+   * tips store's empty state), when no role-bound tip shows.
+   */
   role: TipRole | null;
   /** Feature flags on for the user, among those tips ask about (TIP_FLAG_KEYS). */
-  flags: readonly string[];
+  flags: readonly FlagKey[];
 };
 
 export type Tip = {
