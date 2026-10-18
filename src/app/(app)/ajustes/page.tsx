@@ -27,6 +27,7 @@ import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
 import { getThemePreference } from "@/server/domain/preferences";
+import { getTipsOff } from "@/server/domain/tips";
 import { usersOverview } from "@/server/domain/users";
 import { getFlags } from "@/server/flags";
 import packageJson from "../../../../package.json";
@@ -46,10 +47,11 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, theme, flags, admin] = await Promise.all([
+  const [ctx, categories, theme, tipsOff, flags, admin] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
     getThemePreference(user.id),
+    getTipsOff(user.id),
     getFlags(user.id),
     user.role === "admin"
       ? Promise.all([usersOverview(), flagsOverview()])
@@ -122,7 +124,7 @@ async function Settings() {
           <InsetListItem
             icon={<Lightbulb />}
             label="Dicas de uso"
-            trailing={<TipsStateLabel />}
+            trailing={<TipsStateLabel fallback={tipsOff} />}
             href="/ajustes/preferencias#preferencias-dicas"
             data-tip="preferences"
           />

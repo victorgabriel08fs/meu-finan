@@ -4,7 +4,7 @@ import { NewsList } from "@/app/(app)/ajustes/novidades/news-list";
 import { TIPS, type TipsSnapshot } from "@/lib/tips";
 import { useTipsStore } from "@/stores/tips";
 import { tipLabel } from "./coach-mark";
-import { NewsBadge, NewsDot } from "./news";
+import { NewsBadge, NewsDot, TipsStateLabel } from "./news";
 import { TipsPreferences } from "./tips-preferences";
 
 // Server Actions are not importable outside Next; nothing is saved here.
@@ -51,6 +51,16 @@ describe("unread novidades", () => {
     useTipsStore.getState().hydrate(snapshot());
     expect(renderToStaticMarkup(<NewsDot />)).toBe("");
     expect(renderToStaticMarkup(<NewsBadge />)).toBe("");
+  });
+
+  it("names the server's tips state before the tips load", () => {
+    useTipsStore.getState().hydrate(snapshot({ off: false }));
+    expect(renderToStaticMarkup(<TipsStateLabel fallback />)).toBe(
+      "Desligadas",
+    );
+    expect(renderToStaticMarkup(<TipsStateLabel fallback={false} />)).toBe(
+      "Ligadas",
+    );
   });
 });
 
