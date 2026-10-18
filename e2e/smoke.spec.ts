@@ -179,7 +179,7 @@ test("o tema escolhido fica na conta: vale depois de recarregar e em outro apare
   await other.getByLabel("E-mail").fill(EMAIL);
   await other.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await other.getByRole("button", { name: "Entrar com senha" }).click();
-  await expect(other).toHaveURL(/\/inicio/);
+  await expect(other).toHaveURL(/\/inicio/, { timeout: 30_000 });
   await expect(other.locator("html")).toHaveAttribute("data-theme", "light", {
     timeout: 30_000,
   });

@@ -4,6 +4,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { BudgetPace } from "@/lib/finance";
+import { BudgetsView } from "./budgets/budgets-view";
+import { GoalsView } from "./goals/goals-view";
+import { CompoundSimulator } from "./simulator/simulator";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/actions/planning", () => ({
@@ -38,8 +41,7 @@ const pace = (overrides: Partial<BudgetPace> = {}): BudgetPace => ({
 });
 
 describe("Orçamentos", () => {
-  it("shows the summary, the rows and the copy action", async () => {
-    const { BudgetsView } = await import("./budgets/budgets-view");
+  it("shows the summary, the rows and the copy action", () => {
     const html = renderToStaticMarkup(
       <BudgetsView
         month="2026-10"
@@ -78,8 +80,7 @@ describe("Orçamentos", () => {
     expect(html).toContain("Copiar de setembro");
   });
 
-  it("offers the suggestion when there are no budgets", async () => {
-    const { BudgetsView } = await import("./budgets/budgets-view");
+  it("offers the suggestion when there are no budgets", () => {
     const html = renderToStaticMarkup(
       <BudgetsView
         month="2026-10"
@@ -109,8 +110,7 @@ describe("Orçamentos", () => {
 });
 
 describe("Metas", () => {
-  it("shows the status pill, the projection and the plan action", async () => {
-    const { GoalsView } = await import("./goals/goals-view");
+  it("shows the status pill, the projection and the plan action", () => {
     const html = renderToStaticMarkup(
       <GoalsView
         goals={[
@@ -149,8 +149,7 @@ describe("Metas", () => {
 });
 
 describe("Simulador", () => {
-  it("renders the default simulation", async () => {
-    const { CompoundSimulator } = await import("./simulator/simulator");
+  it("renders the default simulation", () => {
     const html = renderToStaticMarkup(
       <CompoundSimulator
         market={market}

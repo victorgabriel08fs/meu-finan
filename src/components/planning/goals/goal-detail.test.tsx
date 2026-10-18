@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { projectGoal } from "@/lib/finance";
 import type { GoalHistoryMonth } from "./detail-model";
-import type { GoalDetailData } from "./goal-detail";
+import { type GoalDetailData, GoalDetailView } from "./goal-detail";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/server/actions/planning", () => ({
@@ -82,8 +82,7 @@ const history: GoalHistoryMonth[] = [
   { month: "2026-10", contributionCents: 100_000, balanceCents: 1_860_000 },
 ];
 
-async function render(data: GoalDetailData, months = history) {
-  const { GoalDetailView } = await import("./goal-detail");
+function render(data: GoalDetailData, months = history) {
   return renderToStaticMarkup(
     <GoalDetailView
       goal={data}
@@ -113,8 +112,8 @@ async function render(data: GoalDetailData, months = history) {
 }
 
 describe("GoalDetailView", () => {
-  it("shows the progress, the plan and the projection of a linked goal", async () => {
-    const html = await render(goal());
+  it("shows the progress, the plan and the projection of a linked goal", () => {
+    const html = render(goal());
     const visible = text(html);
     expect(visible).toContain("Reserva de emergência");
     expect(visible).toContain("Guardado");
@@ -142,16 +141,16 @@ describe("GoalDetailView", () => {
     expect(html).toMatch(/aria-valuetext="[^"]+, projeção: saldo de/);
   });
 
-  it("hides the amounts of the projection sentence in privacy mode", async () => {
-    const html = await render(goal());
+  it("hides the amounts of the projection sentence in privacy mode", () => {
+    const html = render(goal());
     // "aporte R$ 1.425/mês": the amount sits in a value/mask pair.
     expect(html).toMatch(
       /<span data-privacy-value="">R\$\s1\.425<\/span><span data-privacy-mask=""/,
     );
   });
 
-  it("explains a goal without a linked account", async () => {
-    const html = await render(
+  it("explains a goal without a linked account", () => {
+    const html = render(
       goal({
         accountId: null,
         accountName: null,
@@ -171,8 +170,8 @@ describe("GoalDetailView", () => {
     expect(visible).not.toContain("com CDI");
   });
 
-  it("shows a calm success state once the goal is reached", async () => {
-    const html = await render(goal({ currentCents: 3_100_000 }));
+  it("shows a calm success state once the goal is reached", () => {
+    const html = render(goal({ currentCents: 3_100_000 }));
     const visible = text(html);
     expect(visible).toContain("Concluída");
     expect(visible).toContain("Meta atingida");

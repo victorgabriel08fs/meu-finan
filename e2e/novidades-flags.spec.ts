@@ -20,9 +20,11 @@ test("sem importar_extrato, Novidades não anuncia a importação", async ({
   await expect(page).toHaveURL(/\/inicio/, { timeout: 30_000 });
 
   await page.goto("/ajustes/novidades");
-  await expect(page.getByText("Três relatórios novos")).toBeVisible({
-    timeout: 30_000,
-  });
+  // By role: while React reveals the streamed list, a hidden copy of it can
+  // still sit at the end of <body>, and getByText would match both.
+  await expect(
+    page.getByRole("heading", { name: "Três relatórios novos" }),
+  ).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Importe o extrato do banco")).toHaveCount(0);
   await expect(page.locator('a[href="/importar"]')).toHaveCount(0);
 });
