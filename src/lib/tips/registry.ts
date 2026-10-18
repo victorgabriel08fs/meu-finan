@@ -160,8 +160,10 @@ export const TIPS: readonly Tip[] = [
   {
     id: "novidade-importar-extrato",
     kind: "novidade",
-    routes: ["/ajustes"],
-    anchor: "import",
+    // Only in Ajustes › Novidades: its row sits below the fold of Ajustes,
+    // where a balloon would always be skipped.
+    routes: [],
+    anchor: null,
     title: "Importe o extrato do banco",
     body: "Traga os lançamentos de um arquivo OFX ou CSV, sem duplicar o que já existe. E, se precisar, exporte tudo em CSV.",
     since: "2026-10-16",

@@ -150,7 +150,6 @@ async function Settings() {
               label="Importar extrato"
               description="Arquivo OFX ou CSV do seu banco"
               href="/importar"
-              data-tip="import"
             />
           ) : null}
           <ExportListItem />
