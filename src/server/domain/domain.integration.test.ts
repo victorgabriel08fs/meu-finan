@@ -559,3 +559,62 @@ describe("series edits", () => {
     ).rejects.toThrow("altere só este");
   });
 });
+
+describe("another account's category", () => {
+  it("never lands on an entry of a second account, balance adjustments included", async () => {
+    const { db } = await import("../db/client");
+    const schema = await import("../db/schema");
+    const { ensureOwnerDefaults } = await import("../db/seed-defaults");
+    await db
+      .insert(schema.user)
+      .values({ id: "other", name: "Bruno", email: "bruno@exemplo.com" });
+    await ensureOwnerDefaults("other");
+    const other = await d.context.getUserContext("other", { now: NOW });
+    const wallet = await d.accounts.createAccount("other", {
+      name: "Carteira",
+      type: "cash",
+      initialBalanceCents: 10_000,
+    });
+    expect(await d.accounts.adjustBalance(other, wallet, 12_000)).toBe(2_000);
+    const { items } = await d.transactions.listTransactions(other, {
+      start: other.todayIso,
+      end: other.todayIso,
+      accountId: wallet,
+      kind: "adjustment",
+    });
+    const adjustment = items[0];
+    if (!adjustment) throw new Error("ajuste de saldo");
+
+    // Ana's "Mercado", sent by hand to the edit action: an adjustment keeps
+    // no category, so its statement row shows none of hers.
+    await d.transactions.updateTransaction(
+      other,
+      adjustment.id,
+      { categoryId: ids.groceries },
+      "this",
+    );
+    expect(
+      await d.transactions.getTransaction(other, adjustment.id),
+    ).toMatchObject({
+      categoryId: null,
+      categoryName: null,
+      amountCents: 2_000,
+    });
+
+    // Any other entry refuses it outright.
+    const { ids: created } = await d.transactions.createTransaction(other, {
+      kind: "expense",
+      amountCents: 1_000,
+      accountId: wallet,
+      categoryId: null,
+      occurredOn: other.todayIso,
+    });
+    const [expense] = created;
+    if (!expense) throw new Error("despesa");
+    await expect(
+      d.transactions.updateTransaction(other, expense, {
+        categoryId: ids.groceries,
+      }),
+    ).rejects.toThrow("Categoria não encontrad");
+  });
+});

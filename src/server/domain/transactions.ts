@@ -752,8 +752,14 @@ export async function updateTransaction(
       ctx.userId,
       patch.accountId ?? row.accountId,
     );
+    // A balance adjustment has no category (adjustBalance creates it without
+    // one and the edit form does not offer the field); like its amount, it
+    // stays. So a category from the patch is only written once requireCategory
+    // has checked its owner and kind.
     const categoryId =
-      patch.categoryId === undefined ? row.categoryId : patch.categoryId;
+      patch.categoryId === undefined || row.kind === "adjustment"
+        ? row.categoryId
+        : patch.categoryId;
     if (
       categoryId &&
       patch.categoryId !== undefined &&
