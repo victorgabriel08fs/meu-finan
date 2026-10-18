@@ -555,7 +555,6 @@ function DeleteContent({
           autoCapitalize="none"
           spellCheck={false}
           value={typed}
-          placeholder={user.email}
           onChange={(event) => {
             setTyped(event.target.value);
             setError(undefined);
