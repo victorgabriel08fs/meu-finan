@@ -11,7 +11,11 @@ export type TipState = {
   seen: ReadonlySet<string>;
   /** "Não mostrar mais dicas". */
   off: boolean;
-  /** Day the account was created, YYYY-MM-DD; null when unknown. */
+  /**
+   * Day the person started using the account (invite accepted, or the
+   * account created when there was no invite), YYYY-MM-DD in their time
+   * zone; null when unknown.
+   */
   createdOn: string | null;
   context: TipContext;
 };
@@ -68,8 +72,8 @@ export function meetsCondition(
 }
 
 /**
- * A primeiros-passos tip is for everyone; a novidade only for accounts created
- * before its date (an unknown creation date never gets one).
+ * A primeiros-passos tip is for everyone; a novidade only for accounts in use
+ * before its date (an unknown start date never gets one).
  */
 export function isForAccount(tip: Tip, createdOn: string | null): boolean {
   if (tip.kind === "primeiros-passos") return true;

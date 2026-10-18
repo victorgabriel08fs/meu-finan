@@ -8,7 +8,7 @@ import type { Tip } from "./types";
  *    first one visible on screen wins, so a phone and a desktop version of
  *    the same control can share the name).
  * 2. Add an entry below with a new, stable `id` and today's date as `since`.
- *    A `novidade` reaches only accounts created before `since`; give it an
+ *    A `novidade` reaches only accounts in use before `since`; give it an
  *    `icon` and, when there is a place to go, a `link`. Without `routes` and
  *    `anchor` it lives only in Ajustes › Novidades. A feature behind a
  *    feature flag takes `when: { flag: "<key>" }`: while the flag is off for

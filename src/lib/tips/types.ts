@@ -8,7 +8,7 @@ import type { FlagKey } from "@/lib/flags/registry";
 
 /**
  * - `primeiros-passos`: for everyone, the first time they reach the screen.
- * - `novidade`: announces something new, so only accounts created before its
+ * - `novidade`: announces something new, so only accounts in use before its
  *   `since` date get it (a newer account never knew the app without it).
  */
 export type TipKind = "primeiros-passos" | "novidade";
@@ -110,7 +110,10 @@ export type TipsSnapshot = {
   seen: readonly string[];
   /** "Não mostrar mais dicas": no balloon at all. */
   off: boolean;
-  /** Day the account was created, YYYY-MM-DD in the user's time zone. */
+  /**
+   * Day the person started using the account (invite accepted, or the
+   * account created when there was no invite), YYYY-MM-DD in their time zone.
+   */
   createdOn: string | null;
   context: TipContext;
 };

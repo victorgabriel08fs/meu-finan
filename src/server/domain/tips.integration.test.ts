@@ -2,6 +2,7 @@
 // snapshot the browser starts from, marking seen, turning tips off and
 // "Rever dicas" (doc 02 §6.16).
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { unreadNewsIds } from "@/lib/tips";
 import type { TipViewer } from "./tips";
 
 vi.mock("server-only", () => ({}));
@@ -141,6 +142,52 @@ describe("tips per user", () => {
     // An archived account does not count: the Início is the checklist again.
     await accounts.archiveAccount("owner", id);
     expect((await snapshot()).context.hasAccounts).toBe(false);
+  });
+
+  it("counts an invited account from the day it accepted the invite", async () => {
+    // An administrator created the account on the 10th; that invite was
+    // revoked and a second one accepted on the 20th. A later reset link does
+    // not move the day.
+    await db.insert(schema.user).values({
+      id: "invited",
+      name: "Caio",
+      email: "caio@exemplo.com",
+      createdAt: new Date("2026-10-10T15:00:00Z"),
+    });
+    const link = (selector: string, createdAt: string) => ({
+      userId: "invited",
+      selector,
+      verifierHash: "hash",
+      createdAt: new Date(createdAt),
+      expiresAt: new Date(Date.parse(createdAt) + 72 * 60 * 60 * 1000),
+    });
+    await db.insert(schema.accessLinks).values([
+      {
+        ...link("convite-1", "2026-10-10T15:00:00Z"),
+        purpose: "invite",
+        revokedAt: new Date("2026-10-13T12:00:00Z"),
+      },
+      {
+        ...link("convite-2", "2026-10-20T14:00:00Z"),
+        purpose: "invite",
+        usedAt: new Date("2026-10-20T15:00:00Z"),
+      },
+      {
+        ...link("senha-1", "2026-11-01T12:00:00Z"),
+        purpose: "reset",
+        usedAt: new Date("2026-11-01T13:00:00Z"),
+      },
+    ]);
+    const state = await snapshot("invited");
+    expect(state.createdOn).toBe("2026-10-20");
+    // Every novidade of the registry came before: none is new to this person.
+    expect(
+      unreadNewsIds({
+        seen: new Set(),
+        createdOn: state.createdOn,
+        context: state.context,
+      }),
+    ).toEqual([]);
   });
 
   it("has no creation day for an unknown user", async () => {

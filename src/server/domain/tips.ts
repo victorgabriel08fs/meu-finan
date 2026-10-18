@@ -2,7 +2,7 @@
 // starts from, and the writes behind "Entendi", "Pular dicas", "Não mostrar
 // mais dicas" and "Rever dicas". Valid ids come from the registry in
 // src/lib/tips; anything else is ignored.
-import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { and, eq, isNull, min, notInArray } from "drizzle-orm";
 import type { UserRole } from "@/lib/admin/roles";
 import { iso, localDateIn } from "@/lib/finance";
 import type { Flags } from "@/lib/flags/registry";
@@ -14,7 +14,13 @@ import {
   type TipsSnapshot,
 } from "@/lib/tips";
 import { db, type Executor } from "@/server/db/client";
-import { finAccounts, passkey, user, userTips } from "@/server/db/schema";
+import {
+  accessLinks,
+  finAccounts,
+  passkey,
+  user,
+  userTips,
+} from "@/server/db/schema";
 import { getUserContext } from "./context";
 
 /** Row that turns every balloon off ("Não mostrar mais dicas"). Not a tip id. */
@@ -61,7 +67,7 @@ export async function getTipContext(
 
 type SnapshotOptions = {
   executor?: Executor;
-  /** IANA zone for the account's creation day; defaults to the user's. */
+  /** IANA zone for the day the account came into use; defaults to the user's. */
   timeZone?: string;
 };
 
@@ -71,12 +77,18 @@ export async function getTipsSnapshot(
   viewer: TipViewer,
   { executor = db, timeZone }: SnapshotOptions = {},
 ): Promise<TipsSnapshot> {
-  const [owner, rows, context, zone] = await Promise.all([
+  const [owner, joined, rows, context, zone] = await Promise.all([
     executor
       .select({ createdAt: user.createdAt })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1),
+    executor
+      .select({ usedAt: min(accessLinks.usedAt) })
+      .from(accessLinks)
+      .where(
+        and(eq(accessLinks.userId, userId), eq(accessLinks.purpose, "invite")),
+      ),
     executor
       .select({ tipId: userTips.tipId })
       .from(userTips)
@@ -84,11 +96,14 @@ export async function getTipsSnapshot(
     getTipContext(userId, viewer, executor),
     timeZone ?? getUserContext(userId).then((ctx) => ctx.timeZone),
   ]);
-  const createdAt = owner[0]?.createdAt;
+  // An invited person starts using the app when they accept the invite, not
+  // when an administrator created the account; reset links do not count.
+  // Without an invite (the first administrator), the account's creation.
+  const startedAt = joined[0]?.usedAt ?? owner[0]?.createdAt;
   return {
     seen: rows.map((row) => row.tipId).filter(isTipId),
     off: rows.some((row) => row.tipId === TIPS_OFF_ROW),
-    createdOn: createdAt ? iso(localDateIn(createdAt, zone)) : null,
+    createdOn: startedAt ? iso(localDateIn(startedAt, zone)) : null,
     context,
   };
 }
