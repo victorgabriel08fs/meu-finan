@@ -1,7 +1,9 @@
 // Break-glass recovery (doc 01 §11.4) with more than one account: it is for
 // the owner, the person who controls the deployment (RECOVERY_TOKEN). It
-// targets the OWNER_EMAIL account (the first one) or, without it, the oldest
-// administrator, and gives that account its administration back.
+// targets the OWNER_EMAIL account; only when that variable is unset, the
+// oldest administrator; and if OWNER_EMAIL matches no account (e.g. another
+// administrator deleted it), nothing. It gives that account its
+// administration back.
 import { and, asc, eq, like, sql } from "drizzle-orm";
 import { db, type Executor } from "@/server/db/client";
 import { account, passkey, session, user } from "@/server/db/schema";
@@ -10,7 +12,11 @@ import { recordAudit } from "./audit";
 
 type Target = { id: string; name: string; email: string };
 
-/** The owner's account; never "whichever row comes first". */
+/**
+ * The owner's account: OWNER_EMAIL's, or null when no account has that
+ * e-mail; without the variable, the oldest administrator. Never "whichever
+ * row comes first", and never someone else's account in the owner's place.
+ */
 export async function recoveryTarget(
   ownerEmail: string | undefined,
   executor: Executor = db,
@@ -22,7 +28,7 @@ export async function recoveryTarget(
       .from(user)
       .where(sql`lower(${user.email}) = ${normalizeEmail(ownerEmail)}`)
       .limit(1);
-    if (owner) return owner;
+    return owner ?? null;
   }
   const [admin] = await executor
     .select(columns)
@@ -30,19 +36,14 @@ export async function recoveryTarget(
     .where(like(user.role, "%admin%"))
     .orderBy(asc(user.createdAt), asc(user.id))
     .limit(1);
-  if (admin) return admin;
-  const [first] = await executor
-    .select(columns)
-    .from(user)
-    .orderBy(asc(user.createdAt), asc(user.id))
-    .limit(1);
-  return first ?? null;
+  return admin ?? null;
 }
 
 /**
  * Sets the new password, ends every session, optionally removes the passkeys
  * and makes the account an active administrator again (another administrator
- * may have demoted or deactivated it). Returns null when there is no account.
+ * may have demoted or deactivated it). Returns null when there is no such
+ * account (see recoveryTarget), changing nothing.
  */
 export async function recoverOwnerAccess(input: {
   ownerEmail: string | undefined;

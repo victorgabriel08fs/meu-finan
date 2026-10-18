@@ -818,16 +818,69 @@ describe("break-glass recovery", () => {
     expect((await recovery.recoveryTarget(ANA.email))?.id).toBe(ANA.id);
     // Without OWNER_EMAIL: the oldest administrator (Ana is not one now).
     const [oldestAdmin] = await m.db
-      .select({ id: m.schema.user.id })
+      .select({ id: m.schema.user.id, email: m.schema.user.email })
       .from(m.schema.user)
       .where(eq(m.schema.user.role, "admin"))
       .orderBy(m.schema.user.createdAt, m.schema.user.id)
       .limit(1);
-    expect(oldestAdmin?.id).not.toBe(ANA.id);
-    expect((await recovery.recoveryTarget(undefined))?.id).toBe(
-      oldestAdmin?.id,
-    );
+    if (!oldestAdmin) throw new Error("administrador mais antigo");
+    expect(oldestAdmin.id).not.toBe(ANA.id);
+    expect((await recovery.recoveryTarget(undefined))?.id).toBe(oldestAdmin.id);
     expect(paula).toBeTruthy();
+
+    // OWNER_EMAIL set but matching no account (deleted, or a typo in the
+    // variable): nothing, never the oldest administrator in its place.
+    expect(await recovery.recoveryTarget("ninguem@exemplo.com")).toBeNull();
+    await signIn(oldestAdmin.email);
+    await m.db.insert(m.schema.passkey).values({
+      id: "passkey-admin-antigo",
+      publicKey: "chave",
+      userId: oldestAdmin.id,
+      credentialID: "credencial-admin-antigo",
+      counter: 0,
+      deviceType: "singleDevice",
+      backedUp: false,
+    });
+    const accessOf = async (userId: string) => {
+      const s = m.schema;
+      const [person] = await m.db
+        .select({ role: s.user.role, banned: s.user.banned })
+        .from(s.user)
+        .where(eq(s.user.id, userId));
+      const [credential] = await m.db
+        .select({ password: s.account.password })
+        .from(s.account)
+        .where(
+          and(
+            eq(s.account.userId, userId),
+            eq(s.account.providerId, "credential"),
+          ),
+        );
+      const [keys] = await m.db
+        .select({ total: count() })
+        .from(s.passkey)
+        .where(eq(s.passkey.userId, userId));
+      return {
+        ...person,
+        password: credential?.password,
+        sessions: await sessionsOf(userId),
+        passkeys: keys?.total ?? 0,
+      };
+    };
+    const untouched = await accessOf(oldestAdmin.id);
+    expect(untouched).toMatchObject({ role: "admin", passkeys: 1 });
+    expect(untouched.sessions).toBeGreaterThan(0);
+    const audits = await auditCount();
+    expect(
+      await recovery.recoverOwnerAccess({
+        ownerEmail: "ninguem@exemplo.com",
+        passwordHash: await hashPassword("a senha de emergência"),
+        removePasskeys: true,
+      }),
+    ).toBeNull();
+    expect(await accessOf(oldestAdmin.id)).toEqual(untouched);
+    expect(await auditCount()).toBe(audits);
+
     const recovered = await recovery.recoverOwnerAccess({
       ownerEmail: ANA.email,
       passwordHash: await hashPassword("a senha de emergência"),
