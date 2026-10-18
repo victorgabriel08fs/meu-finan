@@ -1,9 +1,9 @@
 // Break-glass recovery (doc 01 §11.4) with more than one account: it is for
 // the owner, the person who controls the deployment (RECOVERY_TOKEN). It
 // targets the OWNER_EMAIL account; only when that variable is unset, the
-// oldest administrator; and if OWNER_EMAIL matches no account (e.g. another
-// administrator deleted it), nothing. It gives that account its
-// administration back.
+// oldest administrator; and if OWNER_EMAIL matches no account (e.g. a typo in
+// the variable: the panel never deletes the owner's account), nothing. It
+// gives that account its administration back.
 import { and, asc, eq, like, sql } from "drizzle-orm";
 import { db, type Executor } from "@/server/db/client";
 import { account, passkey, session, user } from "@/server/db/schema";
