@@ -433,6 +433,9 @@ function ActionRow({
   disabled?: boolean;
   danger?: boolean;
 }) {
+  // Only the icon and the title dim: the description is the reason a
+  // disabled row gives (doc 02 §6.17), so it stays readable.
+  const dimmed = disabled && !busy;
   return (
     <li>
       <button
@@ -444,7 +447,6 @@ function ActionRow({
           "flex min-h-16 w-full items-center gap-3 px-4 py-2.5 text-left -outline-offset-2",
           "transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2",
           "disabled:cursor-not-allowed disabled:hover:bg-transparent",
-          disabled && !busy && "[&>*]:opacity-50",
         )}
       >
         <span
@@ -452,6 +454,7 @@ function ActionRow({
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-full [&_svg]:size-5",
             danger ? "bg-danger-soft text-danger" : "bg-surface-2 text-fg-2",
+            dimmed && "opacity-50",
           )}
         >
           {busy ? <LoaderCircle className="animate-spin" /> : icon}
@@ -461,6 +464,7 @@ function ActionRow({
             className={cn(
               "text-body font-semibold",
               danger ? "text-danger" : "text-fg",
+              dimmed && "opacity-50",
             )}
           >
             {label}
