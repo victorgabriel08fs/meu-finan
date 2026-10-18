@@ -308,7 +308,7 @@ function DetailsContent({
                     user.isOwner
                       ? OWNER_LINK_MESSAGE
                       : user.banned
-                        ? "Reative a conta antes de gerar um link."
+                        ? "Reative o acesso antes de gerar um link."
                         : link && !linkExpired
                           ? "O link atual deixa de funcionar na hora."
                           : isInvite
@@ -340,8 +340,8 @@ function DetailsContent({
                     user.role === "admin"
                       ? "Volta a ser usuário: só as próprias finanças."
                       : user.banned
-                        ? "Reative a conta antes de mudar o papel."
-                        : "Poderá convidar pessoas e gerenciar contas e flags."
+                        ? "Reative o acesso antes de mudar o papel."
+                        : "Poderá convidar pessoas e gerenciar acessos e flags."
                   }
                   busy={busy === "role"}
                   disabled={
@@ -517,7 +517,7 @@ function DeleteContent({
   return (
     <SheetContent
       title={`Excluir a conta de ${firstName}?`}
-      description="Apaga a conta e tudo o que há nela: contas, cartões, lançamentos, metas, orçamentos e importações. Não dá para desfazer."
+      description={`Apaga o acesso e todas as finanças de ${firstName}: contas, cartões, lançamentos, metas, orçamentos e importações. Não dá para desfazer.`}
       footer={
         <>
           <Button

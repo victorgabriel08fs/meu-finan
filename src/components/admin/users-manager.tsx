@@ -47,7 +47,7 @@ export function UsersManager({
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-callout text-fg-2">
-          {plural(users.length, "conta", "contas")}
+          {plural(users.length, "pessoa", "pessoas")}
           {pending.length > 0
             ? ` · ${plural(pending.length, "convite pendente", "convites pendentes")}`
             : ""}
@@ -58,10 +58,10 @@ export function UsersManager({
         </Button>
       </div>
 
-      <section aria-labelledby="admin-contas">
-        <SectionHeader id="admin-contas" title="Contas" />
+      <section aria-labelledby="admin-pessoas">
+        <SectionHeader id="admin-pessoas" title="Pessoas" />
         <ul
-          aria-labelledby="admin-contas"
+          aria-labelledby="admin-pessoas"
           className="overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border"
         >
           {users.map((user) => (
@@ -90,8 +90,8 @@ export function UsersManager({
           </div>
         ) : null}
         <p className="mt-3 px-1 text-caption text-fg-3">
-          Quem administra cuida das contas, dos convites e das flags, e nunca vê
-          as finanças de outra pessoa.
+          Quem administra cuida dos acessos, dos convites e das flags, e nunca
+          vê as finanças de outra pessoa.
         </p>
       </section>
 

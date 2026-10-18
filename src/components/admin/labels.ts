@@ -32,7 +32,7 @@ export function initials(name: string): string {
   return `${first}${last}`.toUpperCase() || "?";
 }
 
-/** "1 conta", "4 contas". */
+/** "1 pessoa", "4 pessoas". */
 export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }

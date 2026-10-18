@@ -248,7 +248,7 @@ function PeopleSheetContent({
     >
       <p className="mb-3 text-caption text-fg-3">
         {plural(flag.overrides.length, "exceção", "exceções")} ·{" "}
-        {plural(people.length, "conta", "contas")}
+        {plural(people.length, "pessoa", "pessoas")}
       </p>
       <ul className="flex flex-col pb-2 [&>li+li]:border-t [&>li+li]:border-border">
         {people.map((person) => (

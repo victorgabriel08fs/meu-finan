@@ -90,13 +90,13 @@ export function accountActionBlocker(
       break;
     case "promote":
       if (target.role === "admin") return "Esta conta já é administradora.";
-      if (target.banned) return "Reative a conta antes de mudar o papel.";
+      if (target.banned) return "Reative o acesso antes de mudar o papel.";
       break;
     case "demote":
       if (target.role !== "admin") return "Esta conta não é administradora.";
       break;
     case "create_link":
-      if (target.banned) return "Reative a conta antes de gerar um link.";
+      if (target.banned) return "Reative o acesso antes de gerar um link.";
       break;
     default:
       break;

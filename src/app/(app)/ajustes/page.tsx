@@ -166,7 +166,7 @@ async function Settings() {
               icon={<UsersRound />}
               label="Usuários"
               description={[
-                plural(admin[0].accounts, "conta", "contas"),
+                plural(admin[0].accounts, "pessoa", "pessoas"),
                 admin[0].pendingInvites > 0
                   ? plural(
                       admin[0].pendingInvites,
