@@ -68,7 +68,7 @@ export function TipsPreferences({ initiallyOff }: { initiallyOff: boolean }) {
               Mostrar dicas nas telas
             </span>
             <span id={`${ids}-hint`} className="text-caption text-fg-3">
-              Balões que apontam o que fazer na primeira visita a cada tela.
+              Balões na primeira visita a cada tela e o ponto de novidades.
             </span>
           </span>
           <Switch
