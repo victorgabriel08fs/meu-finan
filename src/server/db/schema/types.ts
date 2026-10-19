@@ -122,6 +122,8 @@ export type AuditMetadata = {
   role?: "admin" | "user";
   /** access_link.*: invite (first password) or reset. */
   purpose?: "invite" | "reset";
+  /** access_link.created: a link that still worked stopped working. */
+  replaced?: boolean;
   /** access_link.accepted (reset): the person also removed their passkeys. */
   removedPasskeys?: boolean;
   /** user.sessions_revoked, user.banned: how many sessions ended. */

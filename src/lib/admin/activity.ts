@@ -13,6 +13,7 @@ export type ActivityEntry = {
   metadata: {
     role?: "admin" | "user";
     purpose?: "invite" | "reset";
+    replaced?: boolean;
     removedPasskeys?: boolean;
     sessions?: number;
     flag?: string;
@@ -85,7 +86,9 @@ export function describeActivity(
           meta.purpose === "reset"
             ? `${actor} gerou um link de redefinição para ${target}`
             : `${actor} gerou um novo convite para ${target}`,
-        detail: "O link anterior deixou de funcionar",
+        detail: meta.replaced
+          ? "O link anterior deixou de funcionar"
+          : undefined,
       };
     case "access_link.revoked":
       return {

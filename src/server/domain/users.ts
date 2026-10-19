@@ -337,7 +337,8 @@ export type LinkOptions = { origin: string; now?: Date };
 /**
  * Creates a link for `target`, revoking the open one (a new link replaces the
  * old). An account without a password or passkey gets an invite; one that
- * already had access gets a reset.
+ * already had access gets a reset. `replaced` says whether a link that still
+ * worked stopped working, for the activity log.
  */
 async function issueLink(
   tx: Transaction,
@@ -345,7 +346,7 @@ async function issueLink(
   target: LockedAccount,
   origin: string,
   now: Date,
-): Promise<CreatedLink> {
+): Promise<{ link: CreatedLink; replaced: boolean }> {
   const [credential] = await tx
     .select({ id: account.id })
     .from(account)
@@ -364,7 +365,7 @@ async function issueLink(
   const purpose: AccessLinkPurpose =
     credential || (keys?.total ?? 0) > 0 ? "reset" : "invite";
 
-  await tx
+  const revoked = await tx
     .update(accessLinks)
     .set({ revokedAt: now })
     .where(
@@ -373,7 +374,8 @@ async function issueLink(
         isNull(accessLinks.usedAt),
         isNull(accessLinks.revokedAt),
       ),
-    );
+    )
+    .returning({ expiresAt: accessLinks.expiresAt });
   const token = createAccessToken();
   const expiresAt = accessLinkExpiry(now);
   await tx.insert(accessLinks).values({
@@ -386,9 +388,12 @@ async function issueLink(
     expiresAt,
   });
   return {
-    purpose,
-    url: accessLinkUrl(origin, token.token),
-    expiresAt: expiresAt.toISOString(),
+    link: {
+      purpose,
+      url: accessLinkUrl(origin, token.token),
+      expiresAt: expiresAt.toISOString(),
+    },
+    replaced: revoked.some((row) => row.expiresAt > now),
   };
 }
 
@@ -451,7 +456,7 @@ export async function createUserWithInvite(
         createdAt: now,
         updatedAt: now,
       });
-      const link = await issueLink(tx, actor, created, origin, now);
+      const { link } = await issueLink(tx, actor, created, origin, now);
       await recordAudit(tx, {
         action: "user.created",
         actor,
@@ -479,12 +484,12 @@ export async function createAccessLink(
       targetId,
       "create_link",
     );
-    const link = await issueLink(tx, actor, target, origin, now);
+    const { link, replaced } = await issueLink(tx, actor, target, origin, now);
     await recordAudit(tx, {
       action: "access_link.created",
       actor,
       target: auditTarget(target),
-      metadata: { purpose: link.purpose },
+      metadata: { purpose: link.purpose, ...(replaced ? { replaced } : {}) },
     });
     return link;
   });

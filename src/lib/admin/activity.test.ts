@@ -34,6 +34,17 @@ describe("describeActivity", () => {
       line({ action: "access_link.created", metadata: { purpose: "invite" } })
         .title,
     ).toBe("Ana gerou um novo convite para Bruno Lima");
+    // "The previous link stopped working" only when there was a live one.
+    expect(
+      line({ action: "access_link.created", metadata: { purpose: "reset" } })
+        .detail,
+    ).toBeUndefined();
+    expect(
+      line({
+        action: "access_link.created",
+        metadata: { purpose: "reset", replaced: true },
+      }).detail,
+    ).toBe("O link anterior deixou de funcionar");
     expect(line({ action: "access_link.revoked" }).title).toBe(
       "Ana invalidou o link de Bruno Lima",
     );

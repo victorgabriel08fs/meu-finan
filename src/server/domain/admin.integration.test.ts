@@ -276,8 +276,21 @@ describe("reset links", () => {
     });
     expect(await sessionsOf(id)).toBe(2);
 
+    const first = await m.users.createAccessLink(ANA.id, id, LINKS);
+    expect(first.purpose).toBe("reset");
     const reset = await m.users.createAccessLink(ANA.id, id, LINKS);
-    expect(reset.purpose).toBe("reset");
+    // Atividade says the previous link stopped working only when one did.
+    const { items } = await m.audit.listAuditLog({ limit: 2 });
+    expect(items.map((item) => item.metadata.replaced)).toEqual([
+      true,
+      undefined,
+    ]);
+    await expect(
+      m.links.acceptAccessLink(tokenOf(first.url), {
+        passwordHash: await hashPassword("a senha nova e longa"),
+        removePasskeys: false,
+      }),
+    ).rejects.toThrow();
     await m.links.acceptAccessLink(tokenOf(reset.url), {
       passwordHash: await hashPassword("a senha nova e longa"),
       removePasskeys: true,
