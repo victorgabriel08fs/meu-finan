@@ -1,6 +1,7 @@
 // Creates the preferences and default categories the owner's account is
 // missing; the owner is the OWNER_EMAIL account or, without it, the oldest
-// administrator. Other accounts get theirs when they accept their invite.
+// account (the first access). Other accounts get theirs when they accept
+// their invite.
 // Usage: npm run db:seed (reads DATABASE_URL from the environment or .env.local).
 // Imports are evaluated before loadEnvConfig runs; that is fine because the db
 // client only reads DATABASE_URL on the first query.
@@ -24,11 +25,14 @@ type CategoryCounts = Record<CategoryKind, number>;
 
 async function findOwner() {
   // The same rule as /recuperar. process.env directly: src/server/env.ts is
-  // server-only and does not load under tsx.
-  const owner = await recoveryTarget(process.env.OWNER_EMAIL);
+  // server-only and does not load under tsx. Blank counts as unset, as there.
+  const ownerEmail = process.env.OWNER_EMAIL?.trim() || undefined;
+  const owner = await recoveryTarget(ownerEmail);
   if (!owner) {
     throw new SeedError(
-      "Nenhum usuário encontrado. Crie a conta do dono em /primeiro-acesso e rode o seed de novo.",
+      ownerEmail
+        ? "Nenhuma conta usa o e-mail de OWNER_EMAIL. Confira a variável no .env.local (ou no ambiente) e rode o seed de novo."
+        : "Nenhum usuário encontrado. Crie a conta do dono em /primeiro-acesso e rode o seed de novo.",
     );
   }
   return owner;

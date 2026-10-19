@@ -1,10 +1,12 @@
 // Break-glass recovery (doc 01 §11.4) with more than one account: it is for
 // the owner, the person who controls the deployment (RECOVERY_TOKEN). It
 // targets the OWNER_EMAIL account; only when that variable is unset, the
-// oldest administrator; and if OWNER_EMAIL matches no account (e.g. a typo in
-// the variable: the panel never deletes the owner's account), nothing. It
-// gives that account its administration back.
-import { and, asc, eq, like, sql } from "drizzle-orm";
+// oldest account (the one /primeiro-acesso created, whatever its role now:
+// a demotion must not hand the owner's place to another administrator); and
+// if OWNER_EMAIL matches no account (e.g. a typo in the variable: the panel
+// never deletes the owner's account), nothing. It gives that account its
+// administration back.
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db, type Executor } from "@/server/db/client";
 import { account, passkey, session, user } from "@/server/db/schema";
 import { normalizeEmail } from "@/server/security/guards";
@@ -14,8 +16,9 @@ type Target = { id: string; name: string; email: string };
 
 /**
  * The owner's account: OWNER_EMAIL's, or null when no account has that
- * e-mail; without the variable, the oldest administrator. Never "whichever
- * row comes first", and never someone else's account in the owner's place.
+ * e-mail; without the variable, the oldest account, the first access (no
+ * invited account predates it, and the panel neither deletes nor resets it).
+ * The panel's owner guard uses the same rule, so the two never disagree.
  */
 export async function recoveryTarget(
   ownerEmail: string | undefined,
@@ -30,13 +33,12 @@ export async function recoveryTarget(
       .limit(1);
     return owner ?? null;
   }
-  const [admin] = await executor
+  const [first] = await executor
     .select(columns)
     .from(user)
-    .where(like(user.role, "%admin%"))
     .orderBy(asc(user.createdAt), asc(user.id))
     .limit(1);
-  return admin ?? null;
+  return first ?? null;
 }
 
 /**

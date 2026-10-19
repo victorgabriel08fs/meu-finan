@@ -28,8 +28,8 @@ const recoverSchema = z
 /**
  * Break-glass recovery (doc 01 §11.4): only while RECOVERY_TOKEN is set. For
  * the owner's account: the OWNER_EMAIL one; only when that variable is unset,
- * the oldest administrator; if it matches no account (e.g. a typo in the
- * variable), nothing changes and the operator is told. Sets a new password,
+ * the oldest account (the first access); if it matches no account (e.g. a
+ * typo in the variable), nothing changes and the operator is told. Sets a new password,
  * ends every session, optionally removes all passkeys and restores the
  * account as an active administrator.
  */

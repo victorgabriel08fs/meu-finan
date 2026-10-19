@@ -435,6 +435,38 @@ describe("guards", () => {
     await m.users.setUserRole(ANA.id, lara, "user");
   });
 
+  it("keeps the first access as the owner without OWNER_EMAIL, even demoted", async () => {
+    const { id: olga, token } = await invite(
+      "Olga",
+      "olga@exemplo.com",
+      "admin",
+    );
+    await accept(token);
+    const ownerEmail = process.env.OWNER_EMAIL;
+    delete process.env.OWNER_EMAIL;
+    try {
+      // Without the variable the owner is the oldest account, Ana's; taking
+      // her role away does not hand that place to another administrator.
+      await m.users.setUserRole(olga, ANA.id, "user");
+      const audits = await auditCount();
+      await expect(
+        m.users.deleteUserAccount(olga, ANA.id, ANA.email),
+      ).rejects.toThrow("A conta do dono do app não pode ser excluída.");
+      await expect(
+        m.users.createAccessLink(olga, ANA.id, LINKS),
+      ).rejects.toThrow(/recuperação de emergência/);
+      expect(await auditCount()).toBe(audits);
+      const list = await m.users.listUsersForAdmin(olga);
+      expect(list.filter((row) => row.isOwner).map((row) => row.id)).toEqual([
+        ANA.id,
+      ]);
+    } finally {
+      process.env.OWNER_EMAIL = ownerEmail;
+    }
+    await m.users.setUserRole(olga, ANA.id, "admin");
+    await m.users.setUserRole(ANA.id, olga, "user");
+  });
+
   it("refuses the domain to anyone who is not an active administrator", async () => {
     const { id: mauro, token } = await invite("Mauro", "mauro@exemplo.com");
     await accept(token);
@@ -866,7 +898,10 @@ describe("break-glass recovery", () => {
     const recovery = await import("./recovery");
     // OWNER_EMAIL first, never whichever account comes first.
     expect((await recovery.recoveryTarget(ANA.email))?.id).toBe(ANA.id);
-    // Without OWNER_EMAIL: the oldest administrator (Ana is not one now).
+    // Without OWNER_EMAIL: the first access, Ana's, even though she is no
+    // administrator now. A demotion never hands the owner's place to the
+    // oldest remaining administrator.
+    expect((await recovery.recoveryTarget(undefined))?.id).toBe(ANA.id);
     const [oldestAdmin] = await m.db
       .select({ id: m.schema.user.id, email: m.schema.user.email })
       .from(m.schema.user)
@@ -875,7 +910,6 @@ describe("break-glass recovery", () => {
       .limit(1);
     if (!oldestAdmin) throw new Error("administrador mais antigo");
     expect(oldestAdmin.id).not.toBe(ANA.id);
-    expect((await recovery.recoveryTarget(undefined))?.id).toBe(oldestAdmin.id);
     expect(paula).toBeTruthy();
 
     // OWNER_EMAIL set but matching no account (deleted, or a typo in the

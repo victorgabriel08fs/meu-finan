@@ -22,7 +22,7 @@ export type GuardInput = {
   activeAdminIds: readonly string[];
   /**
    * The target is the owner's account: the one the emergency recovery
-   * (/recuperar) restores, i.e. OWNER_EMAIL's.
+   * (/recuperar) restores, i.e. OWNER_EMAIL's (without it, the first access).
    */
   targetIsOwner: boolean;
 };
