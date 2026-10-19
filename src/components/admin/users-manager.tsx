@@ -6,7 +6,7 @@ import { useSheetTarget } from "@/components/planning/form/use-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { relativeDayLabel, shortDateLabel } from "@/lib/format/date";
+import { shortDateLabel } from "@/lib/format/date";
 import {
   deadlineLabel,
   localDayOf,
@@ -127,11 +127,11 @@ function UserRow({
 }) {
   const status = STATUS_BADGES[user.status];
   const createdDay = localDayOf(user.createdAt);
-  const created = `criada em ${
-    createdDay.slice(0, 4) === today.slice(0, 4)
-      ? shortDateLabel(createdDay)
-      : relativeDayLabel(createdDay, today)
-  }`;
+  // Always a date ("criada em 30/dez/25"), never "Ontem" across New Year.
+  const created = `criada em ${shortDateLabel(
+    createdDay,
+    createdDay.slice(0, 4) !== today.slice(0, 4),
+  )}`;
   const link = user.openLink;
   const hint =
     user.status === "active"

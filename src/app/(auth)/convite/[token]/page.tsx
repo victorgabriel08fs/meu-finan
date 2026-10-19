@@ -15,7 +15,9 @@ import { throttle } from "@/server/security/throttle";
 import { AcceptForm } from "./accept-form";
 import { SignedInNotice } from "./signed-in-notice";
 
-export const metadata: Metadata = { title: "Convite" };
+// Neutral: the same route serves invites and reset links, and reading the
+// link again just for the title would skip the attempt limit.
+export const metadata: Metadata = { title: "Link de acesso" };
 
 // Blocking route, like /primeiro-acesso and /recuperar: the link is checked
 // before any of the page renders; an unknown or forged one gets the 404 page.

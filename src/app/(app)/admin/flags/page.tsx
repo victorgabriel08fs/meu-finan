@@ -8,12 +8,22 @@ import { listUserNames } from "@/server/domain/users";
 
 export const metadata: Metadata = { title: "Flags" };
 
-/** Administração › Flags (doc 02 §6.17); 404 for anyone but an administrator. */
+/**
+ * Administração › Flags (doc 02 §6.17); 404 for anyone but an administrator.
+ * The intro is static copy, so it renders with the shell at its real height
+ * and the cards stream in below it without a jump.
+ */
 export default function FlagsPage() {
   return (
-    <Suspense fallback={<FlagsSkeleton />}>
-      <Flags />
-    </Suspense>
+    <div className="flex flex-col gap-4">
+      <p className="text-callout text-fg-2">
+        Ligue ou desligue funcionalidades para todo mundo ou só para algumas
+        pessoas. A mudança vale a partir da próxima tela que cada pessoa abrir.
+      </p>
+      <Suspense fallback={<FlagsSkeleton />}>
+        <Flags />
+      </Suspense>
+    </div>
   );
 }
 
@@ -33,7 +43,6 @@ async function Flags() {
 function FlagsSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-4">
-      <Skeleton className="h-10 w-full" />
       <Skeleton className="h-[430px] rounded-card" />
     </LoadingRegion>
   );

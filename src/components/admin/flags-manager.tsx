@@ -80,10 +80,6 @@ export function FlagsManager({
 
   return (
     <>
-      <p className="text-callout text-fg-2">
-        Ligue ou desligue funcionalidades para todo mundo ou só para algumas
-        pessoas. A mudança vale a partir da próxima tela que cada pessoa abrir.
-      </p>
       {flags.map((flag) => (
         <FlagCard
           key={flag.key}

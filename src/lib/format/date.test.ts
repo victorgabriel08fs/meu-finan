@@ -113,6 +113,7 @@ describe("short and full dates", () => {
   it("formats data curta and data completa", () => {
     expect(shortDateLabel("2026-10-14")).toBe("14/out");
     expect(shortDateLabel("2026-02-05")).toBe("5/fev");
+    expect(shortDateLabel("2025-12-30", true)).toBe("30/dez/25");
     expect(fullDateLabel("2026-10-14")).toBe("14 de outubro de 2026");
     expect(fullDateLabel("2026-03-01")).toBe("1º de março de 2026");
     expect(() => fullDateLabel("2026-02-30")).toThrow(RangeError);

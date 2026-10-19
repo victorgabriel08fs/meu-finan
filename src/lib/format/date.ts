@@ -54,9 +54,9 @@ function nearbyDayWord(daysFromToday: number): string | null {
   return null;
 }
 
-/** "14/out" (data curta). */
-export function shortDateLabel(date: string): string {
-  return shortDate(parse(date));
+/** "14/out" (data curta); "14/out/25" with `withYear`. */
+export function shortDateLabel(date: string, withYear = false): string {
+  return shortDate(parse(date), withYear);
 }
 
 /** "14 de outubro de 2026" (data completa); the first day is "1º de março de 2026". */

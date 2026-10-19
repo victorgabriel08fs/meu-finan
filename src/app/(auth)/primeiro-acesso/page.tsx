@@ -26,7 +26,7 @@ export default async function SetupPage() {
       </h1>
       <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
         Crie o acesso de quem administra o app. Esta tela funciona uma única
-        vez: depois dela, contas novas só entram por convite.
+        vez: depois dela, pessoas novas só entram por convite.
       </p>
       <SetupForm />
     </>
