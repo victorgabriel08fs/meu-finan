@@ -9,7 +9,8 @@
 //   2. Gate the feature on the server: `isFlagEnabled(key, userId)` in pages
 //      and Route Handlers, `flaggedAction(key)` for Server Actions.
 //   3. Hide or show UI: the server check above, or `useFlag(key)` in a Client
-//      Component (inside <Suspense>).
+//      Component (inside <Suspense>). A tip or novidade about the feature
+//      (src/lib/tips/registry.ts) gets `when: { flag: key }`.
 //   4. Turn it on or off in Administração › Flags, globally or per person.
 
 export type FlagDefinition = {

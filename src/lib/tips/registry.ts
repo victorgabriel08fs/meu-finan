@@ -10,9 +10,11 @@ import type { Tip } from "./types";
  * 2. Add an entry below with a new, stable `id` and today's date as `since`.
  *    A `novidade` reaches only accounts in use before `since`; give it an
  *    `icon` and, when there is a place to go, a `link`. Without `routes` and
- *    `anchor` it lives only in Ajustes › Novidades. A feature behind a
- *    feature flag takes `when: { flag: "<key>" }`: while the flag is off for
- *    someone, its tips and links never reach them.
+ *    `anchor` it lives only in Ajustes › Novidades. Conditions go in `when`
+ *    (see TipCondition). A feature behind a feature flag takes
+ *    `when: { flag: "<key>" }` and one only administrators can open takes
+ *    `when: { roles: ["admin"] }`: their tips and links never reach anyone
+ *    who could not open the screen.
  * 3. Keep a screen at three tips at most, and write like doc 02 §10: "você",
  *    short sentences, no jargon.
  *
