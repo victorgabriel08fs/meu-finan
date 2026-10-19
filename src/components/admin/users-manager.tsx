@@ -84,7 +84,7 @@ export function UsersManager({
             </span>
             <h2 className="mt-4 text-title-3 text-fg">Só você por aqui</h2>
             <p className="mt-2 max-w-sm text-body text-fg-2">
-              Convide alguém para ter a própria conta, com as finanças separadas
+              Convide alguém para usar o app com as próprias finanças, separadas
               das suas.
             </p>
           </div>

@@ -381,7 +381,7 @@ function DetailsContent({
                   description={
                     user.isOwner
                       ? OWNER_DELETE_MESSAGE
-                      : "Apaga a conta e todas as finanças dela. Não dá para desfazer."
+                      : "Apaga o acesso e todas as finanças desta pessoa. Não dá para desfazer."
                   }
                   danger
                   disabled={busy !== null || user.isOwner}

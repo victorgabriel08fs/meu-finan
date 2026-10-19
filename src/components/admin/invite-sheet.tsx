@@ -16,7 +16,7 @@ import { type IssuedLink, LinkSheetContent } from "./link-sheet";
 const ROLE_HINTS: Record<UserRole, string> = {
   user: "Usa o app com as próprias finanças.",
   admin:
-    "Também convida pessoas, gerencia contas e flags. Não vê as finanças de ninguém.",
+    "Também convida pessoas e gerencia acessos e flags. Não vê as finanças de ninguém.",
 };
 
 /**
@@ -76,7 +76,7 @@ export function InviteSheetContent({ onDone }: { onDone: () => void }) {
   return (
     <SheetContent
       title="Convidar pessoa"
-      description="A pessoa recebe um link para criar a própria senha. As finanças de cada conta ficam separadas."
+      description="A pessoa recebe um link para criar a própria senha. As finanças de cada pessoa ficam separadas."
       footer={
         <Button
           type="submit"
