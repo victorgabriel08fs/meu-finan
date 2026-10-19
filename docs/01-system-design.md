@@ -71,7 +71,7 @@
 | RF-15 | Insights | Cartões de observação automáticos (ex.: gasto atípico em uma categoria) |
 | RF-16 | Privacidade e dados | Modo discreto (oculta valores), exportar todos os dados (backup), apagar todos os dados (recomeçar do zero) |
 | RF-17 | Ajustes | Categorias (criar, editar, mesclar, reordenar), tema, dia de início do mês, notificações, segurança (passkeys, senha, sessões) |
-| RF-18 | Administração | Só administradores: convidar pessoas, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; atividade (auditoria); feature flags globais e por pessoa (§11.9, §11.10). Nunca acesso às finanças de outra pessoa |
+| RF-18 | Administração | Só administradores: convidar pessoas, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; atividade (auditoria); feature flags globais e por pessoa (§11.9, §11.10). O painel nunca mostra as finanças de outra pessoa (um link de redefinição abre só a conta para a qual foi gerado, §11.9) |
 
 ### 2.2 Não funcionais
 
@@ -196,7 +196,7 @@ sequenceDiagram
 | Datas | motor próprio (`src/lib/finance/dates`) + `@date-fns/tz` | datas locais sem hora; o fuso do usuário só entra para saber que dia é hoje |
 | ORM | **Drizzle ORM** + drizzle-kit | dois drivers atrás da mesma API: **Neon WebSocket Pool** (`drizzle-orm/neon-serverless`, com `attachDatabasePool` da Vercel) quando há `DATABASE_URL`, e **PGlite** embutido (`drizzle-orm/pglite`) no desenvolvimento local e nos testes; ambos com transações interativas (`db.transaction`) |
 | Banco | **Neon Postgres** (Vercel Marketplace) | `aws-sa-east-1`; extensões `pg_trgm`, `unaccent` |
-| Auth | **Better Auth** | plugin de passkey (`@better-auth/passkey`), `twoFactor` na F1; adapter Drizzle; hooks que fecham o cadastro após o primeiro acesso |
+| Auth | **Better Auth** | plugin de passkey (`@better-auth/passkey`), plugin admin (papéis e desativação, rotas HTTP desligadas, §11.9), `twoFactor` na F1; adapter Drizzle; hooks que fecham o cadastro após o primeiro acesso |
 | Rate limit | limitador embutido do **Better Auth** (`storage: 'database'`) | sem Redis; regras estritas em login, primeiro acesso e recuperação |
 | Arquivos | **Vercel Blob** | upload direto do cliente (evita limite de 4,5 MB de corpo das funções) |
 | E-mail | **Resend** + React Email — opcional, fase posterior | resumo semanal e alertas; o login não depende de e-mail |
@@ -222,7 +222,8 @@ meu-finan/
 │  │  ├─ (auth)/                              # as únicas páginas sem sessão
 │  │  │  ├─ entrar/page.tsx
 │  │  │  ├─ primeiro-acesso/page.tsx          # configuração única do dono (SETUP_TOKEN)
-│  │  │  └─ recuperar/page.tsx                # emergência, só com RECOVERY_TOKEN
+│  │  │  ├─ recuperar/page.tsx                # emergência, só com RECOVERY_TOKEN
+│  │  │  └─ convite/[token]/page.tsx          # convite ou link de redefinição (§11.9)
 │  │  ├─ (app)/
 │  │  │  ├─ layout.tsx                        # AppShell: TopBar, BottomNav/Sidebar, QuickAdd
 │  │  │  ├─ @modal/(.)extrato/[id]/page.tsx   # detalhe em sheet (intercepting route)
@@ -235,8 +236,9 @@ meu-finan/
 │  │  │  ├─ planejar/metas/page.tsx · planejar/metas/[id]/page.tsx
 │  │  │  ├─ planejar/simulador/page.tsx
 │  │  │  ├─ relatorios/[visao]/page.tsx       # visao-geral | categorias | fluxo | patrimonio | calendario
-│  │  │  ├─ importar/page.tsx
-│  │  │  └─ ajustes/…
+│  │  │  ├─ importar/page.tsx                 # atrás da flag importar_extrato (§11.10)
+│  │  │  ├─ ajustes/…                         # inclui ajustes/novidades
+│  │  │  └─ admin/{usuarios,flags,atividade}  # só administradores (§11.9)
 │  │  ├─ onboarding/page.tsx
 │  │  ├─ api/
 │  │  │  ├─ auth/[...all]/route.ts            # Better Auth
@@ -261,7 +263,7 @@ meu-finan/
 │  │  ├─ simulator/ · reports/ · imports/ · insights/ · notifications/ · settings/
 │  ├─ server/
 │  │  ├─ auth.ts        # instância Better Auth (passkey, hooks do primeiro acesso, rate limit em banco)
-│  │  ├─ dal.ts         # getSession, requireUser (React cache)
+│  │  ├─ dal.ts         # getSession, requireUser, requireAdmin (React cache)
 │  │  ├─ safe-action.ts # cliente next-safe-action + middlewares
 │  │  ├─ db/            { client.ts, schema/*.ts, seed-defaults.ts }
 │  │  ├─ cache-tags.ts
@@ -270,6 +272,10 @@ meu-finan/
 │  │  ├─ finance/       # PURO: money, rates, compound, tax, solve, installments,
 │  │  │                 #       invoices, recurrence, period, budget-pace, forecast, goals
 │  │  ├─ format/        # moeda, datas, percentuais, compacto
+│  │  ├─ flags/         # registro das feature flags e a resolução (§11.10)
+│  │  ├─ tips/          # registro das dicas e novidades e a seleção por tela (doc 02 §6.16)
+│  │  ├─ admin/         # papéis, regras da administração e frases da Atividade
+│  │  ├─ theme.ts       # tema (escuro por padrão) e quando o aparelho adota o tema da conta
 │  │  ├─ auth-client.ts # cliente Better Auth (React) com plugin de passkey
 │  │  └─ utils.ts
 │  └─ proxy.ts
@@ -299,7 +305,7 @@ Regras de dependência: `app → features → server/lib`; `lib/finance` não im
 | Estorno | Despesa com valor positivo (reduz o total da categoria); `kind` continua `expense` |
 | Datas | `occurred_on date` (data local do usuário, sem hora); `created_at/updated_at timestamptz` |
 | Exclusão | Soft delete (`deleted_at`) para permitir "Desfazer"; expurgo definitivo após 30 dias pelo cron |
-| Dono (`user_id`) | `user_id` em todas as tabelas de domínio, mesmo com um único usuário: consultas uniformes, checagem de posse barata e caminho aberto se um dia houver mais pessoas. Todo índice começa por `user_id` (ou por uma FK já escopada). Não há outra camada de isolamento entre pessoas |
+| Dono (`user_id`) | `user_id` em todas as tabelas de domínio: é a fronteira entre as contas (cada pessoa só vê as próprias finanças, §11), com consultas uniformes e checagem de posse barata. Todo índice começa por `user_id` (ou por uma FK já escopada). Não há outra camada de isolamento entre pessoas (sem políticas de banco por usuário): toda consulta filtra pelo `user_id` da sessão e confere a posse de cada id recebido |
 | Taxas | `numeric` com escala explícita (índices, percentuais), nunca `float` no banco |
 
 ### 6.2 Diagrama entidade-relacionamento
@@ -958,7 +964,7 @@ export async function GET(req: Request) {
 | 5. `sendReminders` | contas que vencem em ≤ 3 dias, fatura fechando em 2 dias, orçamento ≥ 80%/100%, meta atingida → Web Push (e o resumo semanal por e-mail, quando entrar) | `notifications.dedupe_key` |
 | 6. `purge` | apaga lançamentos com `deleted_at` > 30 dias, importações e blobs órfãos > 7 dias | naturalmente idempotente |
 
-Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e retoma no dia seguinte, registrando no `job_runs`). Com um único usuário o volume é pequeno; o orçamento de tempo é só uma proteção.
+Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e retoma no dia seguinte, registrando no `job_runs`). Com poucas contas (uso pessoal ou familiar) o volume é pequeno; o orçamento de tempo é só uma proteção.
 
 ---
 
@@ -981,9 +987,9 @@ O app é do dono e, se ele quiser, de quem ele convidar (uso pessoal ou familiar
 
 - **Sem cadastro público**, nem agora nem depois: a primeira conta é criada uma única vez (§11.1); depois dela, uma conta nova só nasce de um convite feito por um administrador no painel (§11.9).
 - **Só quatro páginas sem sessão**: `/entrar`, `/primeiro-acesso`, `/recuperar` e `/convite/[token]` (mais os arquivos públicos: manifest, ícones, service worker). As três últimas só abrem com o próprio token. Todo o resto exige sessão.
-- **Isolamento por conta**: toda consulta das finanças é filtrada pelo `user_id` da sessão e confere a posse de cada id recebido. Administrar contas não dá acesso ao dinheiro de ninguém: não há personificação nem tela que leia as finanças de outra pessoa.
+- **Isolamento por conta**: toda consulta das finanças é filtrada pelo `user_id` da sessão e confere a posse de cada id recebido. O painel de administração não mostra o dinheiro de ninguém e não há personificação. Um link de redefinição abre a conta para a qual foi gerado, por isso a Atividade registra quem o gerou e quando foi usado, e a conta do dono não recebe esse link nem pode ser excluída pelo painel (§11.9).
 - **Verificação no servidor em toda camada**: cada página, Server Action e Route Handler confere a sessão pelo DAL (§11.5). Exceções: `/api/auth/*` (o próprio Better Auth), `/api/cron/daily` (segredo próprio) e o aviso de upload concluído do Vercel Blob (assinado, §7.3). O `proxy.ts` só redireciona — nunca é a única checagem.
-- **Falha fechada**: se faltar uma variável (`SETUP_TOKEN`, `OWNER_EMAIL`, `RECOVERY_TOKEN`, `CRON_SECRET`), a funcionalidade que depende dela fica desligada, nunca aberta.
+- **Falha fechada**: sem `SETUP_TOKEN` ou `OWNER_EMAIL`, o primeiro acesso fica desligado; sem `RECOVERY_TOKEN`, a recuperação; sem `CRON_SECRET`, o cron. Nunca abertos.
 
 ### 11.1 Primeiro acesso (`/primeiro-acesso`)
 
@@ -1011,10 +1017,10 @@ Configuração única da conta do dono — a **primeira administradora** —, di
 
 ### 11.4 Recuperação de emergência (`/recuperar`)
 
-Para quando o dono perde o acesso (sem passkey e sem senha) e não há outro administrador para gerar um link de redefinição (§11.9). Não há recuperação por e-mail: a prova de identidade é ter acesso ao projeto na Vercel. Vale para a conta do `OWNER_EMAIL` (ou, sem ela, o administrador mais antigo) — nunca "a primeira conta que o banco devolver" — e também a devolve como administradora ativa, caso outro administrador tenha tirado o papel ou desativado a conta. Cada uso entra na auditoria.
+Para quando o dono perde o acesso (sem passkey e sem senha). A conta do dono não recebe link de redefinição pelo painel (§11.9), então este é o caminho de volta dela. Não há recuperação por e-mail: a prova de identidade é ter acesso ao projeto na Vercel. Vale para a conta do `OWNER_EMAIL` (ou, só quando a variável não existe, a conta mais antiga, a do primeiro acesso, mesmo que tenha perdido o papel); se o `OWNER_EMAIL` não for de nenhuma conta — por exemplo, um erro de digitação na variável —, a recuperação recusa em vez de assumir outra conta. Também devolve a conta como administradora ativa, caso outro administrador tenha tirado o papel ou desativado a conta. Cada uso entra na auditoria.
 
 1. Definir `RECOVERY_TOKEN` (aleatório e longo) nas variáveis de ambiente de produção da Vercel e fazer redeploy — variáveis novas só valem para deploys novos. Sem a variável, `/recuperar` responde 404.
-2. Em `/recuperar`, informar o e-mail do dono, o token e uma nova senha (≥ 12 caracteres); opcionalmente, marcar "remover passkeys" (aparelho perdido).
+2. Em `/recuperar`, informar o token e uma nova senha (≥ 12 caracteres, com confirmação); opcionalmente, marcar "Remover todas as passkeys" (aparelho perdido). Não há campo de e-mail: o servidor escolhe a conta (a do `OWNER_EMAIL`), então o token sozinho redefine a senha do dono.
 3. O servidor redefine a senha, **revoga todas as sessões** e, se marcado, apaga as passkeys. Limitador estrito, token comparado em tempo constante, cada uso registrado no log.
 4. Remover `RECOVERY_TOKEN` e fazer redeploy. Entrar com a nova senha e criar uma passkey de novo.
 
@@ -1061,8 +1067,8 @@ O matcher protege por padrão: uma página nova já nasce atrás do redirecionam
 |---|---|
 | Força bruta / credential stuffing | limitador embutido do Better Auth com storage no Postgres (`rateLimit.storage: 'database'`, sem Redis) e regras mais estritas que o padrão (`customRules`) para login, primeiro acesso e recuperação; passkey como método principal; senha ≥ 12 caracteres |
 | Usuário criado por terceiros | sem cadastro público; primeiro acesso só com `SETUP_TOKEN` + `OWNER_EMAIL`, enquanto não há usuário, aplicado na página e nos hooks do Better Auth; as demais contas só por convite de um administrador |
-| Link de convite ou de redefinição vazado | uso único, 72 h, só o SHA-256 do verificador no banco (comparado em tempo constante), um link novo invalida o anterior, desativar a conta invalida o aberto, limite de tentativas por endereço na página e na action, nunca registrado em log ou na auditoria; quem usou o link aparece na Atividade e a conta pode ser desativada ou excluída |
-| Administrador abusando do papel (ou conta de administrador roubada) | o papel não dá acesso às finanças de ninguém (sem personificação); toda ação fica na auditoria; ninguém se desativa, se rebaixa ou se exclui, e sempre sobra um administrador ativo (regras checadas com as linhas travadas); a recuperação de emergência devolve a administração ao dono |
+| Link de convite ou de redefinição vazado | uso único, 72 h, só o SHA-256 do verificador no banco (comparado em tempo constante), um link novo invalida o anterior, desativar a conta invalida o aberto, limite de tentativas por endereço na página e na action, nunca registrado em log ou na auditoria; o uso do link fica na Atividade, em nome da pessoa (o app não sabe quem o abriu), que percebe porque a senha muda e as sessões caem; a conta pode ser desativada ou excluída |
+| Administrador abusando do papel (ou conta de administrador roubada) | o painel não mostra as finanças de ninguém e não há personificação; um link de redefinição abre a conta para a qual foi gerado, mas a pessoa percebe (a senha muda e as sessões caem) e a Atividade mostra quem gerou o link e quando ele foi usado; a conta do dono não pode ser redefinida nem excluída pelo painel; toda ação fica na auditoria; ninguém se desativa, se rebaixa ou se exclui, e sempre sobra um administrador ativo (regras checadas com as linhas travadas); a recuperação de emergência devolve a administração ao dono |
 | Endpoints HTTP do plugin admin do Better Auth (`/api/auth/admin/*`) | desligados (`disabledPaths`): o painel é a única porta, para as regras e a auditoria valerem sempre |
 | Sessão roubada | cookie `HttpOnly`/`Secure`/`SameSite=Lax`; sessões listáveis e revogáveis; sessão recente para operações sensíveis; a recuperação revoga todas |
 | Acesso sem sessão | DAL em toda página, action e rota; o proxy só redireciona; testes de acesso no CI |
@@ -1119,10 +1125,10 @@ Papéis pelo **plugin admin do Better Auth**: `administrador` e `usuário` (colu
 
 - **Convidar pessoa**: nome, e-mail e papel. A conta nasce sem senha, com as finanças vazias e isoladas, e o administrador recebe um **link de convite** para copiar ou compartilhar (`navigator.share`). O link aparece uma única vez: no banco fica só o hash.
 - **Links de acesso** (`/convite/[token]`): `<seletor>.<verificador>` — o seletor (12 bytes) encontra a linha e o verificador (32 bytes aleatórios) é comparado em tempo constante com o SHA-256 guardado. Uso único, validade de 72 h, no máximo um link aberto por pessoa (um novo invalida o anterior). Página e action públicas com limite de tentativas por endereço; token desconhecido ou adulterado dá 404 sem dizer por quê.
-- **Aceitar**: a pessoa define a senha (12+ caracteres), entra na hora e cai no onboarding; `ensureOwnerDefaults` cria as preferências e as categorias padrão. Quem já está conectado no aparelho precisa sair antes, para não trocar de conta sem perceber.
-- **Link de redefinição**: o mesmo mecanismo para quem já tinha acesso e o perdeu: senha nova, todas as sessões encerradas e, se a pessoa marcar, todas as passkeys removidas; termina em Ajustes › Segurança para cadastrar uma passkey de novo.
+- **Aceitar**: a pessoa define a senha (12+ caracteres), entra na hora, o app oferece criar uma passkey neste aparelho (como no §11.1) e em seguida vem o onboarding; `ensureOwnerDefaults` cria as preferências e as categorias padrão. Quem já está conectado no aparelho precisa sair antes, para não trocar de conta sem perceber.
+- **Link de redefinição**: o mesmo mecanismo para quem já tinha acesso e o perdeu: senha nova, todas as sessões encerradas e, se a pessoa marcar, todas as passkeys removidas; termina em Ajustes › Segurança para cadastrar uma passkey de novo. Quem tem o link entra na conta: ele vai só para a pessoa, e a Atividade registra quem o gerou e quando foi usado. A conta do dono não recebe link de redefinição (volta pela recuperação de emergência, §11.4).
 - **Ações sobre uma conta**: desativar/reativar (desativar encerra as sessões e invalida o link aberto; os dados ficam), encerrar sessões, tornar/remover administrador (vale na próxima requisição: a sessão relê o papel sempre, sem cache de cookie), gerar novo convite ou link de redefinição, invalidar o link e **excluir a conta** com todos os dados (digitar o e-mail para confirmar).
-- **Regras**: ninguém se desativa, se rebaixa, se exclui ou se redefine pelo painel (a própria conta fica em Ajustes › Segurança), e **sempre sobra um administrador ativo**. A transação trava (`FOR UPDATE`) quem age, o alvo e os administradores, e confere de novo que quem age ainda é administrador ativo — dois administradores agindo um sobre o outro ao mesmo tempo não zeram a administração.
+- **Regras**: ninguém se desativa, se rebaixa, se exclui ou se redefine pelo painel (a própria conta fica em Ajustes › Segurança), e **sempre sobra um administrador ativo**. A conta do dono (`OWNER_EMAIL`, ou a do primeiro acesso sem a variável: a mesma que a recuperação de emergência restaura) não é excluída nem redefinida pelo painel; ela volta pela recuperação de emergência (§11.4). Desativar, tirar o papel e encerrar as sessões dela continuam possíveis, porque a recuperação desfaz. A transação trava (`FOR UPDATE`) quem age, o alvo e os administradores, e confere de novo que quem age ainda é administrador ativo — dois administradores agindo um sobre o outro ao mesmo tempo não zeram a administração.
 - **Status na lista**: Ativo · Convite pendente · Convite expirado · Desativado, com papel, criação e último acesso.
 - **Auditoria** (`audit_log`, Administração › Atividade): quem fez, o quê, sobre quem, metadados e quando — inclusive a pessoa aceitando o convite ou redefinindo o acesso, e a recuperação de emergência. Nunca guarda token, senha ou dado financeiro; nomes e e-mails ficam como retrato.
 
@@ -1134,7 +1140,8 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 - **Cliente**: `FlagsProvider` no shell do app, alimentado por uma promise que o layout cria sem esperar, e `useFlag(key)` dentro de `<Suspense>` (Cache Components).
 - **Efeito imediato**: sem cache entre requisições; a mudança vale na próxima tela que cada pessoa abrir.
 - **Painel**: Administração › Flags, com Padrão · Ligado · Desligado para todos e exceções por pessoa.
-- **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados, `/importar` responde com a página 404 e as três actions da importação recusam.
+- **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados e de Ajustes › Novidades, `/importar` responde com a página 404 e as três actions da importação recusam.
+- **Dicas e novidades**: uma dica ou novidade sobre uma funcionalidade atrás de flag declara `when: { flag }` (doc 02 §6.16) e só chega a quem tem a flag ligada, para nenhum balão ou link levar a uma tela recusada.
 
 ---
 
@@ -1193,7 +1200,7 @@ Variáveis de ambiente:
 |---|---|
 | `DATABASE_URL`, `DATABASE_URL_UNPOOLED` | integração Neon |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | manual |
-| `OWNER_EMAIL` | manual — o único e-mail aceito no primeiro acesso (§11.1) |
+| `OWNER_EMAIL` | manual — e-mail da conta do dono: o único aceito no primeiro acesso (§11.1), a conta que a recuperação de emergência redefine (§11.4) e a que o painel não exclui nem redefine (§11.9). Sem ela, o dono é a conta mais antiga (a do primeiro acesso) |
 | `SETUP_TOKEN` | manual, aleatório e longo; só até o primeiro acesso — depois, remover |
 | `RECOVERY_TOKEN` | manual, aleatório e longo; **ausente por padrão** — definido só durante uma recuperação de emergência (§11.4) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob |
@@ -1208,7 +1215,7 @@ Mudanças de variáveis na Vercel só valem para deploys novos: depois de criar 
 
 ## 15. Custos
 
-Uso pessoal de um único usuário: **R$ 0/mês**, tudo dentro dos planos gratuitos.
+Uso pessoal ou familiar, com poucas contas: **R$ 0/mês**, tudo dentro dos planos gratuitos.
 
 | Serviço | Plano | Custo | Observação |
 |---|---|---|---|
@@ -1229,7 +1236,7 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 | **F1 — MVP** | onboarding, contas, categorias, lançamentos (quick-add), extrato com busca/filtros, Início, simulador de juros compostos, relatórios Visão geral e Categorias; 2FA TOTP; backup semanal criptografado | o dono registra e entende o mês sem planilha; um backup semanal restaurado com sucesso num branch de teste |
 | **F2 — Planejamento** | cartão de crédito e faturas, parcelamento, recorrências, orçamentos com pace, metas com projeção, previsão de saldo | fecha o ciclo do cartão de crédito sem ajuste manual |
 | **F3 — Hábito e dados** | importação OFX/CSV com regras, notificações push (e-mail opcional), insights, fluxo de caixa, patrimônio, calendário, exportação CSV/PDF e "Exportar meus dados", fila offline | o registro em 3+ dias por semana virou hábito (métrica no próprio banco, §13) |
-| **F4 — Expansão** | Open Finance, categorização assistida por IA, metas com investimento real; contas compartilhadas só se um dia houver mais pessoas | — |
+| **F4 — Expansão** | Open Finance, categorização assistida por IA, metas com investimento real; finanças compartilhadas entre contas (contas ou orçamentos em conjunto) | — |
 
 ---
 
@@ -1249,13 +1256,13 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 
 **ADR-07 — Motor financeiro compartilhado cliente/servidor.** O simulador recalcula a cada toque no slider sem rede (600 meses ≈ microssegundos); o servidor usa as mesmas funções para metas e relatórios — um resultado só, testado uma vez.
 
-**ADR-08 — Um cron diário orquestrador.** Compatível com o plano Hobby, simples de observar, passos idempotentes. Com um único usuário, o volume cabe com folga num job diário.
+**ADR-08 — Um cron diário orquestrador.** Compatível com o plano Hobby, simples de observar, passos idempotentes. Com poucas contas (uso pessoal ou familiar), o volume cabe com folga num job diário.
 
-**ADR-09 — Usuário único com autenticação obrigatória.** O app é usado só pelo dono, mas fica numa URL pública e guarda dados sensíveis; por isso a autenticação continua obrigatória e de primeira classe. *Decisão*: sem cadastro público; primeiro acesso único com `SETUP_TOKEN` + `OWNER_EMAIL` (falha fechada, reforçado por hooks do Better Auth); passkey primeiro e senha forte como alternativa; rate limit do Better Auth com storage em banco; sessões de 30 dias, deslizantes e revogáveis; sessão recente para operações sensíveis; recuperação de emergência via `RECOVERY_TOKEN`; sessão verificada no servidor em toda página, action e rota; `user_id` mantido nas tabelas de domínio. *Consequências*: o plano Hobby da Vercel serve (uso pessoal, não comercial); nada de Redis, de testes de isolamento entre usuários ou de políticas de banco por usuário; custo de R$ 0 nos planos gratuitos. Se um dia houver mais pessoas, revisar cadastro, isolamento e modelo de acesso antes de abrir o app a elas.
+**ADR-09 — Usuário único com autenticação obrigatória (revisado pelo ADR-11).** O app é usado só pelo dono, mas fica numa URL pública e guarda dados sensíveis; por isso a autenticação continua obrigatória e de primeira classe. *Decisão*: sem cadastro público; primeiro acesso único com `SETUP_TOKEN` + `OWNER_EMAIL` (falha fechada, reforçado por hooks do Better Auth); passkey primeiro e senha forte como alternativa; rate limit do Better Auth com storage em banco; sessões de 30 dias, deslizantes e revogáveis; sessão recente para operações sensíveis; recuperação de emergência via `RECOVERY_TOKEN`; sessão verificada no servidor em toda página, action e rota; `user_id` mantido nas tabelas de domínio. *Consequências*: o plano Hobby da Vercel serve (uso pessoal, não comercial); nada de Redis nem de políticas de banco por usuário (o isolamento entre contas veio com o ADR-11); custo de R$ 0 nos planos gratuitos. Se um dia houver mais pessoas, revisar cadastro, isolamento e modelo de acesso antes de abrir o app a elas.
 
 **ADR-10 — Postgres embutido (PGlite) no desenvolvimento local e nos testes.** O mesmo SQL das migrações roda num Postgres compilado para WebAssembly, dentro do próprio processo do Node: `npm run dev` funciona sem Docker nem conta na Neon, `npm run demo` gera dados de exemplo e os testes de integração usam um banco em memória com as mesmas restrições, índices e extensões (pg_trgm, unaccent) da produção. Em produção, o driver WebSocket Pool da Neon (com `attachDatabasePool` da Vercel) dá transações interativas iguais às do PGlite, então o código de escrita é um só (`db.transaction`). *Trade-off*: o PGlite tem uma conexão só — consultas pelo `db` global com uma transação aberta travam, daí a regra de usar sempre o `tx`; e o pacote do PGlite vai junto no bundle das funções (alguns MB, carregado só quando usado).
 
-**ADR-11 — Contas por convite, com administração (revisa o ADR-09).** O dono quer dar contas a outras pessoas, cada uma com as próprias finanças. *Decisão*: continua sem cadastro público; a primeira conta (primeiro acesso) é administradora e só administradores criam contas, por **convite** (link de uso único, 72 h, só o hash no banco), nunca com senha escolhida por eles. Papéis e desativação pelo **plugin admin do Better Auth** — que também recusa sessão para conta desativada —, mas com as rotas HTTP do plugin desligadas e sem personificação: as mudanças passam pelas Server Actions do painel, numa transação que trava as contas, aplica as regras (ninguém age sobre si; sempre sobra um administrador ativo) e grava a auditoria. *Por que não chamar os endpoints do plugin*: eles não seguram a regra do último administrador nem gravam a auditoria na mesma transação, e com o PGlite (uma conexão) não dá para chamar `auth.api` dentro de uma transação aberta. *Consequências*: o isolamento que já existia (`user_id` em toda tabela, posse conferida em todo id) passa a ser a fronteira entre pessoas; excluir uma conta apaga tudo por `ON DELETE CASCADE`; o uso continua pessoal e não comercial (Vercel Hobby).
+**ADR-11 — Contas por convite, com administração (revisa o ADR-09).** O dono quer dar contas a outras pessoas, cada uma com as próprias finanças. *Decisão*: continua sem cadastro público; a primeira conta (primeiro acesso) é administradora e só administradores criam contas, por **convite** (link de uso único, 72 h, só o hash no banco), nunca com senha escolhida por eles. Papéis e desativação pelo **plugin admin do Better Auth** — que também recusa sessão para conta desativada —, mas com as rotas HTTP do plugin desligadas e sem personificação: as mudanças passam pelas Server Actions do painel, numa transação que trava as contas, aplica as regras (ninguém age sobre si; sempre sobra um administrador ativo; a conta do dono não é excluída nem redefinida) e grava a auditoria. *Por que não chamar os endpoints do plugin*: eles não seguram a regra do último administrador nem gravam a auditoria na mesma transação, e com o PGlite (uma conexão) não dá para chamar `auth.api` dentro de uma transação aberta. *Consequências*: o isolamento que já existia (`user_id` em toda tabela, posse conferida em todo id) passa a ser a fronteira entre pessoas; excluir uma conta apaga tudo por `ON DELETE CASCADE`; o uso continua pessoal e não comercial (Vercel Hobby).
 
 **ADR-12 — Feature flags no código, valores no banco.** As flags são um registro tipado no código (chave, rótulo, padrão), então uma flag nova funciona sem migração e uma removida vira valor ignorado; o banco guarda só o valor global e o de cada pessoa, lidos a cada requisição (sem cache entre requisições, efeito imediato). A flag é aplicada no servidor (página e action), e o cliente só esconde. *Alternativa considerada*: um serviço externo de flags — dispensado: mais uma origem na CSP, custo e dados de uso fora do app para poucas flags.
 
@@ -1267,7 +1274,7 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 |---|---|---|
 | Lógica de fatura/parcelas incorreta em casos de borda (dia 31, fevereiro) | alto (confiança) | funções puras com testes de tabela e property-based (doc 03 §13) |
 | O dono desiste de registrar gastos | alto | quick-add em < 5 s, sugestões, recorrências, importação, lembrete diário opcional |
-| Dono perde o acesso (aparelho com a passkey perdido, senha esquecida) | alto | senha como alternativa, passkeys em mais de um aparelho, link de redefinição gerado por outro administrador (§11.9), recuperação de emergência com `RECOVERY_TOKEN` (§11.4) |
+| Dono perde o acesso (aparelho com a passkey perdido, senha esquecida) | alto | senha como alternativa, passkeys em mais de um aparelho, recuperação de emergência com `RECOVERY_TOKEN` (§11.4) |
 | Uma pessoa convidada perde o acesso | médio | link de redefinição gerado por um administrador: senha nova, sessões encerradas e, se quiser, passkeys removidas (§11.9) |
 | Ação errada no painel (desativar ou excluir a conta errada) | alto | desativar e mudar papel têm "Desfazer"; excluir pede o e-mail digitado; tudo fica na Atividade; restauração pontual da Neon para o resto (§11.7) |
 | Perda de dados (exclusão por engano, bug, migração ruim) | alto | soft delete com Desfazer, restauração pontual da Neon, backup semanal criptografado, migrações expand/contract (§11.7, §14) |

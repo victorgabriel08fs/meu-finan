@@ -284,7 +284,7 @@ Coreografia:
 
 O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.config.ts` (sem PostCSS). Tema controlado por `next-themes` (`attribute="data-theme"`, `defaultTheme="dark"`, `enableSystem`, `storageKey="meu-finan:tema"`), que resolve o tema antes da hidratação (sem flash).
 
-**Escuro por padrão.** O `<html>` já sai do servidor com `data-theme="dark"` e o viewport declara `color-scheme: dark`, então a primeira visita (login, primeiro acesso, onboarding) é escura sem depender de script. A escolha (Escuro · Claro · Sistema) fica no aparelho (localStorage, aplicada por um script no `<head>` antes de qualquer pintura e depois pelo next-themes) e **na conta** (`user_settings.theme`): um aparelho novo adota o tema da conta depois de entrar, e uma troca feita em outro aparelho chega no próximo carregamento. Constantes, chaves e os scripts ficam em `src/lib/theme.ts`.
+**Escuro por padrão.** O `<html>` já sai do servidor com `data-theme="dark"` e o viewport declara `color-scheme: dark`, então a primeira visita (login, convite, primeiro acesso, onboarding) é escura sem depender de script. A escolha (Escuro · Claro · Sistema) fica no aparelho (localStorage, aplicada por um script no `<head>` antes de qualquer pintura e depois pelo next-themes) e **na conta** (`user_settings.theme`): um aparelho novo adota o tema da conta depois de entrar, e uma troca feita em outro aparelho chega no próximo carregamento; num aparelho usado por mais de uma conta, quem entra passa a ver o tema da própria conta. Constantes, chaves e os scripts ficam em `src/lib/theme.ts`.
 
 ```css
 /* src/app/globals.css */
@@ -572,7 +572,7 @@ Linhas de chips roláveis horizontalmente com máscara de fade de 16 px nas bord
 
 ### 5.13 SegmentedControl
 
-Trilho `--surface-2` 40 px, raio 12; "polegar" `--surface` com sombra leve que desliza (spring de seleção). Rótulo `callout` 600. 2–4 opções. Teclado: setas trocam, `role="tablist"` ou `radiogroup` conforme o uso.
+Trilho `--surface-2` 40 px, raio 12; "polegar" `--thumb` com `shadow-thumb` que desliza (spring de seleção): igual a `--surface` no claro e mais claro que o trilho no escuro (§3.1), para o item selecionado parecer elevado. Rótulo `callout` 600. 2–4 opções. Teclado: setas trocam, `role="tablist"` ou `radiogroup` conforme o uso.
 
 ### 5.14 Sheet
 
@@ -623,21 +623,21 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 **Primeiro acesso** (`/primeiro-acesso`) — usado uma única vez
 
 - Só abre enquanto não existe usuário e com `SETUP_TOKEN` e `OWNER_EMAIL` configurados; caso contrário, 404 sem pistas.
-- Campos: código de configuração, nome, e-mail, senha (`autocomplete="new-password"`, botão mostrar/ocultar, indicador "12+ caracteres" que ganha um ✓ quando atingido).
-- Botão primário "Criar acesso". Erro genérico: "Não foi possível criar o acesso. Confira o código e o e-mail."
-- Em seguida: "Criar uma passkey neste aparelho?" com explicação de uma linha ("Entre com Face ID ou digital, sem digitar a senha.") — "Criar passkey" (`primary`) e "Agora não" (`ghost`). Depois, onboarding (§6.2).
+- Campos: código de configuração (apoio: "O valor de SETUP_TOKEN definido na Vercel."), seu nome, e-mail, senha e "Confirme a senha" (`autocomplete="new-password"`; apoio: "Pelo menos 12 caracteres. Depois você cadastra uma passkey.").
+- Botão primário "Criar acesso". Erros: "Código de configuração inválido.", "Use o e-mail configurado para o dono do app." (nunca mostra o e-mail certo) ou "Não foi possível criar o acesso. Confira os dados."
+- Em seguida, Ajustes › Segurança com "Acesso criado. Agora cadastre uma passkey para entrar com Face ID, digital ou o PIN do aparelho…", o botão de cadastrar a passkey e "Pular e continuar" ("Continuar: primeiros passos" depois de cadastrar). Depois, onboarding (§6.2).
 
 **Recuperação de emergência** (`/recuperar`)
 
 - Existe só enquanto o `RECOVERY_TOKEN` está configurado na Vercel (doc 01 §11.4); sem ele, 404.
-- Campos: e-mail, código de recuperação, nova senha (12+ caracteres) e o switch "Remover também as passkeys" (desligado; apoio: "Use se perdeu um aparelho.").
-- Botão primário "Redefinir acesso". Sucesso: "Acesso redefinido. Todas as sessões foram encerradas." + botão "Entrar", com o lembrete em `--warning-soft`: "Agora remova o código de recuperação da Vercel."
-- Vale para a conta do dono (`OWNER_EMAIL`), que volta a ser administradora.
+- Campos: código de recuperação, nova senha e confirmação (12+ caracteres) e a caixa "Remover todas as passkeys" (desmarcada; apoio: "Use se perdeu o aparelho. Depois cadastre uma passkey nova."). Não há campo de e-mail: a conta é escolhida pelo servidor.
+- Botão primário "Redefinir acesso". Sucesso: volta ao login com o aviso "Acesso recuperado. Entre com a nova senha e cadastre uma passkey de novo, se removeu as antigas." (todas as sessões foram encerradas).
+- Vale para a conta do dono (`OWNER_EMAIL`; sem a variável, a conta mais antiga, a do primeiro acesso), que volta a ser administradora ativa. Se o `OWNER_EMAIL` não for de nenhuma conta, recusa com "Nenhuma conta usa o e-mail de OWNER_EMAIL…" em vez de assumir outra.
 
 **Convite e link de redefinição** (`/convite/[token]`)
 
 - Link de uso único gerado por um administrador (§6.17), válido por 72 h. Token desconhecido ou adulterado: 404, sem dizer por quê.
-- **Convite**: "Olá, Bruno" + "Você recebeu um convite para o Meu Finan. Crie uma senha para entrar: suas finanças ficam só na sua conta." E-mail só leitura (oferecido ao gerenciador de senhas), senha e confirmação (12+ caracteres, indicador com ✓) e "Criar senha e entrar" → entra na hora e segue para o onboarding (§6.2). Embaixo, com relógio: "O link vale até ter, 20/out, 14:32 e funciona uma única vez."
+- **Convite**: "Olá, Bruno" + "Você recebeu um convite para o Meu Finan. Crie uma senha para entrar: suas finanças ficam só na sua conta." E-mail só leitura (oferecido ao gerenciador de senhas), senha e confirmação (12+ caracteres, indicador com ✓) e "Criar senha e entrar" → entra na hora, recebe a oferta de passkey como no primeiro acesso (Ajustes › Segurança, com "Pular e continuar") e segue para o onboarding (§6.2). Embaixo, com relógio: "O link vale até ter, 20/out, 14:32 e funciona uma única vez."
 - **Redefinição**: "Redefinir acesso" + "Bruno, defina uma nova senha. As sessões abertas da sua conta serão encerradas.", com "Remover todas as passkeys" como em `/recuperar`; "Redefinir e entrar" leva a Ajustes › Segurança, com o aviso para cadastrar uma passkey.
 - **Link que não serve mais**, com ícone num círculo `--surface-2`: "Este link expirou" (72 h; "Peça um novo a quem administra o app."), "Este link já foi usado" (botão "Entrar") ou "Este link não funciona mais" (trocado por um mais novo ou cancelado).
 - **Aparelho já conectado** a outra conta: "Este aparelho está conectado à conta …" + "Sair e continuar" — nunca troca de conta sem a pessoa perceber.
@@ -652,7 +652,7 @@ Indicador de progresso (4 pontos) no topo; "Pular" no canto.
 3. **Categorias** — grade de chips com as categorias padrão, todas ligadas; tocar desliga. "Você pode criar e editar depois."
 4. **Seu mês** — "Seu mês financeiro começa no dia": chips 1 · 5 · 10 · 15 · 20 · Outro. Apoio: "Use o dia em que costuma receber o salário."
 
-Ao concluir: Início com **3 dicas contextuais** sequenciais (balão apontando): botão "+", previsão do mês, olho do modo discreto. Cada dica some ao tocar fora; nunca reaparece. As regras dos balões e das novidades estão na §6.16.
+Ao concluir: Início com **3 dicas contextuais** sequenciais (balão apontando): botão "+", previsão do mês, olho do modo discreto. Cada dica some ao tocar fora; só reaparece com "Rever dicas" (§6.16). As regras dos balões e das novidades estão na §6.16.
 
 ### 6.3 Início
 
@@ -987,7 +987,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
 - **Organização**: categorias (editar, mesclar, reordenar), tags, contas e cartões.
 - **Notificações**: contas a vencer (com antecedência), fatura fechando, orçamento 80%/100%, metas, resumo semanal por e-mail (fase posterior); horário silencioso.
 - **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
-- **Administração** (só administradores, antes de Sobre): Usuários ("3 contas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada") e Atividade — §6.17.
+- **Administração** (só administradores, antes de Sobre): Usuários ("3 pessoas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada") e Atividade — §6.17.
 - **Sobre**: versão, "Instalar app".
 
 ### 6.15 Notificações (central)
@@ -1001,7 +1001,7 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 | Tipo | Para quem | Rótulo |
 |---|---|---|
 | **Primeiros passos** | todo mundo, na primeira vez que chega à tela | "Dica 1 de 3" com `lightbulb` |
-| **Novidade** | só contas criadas **antes** da data dela (para quem é nova, aquilo sempre existiu) | "Novidade" com `sparkles` |
+| **Novidade** | só quem já usava o app **antes** da data dela (conta criada ou convite aceito antes; para quem chega depois, aquilo sempre existiu) | "Novidade" com `sparkles` |
 
 ```
 ┌────────────────────────────────────┐
@@ -1022,22 +1022,22 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 - **Sequência**: no máximo 3 por tela, primeiros passos antes das novidades. "Próxima" leva à seguinte (o recorte desliza até ela); a última diz "Entendi". "Pular dicas" encerra a tela e o aviso oferece **"Não mostrar mais"**. Esc e toque fora valem como "Entendi".
 - **Quando aparece**: com a página carregada (nenhum skeleton), depois de ~0,7 s de calma; nunca com folha, diálogo ou aviso na tela nem com alguém digitando. Dica cujo alvo não está visível é pulada em silêncio e continua não vista. No Início, só depois da primeira conta (antes disso, o "Comece por aqui" já guia).
 - **A11y**: `role="dialog"` com título e texto ligados; o foco entra no balão (Tab fica nele) e volta ao sair; uma região `aria-live` anuncia "Dica 1 de 3".
-- **Novidades** (Ajustes › Novidades): lista por data, com selo "Nova" até a visita, que as marca como lidas. Não lidas mostram um ponto `--primary` no avatar do Início e em Ajustes na barra lateral (nunca `--danger`: não é alerta) e a contagem na linha de Ajustes.
-- **Preferências**: "Mostrar dicas nas telas" liga e desliga os balões; "Rever dicas" mostra de novo os primeiros passos, a partir do Início (novidades continuam lidas).
-- **Registro e estado**: as dicas ficam em `src/lib/tips/registry.ts` (id estável, rotas, âncora `data-tip`, textos, data, ordem, condição); o que cada pessoa viu fica na tabela `user_tips` (doc 01 §6.3) e acompanha a conta em qualquer aparelho.
+- **Novidades** (Ajustes › Novidades): lista por data, um card por dia sob o `DayHeader` do extrato, com selo "Nova" até a visita, que as marca como lidas. Não lidas mostram um ponto `--primary` no avatar do Início e em Ajustes na barra lateral (nunca `--danger`: não é alerta) e a contagem na linha de Ajustes. Com as dicas desligadas, o ponto não aparece; a contagem na linha de Novidades continua.
+- **Preferências**: "Mostrar dicas nas telas" liga e desliga os balões (e o ponto das novidades); "Rever dicas" mostra de novo os primeiros passos, a partir do Início (novidades continuam lidas).
+- **Registro e estado**: as dicas ficam em `src/lib/tips/registry.ts` (id estável, rotas, âncora `data-tip`, textos, data, ordem, condição: ter conta, ter passkey, papel, flag); o que cada pessoa viu fica na tabela `user_tips` (doc 01 §6.3) e acompanha a conta em qualquer aparelho. Dica ou novidade sobre algo atrás de uma flag ou só de administradores declara a flag ou o papel: o balão e o link nunca levam alguém a uma tela que ele não pode abrir (doc 01 §11.10).
 
 ### 6.17 Administração (`/admin`)
 
-Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida das contas, dos convites e das flags, e nunca vê as finanças de outra pessoa."
+Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida dos acessos, dos convites e das flags, e nunca vê as finanças de outra pessoa."
 
 **Usuários**
 
 ```
-3 contas · 1 convite pendente
+3 pessoas · 1 convite pendente
 ┌──────────────────────────────────────┐
 │ ＋  Convidar pessoa                    │  primary, largura total no celular
 └──────────────────────────────────────┘
-CONTAS
+PESSOAS
 ┌──────────────────────────────────────┐
 │ (AN) Ana (você) [Admin]            › │
 │      demo@meu-finan.local            │
@@ -1051,14 +1051,15 @@ CONTAS
 
 - Status com selo e palavra, nunca só cor: **Ativo** (`primary`), **Convite pendente** (`transfer`), **Convite expirado** (`warning`), **Desativado** (`neutral`, avatar apagado). Papel: selo "Admin" com escudo.
 - Toque abre a conta numa **sheet** (sobre a lista): nome, e-mail, selos, e um quadro com conta criada, último acesso ("há 2 dias · Android · Chrome"), sessões abertas, como entra ("Senha e 2 passkeys") e o link aberto ("Vale até…" + "Invalidar").
-- **Ações** (linhas com ícone, título e uma linha explicando o efeito): Gerar novo convite / Gerar link de redefinição · Encerrar sessões · Tornar administrador / Remover administrador · Desativar acesso / Reativar acesso. Desativar e mudar o papel executam na hora com toast + "Desfazer"; uma ação que não se aplica fica apagada **com o motivo** ("Reative a conta antes de gerar um link.").
-- **Zona de perigo**: "Excluir conta" leva à confirmação "Excluir a conta de Bruno?", que explica o que some (contas, cartões, lançamentos, metas, orçamentos, importações) e libera o botão `destructive` só quando o e-mail digitado confere.
+- **Ações** (linhas com ícone, título e uma linha explicando o efeito): Gerar novo convite / Gerar link de redefinição · Encerrar sessões · Tornar administrador / Remover administrador · Desativar acesso / Reativar acesso. Desativar e mudar o papel executam na hora com toast + "Desfazer"; uma ação que não se aplica fica apagada **com o motivo** ("Reative o acesso antes de gerar um link.").
+- **Zona de perigo**: "Excluir conta" leva à confirmação "Excluir a conta de Bruno?", que explica o que some ("Apaga o acesso e todas as finanças de Bruno: contas, cartões, lançamentos, metas, orçamentos e importações.") e libera o botão `destructive` só quando o e-mail digitado confere.
 - Na própria conta, as ações dão lugar a "Esta é a sua conta…" + "Abrir Segurança".
+- Na conta do dono (`OWNER_EMAIL`, ou a do primeiro acesso sem a variável), vista por outro administrador, "Gerar link de redefinição" e "Excluir conta" ficam apagados com o motivo ("O dono redefine o próprio acesso em Ajustes › Segurança ou pela recuperação de emergência." e "A conta do dono do app não pode ser excluída."); desativar, remover administrador e encerrar sessões continuam disponíveis, porque a recuperação de emergência desfaz.
 - **Convidar pessoa** (sheet): Nome, E-mail ("É com ele que a pessoa vai entrar."), Papel (segmented Usuário · Administrador, com a explicação de cada um) e "Criar convite". A sheet vira **"Convite pronto"**: o link inteiro (quebrado em linhas, selecionável), "Copiar link" (primary), "Compartilhar" (só onde existe `navigator.share`), "Concluir" e o aviso "Por segurança, o link não aparece de novo…". O mesmo vale para "Link de redefinição pronto".
 
 **Flags**
 
-- Um card por flag do registro: rótulo (`headline`), chave em mono, selo do valor efetivo para todos (Ligado/Desligado), descrição, padrão, área e data; **Para todos**: segmented Padrão · Ligado · Desligado, com a explicação ("Segue o padrão do código: ligado."); **Exceções por pessoa**: as pessoas com valor próprio e "Ajustar", que abre uma sheet com cada conta e o mesmo segmented.
+- Um card por flag do registro: rótulo (`headline`), chave em mono, selo do valor efetivo para todos (Ligado/Desligado), descrição, padrão, área e data; **Para todos**: segmented Padrão · Ligado · Desligado, com a explicação ("Segue o padrão do código: ligado."); **Exceções por pessoa**: as pessoas com valor próprio e "Ajustar", que abre uma sheet com cada pessoa e o mesmo segmented.
 - A mudança aparece na hora (otimista) com toast "Importar extrato desligado para todos." + "Desfazer"; vale na próxima tela que cada pessoa abrir.
 
 **Atividade**
@@ -1234,7 +1235,9 @@ Textos de vazio:
 
 ### 10.4 Glossário (usar sempre estes termos)
 
-Receita · Despesa · Transferência · Lançamento · Extrato · Conta · Cartão de crédito · Fatura (aberta, fechada, paga, vencida) · Parcelado (2/6) · Recorrente · Agendado (pendente futuro) · Pago · Orçamento · Ritmo · Meta · Aporte · Rentabilidade · Patrimônio · Saldo previsto · Competência · Caixa.
+Receita · Despesa · Transferência · Lançamento · Extrato · Conta · Acesso (o login de uma pessoa: senha, passkeys e sessões) · Cartão de crédito · Fatura (aberta, fechada, paga, vencida) · Parcelado (2/6) · Recorrente · Agendado (pendente futuro) · Pago · Orçamento · Ritmo · Meta · Aporte · Rentabilidade · Patrimônio · Saldo previsto · Competência · Caixa.
+
+No glossário, Conta é a conta financeira. Para quem usa o app, prefira pessoa ou acesso ("3 pessoas", "Reativar acesso"); "conta" no sentido de login só onde o contexto não deixa dúvida ("Excluir conta", "Esta é a sua conta", "Conta criada", "Fica salvo na sua conta", "Este aparelho está conectado à conta…") e nunca no plural ("3 contas", "gerencia contas") nem na mesma frase que contas financeiras.
 
 ---
 

@@ -13,15 +13,15 @@ Aplicação de controle financeiro pessoal, **mobile-first**, com backend e fron
 - **Uso pessoal ou familiar, contas por convite**: a primeira conta (a do dono) é a administradora; as outras só entram por convite, cada uma com as próprias finanças. Sem cadastro público e com **autenticação obrigatória** em toda página, action e rota — a URL é pública e os dados são sensíveis.
 - **Next.js 16.4 (App Router, Cache Components) full-stack na Vercel Hobby** (uso pessoal, não comercial), funções em `gru1` (São Paulo), Fluid compute; npm, React 19.3, Zod 4, Vitest 5.
 - **Postgres na Neon** (decidido; `aws-sa-east-1`, via Vercel Marketplace, branch por preview) + **Drizzle ORM** (Neon WebSocket Pool em produção, **PGlite embutido** no desenvolvimento local e nos testes — `npm run demo` sobe o app sem nenhuma conta; escrita em transações).
-- **Better Auth**: primeiro acesso único (`SETUP_TOKEN` + `OWNER_EMAIL`), passkey primeiro e e-mail + senha forte como alternativa, rate limit embutido com storage no banco (sem Redis), sessões de 30 dias revogáveis, recuperação de emergência (`RECOVERY_TOKEN`); 2FA TOTP na F1. Plugin admin para papéis e desativação (sem personificação, rotas HTTP desligadas); convites e links de redefinição de uso único (72 h, só o hash no banco); auditoria das ações.
+- **Better Auth**: primeiro acesso único (`SETUP_TOKEN` + `OWNER_EMAIL`), passkey primeiro e e-mail + senha forte como alternativa, rate limit embutido com storage no banco (sem Redis), sessões de 30 dias revogáveis, recuperação de emergência (`RECOVERY_TOKEN`); 2FA TOTP na F1. Plugin admin para papéis e desativação (sem personificação, rotas HTTP desligadas); convites e links de redefinição de uso único (72 h, só o hash no banco), nunca para a conta do dono, que volta pela recuperação de emergência; auditoria das ações.
 - **Feature flags**: registro tipado no código, valor global e por pessoa no banco (pessoa > global > padrão), aplicadas no servidor; painel em Administração › Flags.
 - **Backups**: restauração pontual da Neon + export semanal criptografado (F1).
 - **Custo**: R$ 0/mês dentro dos planos gratuitos.
 - **Dinheiro em centavos (`bigint`)**, ledger com sinal por conta; projeções em `number` arredondadas só na exibição.
 - **Motor financeiro puro em TypeScript**, compartilhado entre cliente (simulador instantâneo) e servidor (metas, relatórios).
 - **PWA instalável** (Serwist), notificações Web Push, Vercel Cron diário para recorrências, faturas, índices do BCB e lembretes.
-- **UI**: Tailwind CSS v4 (via `@tailwindcss/turbopack`) + shadcn/ui + Motion, fonte Manrope, paleta "Sereno" (neutros + verde-esmeralda), gráficos com paleta validada para daltonismo.
-- **Dicas e novidades em código** (`src/lib/tips`): balões na primeira visita a cada tela e avisos do que chegou ao app, só para contas anteriores a cada novidade; o que cada conta viu fica no banco (`user_tips`).
+- **UI**: Tailwind CSS v4 (via `@tailwindcss/turbopack`) + shadcn/ui + Motion, fonte Manrope, paleta "Sereno" (neutros + verde-esmeralda), gráficos com paleta validada para daltonismo; **tema escuro por padrão** (Escuro · Claro · Sistema), salvo na conta e aplicado em todos os aparelhos.
+- **Dicas e novidades em código** (`src/lib/tips`): balões na primeira visita a cada tela e avisos do que chegou ao app, só para quem já usava o app antes de cada novidade (conta criada ou convite aceito antes); o que cada conta viu fica no banco (`user_tips`).
 
 ## Mockups
 
