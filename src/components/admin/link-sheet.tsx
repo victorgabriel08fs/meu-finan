@@ -24,10 +24,13 @@ export function LinkSheetContent({
   link,
   name,
   onDone,
+  swap = false,
 }: {
   link: IssuedLink;
   name: string;
   onDone: () => void;
+  /** Shown in place of another step of the same sheet. */
+  swap?: boolean;
 }) {
   const id = useId();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -74,6 +77,7 @@ export function LinkSheetContent({
 
   return (
     <SheetContent
+      swap={swap}
       title={isInvite ? "Convite pronto" : "Link de redefinição pronto"}
       description={`Envie para ${firstName} por mensagem ou e-mail. O link vale até ${expires} e funciona uma única vez.`}
       footer={

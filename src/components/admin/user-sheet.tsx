@@ -70,16 +70,29 @@ export function UserSheetContent({
   onClose: () => void;
 }) {
   const [view, setView] = useState<View>({ name: "details" });
+  // Each step is its own SheetContent: after the first, a step replaces the
+  // previous one in place instead of sliding in again.
+  const [swap, setSwap] = useState(false);
+  const go = (next: View) => {
+    setSwap(true);
+    setView(next);
+  };
   if (view.name === "link") {
     return (
-      <LinkSheetContent link={view.link} name={user.name} onDone={onClose} />
+      <LinkSheetContent
+        link={view.link}
+        name={user.name}
+        onDone={onClose}
+        swap={swap}
+      />
     );
   }
   if (view.name === "delete") {
     return (
       <DeleteContent
         user={user}
-        onCancel={() => setView({ name: "details" })}
+        swap={swap}
+        onCancel={() => go({ name: "details" })}
         onDeleted={onClose}
       />
     );
@@ -88,8 +101,9 @@ export function UserSheetContent({
     <DetailsContent
       user={user}
       now={now}
-      onLink={(link) => setView({ name: "link", link })}
-      onDelete={() => setView({ name: "delete" })}
+      swap={swap}
+      onLink={(link) => go({ name: "link", link })}
+      onDelete={() => go({ name: "delete" })}
     />
   );
 }
@@ -103,11 +117,13 @@ function firstNameOf(name: string) {
 function DetailsContent({
   user,
   now,
+  swap,
   onLink,
   onDelete,
 }: {
   user: AdminUserItem;
   now: number;
+  swap: boolean;
   onLink: (link: IssuedLink) => void;
   onDelete: () => void;
 }) {
@@ -218,7 +234,7 @@ function DetailsContent({
   const linkExpired = link ? new Date(link.expiresAt).getTime() <= now : false;
 
   return (
-    <SheetContent title={user.name} description={user.email}>
+    <SheetContent swap={swap} title={user.name} description={user.email}>
       {/* A plain block inside the scrolling body: as flex items of the body
           itself, the cards would shrink and clip instead of scrolling. */}
       <div className="flex flex-col gap-6">
@@ -257,7 +273,7 @@ function DetailsContent({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="-mr-2 text-danger hover:bg-danger-soft/60 active:bg-danger-soft"
+                    className="-ml-3.5 text-danger hover:bg-danger-soft/60 active:bg-danger-soft"
                     loading={busy === "revoke-link"}
                     disabled={busy !== null}
                     onClick={revokeLink}
@@ -396,6 +412,11 @@ function DetailsContent({
   );
 }
 
+/**
+ * One line of the sheet's summary. An action ("Invalidar") goes under the
+ * value, inside the <dd>: beside it, the value would wrap word by word on a
+ * phone, and a <dl> group may only hold <dt> and <dd>.
+ */
 function Detail({
   term,
   children,
@@ -406,12 +427,23 @@ function Detail({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-13 items-center gap-3 px-4 py-2.5">
+    <div
+      className={cn(
+        "flex min-h-13 gap-3 px-4 py-2.5",
+        action ? "items-start" : "items-center",
+      )}
+    >
       <dt className="w-32 shrink-0 text-callout text-fg-2">{term}</dt>
-      <dd className="min-w-0 flex-1 text-callout font-semibold text-fg">
-        {children}
-      </dd>
-      {action}
+      {action ? (
+        <dd className="flex min-w-0 flex-1 flex-col items-start gap-1 text-callout font-semibold text-fg">
+          <span>{children}</span>
+          {action}
+        </dd>
+      ) : (
+        <dd className="min-w-0 flex-1 text-callout font-semibold text-fg">
+          {children}
+        </dd>
+      )}
     </div>
   );
 }
@@ -478,10 +510,12 @@ function ActionRow({
 
 function DeleteContent({
   user,
+  swap,
   onCancel,
   onDeleted,
 }: {
   user: AdminUserItem;
+  swap: boolean;
   onCancel: () => void;
   onDeleted: () => void;
 }) {
@@ -516,6 +550,7 @@ function DeleteContent({
 
   return (
     <SheetContent
+      swap={swap}
       title={`Excluir a conta de ${firstName}?`}
       description={`Apaga o acesso e todas as finanças de ${firstName}: contas, cartões, lançamentos, metas, orçamentos e importações. Não dá para desfazer.`}
       footer={

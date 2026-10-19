@@ -64,6 +64,7 @@ export function InviteSheetContent({ onDone }: { onDone: () => void }) {
         link={created.link}
         name={created.name}
         onDone={onDone}
+        swap
       />
     );
   }

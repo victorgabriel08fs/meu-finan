@@ -473,6 +473,13 @@
     }
   }
 
+  /* Another step of a sheet that is already open (SheetContent `swap`): it
+     takes the place of the previous one without coming in again. */
+  [data-slot="sheet-overlay"][data-state="open"][data-swap],
+  [data-slot="sheet-content"][data-state="open"][data-swap] {
+    animation: none;
+  }
+
   /* Reduced motion: no movement, a 120ms fade instead (§3.8). */
   @media (prefers-reduced-motion: reduce) {
     .skeleton::after {

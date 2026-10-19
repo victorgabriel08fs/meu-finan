@@ -16,6 +16,7 @@ import {
   type ReactNode,
   use,
   useCallback,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -27,13 +28,18 @@ import { useBackToClose } from "./use-back-to-close";
 /**
  * Sheet (doc 02 §4.4, §5.14) on a Radix Dialog: a bottom sheet on phones
  * (28px top radius, drag handle, at most 92dvh, inner scroll, footer above the
- * safe area) and a centred 560px dialog from `md` up. Radix traps focus,
- * returns it to the trigger and closes on Esc or a tap on the scrim; on
- * phones the sheet also closes when dragged down by the handle/header, and
- * the back button closes it instead of leaving the page.
+ * safe area) and a centred 560px dialog from `md` up. Radix traps focus and
+ * closes on Esc or a tap on the scrim; the focus goes back to what opened the
+ * sheet, a SheetTrigger or not. On phones the sheet also closes when dragged
+ * down by the handle/header, and the back button closes it instead of
+ * leaving the page.
  */
 
-type SheetContextValue = { setOpen: (open: boolean) => void };
+type SheetContextValue = {
+  setOpen: (open: boolean) => void;
+  /** onCloseAutoFocus for the content: the focus back to the opener. */
+  returnFocus: (event: Event) => void;
+};
 
 const SheetContext = createContext<SheetContextValue | null>(null);
 
@@ -64,7 +70,34 @@ export function Sheet({
     },
     [controlled, onOpenChange],
   );
-  const context = useMemo(() => ({ setOpen }), [setOpen]);
+  // What had the focus when the sheet opened gets it back on close. Radix
+  // only knows its own trigger, and many sheets open from a row, a menu or a
+  // shortcut. Read in a layout effect: the sheet moves the focus in later.
+  const opener = useRef<HTMLElement | null>(null);
+  const isOpen = useRef(open);
+  useLayoutEffect(() => {
+    isOpen.current = open;
+    if (!open) return;
+    const active = document.activeElement;
+    opener.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+  }, [open]);
+  const returnFocus = useCallback((event: Event) => {
+    // Still open: another step of the sheet replaced its content, and that
+    // step takes the focus itself.
+    if (isOpen.current) {
+      event.preventDefault();
+      return;
+    }
+    const target = opener.current;
+    if (!target?.isConnected) return; // Radix: its trigger, if there is one.
+    event.preventDefault();
+    target.focus({ preventScroll: true });
+  }, []);
+  const context = useMemo(
+    () => ({ setOpen, returnFocus }),
+    [setOpen, returnFocus],
+  );
   useBackToClose(open, () => setOpen(false));
 
   return (
@@ -97,6 +130,12 @@ type SheetContentProps = Omit<
   footer?: ReactNode;
   /** Classes for the scrolling body. */
   bodyClassName?: string;
+  /**
+   * Another step of a sheet that is already open (a confirmation, the link
+   * that was just made): it replaces the previous step without sliding or
+   * fading in again.
+   */
+  swap?: boolean;
 };
 
 /** Phone sheets follow the finger; from md up they are dialogs. */
@@ -113,6 +152,8 @@ export function SheetContent({
   footer,
   className,
   bodyClassName,
+  swap = false,
+  onCloseAutoFocus,
   ...props
 }: SheetContentProps) {
   const sheet = use(SheetContext);
@@ -144,10 +185,13 @@ export function SheetContent({
     <Dialog.Portal>
       <Dialog.Overlay
         data-slot="sheet-overlay"
+        data-swap={swap || undefined}
         className="fixed inset-0 z-50 bg-scrim"
       />
       <Dialog.Content
         data-slot="sheet-content"
+        data-swap={swap || undefined}
+        onCloseAutoFocus={onCloseAutoFocus ?? sheet?.returnFocus}
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none",
