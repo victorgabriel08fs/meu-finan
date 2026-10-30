@@ -1141,6 +1141,7 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 - **Efeito imediato**: sem cache entre requisições; a mudança vale na próxima tela que cada pessoa abrir.
 - **Painel**: Administração › Flags, com Padrão · Ligado · Desligado para todos e exceções por pessoa.
 - **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados e de Ajustes › Novidades, `/importar` responde com a página 404 e as três actions da importação recusam.
+- **Segunda flag**: `notificacoes_push` (desligada por padrão). Desligada, some de Ajustes e de Ajustes › Novidades, `/ajustes/notificacoes` responde com a página 404, as actions de ativar e de testar recusam e o servidor não envia push (desligar e sincronizar o aparelho funcionam sempre, §7).
 - **Dicas e novidades**: uma dica ou novidade sobre uma funcionalidade atrás de flag declara `when: { flag }` (doc 02 §6.16) e só chega a quem tem a flag ligada, para nenhum balão ou link levar a uma tela recusada.
 
 ---

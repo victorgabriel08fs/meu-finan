@@ -136,7 +136,7 @@ Cada aparelho ativa as suas. Ao sair da conta num aparelho, as notificações de
 
 ## Feature flags
 
-Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações; desligada, o servidor não envia nem aceita inscrições.
+Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações e a novidade delas; desligada, a entrada e a novidade somem e o servidor não envia nem aceita inscrições.
 
 ### Como adicionar uma flag
 
