@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { FlagKey } from "@/lib/flags/registry";
 import {
   isTipId,
   MAX_TIPS_PER_SCREEN,
@@ -76,6 +77,23 @@ describe("tips registry", () => {
         tip.routes.some((route) => matchRoute(route, path)),
       );
       expect(onScreen.length, path).toBeLessThanOrEqual(MAX_TIPS_PER_SCREEN);
+    }
+  });
+
+  it("gates every link to a flagged screen behind its flag", () => {
+    // A link to one of these screens would lead to a 404 while the flag is off.
+    const FLAGGED_ROUTES: Record<string, FlagKey> = {
+      "/importar": "importar_extrato",
+      "/ajustes/notificacoes": "notificacoes_push",
+    };
+    for (const tip of TIPS) {
+      const href = tip.link?.href;
+      if (!href) continue;
+      for (const [route, flag] of Object.entries(FLAGGED_ROUTES)) {
+        if (href.startsWith(route)) {
+          expect(tip.when?.flag, tip.id).toBe(flag);
+        }
+      }
     }
   });
 

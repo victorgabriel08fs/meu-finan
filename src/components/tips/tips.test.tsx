@@ -100,6 +100,30 @@ describe("NewsList", () => {
     expect(visible).toContain("Preferências");
   });
 
+  it("draws a bell for the notifications novidade", () => {
+    const html = renderToStaticMarkup(
+      <NewsList
+        entries={[
+          {
+            id: "c",
+            title: "Notificações no aparelho",
+            body: "Ative os avisos neste aparelho.",
+            since: "2026-10-30",
+            icon: "bell",
+            link: {
+              href: "/ajustes/notificacoes",
+              label: "Ativar notificações",
+            },
+            unread: true,
+          },
+        ]}
+        today="2026-10-30"
+      />,
+    );
+    expect(html).toContain("lucide-bell");
+    expect(html).toContain('href="/ajustes/notificacoes"');
+  });
+
   it("says so when there is nothing yet", () => {
     expect(
       text(renderToStaticMarkup(<NewsList entries={[]} today="2026-10-18" />)),

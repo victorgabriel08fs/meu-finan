@@ -199,6 +199,23 @@ export const TIPS: readonly Tip[] = [
     icon: "sun-moon",
     link: { href: "/ajustes/preferencias", label: "Escolher o tema" },
   },
+
+  // Novidades de 30/out/2026 --------------------------------------------------
+  {
+    id: "novidade-notificacoes",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: like the import, the Notificações row sits
+    // below the fold of Ajustes, where a balloon would always be skipped.
+    routes: [],
+    anchor: null,
+    title: "Notificações no aparelho",
+    body: "Ative os avisos neste aparelho e veja no ícone do app quantos você ainda não leu. No iPhone, vale no app da Tela de Início.",
+    since: "2026-10-30",
+    order: 10,
+    when: { flag: "notificacoes_push" },
+    icon: "bell",
+    link: { href: "/ajustes/notificacoes", label: "Ativar notificações" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

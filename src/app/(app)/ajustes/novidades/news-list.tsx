@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bell,
   ChartLine,
   ChevronRight,
   FileUp,
@@ -30,6 +31,7 @@ export type NewsEntry = {
 };
 
 const ICONS: Record<TipIcon, ReactNode> = {
+  bell: <Bell />,
   target: <Target />,
   chart: <ChartLine />,
   "file-up": <FileUp />,

@@ -18,6 +18,7 @@ export type TipRole = UserRole;
 
 /** Icon of a novidade in Ajustes › Novidades (mapped to Lucide there). */
 export type TipIcon =
+  | "bell"
   | "target"
   | "chart"
   | "file-up"

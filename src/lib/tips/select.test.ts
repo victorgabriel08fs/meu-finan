@@ -334,5 +334,28 @@ describe("novidades feed", () => {
         context: withImport,
       }),
     ).toEqual([]);
+
+    // Notifications: only for accounts in use before 30/out, and only while
+    // notificacoes_push is on (the link leads to its settings page).
+    const withPush: TipContext = { ...CONTEXT, flags: ["notificacoes_push"] };
+    expect(
+      unreadNewsIds({
+        seen: new Set(),
+        createdOn: "2026-10-29",
+        context: withPush,
+      }),
+    ).toContain("novidade-notificacoes");
+    expect(
+      newsFeed({ ...old, context: CONTEXT }).map((item) => item.tip.id),
+    ).not.toContain("novidade-notificacoes");
+    expect(unreadNewsIds({ ...old, context: CONTEXT })).not.toContain(
+      "novidade-notificacoes",
+    );
+    const sameDay = newsFeed({
+      seen: new Set(),
+      createdOn: "2026-10-30",
+      context: withPush,
+    }).find((item) => item.tip.id === "novidade-notificacoes");
+    expect(sameDay?.unread).toBe(false);
   });
 });
