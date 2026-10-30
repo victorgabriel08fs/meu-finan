@@ -89,7 +89,7 @@ describe("getFlags", () => {
     await setGlobal("flag_antiga", false);
     await setOwn("ana", "outra_antiga", true);
     const flags = await m.flags.getFlags("ana");
-    expect(flags).toEqual({ importar_extrato: true });
+    expect(flags).toEqual({ importar_extrato: true, notificacoes_push: false });
   });
 
   it("drops a person's values with their account", async () => {

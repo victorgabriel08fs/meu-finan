@@ -105,7 +105,20 @@ const nextConfig: NextConfig = {
   // Embedded Postgres for local development: loaded from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite"],
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The service worker (public/sw.js): never from a cache, so a new
+      // version reaches every device on its next page load.
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
   },
 };
 

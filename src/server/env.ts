@@ -31,6 +31,15 @@ const serverEnvSchemas = {
   SETUP_TOKEN: randomSecret,
   RECOVERY_TOKEN: randomSecret,
   CRON_SECRET: randomSecret,
+  // Web Push (VAPID): an uncompressed P-256 public key (65 bytes) and its
+  // private key (32 bytes), base64url, as `web-push generate-vapid-keys`
+  // prints them. The public one also goes to the browser, through the page.
+  VAPID_PUBLIC_KEY: z.string().regex(/^[A-Za-z0-9_-]{87}$/, {
+    error: "expected the public key printed by web-push generate-vapid-keys",
+  }),
+  VAPID_PRIVATE_KEY: z.string().regex(/^[A-Za-z0-9_-]{43}$/, {
+    error: "expected the private key printed by web-push generate-vapid-keys",
+  }),
 } as const;
 
 export type ServerEnvKey = keyof typeof serverEnvSchemas;

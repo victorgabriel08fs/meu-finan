@@ -59,8 +59,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except the login page, Better Auth's own endpoints, the cron
-  // route (Bearer CRON_SECRET), Next internals and public assets.
+  // route (Bearer CRON_SECRET), Next internals and public assets (the service
+  // worker included: the browser checks it for updates with or without a
+  // session).
   matcher: [
-    "/((?!entrar|api/auth|api/cron|_next/|favicon\\.ico|icon|apple-icon|manifest\\.webmanifest|robots\\.txt).*)",
+    "/((?!entrar|api/auth|api/cron|_next/|favicon\\.ico|icon|apple-icon|manifest\\.webmanifest|robots\\.txt|sw\\.js).*)",
   ],
 };

@@ -35,7 +35,10 @@ beforeAll(async () => {
 }, 120_000);
 
 /** A regular account with importar_extrato on (the flag's default). */
-const VIEWER: TipViewer = { role: "user", flags: { importar_extrato: true } };
+const VIEWER: TipViewer = {
+  role: "user",
+  flags: { importar_extrato: true, notificacoes_push: false },
+};
 
 const snapshot = (userId = "owner", viewer = VIEWER) =>
   tips.getTipsSnapshot(userId, viewer, { timeZone: ZONE });
@@ -58,7 +61,7 @@ describe("tips per user", () => {
   it("takes the role and the flags tips ask about from the viewer", async () => {
     const admin = await snapshot("owner", {
       role: "admin",
-      flags: { importar_extrato: false },
+      flags: { importar_extrato: false, notificacoes_push: false },
     });
     expect(admin.context.role).toBe("admin");
     expect(admin.context.flags).toEqual([]);

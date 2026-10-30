@@ -20,7 +20,7 @@ describe("useFlag", () => {
   });
 
   it("reads flags a Server Component already has", () => {
-    const off: Flags = { importar_extrato: false };
+    const off: Flags = { importar_extrato: false, notificacoes_push: false };
     expect(
       renderToStaticMarkup(
         <FlagsProvider flags={off}>
@@ -31,7 +31,10 @@ describe("useFlag", () => {
   });
 
   it("waits for flags streamed as a promise", async () => {
-    const flags = Promise.resolve<Flags>({ importar_extrato: false });
+    const flags = Promise.resolve<Flags>({
+      importar_extrato: false,
+      notificacoes_push: false,
+    });
     const html = await prerenderToString(
       <FlagsProvider flags={flags}>
         <Suspense fallback={<p>carregando</p>}>
