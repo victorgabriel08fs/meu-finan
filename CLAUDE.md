@@ -7,6 +7,10 @@ Personal-finance PWA with accounts by invitation (the first account administers;
 - Spec, in Portuguese: `docs/01-system-design.md` (architecture, data model, API, jobs, security), `docs/02-frontend-design.md` (tokens, screens, microcopy) and `docs/03-motor-financeiro.md` (formulas). Read the relevant section before coding. The owner's decisions in `README.md` win where the docs differ (accounts by invitation, no Upstash).
 - This Next.js differs from your training data: read the guide in `node_modules/next/dist/docs/` before writing Next-specific code, and check APIs against the installed type definitions.
 
+## Agents
+
+Every task (beyond a one-line fix or a question) goes through at least three agents, defined in `.claude/agents/`: `arquiteto` reads the spec and the code and plans (read-only), `dev` implements the plan and leaves `npm run check` green, and `testador-documentador` verifies against the spec, adds the missing tests and updates README, docs/ and `.env.example`, reporting bugs back to `dev`. The main session coordinates them, commits each verified step on a branch and merges or deploys only with the owner.
+
 ## Commands
 
 - `npm run dev` · `npm run build` (must work without a database) · `npm run build:vercel` (migrations, then build)
