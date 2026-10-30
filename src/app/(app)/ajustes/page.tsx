@@ -1,4 +1,5 @@
 import {
+  Bell,
   BookOpen,
   CalendarRange,
   FileUp,
@@ -143,6 +144,20 @@ async function Settings() {
         </InsetList>
       </section>
 
+      {flags.notificacoes_push ? (
+        <section aria-labelledby="ajustes-notificacoes">
+          <SectionHeader id="ajustes-notificacoes" title="Notificações" />
+          <InsetList aria-labelledby="ajustes-notificacoes">
+            <InsetListItem
+              icon={<Bell />}
+              label="Notificações"
+              description="Avisos neste aparelho e o número no ícone"
+              href="/ajustes/notificacoes"
+            />
+          </InsetList>
+        </section>
+      ) : null}
+
       <section aria-labelledby="ajustes-dados">
         <SectionHeader id="ajustes-dados" title="Dados" />
         <InsetList aria-labelledby="ajustes-dados">
@@ -224,8 +239,8 @@ async function Settings() {
 /**
  * One block per section, in page order, each with its section's height
  * (header 36px, rows of 52 or 64px, 1px hairlines between rows).
- * Administração is left out: the role is unknown here, and it streams in
- * below the fold.
+ * Administração and Notificações (off by default, behind its flag) are left
+ * out: the role and flags are unknown here, and they stream in below the fold.
  */
 function SettingsSkeleton() {
   return (

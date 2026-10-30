@@ -690,14 +690,24 @@ async function seedPeople(
       occurredOn: thisMonth(day),
     });
   }
-  // Importar extrato turned off for Bruno only (a per-person flag).
-  await db.insert(featureFlagOverrides).values({
-    userId: brunoId,
-    key: "importar_extrato",
-    enabled: false,
-    updatedBy: admin.id,
-    updatedAt: ago(6),
-  });
+  // Importar extrato turned off for Bruno only (a per-person flag), and the
+  // notifications (off by default) on for Ana, so the demo shows them.
+  await db.insert(featureFlagOverrides).values([
+    {
+      userId: brunoId,
+      key: "importar_extrato",
+      enabled: false,
+      updatedBy: admin.id,
+      updatedAt: ago(6),
+    },
+    {
+      userId: admin.id,
+      key: "notificacoes_push",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(6),
+    },
+  ]);
 
   // Carla: invited yesterday, still pending -------------------------------------
   const carlaId = randomBytes(16).toString("hex");

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { forgetDevice } from "@/components/push/device";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
@@ -16,6 +17,8 @@ export function SignedInNotice({ email }: { email: string }) {
 
   const signOut = async () => {
     setPending(true);
+    // This device stops receiving the notifications of the person leaving.
+    await forgetDevice();
     try {
       const { error } = await authClient.signOut();
       if (!error) {

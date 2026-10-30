@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
+import { forgetDevice } from "@/components/push/device";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-error";
@@ -81,6 +82,8 @@ export function SecurityPanel({
   // pages the router keeps mounted) reaches whoever signs in next.
   const signOut = async () => {
     setBusy("sign-out");
+    // This device stops receiving the notifications of the person leaving.
+    await forgetDevice();
     try {
       const { error } = await authClient.signOut();
       if (!error) {

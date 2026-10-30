@@ -1,9 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
+import webpush from "web-push";
 
 // End-to-end tests against the production build and the local demo database.
 // Run with `npm run test:e2e` (resets the demo data, builds, then tests).
 // E2E_PORT lets several checkouts (git worktrees) run their suites at once.
 const PORT = Number(process.env.E2E_PORT) || 3100;
+const vapid = webpush.generateVAPIDKeys();
 
 export default defineConfig({
   testDir: "e2e",
@@ -32,6 +34,10 @@ export default defineConfig({
     env: {
       DATABASE_URL: "pglite:.data/pglite",
       BETTER_AUTH_URL: `http://localhost:${PORT}`,
+      // A fresh pair per run: Ajustes › Notificações needs the keys to offer
+      // its switch. Nothing is delivered (no real push service is reached).
+      VAPID_PUBLIC_KEY: vapid.publicKey,
+      VAPID_PRIVATE_KEY: vapid.privateKey,
     },
   },
 });

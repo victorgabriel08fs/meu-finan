@@ -4,6 +4,7 @@ import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
 import { ThemeAccount } from "@/components/app/theme-account";
 import { FlagsProvider } from "@/components/flags/flags-provider";
+import { PushLoader } from "@/components/push/push-loader";
 import { QuickAddLoader } from "@/components/quick-add/quick-add-loader";
 import {
   QuickAddFab,
@@ -22,7 +23,8 @@ import { getViewerFlags } from "@/server/flags";
  * store, so they work from the first paint; the sheet itself streams in
  * through QuickAddLoader, which checks the session inside its own boundary.
  * ThemeAccount does the same for the account's theme (§6.14).
- * Tips (§6.16) stream in the same way, through TipsLoader.
+ * Tips (§6.16) stream in the same way, through TipsLoader, and so does the
+ * device's notifications sync and app icon number (PushLoader).
  *
  * Feature flags (doc 01 §11.10): the promise starts here without being
  * awaited, so the shell still prerenders; Client Components unwrap it with
@@ -76,6 +78,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </Suspense>
         <Suspense fallback={null}>
           <TipsLoader />
+        </Suspense>
+        <Suspense fallback={null}>
+          <PushLoader />
         </Suspense>
       </div>
     </FlagsProvider>

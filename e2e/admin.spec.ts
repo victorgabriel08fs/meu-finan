@@ -191,7 +191,8 @@ test.describe("sem ser administrador", () => {
     }
 
     // Ajustes has no Administração; and the demo turned importar_extrato off
-    // for Bruno only (a per-person flag).
+    // for Bruno only (a per-person flag). Notificações (off by default, on only
+    // for Ana) neither shows nor opens.
     await page.goto("/ajustes");
     await expect(
       page.getByRole("link", { name: /Exportar lançamentos/ }),
@@ -200,6 +201,13 @@ test.describe("sem ser administrador", () => {
     await expect(
       page.getByRole("link", { name: /Importar extrato/ }),
     ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Notificações/ })).toHaveCount(
+      0,
+    );
+    await page.goto("/ajustes/notificacoes");
+    await expect(
+      page.getByRole("heading", { name: "Página não encontrada" }),
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test("sem sessão, a administração leva ao login e um link falso não abre", async ({
