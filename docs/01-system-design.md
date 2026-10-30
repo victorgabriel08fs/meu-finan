@@ -850,7 +850,7 @@ export const requireUser = cache(async () => {
 | Metas | `createGoal`, `updateGoal`, `contributeToGoal(goalId, amountCents, fromAccountId?)` | aporte com conta vinculada vira transferência |
 | Simulador | `saveSimulation`, `deleteSimulation` | |
 | Importação | `parseImport(importId)`, `confirmImport(importId, rows)` | |
-| Ajustes | `updateSettings`, `subscribePush`, `unsubscribePush` | |
+| Ajustes | `updateSettings`, `subscribePush`, `unsubscribePush`, `syncPushDevice`, `sendTestPush` | as de push atrás da flag `notificacoes_push` (desligar e sincronizar o aparelho funcionam sempre); o teste vai só para este aparelho, no máximo 3 por minuto |
 | Dados | `requestDataExport()`, `deleteAllData(confirmation)` | ambas exigem sessão recente; apagar remove dados financeiros e blobs, mantém o acesso (usuário, senha, passkeys) e volta ao onboarding (§11.8) |
 
 ### 7.3 Route Handlers (`/api/v1`)
@@ -975,7 +975,7 @@ Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e 
 | **BCB — SGS** | taxas para simulador, metas e rendimento de contas | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/{n}?formato=json` — séries: **432** (meta Selic, % a.a.), **4389** (CDI anualizado base 252, % a.a.), **12** (CDI diário), **433** (IPCA mensal, %). Respostas com data `dd/MM/yyyy` e valor com ponto decimal em string. Cache no banco; o app nunca chama o BCB em tempo de requisição |
 | BCB — Focus (opcional) | expectativa de IPCA/Selic para cenários default | API Olinda de expectativas de mercado |
 | Resend (opcional, fase posterior) | resumo semanal e alertas por e-mail | domínio próprio com SPF/DKIM/DMARC; templates React Email. O login e a recuperação não dependem de e-mail |
-| **Web Push** | lembretes | VAPID; no iOS funciona apenas com o PWA instalado na tela de início (iOS 16.4+) |
+| **Web Push** | lembretes e o número no ícone do app | VAPID, com `web-push` (`aes128gcm`); no iOS funciona apenas com o PWA instalado na tela de início (iOS 16.4+), e a permissão só pode ser pedida num toque. O service worker (`public/sw.js`, sem cache offline por enquanto) mostra a notificação e põe no ícone o número de avisos não lidos (`notifications.read_at` nulo, Badging API); o app acerta o número a cada abertura. O servidor só envia para endpoints https dos serviços de push (Apple, Google, Mozilla, Microsoft); 404/410 apagam a inscrição. Um aparelho tem uma inscrição só: ela é de quem ativou por último, quem entra no aparelho a toma de quem estava antes, e sair da conta desliga as notificações dele. Atrás da flag `notificacoes_push` |
 | **Vercel Blob** | comprovantes e arquivos de importação | upload direto do navegador com token de curta duração; caminho com sufixo aleatório; download só via rota autenticada |
 | Open Finance (fase 4) | sincronização automática de contas | via agregador certificado (ex.: Pluggy, Belvo); webhooks em `/api/webhooks/*` |
 
@@ -1205,7 +1205,7 @@ Variáveis de ambiente:
 | `RECOVERY_TOKEN` | manual, aleatório e longo; **ausente por padrão** — definido só durante uma recuperação de emergência (§11.4) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob |
 | `CRON_SECRET` | manual (a Vercel envia como `Authorization: Bearer`) |
-| `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | gerado com `web-push generate-vapid-keys` |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | gerados com `npx web-push generate-vapid-keys`; a pública chega ao navegador pela página de Ajustes › Notificações (sem `NEXT_PUBLIC_`), a privada nunca sai do servidor. Trocar o par invalida as inscrições: cada aparelho ativa de novo |
 | `RESEND_API_KEY` | Resend — opcional, fase posterior |
 | `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | Sentry — opcional, fase posterior |
 

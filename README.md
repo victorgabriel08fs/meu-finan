@@ -15,6 +15,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - **Dados**: importar extrato OFX/CSV (sem duplicar) e exportar os lançamentos em CSV.
 - **Tema escuro por padrão**, com Claro e Sistema: a escolha fica salva na conta e vale em todos os aparelhos (troca rápida no Início e na barra lateral).
 - **Dicas e novidades**: balões que apontam o que fazer na primeira visita a cada tela (com "Pular dicas" e "Não mostrar mais") e uma lista do que chegou ao app, com aviso de não lidas; em Preferências, ligar, desligar e "Rever dicas".
+- **Notificações** (atrás da flag `notificacoes_push`, desligada por padrão): ativar por aparelho em Ajustes › Notificações, com notificação de teste e o número de avisos não lidos no ícone do app. No iPhone, só no app da Tela de Início (iOS 16.4+). Os lembretes de contas, faturas, orçamentos e metas chegam nas próximas etapas.
 - **Ajustes**: passkeys, senha e sessões; aparência, início do mês e dicas de uso; categorias; onboarding em 4 passos.
 - **Administração** (só administradores): convidar pessoas por link, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; feature flags para todos ou por pessoa; atividade (auditoria).
 
@@ -116,9 +117,26 @@ Para as outras pessoas, o caminho é o **link de redefinição** que um administ
 
 Ela vale para a conta do `OWNER_EMAIL` e a devolve como administradora ativa (mesmo que outro administrador tenha tirado o papel ou desativado a conta). Sem o `OWNER_EMAIL`, ela vale para a conta mais antiga (a do primeiro acesso); e, se ele estiver definido mas não for de nenhuma conta (um erro de digitação, por exemplo), a recuperação recusa em vez de assumir outra conta. Enquanto o token existir, quem o tiver consegue redefinir a sua senha. Por isso ele só deve existir durante a recuperação.
 
+## Notificações no celular
+
+As notificações usam Web Push, sem app de loja. No iPhone e no iPad elas só existem no app aberto pela Tela de Início (iOS 16.4 ou mais recente).
+
+1. Gere o par de chaves:
+
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+
+2. Na Vercel, defina `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` com as chaves e faça um novo deploy.
+3. Em **Administração › Flags**, ligue `notificacoes_push` para você (ou para todos).
+4. No iPhone, abra o app no Safari, toque em **Compartilhar › Adicionar à Tela de Início** e abra o Meu Finan pelo ícone.
+5. Em **Ajustes › Notificações**, ligue "Receber notificações", permita e toque em "Enviar notificação de teste". O número no ícone some quando você abre o app.
+
+Cada aparelho ativa as suas. Ao sair da conta num aparelho, as notificações dele são desligadas; trocar o par de chaves obriga todos a ativar de novo.
+
 ## Feature flags
 
-Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela.
+Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações; desligada, o servidor não envia nem aceita inscrições.
 
 ### Como adicionar uma flag
 
