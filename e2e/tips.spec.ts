@@ -145,7 +145,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+4 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+5 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -160,6 +160,15 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   await expect(
     item("Atalhos no ícone do app").getByText("Nova", { exact: true }),
   ).toBeVisible();
+  // Ana has notificacoes_push on: its novidade shows, with the way there.
+  await expect(
+    item("Notificações no aparelho").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  const enablePush = item("Notificações no aparelho").getByRole("link", {
+    name: "Ativar notificações",
+  });
+  await expect(enablePush).toBeVisible();
+  await expect(enablePush).toHaveAttribute("href", "/ajustes/notificacoes");
   await read;
 
   await page.goto("/inicio");
