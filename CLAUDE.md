@@ -9,7 +9,14 @@ Personal-finance PWA with accounts by invitation (the first account administers;
 
 ## Agents
 
-Every task (beyond a one-line fix or a question) goes through at least three agents, defined in `.claude/agents/`: `arquiteto` reads the spec and the code and plans (read-only), `dev` implements the plan and leaves `npm run check` green, and `testador-documentador` verifies against the spec, adds the missing tests and updates README, docs/ and `.env.example`, reporting bugs back to `dev`. The main session coordinates them, commits each verified step on a branch and merges or deploys only with the owner.
+Every task (beyond a one-line fix or a question) goes through the agents defined in `.claude/agents/`, in this order:
+
+1. `arquiteto` reads the spec and the code and plans (read-only).
+2. `dev` implements the plan and leaves `npm run check` green.
+3. `qa-ui-ux` opens the touched screens in a browser (360/430 px and desktop, dark and light, every state) and checks them against docs/02: tokens, layout, accessibility, microcopy, UX. It reports findings with screenshots and changes no code. Skip it only when nothing a person sees changed.
+4. `testador-documentador-versionador` verifies against the spec, adds the missing tests, updates README, docs/, `docs/tarefas.md` and `.env.example`, and commits each verified step on the task's branch.
+
+Findings from 3 and 4 go back to `dev`, then through 3 and 4 again. The main session coordinates them, pushes the branch and opens the pull request, and merges or deploys only with the owner. Pending work is listed in `docs/tarefas.md`.
 
 ## Commands
 

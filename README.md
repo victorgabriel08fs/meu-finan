@@ -260,5 +260,8 @@ meu-finan/
 - [`docs/01-system-design.md`](docs/01-system-design.md): requisitos, arquitetura, modelo de dados, API, cache, jobs, segurança e CI/CD.
 - [`docs/02-frontend-design.md`](docs/02-frontend-design.md): design tokens, navegação, componentes, telas, microcopy, acessibilidade e PWA.
 - [`docs/03-motor-financeiro.md`](docs/03-motor-financeiro.md): fórmulas e algoritmos (juros compostos, CDI, IPCA+, IR regressivo, faturas, parcelamento, orçamento).
+- [`docs/tarefas.md`](docs/tarefas.md): o que falta fazer, em ordem de prioridade (próxima: Início personalizável).
+
+O desenvolvimento passa por quatro agentes do Claude Code, definidos em [`.claude/agents/`](.claude/agents/): `arquiteto` (planeja), `dev` (implementa), `qa-ui-ux` (revisa as telas no navegador contra o doc 02) e `testador-documentador-versionador` (testa, documenta e commita em etapas). O fluxo está no [`CLAUDE.md`](CLAUDE.md).
 
 Quando os docs e este README divergirem, valem as decisões do dono do produto: contas só por convite de um administrador (sem cadastro público), cada uma com as próprias finanças, autenticação obrigatória, Neon sem Redis (limite de tentativas de login pelo Better Auth, guardado no banco) e Vercel Hobby (uso pessoal, não comercial).
