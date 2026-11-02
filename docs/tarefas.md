@@ -33,3 +33,18 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - Reordenar funciona por toque, por teclado e por leitor de tela; `qa-ui-ux` aprova em 360/430 px e desktop, escuro e claro, com axe sem violações.
 - Testes: unidade do catálogo e da mesclagem escolha × padrão (blocos novos, ids desconhecidos ignorados), integração da action (ids inválidos recusados, isolamento entre contas), e2e do fluxo de personalizar e do padrão.
 - README (O que já dá para fazer), doc 02 §6.3 e doc 01 (modelo de dados) atualizados.
+
+## 2. Extrato: filtros por conta e por categoria não funcionam
+
+**Bug relatado pelo dono (02/11/2026).** No Extrato (doc 02 §6.4), escolher uma conta ou uma categoria no filtro não filtra a lista. Os outros filtros (tipo, status, busca) não foram citados.
+
+### O que investigar
+
+- O caminho inteiro do filtro: a folha de filtros escreve `conta` e `categoria` na URL, `parseStatementParams` lê, a página só aceita ids da própria pessoa (`src/app/(app)/extrato/page.tsx`) e `listTransactions` (`src/server/domain/transactions.ts`) aplica o filtro e os totais.
+- Reproduzir na demo (Ana e Bruno), no celular e no desktop, com e sem `mes=`, e com conta arquivada, cartão de crédito, transferência (a conta pode estar na outra perna) e categoria com subcategorias (filtrar a categoria mãe deve trazer as filhas, se o doc 02 pedir).
+
+### Pronto quando
+
+- Filtrar por conta e por categoria mostra só os lançamentos certos, com os totais do cabeçalho batendo com a lista; o filtro aparece escolhido na tela, dá para tirá-lo e ele continua valendo ao recarregar a página.
+- Id de outra conta ou categoria na URL é ignorado, como hoje.
+- Teste de integração da consulta com cada filtro e e2e do Extrato filtrando por conta e por categoria (o e2e precisa falhar antes da correção).
