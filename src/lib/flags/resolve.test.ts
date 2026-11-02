@@ -25,6 +25,11 @@ describe("registry", () => {
     expect(defaultFlags().importar_extrato).toBe(true);
   });
 
+  it("ships inicio_personalizavel off by default", () => {
+    expect(FLAGS.inicio_personalizavel.defaultValue).toBe(false);
+    expect(defaultFlags().inicio_personalizavel).toBe(false);
+  });
+
   it("knows its own keys only", () => {
     expect(isFlagKey("importar_extrato")).toBe(true);
     expect(isFlagKey("toString")).toBe(false);

@@ -1,9 +1,15 @@
 // Owner preferences kept on the account (user_settings). The theme is the
-// only one read outside getUserContext: the app shell needs it on its own.
+// only one read outside getUserContext: the app shell needs it on its own;
+// the Início reads its blocks on its own too.
 import { eq } from "drizzle-orm";
+import { type HomeLayout, resolveHomeLayout } from "@/lib/home/layout";
 import { DEFAULT_THEME } from "@/lib/theme";
 import { db, type Executor } from "@/server/db/client";
-import { type Theme, userSettings } from "@/server/db/schema";
+import {
+  type StoredHomeLayout,
+  type Theme,
+  userSettings,
+} from "@/server/db/schema";
 
 /** The account's theme (doc 02 §6.14); the default when there is no row yet. */
 export async function getThemePreference(
@@ -33,5 +39,39 @@ export async function setThemePreference(
     .onConflictDoUpdate({
       target: userSettings.userId,
       set: { theme, updatedAt: new Date() },
+    });
+}
+
+/**
+ * The person's Início (doc 02 §6.3): what they saved, merged with the block
+ * catalog; the app's default when they never changed it.
+ */
+export async function getHomeLayout(
+  userId: string,
+  executor: Executor = db,
+): Promise<HomeLayout> {
+  const [row] = await executor
+    .select({ homeLayout: userSettings.homeLayout })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .limit(1);
+  return resolveHomeLayout(row?.homeLayout ?? null);
+}
+
+/**
+ * Saves the blocks of the Início on the account, so every device shows the
+ * same; null goes back to the app's default ("Restaurar padrão").
+ */
+export async function setHomeLayout(
+  userId: string,
+  homeLayout: StoredHomeLayout | null,
+  executor: Executor = db,
+): Promise<void> {
+  await executor
+    .insert(userSettings)
+    .values({ userId, homeLayout })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: { homeLayout, updatedAt: new Date() },
     });
 }

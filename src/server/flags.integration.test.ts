@@ -3,6 +3,7 @@
 // import actions on the server.
 import { count, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultFlags } from "@/lib/flags/registry";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -89,7 +90,7 @@ describe("getFlags", () => {
     await setGlobal("flag_antiga", false);
     await setOwn("ana", "outra_antiga", true);
     const flags = await m.flags.getFlags("ana");
-    expect(flags).toEqual({ importar_extrato: true, notificacoes_push: false });
+    expect(flags).toEqual(defaultFlags());
   });
 
   it("drops a person's values with their account", async () => {

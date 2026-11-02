@@ -43,6 +43,13 @@
       "when": 1792280751688,
       "tag": "0005_first_account_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793649603997,
+      "tag": "0006_inicio_personalizavel",
+      "breakpoints": true
     }
   ]
 }

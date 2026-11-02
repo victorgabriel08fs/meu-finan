@@ -1,0 +1,2 @@
+ALTER TABLE "user_settings" ADD COLUMN "home_layout" jsonb;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_home_layout_check" CHECK ("user_settings"."home_layout" is null or jsonb_typeof("user_settings"."home_layout") = 'array');
