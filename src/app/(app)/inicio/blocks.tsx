@@ -1,0 +1,230 @@
+// Blocks of the Início (doc 02 §6.3), one async Server Component per id of
+// the catalog (src/lib/home/blocks.ts). Each one reads only its own data and
+// streams inside its own <Suspense> (HomeBlockFrame).
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { SectionHeader } from "@/components/app/section-header";
+import { StatTile } from "@/components/app/stat-tile";
+import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
+import { BalanceHero } from "@/components/dashboard/balance-hero";
+import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
+import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
+import { InsightCard } from "@/components/dashboard/insight-card";
+import { monthName } from "@/components/dashboard/labels";
+import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
+import { Money } from "@/components/money/money";
+import { shortDateLabel } from "@/lib/format/date";
+import type { HomeBlockId } from "@/lib/home/blocks";
+import { getBudgets } from "@/server/domain/budgets";
+import type { PeriodRange, UserContext } from "@/server/domain/context";
+import {
+  categoryInsight,
+  getAccountsStrip,
+  getBalanceSummary,
+  getUpcoming,
+} from "@/server/domain/dashboard";
+import { listGoals } from "@/server/domain/goals";
+import { periodTotals } from "@/server/domain/transactions";
+
+type HomeBlockProps = {
+  ctx: UserContext;
+  /** The period of ?mes=, the same for every block. */
+  range: PeriodRange;
+};
+
+const BLOCKS: Record<
+  HomeBlockId,
+  (props: HomeBlockProps) => Promise<ReactNode> | ReactNode
+> = {
+  balance: BalanceBlock,
+  "month-totals": MonthTotalsBlock,
+  budget: BudgetBlock,
+  "upcoming-bills": UpcomingBillsBlock,
+  accounts: AccountsBlock,
+  goals: GoalsBlock,
+  insight: InsightBlock,
+  // Not in the default; its block comes with the calendar on the Início.
+  "spending-calendar": () => null,
+};
+
+/** The block of one id of the catalog. */
+export function HomeBlock({
+  id,
+  ...props
+}: HomeBlockProps & { id: HomeBlockId }) {
+  const Block = BLOCKS[id];
+  return <Block {...props} />;
+}
+
+/** Keeps a month other than the current one in the links. */
+function withMonth(range: PeriodRange, path: string) {
+  return range.isCurrent
+    ? path
+    : `${path}${path.includes("?") ? "&" : "?"}mes=${range.month}`;
+}
+
+async function BalanceBlock({ ctx, range }: HomeBlockProps) {
+  const summary = await getBalanceSummary(ctx, range);
+  return (
+    <BalanceHero
+      balanceCents={summary.balanceCents}
+      monthChangeCents={summary.monthChangeCents}
+      monthName={monthName(range.month)}
+      forecast={summary.forecast}
+      untilLabel={shortDateLabel(range.end)}
+    />
+  );
+}
+
+async function MonthTotalsBlock({ ctx, range }: HomeBlockProps) {
+  const totals = await periodTotals(ctx, range.start, range.end);
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <StatTile
+        icon={<ArrowDownLeft />}
+        iconClassName="bg-cat-3-bg text-cat-3-fg"
+        label="Receitas"
+        value={
+          <Money cents={totals.incomeCents} variant="title" tone="neutral" />
+        }
+        support={
+          totals.pendingIncomeCents > 0 ? (
+            <>
+              <Money
+                cents={totals.pendingIncomeCents}
+                variant="caption"
+                sign="always"
+                className="text-inherit"
+              />{" "}
+              a receber
+            </>
+          ) : (
+            "Nada a receber"
+          )
+        }
+        href={withMonth(range, "/extrato?tipo=receita")}
+      />
+      <StatTile
+        icon={<ArrowUpRight />}
+        iconClassName="bg-cat-2-bg text-cat-2-fg"
+        label="Despesas"
+        value={
+          <Money cents={totals.expenseCents} variant="title" tone="neutral" />
+        }
+        support={
+          totals.pendingExpenseCents > 0 ? (
+            <>
+              <Money
+                cents={totals.pendingExpenseCents}
+                variant="caption"
+                tone="neutral"
+                className="text-inherit"
+              />{" "}
+              agendados
+            </>
+          ) : (
+            "Nada agendado"
+          )
+        }
+        href={withMonth(range, "/extrato?tipo=despesa")}
+      />
+    </div>
+  );
+}
+
+async function BudgetBlock({ ctx, range }: HomeBlockProps) {
+  const budgets = await getBudgets(ctx, range);
+  const href = withMonth(range, "/planejar/orcamentos");
+  return budgets.total ? (
+    <BudgetCard
+      total={budgets.total}
+      items={budgets.items}
+      monthName={monthName(range.month)}
+      isCurrent={range.isCurrent}
+      endLabel={shortDateLabel(range.end)}
+      href={href}
+    />
+  ) : (
+    <BudgetInvite href={href} />
+  );
+}
+
+async function UpcomingBillsBlock({ ctx, range }: HomeBlockProps) {
+  const upcoming = await getUpcoming(ctx, range);
+  return (
+    <section aria-labelledby="proximas-contas">
+      <SectionHeader
+        id="proximas-contas"
+        title="Próximas contas"
+        action={
+          <SectionLink href="/extrato?status=pendente">Ver todas</SectionLink>
+        }
+      />
+      <UpcomingBills items={upcoming} today={ctx.todayIso} />
+    </section>
+  );
+}
+
+async function AccountsBlock({ ctx }: HomeBlockProps) {
+  const { accounts, currentInvoiceCents } = await getAccountsStrip(ctx);
+  return (
+    <section aria-labelledby="contas-carrossel">
+      <SectionHeader
+        id="contas-carrossel"
+        title="Contas"
+        action={<SectionLink href="/contas">Gerenciar</SectionLink>}
+      />
+      <AccountsCarousel
+        accounts={accounts}
+        currentInvoiceCents={currentInvoiceCents}
+      />
+    </section>
+  );
+}
+
+async function GoalsBlock({ ctx }: HomeBlockProps) {
+  const goals = await listGoals(ctx);
+  return (
+    <section aria-labelledby="metas-resumo">
+      <SectionHeader
+        id="metas-resumo"
+        title="Metas"
+        action={
+          goals.length > 0 ? (
+            <SectionLink href="/planejar/metas">Ver todas</SectionLink>
+          ) : undefined
+        }
+      />
+      {goals.length > 0 ? (
+        <GoalsCard goals={goals} href="/planejar/metas" />
+      ) : (
+        <GoalsInvite href="/planejar/metas" />
+      )}
+    </section>
+  );
+}
+
+/** Nothing at all without a highlight, so the slot collapses. */
+async function InsightBlock({ ctx, range }: HomeBlockProps) {
+  const insight = await categoryInsight(ctx, range);
+  return insight ? <InsightCard insight={insight} /> : null;
+}
+
+/** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */
+function SectionLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="-my-2.5 -mr-2 inline-flex h-11 items-center rounded-control px-2 text-callout font-semibold text-primary transition-colors duration-100 hover:bg-primary-soft/60 active:bg-primary-soft"
+    >
+      {children}
+    </Link>
+  );
+}

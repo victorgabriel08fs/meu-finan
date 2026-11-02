@@ -1,5 +1,8 @@
 // Início (doc 02 §6.3): "quanto tenho?", "como está o mês?", "o que vence logo?".
+// The other blocks read straight from their domains: periodTotals,
+// getBudgets, listGoals.
 import { and, between, eq, isNull, ne, sql } from "drizzle-orm";
+import { cache } from "react";
 import {
   addDays,
   type Forecast,
@@ -13,16 +16,10 @@ import {
 import { db } from "@/server/db/client";
 import { categories, finAccounts, transactions } from "@/server/db/schema";
 import { type AccountListItem, listAccounts } from "./accounts";
-import { type BudgetOverview, getBudgets } from "./budgets";
 import { listInvoices } from "./cards";
 import type { PeriodRange, UserContext } from "./context";
-import { type GoalItem, listGoals } from "./goals";
 import { liquidPendingFlows } from "./reports";
-import {
-  type PeriodTotals,
-  pendingEntries,
-  periodTotals,
-} from "./transactions";
+import { pendingEntries } from "./transactions";
 
 export type UpcomingItem = {
   id: string;
@@ -47,72 +44,89 @@ export type Insight = {
   text: string;
 };
 
-export type Dashboard = {
-  balanceCents: number;
-  monthChangeCents: number;
-  forecast: Forecast;
-  totals: PeriodTotals;
-  budgets: BudgetOverview;
-  upcoming: UpcomingItem[];
-  accounts: AccountListItem[];
-  /** Per card id: total of the invoice a purchase made today goes to. */
-  currentInvoiceCents: Record<string, number>;
-  goals: GoalItem[];
-  insight: Insight | null;
-};
-
 const isLiquid = (account: AccountListItem) =>
   account.type !== "credit_card" &&
   account.includeInNetWorth &&
   !account.archived;
 
-export async function getDashboard(
+// One loader per block of the Início, so each block streams on its own and
+// only the visible ones read anything. What several blocks share is read once
+// per request: React `cache` keys on the context object, which
+// getUserContext memoises for the request too.
+
+/** The person's accounts: the Saldo, the Contas and the first run. */
+export const accountsOf = cache(
+  (ctx: UserContext): Promise<AccountListItem[]> => listAccounts(ctx.userId),
+);
+
+/** The credit cards and, in the same order, each one's invoices. */
+const cardInvoicesOf = cache(async (ctx: UserContext) => {
+  const cards = (await accountsOf(ctx)).filter(
+    (account) => account.type === "credit_card",
+  );
+  const invoicesByCard = await Promise.all(
+    cards.map((card) => listInvoices(ctx, card.id)),
+  );
+  return { cards, invoicesByCard };
+});
+
+/** Pending transactions up to a day: the forecast and the próximas contas. */
+const pendingUntil = cache((ctx: UserContext, end: string) =>
+  pendingEntries(ctx, end),
+);
+
+export type BalanceSummary = {
+  balanceCents: number;
+  monthChangeCents: number;
+  forecast: Forecast;
+};
+
+/** Saldo em contas: liquid balance, its change in the period, the forecast. */
+export async function getBalanceSummary(
   ctx: UserContext,
   range: PeriodRange,
-): Promise<Dashboard> {
-  const accounts = await listAccounts(ctx.userId);
-  const liquid = accounts.filter(isLiquid);
+): Promise<BalanceSummary> {
+  const liquid = (await accountsOf(ctx)).filter(isLiquid);
   const liquidIds = new Set(liquid.map((account) => account.id));
   const balanceCents = liquid.reduce(
     (sum, account) => sum + account.balanceCents,
     0,
   );
-  const cards = accounts.filter((account) => account.type === "credit_card");
-
-  const [
-    totals,
-    budgets,
-    goals,
-    pending,
-    invoicesByCard,
-    monthChange,
-    insight,
-  ] = await Promise.all([
-    periodTotals(ctx, range.start, range.end),
-    getBudgets(ctx, range),
-    listGoals(ctx),
-    pendingEntries(ctx, range.end),
-    Promise.all(cards.map((card) => listInvoices(ctx, card.id))),
+  const [pending, { invoicesByCard }, monthChange] = await Promise.all([
+    pendingUntil(ctx, range.end),
+    cardInvoicesOf(ctx),
     monthChangeCents(ctx, range, [...liquidIds]),
-    categoryInsight(ctx, range),
   ]);
-
-  const invoices = invoicesByCard.flat();
   const forecast = forecastBalance({
     balanceCents,
     // A pending transfer counts by its other leg: between liquid accounts it
     // nets out, into a card it pays an invoice (already counted below).
     pending: liquidPendingFlows(pending, liquidIds).map((flow) => flow.entry),
-    invoices: invoices.map((invoice) => ({
+    invoices: invoicesByCard.flat().map((invoice) => ({
       dueDate: parse(invoice.dueDate),
       totalCents: invoice.totalCents,
       paidCents: invoice.paidCents,
     })),
     until: parse(range.end),
   });
+  return { balanceCents, monthChangeCents: monthChange, forecast };
+}
 
+/**
+ * Próximas contas: pending expenses off the cards and open invoices due in
+ * the next 7 days, overdue ones included. Transactions are read up to the
+ * end of the period shown, the same read as the forecast's.
+ */
+export async function getUpcoming(
+  ctx: UserContext,
+  range: PeriodRange,
+): Promise<UpcomingItem[]> {
+  const [pending, { cards, invoicesByCard }] = await Promise.all([
+    pendingUntil(ctx, range.end),
+    cardInvoicesOf(ctx),
+  ]);
   const horizon = iso(addDays(ctx.today, 7));
-  const upcoming: UpcomingItem[] = [
+  return [
     ...pending
       .filter(
         (entry) =>
@@ -154,7 +168,22 @@ export async function getDashboard(
         })),
     ),
   ].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+}
 
+export type AccountsStrip = {
+  accounts: AccountListItem[];
+  /** Per card id: total of the invoice a purchase made today goes to. */
+  currentInvoiceCents: Record<string, number>;
+};
+
+/** Contas: every account and, for each card, the invoice open today. */
+export async function getAccountsStrip(
+  ctx: UserContext,
+): Promise<AccountsStrip> {
+  const [accounts, { cards, invoicesByCard }] = await Promise.all([
+    accountsOf(ctx),
+    cardInvoicesOf(ctx),
+  ]);
   const currentInvoiceCents: Record<string, number> = {};
   cards.forEach((card, index) => {
     if (!card.card) return;
@@ -164,19 +193,7 @@ export async function getDashboard(
     );
     currentInvoiceCents[card.id] = invoice?.totalCents ?? 0;
   });
-
-  return {
-    balanceCents,
-    monthChangeCents: monthChange,
-    forecast,
-    totals,
-    budgets,
-    upcoming,
-    accounts,
-    currentInvoiceCents,
-    goals,
-    insight,
-  };
+  return { accounts, currentInvoiceCents };
 }
 
 /** Net change of the liquid accounts since the period started, up to today. */
@@ -214,7 +231,7 @@ async function monthChangeCents(
  * One observation for the Início (doc 03 §12): spending of a category so far
  * in the period vs. the average of the 3 previous periods up to the same day.
  */
-async function categoryInsight(
+export async function categoryInsight(
   ctx: UserContext,
   range: PeriodRange,
 ): Promise<Insight | null> {

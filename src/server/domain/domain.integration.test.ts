@@ -384,17 +384,26 @@ describe("planning and overview", () => {
       start: "2026-10-01",
       end: "2026-10-31",
     });
-    const dashboard = await d.dashboard.getDashboard(ctx, range);
+    const [summary, upcoming, strip, totals] = await Promise.all([
+      d.dashboard.getBalanceSummary(ctx, range),
+      d.dashboard.getUpcoming(ctx, range),
+      d.dashboard.getAccountsStrip(ctx),
+      d.transactions.periodTotals(ctx, range.start, range.end),
+    ]);
     const checking = 780_000 - 100_000 - 6_450 - 9_998;
-    expect(dashboard.balanceCents).toBe(checking + 100_000 + 15_000);
+    expect(summary.balanceCents).toBe(checking + 100_000 + 15_000);
     // Rent (pending) and October's invoice are due by 31/out.
-    expect(dashboard.forecast.forecastCents).toBe(
+    expect(summary.forecast.forecastCents).toBe(
       checking + 100_000 + 15_000 - 210_000 - (2_290 + 9_998),
     );
-    expect(dashboard.upcoming.map((item) => item.title)).toEqual(["Aluguel"]);
-    expect(dashboard.totals.incomeCents).toBe(780_000);
+    expect(upcoming.map((item) => item.title)).toEqual(["Aluguel"]);
+    expect(totals.incomeCents).toBe(780_000);
+    expect(strip.accounts.map((account) => account.id).sort()).toEqual(
+      [ids.checking, ids.reserve, ids.wallet, ids.card].sort(),
+    );
+    expect(await d.dashboard.accountsOf(ctx)).toEqual(strip.accounts);
     // October's invoice: today's ride and the 2nd installment of the shoes.
-    expect(dashboard.currentInvoiceCents).toEqual({
+    expect(strip.currentInvoiceCents).toEqual({
       [ids.card]: 2_290 + 9_998,
     });
 
@@ -406,9 +415,9 @@ describe("planning and overview", () => {
       amountCents: 50_000,
       occurredOn: "2026-10-20",
     });
-    const withTransfer = await d.dashboard.getDashboard(ctx, range);
+    const withTransfer = await d.dashboard.getBalanceSummary(ctx, range);
     expect(withTransfer.forecast.forecastCents).toBe(
-      dashboard.forecast.forecastCents,
+      summary.forecast.forecastCents,
     );
     const { items } = await d.transactions.listTransactions(ctx, {
       start: "2026-10-20",

@@ -1,35 +1,19 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { PrivacyToggle } from "@/components/app/privacy-toggle";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { NewsDot } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
+import { HOME_BLOCKS, type HomeBlockId } from "@/lib/home/blocks";
+import {
+  defaultHomeLayout,
+  type HomeSection,
+  packHomeLayout,
+  visibleHomeBlocks,
+} from "@/lib/home/layout";
+import { cn } from "@/lib/utils";
+import { HomeBlockBoundary } from "./block-error";
 import { firstName, initials } from "./labels";
-
-/**
- * Columns of the Início (doc 02 §4.5): one column on phones; from md the
- * hero and tiles span the width over [orçamento + próximas contas] and
- * [contas + metas]; from xl the three groups sit side by side.
- */
-export function DashboardColumns({
-  summary,
-  planning,
-  assets,
-}: {
-  summary: ReactNode;
-  planning: ReactNode;
-  assets: ReactNode;
-}) {
-  return (
-    <div className="grid gap-7 md:grid-cols-2 md:items-start xl:grid-cols-3">
-      <div className="flex min-w-0 flex-col gap-3 md:col-span-2 xl:col-span-1">
-        {summary}
-      </div>
-      <div className="flex min-w-0 flex-col gap-7">{planning}</div>
-      <div className="flex min-w-0 flex-col gap-7">{assets}</div>
-    </div>
-  );
-}
 
 type HomeHeaderProps = {
   name: string;
@@ -83,6 +67,118 @@ export function HomeHeaderSkeleton() {
   );
 }
 
+/** Grid classes of a row of narrow blocks, by its number of columns. */
+const COLUMNS: Record<number, string> = {
+  1: "",
+  2: "md:grid-cols-2",
+  3: "md:grid-cols-2 xl:grid-cols-3",
+};
+
+type HomeGridProps = {
+  /** The visible blocks, laid out by packHomeLayout. */
+  sections: HomeSection[];
+  /** The block itself (streamed) or its skeleton. */
+  renderBlock: (id: HomeBlockId) => ReactNode;
+};
+
+/**
+ * Blocks of the Início (doc 02 §4.5), in the person's order. One column on
+ * phones. From md a wide block takes a row of its own and the narrow ones
+ * between wide blocks share up to 3 columns: with 3, the first spans the
+ * width at md over the other two, and from xl the three sit side by side.
+ */
+export function HomeGrid({ sections, renderBlock }: HomeGridProps) {
+  return (
+    <div className="flex flex-col gap-7">
+      {sections.map((section) =>
+        section.kind === "wide" ? (
+          <HomeBlockSlot key={section.id} id={section.id}>
+            {renderBlock(section.id)}
+          </HomeBlockSlot>
+        ) : (
+          <div
+            key={section.groups[0]?.[0]}
+            className={cn(
+              "grid gap-7 md:items-start",
+              COLUMNS[section.groups.length],
+            )}
+          >
+            {section.groups.map((group, index) => (
+              <div
+                key={group[0]}
+                className={cn(
+                  "flex min-w-0 flex-col gap-7",
+                  index === 0 &&
+                    section.groups.length === 3 &&
+                    "md:col-span-2 xl:col-span-1",
+                )}
+              >
+                {group.map((id, position) => (
+                  <HomeBlockSlot
+                    key={id}
+                    id={id}
+                    // The tiles sit 12px under the Saldo, as one summary.
+                    tight={
+                      id === "month-totals" && group[position - 1] === "balance"
+                    }
+                  >
+                    {renderBlock(id)}
+                  </HomeBlockSlot>
+                ))}
+              </div>
+            ))}
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+/**
+ * A block's place in the grid, hidden when the block renders nothing (the
+ * insight most months), so it leaves no gap. A <template> is all a streaming
+ * block with no skeleton leaves in the HTML, so it counts as nothing too.
+ */
+function HomeBlockSlot({
+  id,
+  tight = false,
+  children,
+}: {
+  id: HomeBlockId;
+  tight?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      data-home-block={id}
+      className={cn(
+        "min-w-0 not-has-[>:not(template)]:hidden",
+        tight && "-mt-4",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One block of the Início with its own error card and its own skeleton while
+ * its data streams in (doc 02 §5.17, §8).
+ */
+export function HomeBlockFrame({
+  id,
+  children,
+}: {
+  id: HomeBlockId;
+  children: ReactNode;
+}) {
+  return (
+    <HomeBlockBoundary title={HOME_BLOCKS[id].errorTitle}>
+      <Suspense fallback={<HomeBlockSkeleton id={id} />}>{children}</Suspense>
+    </HomeBlockBoundary>
+  );
+}
+
 function SectionSkeleton({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col">
@@ -92,42 +188,59 @@ function SectionSkeleton({ children }: { children: ReactNode }) {
   );
 }
 
-/** Same blocks, same heights as the loaded Início (zero layout shift, §5.17). */
+/** Same shape, same height as the loaded block (zero layout shift, §5.17). */
+export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
+  switch (id) {
+    case "balance":
+      return <Skeleton className="h-59 rounded-card" />;
+    case "month-totals":
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-31.5 rounded-card" />
+          <Skeleton className="h-31.5 rounded-card" />
+        </div>
+      );
+    case "budget":
+      return <Skeleton className="h-95 rounded-card" />;
+    case "upcoming-bills":
+      return (
+        <SectionSkeleton>
+          <Skeleton className="h-56 rounded-card" />
+        </SectionSkeleton>
+      );
+    case "accounts":
+      return (
+        <SectionSkeleton>
+          <div className="flex gap-2.5 overflow-hidden py-1">
+            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
+            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
+            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
+          </div>
+        </SectionSkeleton>
+      );
+    case "goals":
+      return (
+        <SectionSkeleton>
+          <Skeleton className="h-38 rounded-card" />
+        </SectionSkeleton>
+      );
+    // Most months have no highlight: reserving room would leave a gap.
+    case "insight":
+      return null;
+    case "spending-calendar":
+      return <Skeleton className="h-112 rounded-card" />;
+  }
+}
+
+const DEFAULT_SECTIONS = packHomeLayout(visibleHomeBlocks(defaultHomeLayout()));
+
+/** The default Início in skeletons, while the summary itself loads. */
 export function DashboardSkeleton() {
   return (
     <LoadingRegion label="Carregando o resumo…">
-      <DashboardColumns
-        summary={
-          <>
-            <Skeleton className="h-59 rounded-card" />
-            <div className="grid grid-cols-2 gap-3">
-              <Skeleton className="h-31.5 rounded-card" />
-              <Skeleton className="h-31.5 rounded-card" />
-            </div>
-          </>
-        }
-        planning={
-          <>
-            <Skeleton className="h-95 rounded-card" />
-            <SectionSkeleton>
-              <Skeleton className="h-56 rounded-card" />
-            </SectionSkeleton>
-          </>
-        }
-        assets={
-          <>
-            <SectionSkeleton>
-              <div className="flex gap-2.5 overflow-hidden py-1">
-                <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
-                <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
-                <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
-              </div>
-            </SectionSkeleton>
-            <SectionSkeleton>
-              <Skeleton className="h-38 rounded-card" />
-            </SectionSkeleton>
-          </>
-        }
+      <HomeGrid
+        sections={DEFAULT_SECTIONS}
+        renderBlock={(id) => <HomeBlockSkeleton id={id} />}
       />
     </LoadingRegion>
   );
