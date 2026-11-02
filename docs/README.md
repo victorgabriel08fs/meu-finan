@@ -7,7 +7,7 @@ Aplicação de controle financeiro pessoal, **mobile-first**, com backend e fron
 | [01-system-design.md](01-system-design.md) | Requisitos, arquitetura na Vercel, stack, estrutura do projeto, modelo de dados (DDL), API, cache, jobs, autenticação e administração de contas, feature flags, segurança, backups, performance, observabilidade, CI/CD, custos, roadmap e ADRs |
 | [02-frontend-design.md](02-frontend-design.md) | Direção visual, design tokens (cores, tipografia, espaçamento, motion), navegação, biblioteca de componentes, especificação tela a tela, interações, gráficos, microcopy, acessibilidade, PWA e responsividade |
 | [03-motor-financeiro.md](03-motor-financeiro.md) | Fórmulas e algoritmos: juros compostos, conversão de taxas (CDI, IPCA+), IR regressivo, inflação, cálculos reversos, metas, parcelamento, fatura de cartão, recorrência, orçamento e previsões — com código de referência e casos de teste |
-| [tarefas.md](tarefas.md) | O que falta fazer, em ordem de prioridade: Início personalizável (blocos escolhidos por pessoa, com o calendário de gastos), etapas 2 a 4 das notificações |
+| [tarefas.md](tarefas.md) | O que falta fazer, em ordem de prioridade: Início personalizável (blocos escolhidos por pessoa, com o calendário de gastos) |
 
 ## Decisões em uma linha
 
