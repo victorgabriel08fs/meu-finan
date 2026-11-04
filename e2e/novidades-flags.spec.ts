@@ -2,16 +2,17 @@ import { expect, test } from "@playwright/test";
 import { BRUNO_EMAIL, BRUNO_PASSWORD } from "./demo";
 
 // Novidades follow the person's feature flags (doc 01 §11.10). The demo turns
-// importar_extrato off for Bruno only, and notificacoes_push (off by default)
-// on for Ana only, so his Ajustes › Novidades must announce neither the import
-// nor the notifications, nor link to /importar or /ajustes/notificacoes, which
-// he cannot open. Runs as Bruno, signed in once (the sign-in rate limit is 5
-// per minute). Opening the list marks his novidades read; no other test reads
-// them.
+// importar_extrato off for Bruno only, and notificacoes_push and
+// inicio_personalizavel (off by default) on for Ana only, so his Ajustes ›
+// Novidades must announce neither the import, nor the notifications, nor the
+// customizable Início, nor link to /importar or /ajustes/notificacoes, which
+// he cannot open; and his Início stays the app's, with no way to change it.
+// Runs as Bruno, signed in once (the sign-in rate limit is 5 per minute).
+// Opening the list marks his novidades read; no other test reads them.
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test("sem as flags, Novidades não anuncia a importação nem as notificações", async ({
+test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica no padrão", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -31,4 +32,41 @@ test("sem as flags, Novidades não anuncia a importação nem as notificações"
   await expect(page.locator('a[href="/importar"]')).toHaveCount(0);
   await expect(page.getByText("Notificações no aparelho")).toHaveCount(0);
   await expect(page.locator('a[href="/ajustes/notificacoes"]')).toHaveCount(0);
+  await expect(page.getByText("Monte o seu Início")).toHaveCount(0);
+
+  // Without inicio_personalizavel: the app's own Início, with no way to
+  // change it, here or in Preferências.
+  await page.goto("/inicio");
+  await expect
+    .poll(
+      () =>
+        page.locator("[data-home-block]").evaluateAll((nodes) =>
+          nodes
+            .filter((node) => node.checkVisibility())
+            .map((node) => node.getAttribute("data-home-block"))
+            .filter((id) => id !== "insight"),
+        ),
+      { timeout: 30_000 },
+    )
+    .toEqual([
+      "balance",
+      "month-totals",
+      "budget",
+      "upcoming-bills",
+      "accounts",
+      "goals",
+    ]);
+  await expect(
+    page.getByRole("button", { name: "Personalizar o Início" }),
+  ).toHaveCount(0);
+
+  await page.goto("/ajustes/preferencias");
+  await expect(
+    page.getByRole("heading", { name: "Mês financeiro" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(
+    page.getByRole("heading", { name: "Início", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Personalizar o Início")).toHaveCount(0);
+  await expect(page.locator('[data-tip="home-customize"]')).toHaveCount(0);
 });

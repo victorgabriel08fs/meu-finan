@@ -43,6 +43,14 @@ export const FLAGS = {
     owner: "Notificações",
     since: "2026-10-30",
   },
+  inicio_personalizavel: {
+    label: "Início personalizável",
+    description:
+      "Escolher, esconder e reordenar os blocos do Início, incluindo o calendário de gastos. Quando desligado, o Início fica no padrão do app, o botão Personalizar some e o servidor recusa a mudança.",
+    defaultValue: false,
+    owner: "Início",
+    since: "2026-11-02",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAGS;

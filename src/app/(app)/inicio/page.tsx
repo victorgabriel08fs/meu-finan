@@ -1,40 +1,37 @@
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { type ReactNode, Suspense } from "react";
-import { SectionHeader } from "@/components/app/section-header";
-import { StatTile } from "@/components/app/stat-tile";
-import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
-import { BalanceHero } from "@/components/dashboard/balance-hero";
-import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
+import { Suspense } from "react";
+import { HomeCustomizeButton } from "@/components/dashboard/customize-sheet";
 import {
-  DashboardColumns,
   DashboardSkeleton,
+  HomeBlockFrame,
+  HomeGrid,
   HomeHeader,
   HomeHeaderSkeleton,
 } from "@/components/dashboard/dashboard-layout";
 import { FirstRunChecklist } from "@/components/dashboard/first-run-checklist";
-import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
-import { InsightCard } from "@/components/dashboard/insight-card";
-import {
-  greetingFor,
-  monthName,
-  weekdayDateLabel,
-} from "@/components/dashboard/labels";
-import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
-import { Money } from "@/components/money/money";
+import { greetingFor, weekdayDateLabel } from "@/components/dashboard/labels";
 import { DEFAULT_TIME_ZONE } from "@/lib/finance/dates";
-import { monthLabel, shortDateLabel, todayInTimeZone } from "@/lib/format/date";
+import { monthLabel, todayInTimeZone } from "@/lib/format/date";
+import {
+  defaultHomeLayout,
+  packHomeLayout,
+  visibleHomeBlocks,
+} from "@/lib/home/layout";
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
-import { getDashboard } from "@/server/domain/dashboard";
+import { accountsOf } from "@/server/domain/dashboard";
+import { getHomeLayout } from "@/server/domain/preferences";
+import { isFlagEnabled } from "@/server/flags";
+import { HomeBlock } from "./blocks";
 
 export const metadata: Metadata = { title: "Início" };
 
 /**
  * Início (doc 02 §6.3): "quanto tenho?", "como está o mês?", "o que vence
- * logo?". The greeting and the summary stream in separate boundaries; with
- * no account yet, the summary becomes the "Comece por aqui" checklist.
+ * logo?". The greeting and the summary stream in separate boundaries, and
+ * inside the summary each block streams on its own; with no account yet,
+ * the summary becomes the "Comece por aqui" checklist.
  */
 export default function InicioPage({ searchParams }: PageProps<"/inicio">) {
   return (
@@ -76,18 +73,18 @@ async function Summary({
     ctx,
     typeof params.mes === "string" ? params.mes : null,
   );
-  const data = await getDashboard(ctx, range);
+  // With the flag off the Início is the app's default, whatever was saved.
+  const [accounts, layout] = await Promise.all([
+    accountsOf(ctx),
+    isFlagEnabled("inicio_personalizavel", user.id).then((enabled) =>
+      enabled ? getHomeLayout(user.id, { today: ctx.todayIso }) : null,
+    ),
+  ]);
+  if (accounts.length === 0) return <FirstRunChecklist />;
 
-  if (data.accounts.length === 0) return <FirstRunChecklist />;
-
-  const month = monthName(range.month);
-  const endLabel = shortDateLabel(range.end);
-  /** Keeps a month other than the current one in the links. */
-  const withMonth = (path: string) =>
-    range.isCurrent
-      ? path
-      : `${path}${path.includes("?") ? "&" : "?"}mes=${range.month}`;
-  const { totals } = data;
+  const sections = packHomeLayout(
+    visibleHomeBlocks(layout?.entries ?? defaultHomeLayout()),
+  );
 
   return (
     <>
@@ -108,155 +105,23 @@ async function Summary({
         </div>
       )}
 
-      <DashboardColumns
-        summary={
-          <>
-            <BalanceHero
-              balanceCents={data.balanceCents}
-              monthChangeCents={data.monthChangeCents}
-              monthName={month}
-              forecast={data.forecast}
-              untilLabel={endLabel}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <StatTile
-                icon={<ArrowDownLeft />}
-                iconClassName="bg-cat-3-bg text-cat-3-fg"
-                label="Receitas"
-                value={
-                  <Money
-                    cents={totals.incomeCents}
-                    variant="title"
-                    tone="neutral"
-                  />
-                }
-                support={
-                  totals.pendingIncomeCents > 0 ? (
-                    <>
-                      <Money
-                        cents={totals.pendingIncomeCents}
-                        variant="caption"
-                        sign="always"
-                        className="text-inherit"
-                      />{" "}
-                      a receber
-                    </>
-                  ) : (
-                    "Nada a receber"
-                  )
-                }
-                href={withMonth("/extrato?tipo=receita")}
-              />
-              <StatTile
-                icon={<ArrowUpRight />}
-                iconClassName="bg-cat-2-bg text-cat-2-fg"
-                label="Despesas"
-                value={
-                  <Money
-                    cents={totals.expenseCents}
-                    variant="title"
-                    tone="neutral"
-                  />
-                }
-                support={
-                  totals.pendingExpenseCents > 0 ? (
-                    <>
-                      <Money
-                        cents={totals.pendingExpenseCents}
-                        variant="caption"
-                        tone="neutral"
-                        className="text-inherit"
-                      />{" "}
-                      agendados
-                    </>
-                  ) : (
-                    "Nada agendado"
-                  )
-                }
-                href={withMonth("/extrato?tipo=despesa")}
-              />
-            </div>
-          </>
-        }
-        planning={
-          <>
-            {data.budgets.total ? (
-              <BudgetCard
-                total={data.budgets.total}
-                items={data.budgets.items}
-                monthName={month}
-                isCurrent={range.isCurrent}
-                endLabel={endLabel}
-                href={withMonth("/planejar/orcamentos")}
-              />
-            ) : (
-              <BudgetInvite href={withMonth("/planejar/orcamentos")} />
-            )}
-            <section aria-labelledby="proximas-contas">
-              <SectionHeader
-                id="proximas-contas"
-                title="Próximas contas"
-                action={
-                  <SectionLink href="/extrato?status=pendente">
-                    Ver todas
-                  </SectionLink>
-                }
-              />
-              <UpcomingBills items={data.upcoming} today={ctx.todayIso} />
-            </section>
-          </>
-        }
-        assets={
-          <>
-            <section aria-labelledby="contas-carrossel">
-              <SectionHeader
-                id="contas-carrossel"
-                title="Contas"
-                action={<SectionLink href="/contas">Gerenciar</SectionLink>}
-              />
-              <AccountsCarousel
-                accounts={data.accounts}
-                currentInvoiceCents={data.currentInvoiceCents}
-              />
-            </section>
-            <section aria-labelledby="metas-resumo">
-              <SectionHeader
-                id="metas-resumo"
-                title="Metas"
-                action={
-                  data.goals.length > 0 ? (
-                    <SectionLink href="/planejar/metas">Ver todas</SectionLink>
-                  ) : undefined
-                }
-              />
-              {data.goals.length > 0 ? (
-                <GoalsCard goals={data.goals} href="/planejar/metas" />
-              ) : (
-                <GoalsInvite href="/planejar/metas" />
-              )}
-            </section>
-            {data.insight ? <InsightCard insight={data.insight} /> : null}
-          </>
-        }
+      <HomeGrid
+        sections={sections}
+        renderBlock={(id) => (
+          <HomeBlockFrame id={id}>
+            <HomeBlock id={id} ctx={ctx} range={range} />
+          </HomeBlockFrame>
+        )}
       />
-    </>
-  );
-}
 
-/** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */
-function SectionLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="-my-2.5 -mr-2 inline-flex h-11 items-center rounded-control px-2 text-callout font-semibold text-primary transition-colors duration-100 hover:bg-primary-soft/60 active:bg-primary-soft"
-    >
-      {children}
-    </Link>
+      {layout ? (
+        <div className="flex justify-center pt-3">
+          <HomeCustomizeButton
+            entries={layout.entries}
+            customized={layout.customized}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }

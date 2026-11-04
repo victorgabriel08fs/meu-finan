@@ -45,6 +45,18 @@ describe("spendingDescription", () => {
       "21 de outubro: dia a vir, nada agendado",
     );
   });
+
+  it("hides the amounts in privacy mode, like <Money>", () => {
+    expect(spendingDescription(day("2026-10-12", 23_040, 3), TODAY, true)).toBe(
+      "12 de outubro: valor oculto em 3 despesas",
+    );
+    expect(
+      spendingDescription(day("2026-10-10", 0, 0, 15_000, 1), TODAY, true),
+    ).toBe("10 de outubro: sem despesas; 1 despesa agendada, valor oculto");
+    expect(
+      spendingDescription(day("2026-10-20", 0, 0, 23_980, 2), TODAY, true),
+    ).toBe("20 de outubro: 2 despesas agendadas, valor oculto");
+  });
 });
 
 describe("heatmapDays", () => {

@@ -13,6 +13,8 @@ export type HeatmapDay = {
   level: number;
   /** Accessible name ("14 de outubro: R$ 230,40 em 3 despesas"). */
   description: string;
+  /** The name in privacy mode, amounts hidden ("…: valor oculto em 3 despesas"). */
+  hiddenDescription: string;
   /** After today: hatched, never filled. */
   future?: boolean;
   today?: boolean;
@@ -198,7 +200,6 @@ function DayCell({
       ref={register}
       type="button"
       tabIndex={tabbable ? 0 : -1}
-      aria-label={day.description}
       aria-pressed={selected}
       aria-current={day.today ? "date" : undefined}
       onClick={() => onSelect(day.date)}
@@ -217,6 +218,14 @@ function DayCell({
         selected && "z-10 ring-2 ring-fg ring-offset-2 ring-offset-surface",
       )}
     >
+      {/* The name, from the content: privacy mode (CSS, like <Money>) swaps
+          it for the one without amounts, which an aria-label could not. */}
+      <span data-privacy-value="" className="sr-only">
+        {day.description}
+      </span>
+      <span data-privacy-mask="" className="sr-only">
+        {day.hiddenDescription}
+      </span>
       {day.future ? (
         <span
           aria-hidden="true"

@@ -691,7 +691,8 @@ async function seedPeople(
     });
   }
   // Importar extrato turned off for Bruno only (a per-person flag), and the
-  // notifications (off by default) on for Ana, so the demo shows them.
+  // notifications and the customizable Início (off by default) on for Ana,
+  // so the demo shows them.
   await db.insert(featureFlagOverrides).values([
     {
       userId: brunoId,
@@ -706,6 +707,13 @@ async function seedPeople(
       enabled: true,
       updatedBy: admin.id,
       updatedAt: ago(6),
+    },
+    {
+      userId: admin.id,
+      key: "inicio_personalizavel",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
     },
   ]);
 

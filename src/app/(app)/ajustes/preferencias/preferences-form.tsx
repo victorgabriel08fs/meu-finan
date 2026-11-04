@@ -2,7 +2,7 @@
 
 import { CalendarRange, SunMoon } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
 import { ThemeSwitcher } from "@/components/app/theme-switcher";
@@ -36,9 +36,12 @@ function periodExample(month: string, startDay: number): string {
 export function PreferencesForm({
   monthStartDay,
   currentMonth,
+  afterAppearance,
 }: {
   monthStartDay: number;
   currentMonth: string;
+  /** A section between Aparência and Mês financeiro (the Início's). */
+  afterAppearance?: ReactNode;
 }) {
   const [day, setDay] = useState(monthStartDay);
   const save = useAction(updatePreferencesAction, {
@@ -78,6 +81,8 @@ export function PreferencesForm({
           </p>
         </div>
       </section>
+
+      {afterAppearance}
 
       <section aria-labelledby="preferencias-mes">
         <SectionHeader id="preferencias-mes" title="Mês financeiro" />

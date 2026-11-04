@@ -3,6 +3,7 @@ import {
   boolean,
   char,
   check,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -10,6 +11,13 @@ import {
 import { user } from "./auth";
 import { createdAt, oneOf, timestamptz, updatedAt } from "./columns";
 import { REPORT_BASES, THEMES } from "./enums";
+
+/**
+ * The blocks of the Início a person chose (src/lib/home/layout.ts): the
+ * movable ones, in order. Ids are plain strings: a retired id may linger
+ * here, and reading ignores it.
+ */
+export type StoredHomeLayout = { id: string; visible: boolean }[];
 
 /** Owner preferences, one row per user. */
 export const userSettings = pgTable(
@@ -31,6 +39,8 @@ export const userSettings = pgTable(
       .notNull()
       .default("accrual"),
     onboardingDoneAt: timestamptz("onboarding_done_at"),
+    // Null: the app's own Início (doc 02 §6.3), later default blocks included.
+    homeLayout: jsonb("home_layout").$type<StoredHomeLayout>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -43,6 +53,10 @@ export const userSettings = pgTable(
     check(
       "user_settings_report_basis_check",
       oneOf(t.reportBasis, REPORT_BASES),
+    ),
+    check(
+      "user_settings_home_layout_check",
+      sql`${t.homeLayout} is null or jsonb_typeof(${t.homeLayout}) = 'array'`,
     ),
   ],
 );

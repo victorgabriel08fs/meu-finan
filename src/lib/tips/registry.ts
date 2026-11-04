@@ -131,6 +131,19 @@ export const TIPS: readonly Tip[] = [
     since: "2026-10-17",
     order: 2,
   },
+  {
+    // On Preferências, not on the Início: the Início already has 3 tips and
+    // its "Personalizar o Início" button sits below the fold.
+    id: "preferencias-inicio",
+    kind: "primeiros-passos",
+    routes: ["/ajustes/preferencias"],
+    anchor: "home-customize",
+    title: "Seu Início, do seu jeito",
+    body: "Escolha os blocos do Início e a ordem deles. Dá para trazer o calendário de gastos para logo abaixo do saldo.",
+    since: "2026-11-02",
+    order: 1,
+    when: { flag: "inicio_personalizavel" },
+  },
 
   // Novidades de 16/out/2026 --------------------------------------------------
   {
@@ -215,6 +228,23 @@ export const TIPS: readonly Tip[] = [
     when: { flag: "notificacoes_push" },
     icon: "bell",
     link: { href: "/ajustes/notificacoes", label: "Ativar notificações" },
+  },
+
+  // Novidades de 2/nov/2026 ---------------------------------------------------
+  {
+    id: "novidade-inicio-personalizavel",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, with a link to Preferências (where the
+    // tip above points at the row).
+    routes: [],
+    anchor: null,
+    title: "Monte o seu Início",
+    body: "Mostre, esconda e reordene os blocos do Início, e traga o calendário de gastos dos relatórios. Vale em todos os aparelhos.",
+    since: "2026-11-02",
+    order: 10,
+    when: { flag: "inicio_personalizavel" },
+    icon: "layout",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
 ];
 

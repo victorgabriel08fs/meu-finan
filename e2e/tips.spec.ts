@@ -145,7 +145,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+5 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+6 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -169,12 +169,41 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   });
   await expect(enablePush).toBeVisible();
   await expect(enablePush).toHaveAttribute("href", "/ajustes/notificacoes");
+  // And inicio_personalizavel on: its novidade leads to Preferências.
+  await expect(
+    item("Monte o seu Início").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item("Monte o seu Início").getByRole("link", {
+      name: "Personalizar o Início",
+    }),
+  ).toHaveAttribute("href", "/ajustes/preferencias");
   await read;
 
   await page.goto("/inicio");
   await expect(
     page.getByRole("link", { name: "Perfil e ajustes", exact: true }),
   ).toBeVisible({ timeout: 30_000 });
+});
+
+test("em Preferências, a dica aponta para Personalizar o Início", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Ana has inicio_personalizavel on; the tips are still on from above.
+  await setTips(page, true);
+  await page.reload();
+  const tip = page.getByRole("dialog", { name: "Seu Início, do seu jeito" });
+  await expect(tip).toBeVisible({ timeout: 30_000 });
+  const row = page.locator('[data-tip="home-customize"]');
+  await expect(row).toBeVisible();
+  await expect(
+    row.getByRole("button", { name: /^Personalizar o Início/ }),
+  ).toBeVisible();
+  const seen = actionSaved(page, "preferencias-inicio");
+  await tip.getByRole("button", { name: "Entendi" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await seen;
 });
 
 test("com as dicas desligadas, nenhum balão aparece", async ({ page }) => {
