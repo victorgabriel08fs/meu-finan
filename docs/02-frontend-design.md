@@ -773,7 +773,14 @@ Atrás da flag `inicio_personalizavel` (desligada por padrão; doc 01 §11.10). 
 ```
 
 - **Busca**: o ícone expande um campo no topo (foco automático, teclado com `enterKeyHint="search"`); antes de digitar mostra buscas recentes e atalhos ("Pendentes", "Com anexo", "Parcelados"). Resultados destacam o trecho encontrado em `--primary-soft`. Tolerante a acentos e erros ("farmacia" encontra "Farmácia").
-- **Filtros** (`⚙`): sheet com seções Período, Contas (multi), Categorias (multi, com subcategorias), Tipo, Status, Tags, Valor (mín./máx.). Rodapé: "Limpar" e "Ver 42 lançamentos" (contagem ao vivo).
+- **Filtros** (como ficou; a folha `⚙` de seleção múltipla do desenho não existe): chips roláveis abaixo do mês (§5.12) — **Conta**, **Categoria**, **Tipo**, **Pendentes** (liga e desliga) e, com algum ativo, **Limpar**.
+  - Conta, Categoria e Tipo abrem uma folha de **escolha única** ("Filtrar por conta", "Filtrar por categoria", "Filtrar por tipo") com "Todas as contas/categorias", "Todos os tipos" no topo. Tocar numa opção fecha a folha e aplica na hora; a lista escurece até recarregar. Escolher o que já está marcado só fecha a folha.
+  - Contas: todas, inclusive cartões e arquivadas ("Investimento · arquivada"). Filtrar uma conta traz as transferências que saíram dela e as que entraram nela.
+  - Categorias: em Despesas e Receitas; cada subcategoria vem logo depois da mãe, como "Mercado › Feira". **Filtrar a mãe traz as filhas.**
+  - Chip ativo: `--primary-soft` com o nome escolhido e um "×" ("Limpar filtro de conta"). Depois do "×" o foco fica no próprio chip; depois de "Limpar" (ou "Limpar filtros", no vazio) vai para o primeiro chip.
+  - Tudo fica na URL (`conta`, `categoria`, `tipo`, `status`, `q`, junto com `mes`): recarregar mantém, cada filtro escolhido é um passo no histórico (**Voltar desfaz o filtro**) e Voltar com a folha aberta só fecha a folha (§4.4).
+  - Id que não é da pessoa, ou inválido, é ignorado pelo servidor e não acende chip nem "Limpar".
+  - Ainda não há filtro de período (o mês faz esse papel), tags e valor, nem contagem ao vivo.
 - **Resumo** reflete exatamente o filtro aplicado.
 - **Agrupamento por dia** com total do dia. Pendentes futuros aparecem em seção própria no topo: "Agendados (3)" recolhível.
 - **Seleção múltipla**: a TopBar vira "3 selecionados" com ações Categoria, Marcar pago, Excluir; o total dos selecionados aparece num rodapé.

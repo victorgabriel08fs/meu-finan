@@ -2,22 +2,7 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 1. Extrato: filtros por conta e por categoria não funcionam
-
-**Bug relatado pelo dono (02/11/2026).** No Extrato (doc 02 §6.4), escolher uma conta ou uma categoria no filtro não filtra a lista. Os outros filtros (tipo, status, busca) não foram citados.
-
-### O que investigar
-
-- O caminho inteiro do filtro: a folha de filtros escreve `conta` e `categoria` na URL, `parseStatementParams` lê, a página só aceita ids da própria pessoa (`src/app/(app)/extrato/page.tsx`) e `listTransactions` (`src/server/domain/transactions.ts`) aplica o filtro e os totais.
-- Reproduzir na demo (Ana e Bruno), no celular e no desktop, com e sem `mes=`, e com conta arquivada, cartão de crédito, transferência (a conta pode estar na outra perna) e categoria com subcategorias (filtrar a categoria mãe deve trazer as filhas, se o doc 02 pedir).
-
-### Pronto quando
-
-- Filtrar por conta e por categoria mostra só os lançamentos certos, com os totais do cabeçalho batendo com a lista; o filtro aparece escolhido na tela, dá para tirá-lo e ele continua valendo ao recarregar a página.
-- Id de outra conta ou categoria na URL é ignorado, como hoje.
-- Teste de integração da consulta com cada filtro e e2e do Extrato filtrando por conta e por categoria (o e2e precisa falhar antes da correção).
-
-## 2. Início personalizável — etapa 2: blocos dos relatórios
+## 1. Início personalizável — etapa 2: blocos dos relatórios
 
 **Continuação da tarefa entregue em 04/11/2026** (veja Entregue, no fim). O catálogo já reserva os ids, sem entrada: `cash-flow`, `category-breakdown`, `income-expense` e `net-worth` (`src/lib/home/blocks.ts`).
 
@@ -44,7 +29,7 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - Testes de unidade dos componentes, integração dos loaders e e2e de ligar um bloco novo.
 - README, doc 02 §6.3 e a novidade atualizados.
 
-## 3. Notificações: novos eventos configuráveis pelo cron diário
+## 2. Notificações: novos eventos configuráveis pelo cron diário
 
 **Pedido do dono (04/11/2026).** Cinco eventos de notificação enviados pelo cron diário, cada um ligado ou desligado pela pessoa:
 
@@ -76,7 +61,23 @@ O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o don
 - Ajustes › Notificações mostra os interruptores e as opções, aprovados pelo `qa-ui-ux`.
 - README (Notificações, Cron diário), doc 01 §9 e doc 02 §6.14 atualizados.
 
+## 3. Extrato — melhorias
+
+Pendências pequenas achadas na correção dos filtros (04/11/2026). A primeira veio com a correção; as outras já existiam antes dela:
+
+- No toque, abrir outro chip enquanto a folha anterior ainda anima o fechamento (~250 ms), depois de uma escolha que muda a URL, abre e fecha a folha nova na hora: é preciso tocar de novo.
+
+- Com dois ou mais chips ativos, a 360 e 430 px o "Limpar" fica fora da tela, no fim da linha rolável.
+- A folha de categorias tem mais de 20 opções e não tem busca (doc 02 §4.4 pede busca acima de 8).
+- Com zoom de 200%, os valores do resumo e das linhas são cortados (doc 02 §3.4 e §11).
+- Subcategoria arquivada não entra no filtro da categoria mãe (a página só conhece as categorias ativas).
+- Não há como criar subcategoria pelo app: o filtro já trata mãe e filhas, mas hoje só categorias criadas direto no banco têm filhas.
+
 ## Entregue
+
+### Extrato: filtros de conta, categoria e tipo — 04/11/2026
+
+Bug relatado pelo dono: escolher conta ou categoria na folha não filtrava, e o Tipo também estava quebrado. O servidor estava certo; a folha, ao fechar, voltava um passo no histórico e desfazia a troca de URL. Agora a URL muda depois que a folha fecha (`afterSheetsClose` em `use-back-to-close.ts`), Voltar desfaz o filtro, filtrar a categoria mãe traz as filhas, id inválido na URL não acende chip e limpar um filtro deixa o foco num chip. Testes de unidade, integração de cada filtro (`listTransactions`, `periodTotals`) e e2e (`e2e/extrato-filtros.spec.ts`, que falhava antes da correção). Detalhes: doc 02 §6.4.
 
 ### Início personalizável (etapa 1) — 04/11/2026
 
