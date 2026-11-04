@@ -36,7 +36,7 @@ import {
   splitScheduled,
   toRowData,
 } from "./statement-data";
-import type { FilterCategory } from "./statement-filters";
+import { type FilterCategory, focusFirstFilterChip } from "./statement-filters";
 import {
   type DeleteScope,
   statusOf,
@@ -402,7 +402,10 @@ function ClearFiltersButton() {
       variant="tonal"
       loading={isPending}
       data-pending={isPending ? "" : undefined}
-      onClick={clearAll}
+      onClick={() => {
+        clearAll();
+        focusFirstFilterChip();
+      }}
     >
       Limpar filtros
     </Button>

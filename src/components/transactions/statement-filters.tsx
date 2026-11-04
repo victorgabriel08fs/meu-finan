@@ -1,9 +1,10 @@
 "use client";
 
 import { Check, ChevronDown, X } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import { cn } from "@/lib/utils";
 import type { KindParam } from "./statement-params";
 import { useStatementFilters } from "./use-statement-filters";
@@ -33,6 +34,11 @@ const KIND_OPTIONS: { value: KindParam; label: string }[] = [
 ];
 
 type SheetName = "conta" | "categoria" | "tipo";
+type FilterPatch = {
+  conta?: string | null;
+  categoria?: string | null;
+  tipo?: KindParam | null;
+};
 
 /**
  * Filter chips of the statement (doc 02 §5.12, §6.4): Conta, Categoria, Tipo
@@ -50,22 +56,40 @@ export function StatementFilterBar({
   const [sheet, setSheet] = useState<SheetName | null>(null);
   const [lastSheet, setLastSheet] = useState<SheetName>("conta");
 
-  const account = accounts.find((item) => item.id === filters.conta);
-  const category = categories.find((item) => item.id === filters.categoria);
-  const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
-  const anyActive = Boolean(
-    filters.conta || filters.categoria || filters.tipo || filters.status,
+  // The server ignores ids that are not the person's own (or malformed), so
+  // a chip is on only for a value found in its list.
+  const account = accounts.find(
+    (item) => item.id === filters.conta?.toLowerCase(),
   );
+  const category = categories.find(
+    (item) => item.id === filters.categoria?.toLowerCase(),
+  );
+  const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
+  const anyActive = Boolean(account || category || kind || filters.status);
 
   function open(name: SheetName) {
     setLastSheet(name);
     setSheet(name);
   }
 
-  function choose(patch: Parameters<typeof setFilters>[0]) {
-    void setFilters(patch);
+  // A choice closes the sheet first and changes the URL once the sheet's
+  // history entry is gone: pushed earlier, the sheet's step back would undo
+  // it (useBackToClose). Choosing what is already on only closes the sheet:
+  // nuqs would push the same URL again, and Back would seem to do nothing.
+  const chosen = useRef<FilterPatch | null>(null);
+  function choose(patch: FilterPatch) {
+    const keys = Object.keys(patch) as (keyof FilterPatch)[];
+    if (keys.some((key) => patch[key] !== filters[key])) {
+      chosen.current = patch;
+    }
     setSheet(null);
   }
+  useEffect(() => {
+    const patch = chosen.current;
+    if (sheet !== null || patch === null) return;
+    chosen.current = null;
+    afterSheetsClose(() => void setFilters(patch));
+  }, [sheet, setFilters]);
 
   return (
     <fieldset
@@ -75,14 +99,14 @@ export function StatementFilterBar({
       <legend className="sr-only">Filtros</legend>
       <FilterChip
         label="Conta"
-        value={filters.conta ? (account?.name ?? "Conta") : null}
+        value={account?.name ?? null}
         placeholder="Contas"
         onOpen={() => open("conta")}
         onClear={() => void setFilters({ conta: null })}
       />
       <FilterChip
         label="Categoria"
-        value={filters.categoria ? (category?.name ?? "Categoria") : null}
+        value={category?.name ?? null}
         placeholder="Categorias"
         onOpen={() => open("categoria")}
         onClear={() => void setFilters({ categoria: null })}
@@ -112,14 +136,15 @@ export function StatementFilterBar({
       {anyActive ? (
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
             void setFilters({
               conta: null,
               categoria: null,
               tipo: null,
               status: null,
-            })
-          }
+            });
+            focusFirstFilterChip();
+          }}
           className="inline-flex h-9 shrink-0 items-center rounded-full px-3 text-callout font-bold text-primary hover:bg-primary-soft/60"
         >
           Limpar
@@ -143,7 +168,7 @@ export function StatementFilterBar({
         >
           {lastSheet === "conta" ? (
             <OptionList
-              selected={filters.conta}
+              selected={account?.id ?? null}
               allLabel="Todas as contas"
               onSelect={(id) => choose({ conta: id })}
               groups={[
@@ -170,7 +195,7 @@ export function StatementFilterBar({
             />
           ) : lastSheet === "categoria" ? (
             <OptionList
-              selected={filters.categoria}
+              selected={category?.id ?? null}
               allLabel="Todas as categorias"
               onSelect={(id) => choose({ categoria: id })}
               groups={(["expense", "income"] as const).map((group) => ({
@@ -193,7 +218,7 @@ export function StatementFilterBar({
             />
           ) : (
             <OptionList
-              selected={filters.tipo}
+              selected={kind?.value ?? null}
               allLabel="Todos os tipos"
               onSelect={(value) =>
                 choose({
@@ -235,6 +260,7 @@ function FilterChip({
   onClear: () => void;
 }) {
   const active = value !== null;
+  const main = useRef<HTMLButtonElement>(null);
   return (
     <div
       className={cn(
@@ -245,8 +271,10 @@ function FilterChip({
       )}
     >
       <button
+        ref={main}
         type="button"
         aria-haspopup="dialog"
+        data-filter-chip=""
         onClick={onOpen}
         className={cn(
           "relative inline-flex h-full min-w-0 items-center gap-1.5 rounded-full after:absolute after:inset-x-0 after:-inset-y-1",
@@ -263,7 +291,11 @@ function FilterChip({
         <button
           type="button"
           aria-label={`Limpar filtro de ${label.toLowerCase()}`}
-          onClick={onClear}
+          onClick={() => {
+            onClear();
+            // The "×" leaves with the filter: the focus stays on the chip.
+            focusWhenReady(() => main.current);
+          }}
           className="relative mr-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-primary/10 after:absolute after:-inset-1"
         >
           <X aria-hidden="true" className="size-4" />
@@ -271,6 +303,25 @@ function FilterChip({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Clearing a filter removes the button that had the focus, which would fall
+ * to the body (WCAG 2.4.3, doc 02 §11): it moves to the first filter chip.
+ */
+export function focusFirstFilterChip() {
+  focusWhenReady(() =>
+    document.querySelector<HTMLElement>("[data-filter-chip]"),
+  );
+}
+
+/** Focuses the element once it is in the DOM, trying for about a second. */
+function focusWhenReady(find: () => HTMLElement | null, frames = 60) {
+  const target = find();
+  if (target?.isConnected) target.focus();
+  else if (frames > 0) {
+    requestAnimationFrame(() => focusWhenReady(find, frames - 1));
+  }
 }
 
 function ToggleChip({
