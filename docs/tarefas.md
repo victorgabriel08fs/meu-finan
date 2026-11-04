@@ -44,6 +44,38 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - Testes de unidade dos componentes, integração dos loaders e e2e de ligar um bloco novo.
 - README, doc 02 §6.3 e a novidade atualizados.
 
+## 3. Notificações: novos eventos configuráveis pelo cron diário
+
+**Pedido do dono (04/11/2026).** Cinco eventos de notificação enviados pelo cron diário, cada um ligado ou desligado pela pessoa:
+
+- [ ] **Resumo do dia**: como o dia começa — saldo em contas, o que vence hoje e quanto dá para gastar hoje sem passar do orçamento (e quanto saiu ontem).
+- [ ] **Contas a vencer**: pendentes e faturas que vencem em breve, com a antecedência escolhida (no dia, 1 ou 3 dias antes); vencidas não pagas também.
+- [ ] **Dias até a próxima receita**: "Faltam 5 dias para o Salário (R$ 7.950)", com quanto dá para gastar por dia até lá.
+- [ ] **Resumo semanal**: na segunda-feira, a semana anterior — receitas, despesas, categorias que mais pesaram e a comparação com a média.
+- [ ] **Resumo mensal**: no primeiro dia do mês financeiro (respeitando `month_start_day`), o mês fechado — receitas, despesas, quanto sobrou, orçamentos cumpridos e estourados.
+
+O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o dono antes de implementar.
+
+### O que entra
+
+- O passo `sendReminders` do cron (`src/server/jobs/steps/later-phases.ts`, hoje pulado) passa a montar e enviar os eventos, usando a infraestrutura da etapa 1 (`sendPush`, a tabela `notifications` e o número no ícone).
+- **Configurável por pessoa** em Ajustes › Notificações › Avisos (hoje "Em breve"): um interruptor por evento, mais as opções de cada um (antecedência das contas a vencer; resumo semanal e mensal ligados ou não). Definir os padrões de quem nunca mexeu.
+- Tudo atrás da flag `notificacoes_push`; só recebe quem tem a flag e pelo menos um aparelho inscrito.
+- **Idempotente**: a Vercel pode entregar o cron mais de uma vez e o dono pode chamá-lo à mão. Cada evento é enviado uma vez por pessoa por dia, garantido no banco (chave única por pessoa, evento e data), não só na memória.
+- Datas no fuso da pessoa (`user_settings.timezone`); valores com `formatBRL` e o modo discreto não se aplica a notificações (avaliar se o texto da notificação deve omitir valores, já que aparece na tela bloqueada).
+- Textos curtos em pt-BR (doc 02 §10), cada notificação abrindo a tela certa ao tocar (Início, Extrato filtrado, Relatórios).
+
+### Limites do plano Hobby da Vercel
+
+- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo.
+- O passo precisa caber no tempo do job (240 s de orçamento): enviar em lotes e registrar o que não foi enviado.
+
+### Pronto quando
+
+- Cada evento tem teste de unidade da montagem do texto (funções puras), integração do passo contra o PGlite (quem recebe, quem não recebe, flag desligada, evento desligado, segunda execução no mesmo dia não reenvia, isolamento entre contas) e o resultado aparece em `job_runs`.
+- Ajustes › Notificações mostra os interruptores e as opções, aprovados pelo `qa-ui-ux`.
+- README (Notificações, Cron diário), doc 01 §9 e doc 02 §6.14 atualizados.
+
 ## Entregue
 
 ### Início personalizável (etapa 1) — 04/11/2026
