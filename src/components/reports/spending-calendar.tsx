@@ -61,63 +61,96 @@ export function SpendingCalendar({
             Despesas pagas; no cartão, na data da compra
           </p>
         </div>
-        <ChartViewSwitch
-          chart={
-            // Near-square cells on wide cards; the outer cells line up with
-            // the card padding (the table spaces its edges too).
-            <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
-              <CalendarHeatmap
-                days={heatmapDays(days, today)}
-                selected={selected}
-                onSelect={(date) => void setDay(date)}
-                caption={`Gastos por dia em ${monthTitle}. Escolha um dia para ver as despesas.`}
-                className="-mx-1 w-[calc(100%+0.5rem)]"
-              />
-              <HeatmapLegend />
-            </div>
-          }
-          table={
-            <DataTable
-              caption={`Gastos por dia em ${monthTitle}`}
-              columns={[
-                { key: "day", header: "Dia", align: "start" },
-                { key: "count", header: "Despesas", align: "end" },
-                { key: "total", header: "Total", align: "end" },
-              ]}
-              maxHeightClassName="max-h-80"
-              rows={days.map((item) => {
-                const future = item.date > today;
-                const count = future ? item.pendingCount : item.paidCount;
-                const cents = future ? item.pendingCents : item.paidCents;
-                return {
-                  key: item.date,
-                  header: `${weekdayDateLabel(item.date)}${
-                    item.date === today ? " · hoje" : future ? " · a vir" : ""
-                  }`,
-                  cells: [
-                    count === 0
-                      ? "—"
-                      : future
-                        ? `${count} ${count === 1 ? "agendada" : "agendadas"}`
-                        : String(count),
-                    count === 0 ? (
-                      "—"
-                    ) : (
-                      <Money
-                        key="t"
-                        cents={cents}
-                        variant="caption"
-                        tone="neutral"
-                      />
-                    ),
-                  ],
-                  strongLast: true,
-                };
-              })}
-            />
-          }
+        <SpendingCalendarView
+          days={days}
+          today={today}
+          monthTitle={monthTitle}
+          selected={selected}
+          onSelect={(date) => void setDay(date)}
+          caption={`Gastos por dia em ${monthTitle}. Escolha um dia para ver as despesas.`}
         />
       </section>
     </Card>
+  );
+}
+
+type SpendingCalendarViewProps = SpendingCalendarProps & {
+  /** The chosen day, outlined; null for none. */
+  selected: string | null;
+  onSelect: (date: string) => void;
+  /** Accessible caption of the heatmap: the month and what a tap does. */
+  caption: string;
+};
+
+/**
+ * The heatmap, its legend and its table twin ("Ver como tabela"), shared by
+ * the report and the Início's block; each one decides what a tap on a day
+ * does.
+ */
+export function SpendingCalendarView({
+  days,
+  today,
+  monthTitle,
+  selected,
+  onSelect,
+  caption,
+}: SpendingCalendarViewProps) {
+  return (
+    <ChartViewSwitch
+      chart={
+        // Near-square cells on wide cards; the outer cells line up with
+        // the card padding (the table spaces its edges too).
+        <div className="mx-auto flex w-full max-w-lg flex-col gap-3">
+          <CalendarHeatmap
+            days={heatmapDays(days, today)}
+            selected={selected}
+            onSelect={onSelect}
+            caption={caption}
+            className="-mx-1 w-[calc(100%+0.5rem)]"
+          />
+          <HeatmapLegend />
+        </div>
+      }
+      table={
+        <DataTable
+          caption={`Gastos por dia em ${monthTitle}`}
+          columns={[
+            { key: "day", header: "Dia", align: "start" },
+            { key: "count", header: "Despesas", align: "end" },
+            { key: "total", header: "Total", align: "end" },
+          ]}
+          maxHeightClassName="max-h-80"
+          rows={days.map((item) => {
+            const future = item.date > today;
+            const count = future ? item.pendingCount : item.paidCount;
+            const cents = future ? item.pendingCents : item.paidCents;
+            return {
+              key: item.date,
+              header: `${weekdayDateLabel(item.date)}${
+                item.date === today ? " · hoje" : future ? " · a vir" : ""
+              }`,
+              cells: [
+                count === 0
+                  ? "—"
+                  : future
+                    ? `${count} ${count === 1 ? "agendada" : "agendadas"}`
+                    : String(count),
+                count === 0 ? (
+                  "—"
+                ) : (
+                  <Money
+                    key="t"
+                    cents={cents}
+                    variant="caption"
+                    tone="neutral"
+                  />
+                ),
+              ],
+              strongLast: true,
+            };
+          })}
+        />
+      }
+    />
   );
 }

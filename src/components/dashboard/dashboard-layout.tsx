@@ -228,7 +228,11 @@ export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
     case "insight":
       return null;
     case "spending-calendar":
-      return <Skeleton className="h-112 rounded-card" />;
+      // By the width of its slot (an @container), like the block: the
+      // heatmap over two rows of figures, over one row, or beside them.
+      return (
+        <Skeleton className="h-170.25 rounded-card @min-[34rem]:h-150.75 @2xl:h-123.75" />
+      );
   }
 }
 

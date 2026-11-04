@@ -12,12 +12,21 @@ import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
 import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
+import {
+  SpendingCalendarBlock,
+  SpendingCalendarInvite,
+} from "@/components/dashboard/spending-calendar-block";
 import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
-import { shortDateLabel } from "@/lib/format/date";
+import { monthViewHref } from "@/components/reports/views";
+import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { getBudgets } from "@/server/domain/budgets";
-import type { PeriodRange, UserContext } from "@/server/domain/context";
+import {
+  type PeriodRange,
+  resolvePeriod,
+  type UserContext,
+} from "@/server/domain/context";
 import {
   categoryInsight,
   getAccountsStrip,
@@ -25,6 +34,7 @@ import {
   getUpcoming,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
+import { dailySpending, reportPhase } from "@/server/domain/reports";
 import { periodTotals } from "@/server/domain/transactions";
 
 type HomeBlockProps = {
@@ -44,8 +54,7 @@ const BLOCKS: Record<
   accounts: AccountsBlock,
   goals: GoalsBlock,
   insight: InsightBlock,
-  // Not in the default; its block comes with the calendar on the Início.
-  "spending-calendar": () => null,
+  "spending-calendar": SpendingCalendarBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -222,6 +231,27 @@ async function GoalsBlock({ ctx }: HomeBlockProps) {
 async function InsightBlock({ ctx, range }: HomeBlockProps) {
   const insight = await categoryInsight(ctx, range);
   return insight ? <InsightCard insight={insight} /> : null;
+}
+
+/** Calendário de gastos: the report's heatmap for the month on screen. */
+async function SpendingCalendarBlockLoader({ ctx, range }: HomeBlockProps) {
+  const days = await dailySpending(ctx, range);
+  if (days.every((day) => day.paidCount === 0 && day.pendingCount === 0)) {
+    return <SpendingCalendarInvite monthName={monthName(range.month)} />;
+  }
+  return (
+    <SpendingCalendarBlock
+      days={days}
+      today={ctx.todayIso}
+      monthTitle={monthLabel(range.month)}
+      reportHref={monthViewHref(
+        "/relatorios/calendario",
+        range.month,
+        resolvePeriod(ctx, null).month,
+      )}
+      phase={reportPhase(ctx, range)}
+    />
+  );
 }
 
 /** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */
