@@ -102,18 +102,21 @@ describe("CalendarHeatmap", () => {
       label: "1",
       level: 0,
       description: "1º de outubro: sem despesas",
+      hiddenDescription: "1º de outubro: sem despesas",
     },
     {
       date: "2026-10-02",
       label: "2",
       level: 3,
       description: "2 de outubro: R$ 50 em 1 despesa",
+      hiddenDescription: "2 de outubro: valor oculto em 1 despesa",
     },
     {
       date: "2026-10-03",
       label: "3",
       level: 5,
       description: "3 de outubro, hoje: R$ 90 em 2 despesas",
+      hiddenDescription: "3 de outubro, hoje: valor oculto em 2 despesas",
       today: true,
     },
     {
@@ -121,6 +124,7 @@ describe("CalendarHeatmap", () => {
       label: "4",
       level: 0,
       description: "4 de outubro: 1 despesa agendada, R$ 120",
+      hiddenDescription: "4 de outubro: 1 despesa agendada, valor oculto",
       future: true,
       marked: true,
     },
@@ -149,10 +153,17 @@ describe("CalendarHeatmap", () => {
 
   it("names every day and keeps only one in the tab order", () => {
     const html = render("2026-10-02");
-    expect(html).toContain('aria-label="2 de outubro: R$ 50 em 1 despesa"');
+    // Named by its content: the amounts, or "valor oculto" in privacy mode
+    // (CSS shows one of the two, like <Money>); never an aria-label.
+    expect(html).toContain(
+      '<span data-privacy-value="" class="sr-only">2 de outubro: R$ 50 em 1 despesa</span><span data-privacy-mask="" class="sr-only">2 de outubro: valor oculto em 1 despesa</span>',
+    );
+    expect(html).not.toContain('aria-label="2 de outubro');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html.match(/tabindex="0"/g)).toHaveLength(1);
-    expect(html).toMatch(/tabindex="0"[^>]*aria-label="2 de outubro/);
+    expect(html).toMatch(
+      /tabindex="0"[^>]*><span data-privacy-value="" class="sr-only">2 de outubro/,
+    );
     expect(html).toContain('aria-current="date"');
     expect(html).toContain(">hoje<");
   });
@@ -165,15 +176,17 @@ describe("CalendarHeatmap", () => {
     expect(html).toContain("border border-border");
     // Today is outlined, and the tab stop when nothing is selected.
     expect(html).toMatch(
-      /aria-label="3 de outubro[^"]*"[^>]*class="[^"]*ring-border-strong/,
+      /class="[^"]*ring-border-strong[^"]*"><span data-privacy-value="" class="sr-only">3 de outubro/,
     );
-    expect(html).toMatch(/tabindex="0"[^>]*aria-label="3 de outubro/);
+    expect(html).toMatch(
+      /tabindex="0"[^>]*><span data-privacy-value="" class="sr-only">3 de outubro/,
+    );
   });
 
   it("rings the selected day over today's outline", () => {
     const html = render("2026-10-03");
     expect(html).toMatch(
-      /aria-label="3 de outubro[^"]*"[^>]*class="[^"]*ring-fg ring-offset-2/,
+      /class="[^"]*ring-fg ring-offset-2[^"]*"><span data-privacy-value="" class="sr-only">3 de outubro/,
     );
     expect(html).not.toContain("ring-border-strong");
   });

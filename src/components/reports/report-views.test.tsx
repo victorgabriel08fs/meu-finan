@@ -267,7 +267,7 @@ describe("SpendingCalendar", () => {
     expect(html).toContain("Gastos por dia");
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toMatch(
-      /aria-label="12 de outubro: [^"]*"[^>]*aria-pressed="true"/,
+      /aria-pressed="true"[^>]*><span data-privacy-value="" class="sr-only">12 de outubro: /,
     );
     expect(html).toContain("20 de outubro: 1 despesa agendada");
     expect(html).toContain("menos");

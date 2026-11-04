@@ -15,22 +15,32 @@ const expenses = (count: number, scheduled = false) =>
     scheduled ? (count === 1 ? " agendada" : " agendadas") : ""
   }`;
 
+/** What screen readers hear for an amount in privacy mode, like <Money>. */
+const HIDDEN_VALUE = "valor oculto";
+
 /**
  * "14 de outubro: R$ 230,40 em 3 despesas"; days to come speak of what is
- * scheduled ("20 de outubro: 1 despesa agendada, R$ 119,90").
+ * scheduled ("20 de outubro: 1 despesa agendada, R$ 119,90"). With
+ * `hideValues` (privacy mode) the amounts read "valor oculto".
  */
-export function spendingDescription(day: DaySpending, today: string): string {
+export function spendingDescription(
+  day: DaySpending,
+  today: string,
+  hideValues = false,
+): string {
+  const money = (cents: number) =>
+    hideValues ? HIDDEN_VALUE : formatMoneyShort(cents);
   const date = `${dayMonthLabel(day.date)}${day.date === today ? ", hoje" : ""}`;
   const scheduled =
     day.pendingCount > 0
-      ? `${expenses(day.pendingCount, true)}, ${formatMoneyShort(day.pendingCents)}`
+      ? `${expenses(day.pendingCount, true)}, ${money(day.pendingCents)}`
       : null;
   if (day.date > today) {
     return `${date}: ${scheduled ?? "dia a vir, nada agendado"}`;
   }
   const spent =
     day.paidCount > 0
-      ? `${formatMoneyShort(day.paidCents)} em ${expenses(day.paidCount)}`
+      ? `${money(day.paidCents)} em ${expenses(day.paidCount)}`
       : "sem despesas";
   return `${date}: ${spent}${scheduled ? `; ${scheduled}` : ""}`;
 }
@@ -48,6 +58,7 @@ export function heatmapDays(
     label: calendarDayLabel(day.date, index === 0),
     level: levels[index] ?? 0,
     description: spendingDescription(day, today),
+    hiddenDescription: spendingDescription(day, today, true),
     future: day.date > today,
     today: day.date === today,
     marked: day.date > today && day.pendingCount > 0,
