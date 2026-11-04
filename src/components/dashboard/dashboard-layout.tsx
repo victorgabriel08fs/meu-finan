@@ -197,6 +197,8 @@ export function HomeBlockFrame({
   );
 }
 
+const TILE_SKELETON = "h-37 rounded-card min-[26.25rem]:h-32.5 xl:h-37";
+
 function SectionSkeleton({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col">
@@ -209,17 +211,22 @@ function SectionSkeleton({ children }: { children: ReactNode }) {
 /** Same shape, same height as the loaded block (zero layout shift, §5.17). */
 export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
   switch (id) {
+    // Heights measured in the app (Ana of the demo, 360 to 1280px). Narrow
+    // columns (phones under 420px, the xl columns) wrap a line more in the
+    // tiles' support text and in the budget.
     case "balance":
-      return <Skeleton className="h-59 rounded-card" />;
+      return <Skeleton className="h-61.25 rounded-card" />;
     case "month-totals":
       return (
         <div className="grid grid-cols-2 gap-3">
-          <Skeleton className="h-31.5 rounded-card" />
-          <Skeleton className="h-31.5 rounded-card" />
+          <Skeleton className={TILE_SKELETON} />
+          <Skeleton className={TILE_SKELETON} />
         </div>
       );
     case "budget":
-      return <Skeleton className="h-95 rounded-card" />;
+      return (
+        <Skeleton className="h-99.75 rounded-card min-[26.25rem]:h-94.75 xl:h-99.75" />
+      );
     case "upcoming-bills":
       return (
         <SectionSkeleton>
