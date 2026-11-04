@@ -6,7 +6,7 @@ import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import { cn } from "@/lib/utils";
-import type { KindParam } from "./statement-params";
+import { categoryTree, type KindParam } from "./statement-params";
 import { useStatementFilters } from "./use-statement-filters";
 
 export type FilterAccount = {
@@ -200,11 +200,11 @@ export function StatementFilterBar({
               onSelect={(id) => choose({ categoria: id })}
               groups={(["expense", "income"] as const).map((group) => ({
                 title: group === "expense" ? "Despesas" : "Receitas",
-                options: categories
+                options: categoryTree(categories)
                   .filter((item) => item.kind === group)
                   .map((item) => ({
                     id: item.id,
-                    label: item.name,
+                    label: categoryLabel(item, categories),
                     detail: null,
                     icon: (
                       <CategoryIcon
@@ -450,4 +450,15 @@ function OptionButton({
       ) : null}
     </button>
   );
+}
+
+/** A subcategory reads "Parent › Child", as in the category picker. */
+function categoryLabel(
+  category: FilterCategory,
+  categories: FilterCategory[],
+): string {
+  const parent = category.parentId
+    ? categories.find((item) => item.id === category.parentId)
+    : null;
+  return parent ? `${parent.name} › ${category.name}` : category.name;
 }

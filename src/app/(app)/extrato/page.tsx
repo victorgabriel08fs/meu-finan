@@ -10,6 +10,7 @@ import {
 } from "@/components/transactions/statement-filters";
 import { StatementList } from "@/components/transactions/statement-list";
 import {
+  categoryWithDescendants,
   hasActiveFilters,
   parseStatementParams,
   type StatementFilters,
@@ -28,11 +29,12 @@ import { listTransactions, periodTotals } from "@/server/domain/transactions";
 export const metadata: Metadata = { title: "Extrato" };
 
 /**
- * Extrato (doc 02 §6.4). URL state: `mes` (YYYY-MM), `conta`, `categoria`,
- * `tipo` (receita | despesa | transferencia), `status` (pendente | pago) and
- * `q`. The title prerenders; the search reads the URL on the client; the
- * list streams in behind its skeleton. Filter and search updates flag
- * `data-pending`, which dims the list (the `group` below) until it reloads.
+ * Extrato (doc 02 §6.4). URL state: `mes` (YYYY-MM), `conta`, `categoria`
+ * (its subcategories included), `tipo` (receita | despesa | transferencia),
+ * `status` (pendente | pago) and `q`. The title prerenders; the search reads
+ * the URL on the client; the list streams in behind its skeleton. Filter and
+ * search updates flag `data-pending`, which dims the list (the `group`
+ * below) until it reloads.
  */
 export default function ExtratoPage({ searchParams }: PageProps<"/extrato">) {
   return (
@@ -86,7 +88,9 @@ async function Statement({
       start: range.start,
       end: range.end,
       accountId: accountId ?? undefined,
-      categoryId: categoryId ?? undefined,
+      categoryIds: categoryId
+        ? categoryWithDescendants(categories, categoryId)
+        : undefined,
       kind: filters.kind ?? undefined,
       status: filters.status ?? undefined,
       q: filters.q || undefined,

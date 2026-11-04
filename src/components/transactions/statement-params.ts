@@ -128,3 +128,51 @@ export function statementHref(
   const query = params.toString();
   return query ? `/extrato?${query}` : "/extrato";
 }
+
+/**
+ * The category and its subcategories, at any depth (doc 02 §6.4: filtering
+ * a parent category brings its children). Empty when `id` is not in the
+ * list, so only the person's own categories ever reach the query.
+ */
+export function categoryWithDescendants(
+  categories: readonly { id: string; parentId: string | null }[],
+  id: string,
+): string[] {
+  if (!categories.some((category) => category.id === id)) return [];
+  const ids = [id];
+  // Breadth-first; `ids` doubles as the visited set, so a cycle ends.
+  for (let index = 0; index < ids.length; index += 1) {
+    for (const category of categories) {
+      if (category.parentId === ids[index] && !ids.includes(category.id)) {
+        ids.push(category.id);
+      }
+    }
+  }
+  return ids;
+}
+
+/**
+ * The categories as a tree for a list: each one followed by its
+ * subcategories, keeping the given order among siblings. A subcategory whose
+ * parent is not in the list goes to the end.
+ */
+export function categoryTree<T extends { id: string; parentId: string | null }>(
+  categories: readonly T[],
+): T[] {
+  const placed = new Set<string>();
+  const tree: T[] = [];
+  const place = (category: T) => {
+    if (placed.has(category.id)) return;
+    placed.add(category.id);
+    tree.push(category);
+    for (const child of categories) {
+      if (child.parentId === category.id) place(child);
+    }
+  };
+  for (const category of categories) {
+    if (category.parentId === null) place(category);
+  }
+  // Orphans (and anything caught in a cycle), with their own children.
+  for (const category of categories) place(category);
+  return tree;
+}

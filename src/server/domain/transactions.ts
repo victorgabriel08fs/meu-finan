@@ -383,7 +383,8 @@ export type TransactionFilters = {
   start: string;
   end: string;
   accountId?: string;
-  categoryId?: string;
+  /** A category and its subcategories; empty or absent = any category. */
+  categoryIds?: string[];
   kind?: TxnKind;
   status?: TxnStatus;
   q?: string;
@@ -451,8 +452,8 @@ export async function listTransactions(
     filters.accountId
       ? undefined
       : or(ne(transactions.kind, "transfer"), lt(transactions.amountCents, 0)),
-    filters.categoryId
-      ? eq(transactions.categoryId, filters.categoryId)
+    filters.categoryIds?.length
+      ? inArray(transactions.categoryId, filters.categoryIds)
       : undefined,
     filters.kind ? eq(transactions.kind, filters.kind) : undefined,
     filters.status ? eq(transactions.status, filters.status) : undefined,

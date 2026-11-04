@@ -13,6 +13,8 @@ import {
   transferEnds,
 } from "./statement-data";
 import {
+  categoryTree,
+  categoryWithDescendants,
   hasActiveFilters,
   parseStatementParams,
   statementHref,
@@ -187,6 +189,110 @@ describe("statementHref", () => {
         "2026-10",
       ),
     ).toBe("/extrato?mes=2026-09&tipo=transferencia&q=pix");
+  });
+});
+
+describe("categoryWithDescendants", () => {
+  const categories = [
+    { id: "food", parentId: null },
+    { id: "market", parentId: "food" },
+    { id: "bakery", parentId: "market" },
+    { id: "restaurant", parentId: "food" },
+    { id: "salary", parentId: null },
+  ];
+
+  it("brings the subcategories of a parent, at any depth", () => {
+    expect(categoryWithDescendants(categories, "food")).toEqual([
+      "food",
+      "market",
+      "restaurant",
+      "bakery",
+    ]);
+    expect(categoryWithDescendants(categories, "market")).toEqual([
+      "market",
+      "bakery",
+    ]);
+  });
+
+  it("is only the category itself when it has no children", () => {
+    expect(categoryWithDescendants(categories, "salary")).toEqual(["salary"]);
+    expect(categoryWithDescendants(categories, "bakery")).toEqual(["bakery"]);
+  });
+
+  it("is empty for an id that is not in the list", () => {
+    expect(categoryWithDescendants(categories, "someone-else")).toEqual([]);
+  });
+
+  it("ends on a cycle", () => {
+    const cycle = [
+      { id: "a", parentId: "b" },
+      { id: "b", parentId: "a" },
+    ];
+    expect(categoryWithDescendants(cycle, "a")).toEqual(["a", "b"]);
+  });
+});
+
+describe("categoryTree", () => {
+  const ids = (list: { id: string }[]) => list.map((item) => item.id);
+
+  it("puts each subcategory right after its parent, keeping the order of the parents", () => {
+    expect(
+      ids(
+        categoryTree([
+          { id: "housing", parentId: null },
+          { id: "market-fair", parentId: "market" },
+          { id: "market", parentId: null },
+          { id: "transport", parentId: null },
+          { id: "housing-rent", parentId: "housing" },
+          { id: "market-bakery", parentId: "market" },
+        ]),
+      ),
+    ).toEqual([
+      "housing",
+      "housing-rent",
+      "market",
+      "market-fair",
+      "market-bakery",
+      "transport",
+    ]);
+  });
+
+  it("nests deeper levels under their own parent", () => {
+    expect(
+      ids(
+        categoryTree([
+          { id: "c", parentId: "b" },
+          { id: "a", parentId: null },
+          { id: "b", parentId: "a" },
+          { id: "d", parentId: null },
+        ]),
+      ),
+    ).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("sends a subcategory whose parent is not in the list to the end", () => {
+    expect(
+      ids(
+        categoryTree([
+          { id: "orphan", parentId: "archived" },
+          { id: "orphan-child", parentId: "orphan" },
+          { id: "market", parentId: null },
+          { id: "salary", parentId: null },
+        ]),
+      ),
+    ).toEqual(["market", "salary", "orphan", "orphan-child"]);
+  });
+
+  it("keeps every category once, even in a cycle", () => {
+    expect(
+      ids(
+        categoryTree([
+          { id: "a", parentId: "b" },
+          { id: "b", parentId: "a" },
+          { id: "c", parentId: null },
+        ]),
+      ),
+    ).toEqual(["c", "a", "b"]);
   });
 });
 

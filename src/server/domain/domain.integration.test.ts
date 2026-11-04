@@ -542,7 +542,7 @@ describe("series edits", () => {
       start: "2026-10-01",
       end: "2027-03-31",
       accountId: ids.checking,
-      categoryId: ids.housing,
+      categoryIds: [ids.housing],
     });
     return items.sort((a, b) => a.occurredOn.localeCompare(b.occurredOn));
   }
@@ -586,7 +586,7 @@ describe("series edits", () => {
       start: "2026-09-01",
       end: "2027-03-31",
       accountId: ids.card,
-      categoryId: ids.shopping,
+      categoryIds: [ids.shopping],
     });
     const first = items.find((item) => item.installment?.number === 1);
     if (!first) throw new Error("primeira parcela");
@@ -677,5 +677,84 @@ describe("another account's category", () => {
         categoryId: ids.groceries,
       }),
     ).rejects.toThrow("Categoria não encontrad");
+  });
+});
+
+describe("statement filters", () => {
+  it("brings a parent category's subcategories, only on the given ids", async () => {
+    const { db } = await import("../db/client");
+    const schema = await import("../db/schema");
+    const [market] = await db
+      .insert(schema.categories)
+      .values({
+        userId: "owner",
+        parentId: ids.groceries,
+        kind: "expense",
+        name: "Feira",
+        icon: "carrot",
+        color: "cat-1",
+      })
+      .returning({ id: schema.categories.id });
+    if (!market) throw new Error("subcategoria");
+
+    const t = d.transactions;
+    const august = { start: "2026-08-01", end: "2026-08-31" };
+    for (const [categoryId, accountId, description, occurredOn] of [
+      [ids.groceries, ids.wallet, "Supermercado", "2026-08-10"],
+      [market.id, ids.checking, "Feira de sábado", "2026-08-11"],
+      [ids.transport, ids.checking, "Ônibus", "2026-08-12"],
+    ] as const) {
+      await t.createTransaction(ctx, {
+        kind: "expense",
+        amountCents: 1_000,
+        accountId,
+        categoryId,
+        description,
+        occurredOn,
+      });
+    }
+    const descriptions = async (
+      filters: Omit<
+        import("./transactions").TransactionFilters,
+        "start" | "end"
+      >,
+    ) =>
+      (await t.listTransactions(ctx, { ...august, ...filters })).items
+        .map((item) => item.description)
+        .sort();
+
+    const { categoryWithDescendants } = await import(
+      "@/components/transactions/statement-params"
+    );
+    const all = await d.categories.listCategories("owner");
+    expect(categoryWithDescendants(all, ids.groceries)).toEqual([
+      ids.groceries,
+      market.id,
+    ]);
+
+    expect(
+      await descriptions({
+        categoryIds: categoryWithDescendants(all, ids.groceries),
+      }),
+    ).toEqual(["Feira de sábado", "Supermercado"]);
+    expect(await descriptions({ categoryIds: [market.id] })).toEqual([
+      "Feira de sábado",
+    ]);
+    expect(
+      await descriptions({
+        categoryIds: [ids.groceries, market.id],
+        accountId: ids.checking,
+      }),
+    ).toEqual(["Feira de sábado"]);
+    expect(await descriptions({ categoryIds: [] })).toEqual([
+      "Feira de sábado",
+      "Supermercado",
+      "Ônibus",
+    ]);
+
+    // Another person's category matches none of Ana's entries.
+    const [bruno] = await d.categories.listCategories("other");
+    if (!bruno) throw new Error("categoria do Bruno");
+    expect(await descriptions({ categoryIds: [bruno.id] })).toEqual([]);
   });
 });
