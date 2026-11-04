@@ -757,4 +757,215 @@ describe("statement filters", () => {
     if (!bruno) throw new Error("categoria do Bruno");
     expect(await descriptions({ categoryIds: [bruno.id] })).toEqual([]);
   });
+
+  describe("each filter of the statement, in July", () => {
+    const july = { start: "2026-07-01", end: "2026-07-31" };
+    const list = (
+      filters: Omit<
+        import("./transactions").TransactionFilters,
+        "start" | "end"
+      > = {},
+      context = ctx,
+    ) => d.transactions.listTransactions(context, { ...july, ...filters });
+    const rows = async (
+      filters: Parameters<typeof list>[0] = {},
+      context = ctx,
+    ) =>
+      (await list(filters, context)).items
+        .map((item) => `${item.description} ${item.amountCents}`)
+        .sort();
+    // periodTotals negates the expense sums, so an empty one comes as -0.
+    const totalsOf = async (accountId?: string) =>
+      Object.fromEntries(
+        Object.entries(
+          await d.transactions.periodTotals(
+            ctx,
+            july.start,
+            july.end,
+            accountId,
+          ),
+        ).map(([key, cents]) => [key, cents + 0]),
+      );
+
+    beforeAll(async () => {
+      const t = d.transactions;
+      await t.createTransaction(ctx, {
+        kind: "income",
+        amountCents: 500_000,
+        accountId: ids.checking,
+        categoryId: ids.salary,
+        description: "Salário julho",
+        occurredOn: "2026-07-05",
+      });
+      await t.createTransfer(ctx, {
+        fromAccountId: ids.checking,
+        toAccountId: ids.reserve,
+        amountCents: 80_000,
+        occurredOn: "2026-07-06",
+        description: "Guardar",
+      });
+      await t.createTransaction(ctx, {
+        kind: "expense",
+        amountCents: 12_000,
+        accountId: ids.checking,
+        categoryId: ids.groceries,
+        description: "Mercado do mês",
+        occurredOn: "2026-07-10",
+      });
+      await t.createTransaction(ctx, {
+        kind: "expense",
+        amountCents: 3_000,
+        accountId: ids.card,
+        categoryId: ids.transport,
+        description: "Corrida",
+        occurredOn: "2026-07-11",
+      });
+      await t.createTransaction(ctx, {
+        kind: "expense",
+        amountCents: 4_500,
+        accountId: ids.wallet,
+        categoryId: ids.groceries,
+        description: "Feira",
+        occurredOn: "2026-07-12",
+        paid: false,
+      });
+      await t.createTransaction(ctx, {
+        kind: "expense",
+        amountCents: 150_000,
+        accountId: ids.checking,
+        categoryId: ids.housing,
+        description: "Aluguel julho",
+        occurredOn: "2026-07-20",
+        paid: false,
+      });
+    });
+
+    it("shows a transfer once without an account, as its outgoing leg", async () => {
+      expect(await rows()).toEqual([
+        "Aluguel julho -150000",
+        "Corrida -3000",
+        "Feira -4500",
+        "Guardar -80000",
+        "Mercado do mês -12000",
+        "Salário julho 500000",
+      ]);
+    });
+
+    it("by account: each leg of a transfer in its own account, and the card", async () => {
+      const reserve = await list({ accountId: ids.reserve });
+      expect(reserve.items).toHaveLength(1);
+      expect(reserve.items[0]).toMatchObject({
+        description: "Guardar",
+        amountCents: 80_000,
+        accountId: ids.reserve,
+        counterpartName: "Conta principal",
+      });
+
+      const checking = await list({ accountId: ids.checking });
+      expect(
+        checking.items.every((item) => item.accountId === ids.checking),
+      ).toBe(true);
+      expect(await rows({ accountId: ids.checking })).toEqual([
+        "Aluguel julho -150000",
+        "Guardar -80000",
+        "Mercado do mês -12000",
+        "Salário julho 500000",
+      ]);
+      expect(
+        checking.items.find((item) => item.kind === "transfer")
+          ?.counterpartName,
+      ).toBe("Reserva");
+
+      expect(await rows({ accountId: ids.card })).toEqual(["Corrida -3000"]);
+      expect(await rows({ accountId: ids.wallet })).toEqual(["Feira -4500"]);
+    });
+
+    it("by kind, status and search", async () => {
+      expect(await rows({ kind: "income" })).toEqual(["Salário julho 500000"]);
+      expect(await rows({ kind: "transfer" })).toEqual(["Guardar -80000"]);
+      expect(await rows({ kind: "transfer", accountId: ids.reserve })).toEqual([
+        "Guardar 80000",
+      ]);
+      expect(await rows({ kind: "expense" })).toEqual([
+        "Aluguel julho -150000",
+        "Corrida -3000",
+        "Feira -4500",
+        "Mercado do mês -12000",
+      ]);
+      expect(await rows({ status: "pending" })).toEqual([
+        "Aluguel julho -150000",
+        "Feira -4500",
+      ]);
+      expect(await rows({ status: "paid", kind: "expense" })).toEqual([
+        "Corrida -3000",
+        "Mercado do mês -12000",
+      ]);
+      expect(await rows({ q: "ALUGUEL" })).toEqual(["Aluguel julho -150000"]);
+      expect(await rows({ q: "salario" })).toEqual(["Salário julho 500000"]);
+    });
+
+    it("combines the filters", async () => {
+      expect(
+        await rows({
+          accountId: ids.checking,
+          kind: "expense",
+          status: "pending",
+        }),
+      ).toEqual(["Aluguel julho -150000"]);
+      expect(
+        await rows({ categoryIds: [ids.groceries], status: "paid" }),
+      ).toEqual(["Mercado do mês -12000"]);
+      expect(
+        await rows({ categoryIds: [ids.groceries], accountId: ids.wallet }),
+      ).toEqual(["Feira -4500"]);
+      // Mercado holds only expenses: with Receitas nothing is left.
+      expect(
+        await rows({ categoryIds: [ids.groceries], kind: "income" }),
+      ).toEqual([]);
+      expect(await rows({ q: "feira", accountId: ids.checking })).toEqual([]);
+    });
+
+    it("totals by account the same as summing the listed rows", async () => {
+      const { summarize } = await import(
+        "@/components/transactions/statement-data"
+      );
+      for (const accountId of [
+        undefined,
+        ids.checking,
+        ids.reserve,
+        ids.card,
+        ids.wallet,
+      ]) {
+        const { transferCents: _, ...fromList } = summarize(
+          (await list({ accountId })).items,
+        );
+        expect(
+          await totalsOf(accountId),
+          accountId ?? "todas as contas",
+        ).toEqual(fromList);
+      }
+      expect(await totalsOf(ids.checking)).toEqual({
+        incomeCents: 500_000,
+        expenseCents: 12_000,
+        pendingIncomeCents: 0,
+        pendingExpenseCents: 150_000,
+      });
+    });
+
+    it("brings nothing for another person's account, either way", async () => {
+      const [brunoWallet] = await d.accounts.listAccounts("other");
+      if (!brunoWallet) throw new Error("carteira do Bruno");
+      expect(await rows({ accountId: brunoWallet.id })).toEqual([]);
+      expect(await totalsOf(brunoWallet.id)).toEqual({
+        incomeCents: 0,
+        expenseCents: 0,
+        pendingIncomeCents: 0,
+        pendingExpenseCents: 0,
+      });
+
+      const bruno = await d.context.getUserContext("other", { now: NOW });
+      expect(await rows({ accountId: ids.checking }, bruno)).toEqual([]);
+      expect(await rows({ categoryIds: [ids.groceries] }, bruno)).toEqual([]);
+    });
+  });
 });
