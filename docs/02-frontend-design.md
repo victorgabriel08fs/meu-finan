@@ -448,7 +448,7 @@ Sheets: alça de 36 × 4 px no topo, cabeçalho com título `title-2` e botão f
 | Elemento | Celular | Tablet (`md`) | Desktop (`lg`+) |
 |---|---|---|---|
 | Navegação | tab bar inferior | nav rail 80 px à esquerda, "+" no topo do rail | sidebar 248 px com rótulos, botão "Nova transação" e, no rodapé, o tema (segmented só de ícones) |
-| Início | 1 coluna | 2 colunas (herói ocupa 2) | 3 colunas: [herói + tiles] [orçamento + próximas contas] [contas + metas] |
+| Início | 1 coluna | 2 colunas (herói ocupa 2) | 3 colunas: [herói + tiles] [orçamento + próximas contas] [contas + metas]; com o Início personalizado, um fluxo na ordem escolhida (§6.3, "Personalizar") |
 | Extrato | lista | lista + filtros em barra | lista à esquerda, detalhe fixo à direita (master–detail) |
 | Sheets | inferior | diálogo centrado 560 px | diálogo; detalhe em painel lateral |
 | Simulador | entradas e resultado empilhados | 2 colunas | entradas 360 px à esquerda, resultado e gráfico à direita |
@@ -705,12 +705,48 @@ Ao concluir: Início com **3 dicas contextuais** sequenciais (balão apontando):
 | Saldo em contas | soma das contas com "incluir no patrimônio" (exceto cartões); chip com variação do mês; **previsto para o fim do período** = saldo + receitas pendentes − despesas pendentes − faturas a vencer no período. O "(i)" abre sheet com a conta detalhada | `/contas` |
 | Receitas / Despesas | efetivados no período; linha de apoio com pendentes | extrato filtrado por tipo |
 | Orçamento | meter empilhado (gasto + agendado) com marcador de ritmo; "pode gastar por dia" já desconta contas agendadas; até 3 categorias priorizadas por gravidade (estourou > acima do ritmo > no ritmo) | `/planejar/orcamentos` |
-| Próximas contas | pendentes dos próximos 7 dias + faturas; botão `tonal sm` "Pagar" marca como pago (toast com Desfazer); vencidas no topo com selo `--danger` "Venceu ontem" | detalhe do lançamento / fatura |
+| Próximas contas | pendentes dos próximos 7 dias + faturas, sempre contados a partir de hoje, mesmo na virada do mês; num mês que não é o atual (`?mes=`), a legenda "A partir de hoje" avisa; botão `tonal sm` "Pagar" marca como pago (toast com Desfazer); vencidas no topo com selo `--danger` "Venceu ontem" | detalhe do lançamento / fatura |
 | Contas | carrossel `scroll-snap` de cards 156 × 112 px (ícone, nome, saldo); último card tracejado "+ Adicionar conta"; o card seguinte aparece cortado para sugerir rolagem | `/contas/[id]` |
 | Metas | até 2 metas com anel 44 px, % e status | `/planejar/metas/[id]` |
 | Insight | no máximo 1 por vez; dispensável | relatório relacionado |
 
-Estados: primeira vez (sem lançamentos) → cards substituídos por um checklist "Comece por aqui" (Adicionar 1º gasto · Criar orçamento · Instalar o app). Carregando → skeleton por bloco (streaming independente). Modo discreto → todos os valores `R$ ••••`.
+Estados: primeira vez (sem lançamentos) → cards substituídos por um checklist "Comece por aqui" (Adicionar 1º gasto · Criar orçamento · Instalar o app). Carregando → skeleton por bloco (streaming independente), com a altura medida do bloco carregado. Erro → só o bloco vira um card com o título do bloco ("Não deu para carregar o orçamento"), "Pode ter sido a conexão. Seus dados estão seguros." e o botão `tonal` "Tentar de novo"; o resto da tela continua. Um bloco que não tem o que mostrar (o Destaque na maioria dos meses) não deixa buraco. Modo discreto → todos os valores `R$ ••••`.
+
+#### Personalizar
+
+Atrás da flag `inicio_personalizavel` (desligada por padrão; doc 01 §11.10). Cada pessoa mostra, esconde e reordena os blocos; a escolha fica na conta (`user_settings.home_layout`) e vale em todos os aparelhos. Quem nunca mexeu vê o padrão do app, inclusive blocos que entrarem nele depois.
+
+**Catálogo** (`src/lib/home/blocks.ts`, ids nunca renomeados nem reaproveitados):
+
+| Bloco | Descrição na folha | Tamanho | No padrão |
+|---|---|---|---|
+| Saldo em contas | Quanto você tem hoje e quanto deve sobrar no fim do mês. | estreito, fixo no topo | sim |
+| Receitas e despesas | O que entrou e saiu no mês, com o que ainda vai cair. | estreito | sim |
+| Orçamento | Quanto do orçamento já foi e quanto dá para gastar por dia. | estreito | sim |
+| Próximas contas | O que vence nos próximos 7 dias, faturas incluídas. | estreito | sim |
+| Contas | O saldo de cada conta e cartão. | estreito | sim |
+| Metas | Como andam as suas metas. | estreito | sim |
+| Destaque do mês | Um gasto fora do seu normal, quando houver. | estreito | sim |
+| Calendário de gastos | Quanto você gastou em cada dia do mês. | largo | não |
+
+**Mesclagem**: o Saldo vem sempre primeiro e visível. Ids desconhecidos, repetidos (vale o primeiro) ou mal formados são ignorados. Um bloco do catálogo que a pessoa não conhecia ao salvar entra no fim, escondido, com o selo "Novo". Um bloco fora do padrão também leva "Novo" nos primeiros 30 dias depois de lançado.
+
+**Folha "Personalizar o Início"** (sheet no celular, diálogo de 560 px a partir de `md`). Abre pelo botão `secondary` "Personalizar o Início" (ícone de controles) no fim do Início e pela linha "Personalizar o Início" da seção INÍCIO de Ajustes › Preferências, logo depois de Aparência (legenda "Padrão do app" ou "Na sua ordem"; sem contagem de blocos, porque o Destaque nem sempre aparece).
+
+- Título "Personalizar o Início"; descrição "Escolha os blocos e a ordem. Vale em todos os seus aparelhos."
+- Lista numerada, uma linha por bloco. O Saldo fica fixo, com cadeado e "Sempre no topo", sem controles. Os outros têm "Subir" e "Descer" empilhados (44 × 44, `aria-label` "Subir {bloco}" / "Descer {bloco}"), nome, descrição, selo "Novo" quando for o caso e um interruptor à direita (nomeado pelo nome do bloco, descrito pela descrição).
+- Sem arrastar: os botões funcionam por toque, teclado e leitor de tela (§11, critério 2.5.7). Nas pontas, o botão fica `aria-disabled` (não `disabled`), para o foco não se perder; depois de mover, o foco volta ao mesmo botão, e uma região de status anuncia "{Bloco} na posição {n} de {total}." A linha desliza para o lugar novo (respeita "reduzir movimento").
+- A edição fica na folha até "Salvar" (`primary`, rodapé fixo; "Salvando…" enquanto grava), que grava e fecha. Aberta de Preferências, confirma com o toast "Início atualizado." e a ação "Ver Início".
+- "Restaurar padrão" (`ghost`, só quando a pessoa já personalizou) grava na hora, fecha e mostra o toast "O Início voltou ao padrão." com "Desfazer".
+- Erros: "Não conseguimos salvar. Verifique a conexão." (rede) e "Não conseguimos salvar. Atualize a página e tente de novo." (app desatualizado mandando um bloco que o servidor não conhece).
+
+**Desktop**: os blocos seguem a ordem escolhida. Cada bloco largo ocupa uma linha inteira; os estreitos entre dois largos se dividem em até 3 colunas contíguas, equilibradas pela altura estimada de cada bloco (com o padrão, saem as três colunas de sempre). Com 3 colunas, a primeira ocupa a largura toda em `md` e as três ficam lado a lado a partir de `xl`. Coluna ou linha cujos blocos não mostram nada some, e as outras ocupam o espaço. O Saldo nunca fica sozinho numa linha: quando um bloco largo vem logo depois dele, os dois dividem a linha a partir de `xl` (um terço e dois terços); abaixo disso, empilham. Os blocos largos se arranjam pela largura que recebem (container queries), não pela da tela.
+
+**Calendário de gastos** (bloco largo): card "Gastos por dia", legenda "Despesas pagas; no cartão, na data da compra" e o link "Ver relatório". O mapa de calor do relatório (§6.12, com "Ver como tabela") mostra o mês do Início (`?mes=`); ao lado, ou embaixo quando falta largura, ficam "Gasto no mês", "Média por dia" e "Dia mais caro" (somem num mês que ainda não começou). Tocar num dia abre Relatórios › Calendário nesse dia (`dia=`, com o `mes=` do Início). Mês sem despesas → convite compacto: "Nenhuma despesa em {mês}", "Quando houver, o calendário mostra os dias de mais gasto." e "Adicionar despesa".
+
+**Flag desligada**: o Início é o padrão do app (a página nem lê a escolha), sem botão e sem a seção em Preferências; o servidor recusa salvar. A escolha salva fica guardada para quando a flag voltar.
+
+**Dica e novidade** (§6.16, ambas com `when: { flag }`): a dica "Seu Início, do seu jeito" aponta para a linha de Preferências (o Início já tem 3 dicas, e o botão fica abaixo da dobra); a novidade "Monte o seu Início" fica só em Ajustes › Novidades, com o link "Personalizar o Início" para Preferências.
 
 ### 6.4 Extrato
 
@@ -983,7 +1019,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
 - **Perfil**: nome, e-mail, foto.
 - **Novidades**: lista do que chegou ao app, por data (§6.16), com a contagem de não lidas na linha.
 - **Segurança**: passkeys (listar com nome e data, criar neste aparelho, renomear, remover), senha (trocar), sessões ativas (aparelho e último uso; encerrar uma ou todas as outras), verificação em 2 etapas (selo "Em breve" até a F1). Ações sensíveis — mexer em passkeys ou senha, encerrar sessões, exportar ou apagar dados — pedem para entrar de novo quando a sessão não é recente.
-- **Preferências**: tema (Escuro · Claro · Sistema; escuro por padrão, salvo na conta e aplicado em todos os aparelhos), início do mês financeiro, abrir em modo discreto, regime dos relatórios; dicas de uso ("Mostrar dicas nas telas" e "Rever dicas", §6.16). No índice de Ajustes, as linhas "Aparência", "Mês financeiro" e "Dicas de uso" mostram o valor atual à direita.
+- **Preferências**: tema (Escuro · Claro · Sistema; escuro por padrão, salvo na conta e aplicado em todos os aparelhos), Início ("Personalizar o Início", atrás da flag `inicio_personalizavel`, §6.3), início do mês financeiro, abrir em modo discreto, regime dos relatórios; dicas de uso ("Mostrar dicas nas telas" e "Rever dicas", §6.16). No índice de Ajustes, as linhas "Aparência", "Mês financeiro" e "Dicas de uso" mostram o valor atual à direita.
 - **Organização**: categorias (editar, mesclar, reordenar), tags, contas e cartões.
 - **Notificações** (atrás da flag `notificacoes_push`; a linha no índice diz "Avisos neste aparelho e o número no ícone"): "Neste aparelho" com o interruptor "Receber notificações" (pede a permissão no toque) e "Enviar notificação de teste"; quando o aparelho não pode, uma nota diz por quê (no iPhone fora da Tela de Início, "Compartilhar › Adicionar à Tela de Início"; bloqueadas, onde liberar; sem as chaves VAPID, o aviso de configuração só para administradores). Avisos: contas a vencer (com antecedência), fatura fechando, orçamento 80%/100%, metas, resumo semanal por e-mail (fase posterior); horário silencioso. O ícone do app mostra o número de avisos não lidos.
 - **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.

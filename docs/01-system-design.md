@@ -371,6 +371,8 @@ create table user_settings (
   privacy_mode_default boolean  not null default false,
   report_basis         text     not null default 'accrual' check (report_basis in ('accrual','cash')),
   onboarding_done_at   timestamptz,
+  home_layout          jsonb check (home_layout is null or jsonb_typeof(home_layout) = 'array'),
+                       -- blocos do Início escolhidos (doc 02 §6.3): [{ id, visible }], sem o Saldo; null = padrão do app
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
@@ -922,6 +924,8 @@ Dados financeiros são **por usuário** e mudam a cada lançamento, então o cac
 
 O extrato paginado **não** é cacheado no servidor (muda demais); no cliente, TanStack Query mantém as páginas e é invalidado após mutações.
 
+**Início personalizável (decisão de 02/11/2026).** A escolha dos blocos (`user_settings.home_layout`) é lida **a cada requisição**, sem `'use cache'`: é uma consulta pela chave primária, dentro do `<Suspense>` do resumo. A action de salvar termina com `refresh()`. Motivo: na Vercel, `updateTag` limpa só o cache da instância que rodou a action, e outra instância poderia mostrar o Início antigo em outro aparelho. Os dados de cada bloco também não são cacheados: cada bloco tem o próprio carregador e só os blocos visíveis leem o banco. O que vários blocos usam (contas, faturas dos cartões, pendentes) é lido uma vez por requisição, com `cache` do React. Se um dia houver cache aqui, a tag é `u:{id}:home`.
+
 ---
 
 ## 9. Jobs agendados (Vercel Cron)
@@ -1142,6 +1146,7 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 - **Painel**: Administração › Flags, com Padrão · Ligado · Desligado para todos e exceções por pessoa.
 - **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados e de Ajustes › Novidades, `/importar` responde com a página 404 e as três actions da importação recusam.
 - **Segunda flag**: `notificacoes_push` (desligada por padrão). Desligada, some de Ajustes e de Ajustes › Novidades, `/ajustes/notificacoes` responde com a página 404, as actions de ativar e de testar recusam e o servidor não envia push (desligar e sincronizar o aparelho funcionam sempre, §7).
+- **Terceira flag**: `inicio_personalizavel` (desligada por padrão). Desligada, o Início fica no padrão do app (a página nem lê a escolha), o botão "Personalizar o Início" e a seção Início de Preferências somem, a dica e a novidade não aparecem e `saveHomeLayoutAction` recusa. A escolha salva continua guardada e volta se a flag for ligada de novo.
 - **Dicas e novidades**: uma dica ou novidade sobre uma funcionalidade atrás de flag declara `when: { flag }` (doc 02 §6.16) e só chega a quem tem a flag ligada, para nenhum balão ou link levar a uma tela recusada.
 
 ---

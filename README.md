@@ -6,7 +6,8 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 
 ## O que já dá para fazer
 
-- **Início**: saldo em contas, previsão para o fim do mês (com agendados e faturas), receitas e despesas, orçamento do mês com ritmo, próximas contas, contas e metas.
+- **Início**: saldo em contas, previsão para o fim do mês (com agendados e faturas), receitas e despesas, orçamento do mês com ritmo, próximas contas (sempre os próximos 7 dias a partir de hoje), contas e metas. Cada bloco carrega sozinho, com o próprio skeleton e o próprio erro.
+- **Início personalizável** (atrás da flag `inicio_personalizavel`, desligada por padrão): em "Personalizar o Início" (no fim do Início e em Ajustes › Preferências), mostrar, esconder e reordenar os blocos com "Subir" e "Descer", e trazer o **Calendário de gastos** dos Relatórios (toque no dia abre o relatório nesse dia). O Saldo fica sempre no topo. A escolha fica na conta e vale em todos os aparelhos; "Restaurar padrão" volta ao Início do app, com desfazer.
 - **Lançamento rápido** ("+" em qualquer tela, atalhos N/R/T no desktop e no ícone do app instalado): despesa, receita ou transferência, com teclado de valor, parcelas, repetição e desfazer.
 - **Extrato** com busca sem acento, filtros na URL, agendados à parte e detalhe para editar, pagar ou excluir — inclusive "este e os próximos" em parcelas e recorrências.
 - **Contas e cartões**: saldos, ajuste de saldo, faturas por mês, pagamento de fatura e melhor dia de compra.
@@ -48,7 +49,7 @@ npm run demo   # cria o .env.local e um banco local com 13 meses de dados de exe
 npm run dev    # http://localhost:3000
 ```
 
-Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administradora). O demo também cria **bruno@meu-finan.local** / **meu-finan-bruno** (Bruno, usuário comum, com as próprias finanças e a importação de extrato desligada só para ele) e um convite pendente da Carla, cujo link aparece no fim da saída do `npm run demo`. As dicas de primeiro acesso e as novidades aparecem ligadas (a conta da Ana é anterior a todas as novidades); `npm run demo -- --sem-dicas` cria a mesma demo com os balões desligados. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
+Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administradora). O demo também cria **bruno@meu-finan.local** / **meu-finan-bruno** (Bruno, usuário comum, com as próprias finanças e a importação de extrato desligada só para ele; as notificações e o Início personalizável ficam ligados só para a Ana) e um convite pendente da Carla, cujo link aparece no fim da saída do `npm run demo`. As dicas de primeiro acesso e as novidades aparecem ligadas (a conta da Ana é anterior a todas as novidades); `npm run demo -- --sem-dicas` cria a mesma demo com os balões desligados. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
 
 ### No celular (mesma rede Wi‑Fi)
 
@@ -136,7 +137,7 @@ Cada aparelho ativa as suas. Ao sair da conta num aparelho, as notificações de
 
 ## Feature flags
 
-Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações e a novidade delas; desligada, a entrada e a novidade somem e o servidor não envia nem aceita inscrições.
+Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações e a novidade delas; desligada, a entrada e a novidade somem e o servidor não envia nem aceita inscrições. `inicio_personalizavel` (desligada por padrão) libera "Personalizar o Início", a dica em Preferências e a novidade; desligada, o Início fica no padrão do app, o botão e a seção somem e o servidor recusa salvar (a escolha já salva fica guardada). A demo liga as duas últimas só para a Ana.
 
 ### Como adicionar uma flag
 
