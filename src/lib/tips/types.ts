@@ -22,6 +22,7 @@ export type TipIcon =
   | "target"
   | "chart"
   | "file-up"
+  | "layout"
   | "smartphone"
   | "sparkles"
   | "sun-moon";
