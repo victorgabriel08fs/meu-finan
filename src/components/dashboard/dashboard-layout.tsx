@@ -67,13 +67,6 @@ export function HomeHeaderSkeleton() {
   );
 }
 
-/** Grid classes of a row of narrow blocks, by its number of columns. */
-const COLUMNS: Record<number, string> = {
-  1: "",
-  2: "md:grid-cols-2",
-  3: "md:grid-cols-2 xl:grid-cols-3",
-};
-
 type HomeGridProps = {
   /** The visible blocks, laid out by packHomeLayout. */
   sections: HomeSection[];
@@ -86,31 +79,53 @@ type HomeGridProps = {
  * phones. From md a wide block takes a row of its own and the narrow ones
  * between wide blocks share up to 3 columns: with 3, the first spans the
  * width at md over the other two, and from xl the three sit side by side.
+ *
+ * Columns are a wrapping flex row, not a grid, and a column or a row whose
+ * blocks all render nothing (an insight-only column most months, or one
+ * dismissed) is hidden: the others take its width and no gap is left.
+ *
+ * The Saldo followed by a wide block shares the row with it from xl (a third
+ * and two thirds, the columns of the default Início); below xl they stack.
+ * Wide blocks are size containers: they lay themselves out by the width
+ * they get (`@` variants), not by the screen's.
  */
 export function HomeGrid({ sections, renderBlock }: HomeGridProps) {
   return (
     <div className="flex flex-col gap-7">
       {sections.map((section) =>
         section.kind === "wide" ? (
-          <HomeBlockSlot key={section.id} id={section.id}>
+          <HomeBlockSlot
+            key={section.id}
+            id={section.id}
+            className="@container"
+          >
             {renderBlock(section.id)}
           </HomeBlockSlot>
+        ) : section.kind === "hero-wide" ? (
+          <div
+            key={section.hero}
+            className="flex flex-col gap-7 xl:grid xl:grid-cols-3 xl:items-start"
+          >
+            <HomeBlockSlot id={section.hero}>
+              {renderBlock(section.hero)}
+            </HomeBlockSlot>
+            <HomeBlockSlot id={section.id} className="@container xl:col-span-2">
+              {renderBlock(section.id)}
+            </HomeBlockSlot>
+          </div>
         ) : (
           <div
             key={section.groups[0]?.[0]}
-            className={cn(
-              "grid gap-7 md:items-start",
-              COLUMNS[section.groups.length],
-            )}
+            className="flex flex-col gap-7 not-has-[>div>[data-home-block]>:not(template)]:hidden md:flex-row md:flex-wrap md:items-start"
           >
             {section.groups.map((group, index) => (
               <div
                 key={group[0]}
                 className={cn(
-                  "flex min-w-0 flex-col gap-7",
-                  index === 0 &&
-                    section.groups.length === 3 &&
-                    "md:col-span-2 xl:col-span-1",
+                  "flex min-w-0 flex-col gap-7 not-has-[>[data-home-block]>:not(template)]:hidden",
+                  index === 0 && section.groups.length === 3
+                    ? "md:basis-full xl:basis-0 xl:grow"
+                    : "md:flex-1",
                 )}
               >
                 {group.map((id, position) => (
@@ -142,10 +157,12 @@ export function HomeGrid({ sections, renderBlock }: HomeGridProps) {
 function HomeBlockSlot({
   id,
   tight = false,
+  className,
   children,
 }: {
   id: HomeBlockId;
   tight?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -154,6 +171,7 @@ function HomeBlockSlot({
       className={cn(
         "min-w-0 not-has-[>:not(template)]:hidden",
         tight && "-mt-4",
+        className,
       )}
     >
       {children}

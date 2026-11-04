@@ -44,18 +44,19 @@ export async function setThemePreference(
 
 /**
  * The person's Início (doc 02 §6.3): what they saved, merged with the block
- * catalog; the app's default when they never changed it.
+ * catalog; the app's default when they never changed it. `today` (the
+ * person's) marks the recent blocks "Novo".
  */
 export async function getHomeLayout(
   userId: string,
-  executor: Executor = db,
+  { today, executor = db }: { today?: string; executor?: Executor } = {},
 ): Promise<HomeLayout> {
   const [row] = await executor
     .select({ homeLayout: userSettings.homeLayout })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
     .limit(1);
-  return resolveHomeLayout(row?.homeLayout ?? null);
+  return resolveHomeLayout(row?.homeLayout ?? null, { today });
 }
 
 /**

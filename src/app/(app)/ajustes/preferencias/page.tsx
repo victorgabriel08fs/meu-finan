@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
+import { HomeCustomizeRow } from "@/components/dashboard/customize-sheet";
 import { TipsPreferences } from "@/components/tips/tips-preferences";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { isoMonth, toYearMonth } from "@/lib/finance";
 import { requireUser } from "@/server/dal";
 import { getUserContext } from "@/server/domain/context";
+import { getHomeLayout } from "@/server/domain/preferences";
 import { getTipsOff } from "@/server/domain/tips";
+import { isFlagEnabled } from "@/server/flags";
 import { PreferencesForm } from "./preferences-form";
 
 export const metadata: Metadata = { title: "Preferências" };
@@ -27,15 +30,30 @@ export default function PreferenciasPage() {
 
 async function Preferences() {
   const user = await requireUser();
-  const [ctx, tipsOff] = await Promise.all([
+  const [ctx, tipsOff, homeLayout] = await Promise.all([
     getUserContext(user.id),
     getTipsOff(user.id),
+    isFlagEnabled("inicio_personalizavel", user.id).then(async (enabled) =>
+      enabled
+        ? getHomeLayout(user.id, {
+            today: (await getUserContext(user.id)).todayIso,
+          })
+        : null,
+    ),
   ]);
   return (
     <>
       <PreferencesForm
         monthStartDay={ctx.monthStartDay}
         currentMonth={isoMonth(toYearMonth(ctx.today))}
+        afterAppearance={
+          homeLayout ? (
+            <HomeCustomizeRow
+              entries={homeLayout.entries}
+              customized={homeLayout.customized}
+            />
+          ) : null
+        }
       />
       <TipsPreferences initiallyOff={tipsOff} />
     </>

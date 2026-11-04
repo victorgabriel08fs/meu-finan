@@ -208,6 +208,15 @@ describe("home layout", () => {
     }
   });
 
+  it("marks the calendar new in its first 30 days", async () => {
+    const isNew = async (today: string) =>
+      (await m.preferences.getHomeLayout("owner", { today })).entries.find(
+        (entry) => entry.id === "spending-calendar",
+      )?.isNew === true;
+    expect(await isNew("2026-11-15")).toBe(true);
+    expect(await isNew("2026-12-15")).toBe(false);
+  });
+
   it("saves the blocks and reads them back; null restores", async () => {
     await m.preferences.setHomeLayout("owner", [...CALENDAR_SECOND]);
     const layout = await m.preferences.getHomeLayout("owner");

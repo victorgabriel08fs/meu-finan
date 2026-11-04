@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { HomeCustomizeButton } from "@/components/dashboard/customize-sheet";
 import {
   DashboardSkeleton,
   HomeBlockFrame,
@@ -20,6 +21,8 @@ import {
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { accountsOf } from "@/server/domain/dashboard";
+import { getHomeLayout } from "@/server/domain/preferences";
+import { isFlagEnabled } from "@/server/flags";
 import { HomeBlock } from "./blocks";
 
 export const metadata: Metadata = { title: "Início" };
@@ -70,10 +73,18 @@ async function Summary({
     ctx,
     typeof params.mes === "string" ? params.mes : null,
   );
-  const accounts = await accountsOf(ctx);
+  // With the flag off the Início is the app's default, whatever was saved.
+  const [accounts, layout] = await Promise.all([
+    accountsOf(ctx),
+    isFlagEnabled("inicio_personalizavel", user.id).then((enabled) =>
+      enabled ? getHomeLayout(user.id, { today: ctx.todayIso }) : null,
+    ),
+  ]);
   if (accounts.length === 0) return <FirstRunChecklist />;
 
-  const sections = packHomeLayout(visibleHomeBlocks(defaultHomeLayout()));
+  const sections = packHomeLayout(
+    visibleHomeBlocks(layout?.entries ?? defaultHomeLayout()),
+  );
 
   return (
     <>
@@ -102,6 +113,15 @@ async function Summary({
           </HomeBlockFrame>
         )}
       />
+
+      {layout ? (
+        <div className="flex justify-center pt-3">
+          <HomeCustomizeButton
+            entries={layout.entries}
+            customized={layout.customized}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

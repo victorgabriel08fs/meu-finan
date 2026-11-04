@@ -7,6 +7,7 @@ import {
   MOVABLE_HOME_BLOCK_IDS,
 } from "./blocks";
 import {
+  canMoveHomeBlock,
   defaultHomeLayout,
   type HomeLayoutEntry,
   moveHomeBlock,
@@ -126,6 +127,47 @@ describe("resolveHomeLayout", () => {
     expect(entries[1]?.isNew).toBeUndefined();
   });
 
+  it("marks a block out of the default new for its first 30 days", () => {
+    // The calendar shipped on 2026-11-02.
+    const newOnes = (stored: unknown, today: string) =>
+      resolveHomeLayout(stored, { today })
+        .entries.filter((entry) => entry.isNew)
+        .map((entry) => entry.id);
+    expect(newOnes(null, "2026-11-02")).toEqual(["spending-calendar"]);
+    expect(newOnes(null, "2026-12-01")).toEqual(["spending-calendar"]);
+    expect(newOnes(null, "2026-12-02")).toEqual([]);
+    expect(newOnes(null, "2026-11-01")).toEqual([]);
+    // Saved and even shown: still new while it is recent.
+    const shown = [{ id: "spending-calendar", visible: true }];
+    expect(newOnes(shown, "2026-11-10")).toContain("spending-calendar");
+    expect(newOnes(shown, "2027-01-10")).not.toContain("spending-calendar");
+    // Default blocks never are, unless missing from what was saved.
+    expect(newOnes(null, "2026-11-02")).not.toContain("budget");
+    expect(newOnes(shown, "2027-01-10")).toContain("budget");
+    // Without today, only the blocks missing from what was saved.
+    expect(newOnes(null, "")).toEqual([]);
+    expect(resolveHomeLayout(null).entries.some((e) => e.isNew)).toBe(false);
+  });
+
+  it("keeps the order and visibility whatever today is", () => {
+    fc.assert(
+      fc.property(
+        stored,
+        fc.date({
+          min: new Date("2026-01-01"),
+          max: new Date("2028-01-01"),
+          noInvalidDate: true,
+        }),
+        (value, date) => {
+          const today = date.toISOString().slice(0, 10);
+          expect(plain(resolveHomeLayout(value, { today }).entries)).toEqual(
+            plain(resolveHomeLayout(value).entries),
+          );
+        },
+      ),
+    );
+  });
+
   it("always lists the whole catalog, the pinned block first and shown", () => {
     fc.assert(
       fc.property(stored, (value) => {
@@ -206,6 +248,34 @@ describe("moveHomeBlock", () => {
 
 const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id);
 
+describe("canMoveHomeBlock", () => {
+  it("is false at either end and around the Saldo", () => {
+    const layout = defaultHomeLayout();
+    expect(canMoveHomeBlock(layout, "balance", "up")).toBe(false);
+    expect(canMoveHomeBlock(layout, "balance", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "month-totals", "up")).toBe(false);
+    expect(canMoveHomeBlock(layout, "month-totals", "down")).toBe(true);
+    expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(false);
+  });
+
+  it("agrees with moveHomeBlock", () => {
+    fc.assert(
+      fc.property(
+        anyEntries,
+        fc.constantFrom(...HOME_BLOCK_IDS),
+        fc.constantFrom("up" as const, "down" as const),
+        (entries, id, direction) => {
+          const moved = moveHomeBlock(entries, id, direction);
+          expect(canMoveHomeBlock(entries, id, direction)).toBe(
+            ids(moved).join() !== ids(entries).join(),
+          );
+        },
+      ),
+    );
+  });
+});
+
 describe("setHomeBlockVisible", () => {
   it("shows and hides a block, never the Saldo", () => {
     const shown = setHomeBlockVisible(
@@ -250,6 +320,16 @@ describe("packHomeLayout", () => {
 
   it("gives a wide block a row of its own, splitting the flow", () => {
     expect(
+      packHomeLayout(["balance", "month-totals", "spending-calendar", "goals"]),
+    ).toEqual([
+      { kind: "columns", groups: [["balance"], ["month-totals"]] },
+      { kind: "wide", id: "spending-calendar" },
+      { kind: "columns", groups: [["goals"]] },
+    ]);
+  });
+
+  it("never leaves the Saldo alone in a row: a wide block after it shares it", () => {
+    expect(
       packHomeLayout([
         "balance",
         "spending-calendar",
@@ -259,8 +339,7 @@ describe("packHomeLayout", () => {
         "accounts",
       ]),
     ).toEqual([
-      { kind: "columns", groups: [["balance"]] },
-      { kind: "wide", id: "spending-calendar" },
+      { kind: "hero-wide", hero: "balance", id: "spending-calendar" },
       {
         kind: "columns",
         // 126 | 380 | 252 + 148: the tallest column is as short as it gets.
@@ -277,8 +356,7 @@ describe("packHomeLayout", () => {
       { kind: "columns", groups: [["balance"]] },
     ]);
     expect(packHomeLayout(["balance", "spending-calendar"])).toEqual([
-      { kind: "columns", groups: [["balance"]] },
-      { kind: "wide", id: "spending-calendar" },
+      { kind: "hero-wide", hero: "balance", id: "spending-calendar" },
     ]);
   });
 
@@ -287,12 +365,30 @@ describe("packHomeLayout", () => {
       fc.property(visibleIds, (visible) => {
         const sections = packHomeLayout(visible);
         const flat = sections.flatMap((section) =>
-          section.kind === "wide" ? [section.id] : section.groups.flat(),
+          section.kind === "wide"
+            ? [section.id]
+            : section.kind === "hero-wide"
+              ? [section.hero, section.id]
+              : section.groups.flat(),
         );
         expect(flat).toEqual(visible);
-        for (const section of sections) {
-          if (section.kind === "wide") {
+        // A wide block right after the Saldo always shares its row.
+        const second = visible[1];
+        if (second && HOME_BLOCKS[second].size === "wide") {
+          expect(sections[0]?.kind).toBe("hero-wide");
+        }
+        sections.forEach((section, index) => {
+          if (section.kind === "hero-wide") {
+            expect(index).toBe(0);
+            expect(section.hero).toBe("balance");
             expect(HOME_BLOCKS[section.id].size).toBe("wide");
+          }
+        });
+        for (const section of sections) {
+          if (section.kind !== "columns") {
+            if (section.kind === "wide") {
+              expect(HOME_BLOCKS[section.id].size).toBe("wide");
+            }
             continue;
           }
           expect(section.groups.length).toBeGreaterThan(0);
@@ -371,8 +467,14 @@ describe("packHomeLayout properties", () => {
   it("gives each block of a run of at most three a column of its own", () => {
     fc.assert(
       fc.property(fc.shuffledSubarray([...HOME_BLOCK_IDS]), (visible) => {
+        // The Saldo followed by a wide block share a row of their own.
+        const [first, second] = visible;
+        const hero =
+          first === "balance" &&
+          second !== undefined &&
+          HOME_BLOCKS[second].size === "wide";
         const runs: HomeBlockId[][] = [[]];
-        for (const id of visible) {
+        for (const id of hero ? visible.slice(2) : visible) {
           if (HOME_BLOCKS[id].size === "wide") runs.push([]);
           else runs.at(-1)?.push(id);
         }
