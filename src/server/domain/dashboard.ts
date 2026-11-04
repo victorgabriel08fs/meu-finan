@@ -70,9 +70,12 @@ const cardInvoicesOf = cache(async (ctx: UserContext) => {
   return { cards, invoicesByCard };
 });
 
-/** Pending transactions up to a day: the forecast and the próximas contas. */
-const pendingUntil = cache((ctx: UserContext, end: string) =>
-  pendingEntries(ctx, end),
+/**
+ * Pending transactions up to a day: the end of the period for the forecast,
+ * today + 7 for the próximas contas (one read when the two meet).
+ */
+const pendingUntil = cache((ctx: UserContext, until: string) =>
+  pendingEntries(ctx, until),
 );
 
 export type BalanceSummary = {
@@ -113,26 +116,22 @@ export async function getBalanceSummary(
 }
 
 /**
- * Próximas contas: pending expenses off the cards and open invoices due in
- * the next 7 days, overdue ones included. Transactions are read up to the
- * end of the period shown, the same read as the forecast's.
+ * Próximas contas (doc 02 §6.3): pending expenses off the cards and open
+ * invoices due up to 7 days from today, overdue ones included. Always counted
+ * from today, whatever month the Início shows (`?mes=`): across the turn of
+ * the month too, unlike the forecast, which stops at the end of the period.
  */
-export async function getUpcoming(
-  ctx: UserContext,
-  range: PeriodRange,
-): Promise<UpcomingItem[]> {
+export async function getUpcoming(ctx: UserContext): Promise<UpcomingItem[]> {
+  const horizon = iso(addDays(ctx.today, 7));
   const [pending, { cards, invoicesByCard }] = await Promise.all([
-    pendingUntil(ctx, range.end),
+    pendingUntil(ctx, horizon),
     cardInvoicesOf(ctx),
   ]);
-  const horizon = iso(addDays(ctx.today, 7));
   return [
     ...pending
       .filter(
         (entry) =>
-          entry.kind === "expense" &&
-          entry.accountType !== "credit_card" &&
-          entry.occurredOn <= horizon,
+          entry.kind === "expense" && entry.accountType !== "credit_card",
       )
       .map((entry) => ({
         id: entry.id,

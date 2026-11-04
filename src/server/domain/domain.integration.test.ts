@@ -386,7 +386,7 @@ describe("planning and overview", () => {
     });
     const [summary, upcoming, strip, totals] = await Promise.all([
       d.dashboard.getBalanceSummary(ctx, range),
-      d.dashboard.getUpcoming(ctx, range),
+      d.dashboard.getUpcoming(ctx),
       d.dashboard.getAccountsStrip(ctx),
       d.transactions.periodTotals(ctx, range.start, range.end),
     ]);
@@ -427,6 +427,58 @@ describe("planning and overview", () => {
     const leg = items.find((item) => item.transferId === transferId);
     if (!leg) throw new Error("transferência agendada");
     await d.transactions.deleteTransaction(ctx, leg.id);
+  });
+
+  it("counts the próximas contas 7 days from today, across the month", async () => {
+    // 30/out, the day before the last of the month: a bill on 2/nov is due
+    // in 3 days, although it falls in the next period.
+    const late = await d.context.getUserContext("owner", {
+      now: Date.UTC(2026, 9, 30, 15, 0, 0),
+    });
+    const october = d.context.resolvePeriod(late, null);
+    const september = d.context.resolvePeriod(late, "2026-09");
+    expect(october.end).toBe("2026-10-31");
+    const before = await d.dashboard.getBalanceSummary(late, october);
+
+    const light = await d.transactions.createTransaction(late, {
+      kind: "expense",
+      amountCents: 18_700,
+      accountId: ids.checking,
+      categoryId: ids.housing,
+      description: "Conta de luz",
+      occurredOn: "2026-11-02",
+    });
+    // A week and a day away: not yet.
+    const water = await d.transactions.createTransaction(late, {
+      kind: "expense",
+      amountCents: 9_100,
+      accountId: ids.checking,
+      categoryId: ids.housing,
+      description: "Conta de água",
+      occurredOn: "2026-11-07",
+    });
+
+    const upcoming = await d.dashboard.getUpcoming(late);
+    const titles = upcoming.map((item) => item.title);
+    expect(titles).toContain("Conta de luz");
+    expect(titles).not.toContain("Conta de água");
+    expect(
+      upcoming.find((item) => item.title === "Conta de luz"),
+    ).toMatchObject({
+      dueOn: "2026-11-02",
+      amountCents: 18_700,
+      overdue: false,
+    });
+    // The forecast still stops at the end of the period shown: a past month
+    // (?mes=2026-09) or this one leaves November's bill out.
+    const after = await d.dashboard.getBalanceSummary(late, october);
+    expect(after.forecast.forecastCents).toBe(before.forecast.forecastCents);
+    const past = await d.dashboard.getBalanceSummary(late, september);
+    expect(past.forecast.forecastCents).toBe(past.balanceCents);
+
+    for (const id of [...light.ids, ...water.ids]) {
+      await d.transactions.deleteTransaction(late, id);
+    }
   });
 
   it("builds the monthly series and the net worth", async () => {

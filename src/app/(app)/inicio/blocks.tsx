@@ -150,17 +150,30 @@ async function BudgetBlock({ ctx, range }: HomeBlockProps) {
   );
 }
 
+/**
+ * Always the next 7 days from today: in another month (`?mes=`) a caption
+ * says so, since the rest of the Início shows that month.
+ */
 async function UpcomingBillsBlock({ ctx, range }: HomeBlockProps) {
-  const upcoming = await getUpcoming(ctx, range);
+  const upcoming = await getUpcoming(ctx);
   return (
-    <section aria-labelledby="proximas-contas">
+    <section
+      aria-labelledby="proximas-contas"
+      aria-describedby={range.isCurrent ? undefined : "proximas-contas-hoje"}
+    >
       <SectionHeader
         id="proximas-contas"
         title="Próximas contas"
         action={
           <SectionLink href="/extrato?status=pendente">Ver todas</SectionLink>
         }
+        className={range.isCurrent ? undefined : "mb-0.5"}
       />
+      {range.isCurrent ? null : (
+        <p id="proximas-contas-hoje" className="mb-3 text-caption text-fg-3">
+          A partir de hoje
+        </p>
+      )}
       <UpcomingBills items={upcoming} today={ctx.todayIso} />
     </section>
   );
