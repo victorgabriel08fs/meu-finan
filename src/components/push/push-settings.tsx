@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, LoaderCircle, Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
@@ -56,6 +57,7 @@ export function PushSettings({
   const ids = useId();
   const [support, setSupport] = useState<PushSupport | null>(null);
   const [state, setState] = useState<DeviceState>("checking");
+  const router = useRouter();
   const [busy, setBusy] = useState<"toggle" | "test" | null>(null);
 
   useEffect(() => {
@@ -97,6 +99,8 @@ export function PushSettings({
     }
     setState("on");
     toast("Notificações ativadas neste aparelho.");
+    // The count of devices under Avisos comes from the server.
+    router.refresh();
   }
 
   async function turnOff() {
@@ -115,6 +119,7 @@ export function PushSettings({
     await setAppBadge(0);
     setState("off");
     toast("Notificações desativadas neste aparelho.");
+    router.refresh();
   }
 
   async function toggle(on: boolean) {

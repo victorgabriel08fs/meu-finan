@@ -37,7 +37,9 @@ test("com a flag ligada, Ajustes leva a Notificações e o aparelho pode ativá-
   await expect(
     page.getByText("VAPID_PUBLIC_KEY", { exact: false }),
   ).toHaveCount(0);
-  await expect(page.getByText("Contas a vencer")).toBeVisible();
+  await expect(
+    page.getByText("Contas a vencer", { exact: true }),
+  ).toBeVisible();
 
   // The page registered the service worker, which controls the app's scope.
   const scope = await page.evaluate(async () => {

@@ -38,7 +38,7 @@ export const FLAGS = {
   notificacoes_push: {
     label: "Notificações",
     description:
-      "Notificações no aparelho e o número no ícone do app, em Ajustes › Notificações. Quando desligado, a entrada some e o servidor não envia nem aceita inscrições.",
+      "Notificações no aparelho, o número no ícone do app e os avisos diários (resumos, contas a vencer, próxima receita), em Ajustes › Notificações. Quando desligado, a entrada some e o servidor não envia avisos nem aceita inscrições.",
     defaultValue: false,
     owner: "Notificações",
     since: "2026-10-30",
