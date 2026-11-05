@@ -293,6 +293,16 @@ describe("NetWorthCard", () => {
     expect(html).not.toContain('aria-label="Patrimônio');
   });
 
+  it("aligns the change's arrow with its first line", () => {
+    const html = renderToStaticMarkup(
+      <NetWorthCard points={points} period={12} />,
+    );
+    expect(html).toContain(
+      'class="text-headline text-fg">Patrimônio líquido</h2>',
+    );
+    expect(html).toContain("items-start [&amp;&gt;svg]:mt-0.5");
+  });
+
   it("takes the heading id, a caption and an action from the Início", () => {
     const html = renderToStaticMarkup(
       <NetWorthCard

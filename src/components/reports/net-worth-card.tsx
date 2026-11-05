@@ -47,7 +47,7 @@ export function NetWorthCard({
       <section aria-labelledby={headingId}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-col">
-            <h2 id={headingId} className="text-caption font-semibold text-fg-2">
+            <h2 id={headingId} className="text-headline text-fg">
               Patrimônio líquido
             </h2>
             {caption ? (
@@ -63,6 +63,8 @@ export function NetWorthCard({
                 <Money cents={last} variant="title" tone="neutral" />
                 {values.length > 1 ? (
                   <StatDelta
+                    // The arrow stays on the first line when the text wraps.
+                    className="items-start [&>svg]:mt-0.5"
                     direction={direction}
                     tone={
                       direction === "up"
