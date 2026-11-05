@@ -57,10 +57,12 @@ describe("HomeBlockList", () => {
     expect(first).toMatch(
       /aria-label="Descer Receitas e despesas"(?! aria-disabled)/,
     );
-    const last = row(html, "cash-flow");
-    expect(last).toMatch(/aria-label="Subir Fluxo de caixa"(?! aria-disabled)/);
+    const last = row(html, "category-breakdown");
     expect(last).toMatch(
-      /aria-label="Descer Fluxo de caixa" aria-disabled="true"/,
+      /aria-label="Subir Para onde foi o dinheiro"(?! aria-disabled)/,
+    );
+    expect(last).toMatch(
+      /aria-label="Descer Para onde foi o dinheiro" aria-disabled="true"/,
     );
     // aria-disabled, never disabled: the focus stays on the button.
     expect(html).not.toMatch(/<button[^>]* disabled=""/);
@@ -69,7 +71,7 @@ describe("HomeBlockList", () => {
 
   it("gives each block a switch named and described by its row", () => {
     const html = list();
-    expect(html.match(/role="switch"/g)).toHaveLength(8);
+    expect(html.match(/role="switch"/g)).toHaveLength(9);
     const budget = row(html, "budget");
     expect(budget).toContain('aria-checked="true"');
     const labelledBy = /aria-labelledby="([^"]+)"/.exec(budget)?.[1];
@@ -86,7 +88,7 @@ describe("HomeBlockList", () => {
     expect(row(html, "goals")).not.toContain("Novo");
     expect(row(html, "spending-calendar")).toContain("Novo");
     expect(row(html, "cash-flow")).toContain("Novo");
-    expect(html.match(/>Novo</g)).toHaveLength(7);
+    expect(html.match(/>Novo</g)).toHaveLength(8);
   });
 
   it("marks a recent block new and tells the switch about it", () => {
@@ -112,14 +114,14 @@ describe("HomeBlockList", () => {
 describe("positionAnnouncement", () => {
   it("counts the Saldo in the position", () => {
     expect(positionAnnouncement(defaultHomeLayout(), "month-totals")).toBe(
-      "Receitas e despesas na posição 2 de 9.",
+      "Receitas e despesas na posição 2 de 10.",
     );
     expect(positionAnnouncement(defaultHomeLayout(), "spending-calendar")).toBe(
-      "Calendário de gastos na posição 8 de 9.",
+      "Calendário de gastos na posição 8 de 10.",
     );
-    expect(positionAnnouncement(defaultHomeLayout(), "cash-flow")).toBe(
-      "Fluxo de caixa na posição 9 de 9.",
-    );
+    expect(
+      positionAnnouncement(defaultHomeLayout(), "category-breakdown"),
+    ).toBe("Para onde foi o dinheiro na posição 10 de 10.");
   });
 });
 

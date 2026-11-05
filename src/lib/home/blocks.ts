@@ -7,7 +7,7 @@
 // ignored.
 //
 // Reserved for the second stage (reports on the Início), not in the catalog
-// yet: `category-breakdown`, `income-expense`, `net-worth`.
+// yet: `income-expense`, `net-worth`.
 
 export type HomeBlockSize = "narrow" | "wide";
 
@@ -116,6 +116,15 @@ export const HOME_BLOCKS = {
     weight: 441,
     since: REPORT_BLOCKS_SINCE,
   },
+  "category-breakdown": {
+    label: "Para onde foi o dinheiro",
+    description: "As categorias em que você mais gastou no mês.",
+    errorTitle: "Não deu para carregar os gastos por categoria",
+    size: "narrow",
+    inDefault: false,
+    weight: 545,
+    since: REPORT_BLOCKS_SINCE,
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -136,6 +145,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "insight",
   "spending-calendar",
   "cash-flow",
+  "category-breakdown",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

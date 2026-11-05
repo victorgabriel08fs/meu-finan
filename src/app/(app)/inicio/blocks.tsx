@@ -14,6 +14,10 @@ import {
   CashFlowInvite,
   CashFlowNoAccountsInvite,
 } from "@/components/dashboard/cash-flow-block";
+import {
+  CategoryBreakdownBlock,
+  CategoryBreakdownInvite,
+} from "@/components/dashboard/category-breakdown-block";
 import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
@@ -25,6 +29,7 @@ import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
 import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
 import { monthViewHref } from "@/components/reports/views";
+import { statementHref } from "@/components/transactions/statement-params";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { getBudgets } from "@/server/domain/budgets";
@@ -42,6 +47,7 @@ import {
 import { listGoals } from "@/server/domain/goals";
 import {
   cashFlowReport,
+  categoryBreakdown,
   dailySpending,
   reportPhase,
 } from "@/server/domain/reports";
@@ -67,6 +73,7 @@ export const HOME_BLOCK_LOADERS: Record<
   insight: InsightBlock,
   "spending-calendar": SpendingCalendarBlockLoader,
   "cash-flow": CashFlowBlockLoader,
+  "category-breakdown": CategoryBreakdownBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -284,6 +291,50 @@ async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
         range.month,
         resolvePeriod(ctx, null).month,
       )}
+    />
+  );
+}
+
+/**
+ * Para onde foi o dinheiro: what was paid in the month on screen. The report
+ * only takes a window of months up to today (`?periodo=`), so another month
+ * opens its expenses in the statement instead.
+ */
+async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
+  const { items, totalCents } = await categoryBreakdown(
+    ctx,
+    range.start,
+    range.end,
+  );
+  if (items.length === 0) {
+    return <CategoryBreakdownInvite monthName={monthName(range.month)} />;
+  }
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <CategoryBreakdownBlock
+      items={items}
+      totalCents={totalCents}
+      month={range.month}
+      monthName={monthName(range.month)}
+      isCurrent={range.isCurrent}
+      link={
+        range.isCurrent
+          ? { href: "/relatorios/categorias?periodo=1", label: "Ver relatório" }
+          : {
+              href: statementHref(
+                {
+                  month: range.month,
+                  accountId: null,
+                  categoryId: null,
+                  kind: "expense",
+                  status: "paid",
+                  q: "",
+                },
+                currentMonth,
+              ),
+              label: "Ver no extrato",
+            }
+      }
     />
   );
 }

@@ -77,4 +77,14 @@ describe("HomeBlockSkeleton", () => {
       }
     }
   });
+
+  it("measures the narrow blocks of the reports by their own width", () => {
+    for (const [id, heights] of [
+      ["category-breakdown", "h-146.25 rounded-card @xs:h-136.25"],
+    ] as const) {
+      const html = render(id);
+      expect(html, id).toMatch(/^<div class="@container">/);
+      expect(html, id).toContain(heights);
+    }
+  });
 });

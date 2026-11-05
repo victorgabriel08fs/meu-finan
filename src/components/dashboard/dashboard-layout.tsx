@@ -297,6 +297,15 @@ export function HomeBlockSkeleton({
       // the chart, or beside it), and by the month: a past one has no
       // "Previsto" key, a month ahead a footnote more.
       return <Skeleton className={CASH_FLOW_SKELETON[phase]} />;
+    // The narrow blocks of the reports wrap a line more in the xl columns
+    // under 20rem. The ranking with its five categories and "Outras", a
+    // month's usual shape.
+    case "category-breakdown":
+      return (
+        <div className="@container">
+          <Skeleton className="h-146.25 rounded-card @xs:h-136.25" />
+        </div>
+      );
   }
 }
 

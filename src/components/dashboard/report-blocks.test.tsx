@@ -7,6 +7,10 @@ import {
   CashFlowInvite,
   CashFlowNoAccountsInvite,
 } from "./cash-flow-block";
+import {
+  CategoryBreakdownBlock,
+  CategoryBreakdownInvite,
+} from "./category-breakdown-block";
 
 // The blocks of the reports on the Início (doc 02 §6.3): the report's chart
 // under a heading of its own, the way to the report, and an invite when
@@ -146,5 +150,76 @@ describe("CashFlowBlock", () => {
       "Quando houver, o gráfico mostra o saldo dia a dia.",
     );
     expect(html).toContain("Adicionar lançamento");
+  });
+});
+
+describe("CategoryBreakdownBlock", () => {
+  const items = Array.from({ length: 7 }, (_, k) => ({
+    categoryId: `c${k + 1}`,
+    name: `Categoria ${k + 1}`,
+    icon: "house",
+    color: "cat-1",
+    cents: (7 - k) * 10_000,
+    share: (7 - k) / 28,
+  }));
+  const render = (isCurrent: boolean, link: { href: string; label: string }) =>
+    plain(
+      renderToStaticMarkup(
+        <CategoryBreakdownBlock
+          items={items}
+          totalCents={280_000}
+          month="2026-10"
+          monthName="outubro"
+          isCurrent={isCurrent}
+          link={link}
+        />,
+      ),
+    );
+
+  it("ranks the five biggest categories and folds the rest", () => {
+    const html = render(true, {
+      href: "/relatorios/categorias?periodo=1",
+      label: "Ver relatório",
+    });
+    expect(html).toContain('<section aria-labelledby="inicio-categorias"');
+    expect(html).toContain('id="inicio-categorias"');
+    expect(html).toContain("Para onde foi o dinheiro");
+    expect(html).toContain("Despesas pagas em outubro, até hoje");
+    expect(html).toContain('href="/relatorios/categorias?periodo=1"');
+    expect(html).toContain(">Ver relatório</a>");
+    for (const k of [1, 2, 3, 4, 5]) expect(html).toContain(`Categoria ${k}<`);
+    expect(html).not.toContain("Categoria 6<");
+    expect(html).toContain("Outras 2 categorias");
+    expect(html).toContain("/extrato?categoria=c1&amp;mes=2026-10");
+    // The total hides like <Money>; the shares stay visible.
+    expect(html).toContain('<span data-privacy-value="">R$ 2.800,00</span>');
+    expect(html).toContain(
+      '<span data-privacy-mask="" role="img" aria-label="valor oculto">',
+    );
+    expect(html).toMatch(/>25(,0)?%</);
+  });
+
+  it("opens another month's expenses in the statement", () => {
+    const html = render(false, {
+      href: "/extrato?mes=2026-09&tipo=despesa&status=pago",
+      label: "Ver no extrato",
+    });
+    expect(html).toContain("Despesas pagas em outubro<");
+    expect(html).not.toContain("até hoje");
+    expect(html).toContain(
+      'href="/extrato?mes=2026-09&amp;tipo=despesa&amp;status=pago"',
+    );
+    expect(html).toContain(">Ver no extrato</a>");
+  });
+
+  it("invites to add an expense in a month without any paid", () => {
+    const html = renderToStaticMarkup(
+      <CategoryBreakdownInvite monthName="dezembro" />,
+    );
+    expect(html).toContain("Nenhuma despesa paga em dezembro");
+    expect(html).toContain(
+      "Quando houver, o ranking mostra para onde foi o dinheiro.",
+    );
+    expect(html).toContain("Adicionar despesa");
   });
 });
