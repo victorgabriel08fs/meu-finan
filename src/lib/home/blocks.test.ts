@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { tipById } from "@/lib/tips/registry";
 import {
   DEFAULT_HOME_ORDER,
   HOME_BLOCK_IDS,
@@ -82,6 +83,16 @@ describe("home blocks catalog", () => {
     expect(HOME_BLOCKS["income-expense"].label).toBe(
       "Receitas × despesas por mês",
     );
+  });
+
+  it("ships the blocks of the reports on the day of their novidade", () => {
+    const novidade = tipById("novidade-inicio-blocos-relatorios");
+    expect(novidade?.kind).toBe("novidade");
+    expect(novidade?.since).toBe(REPORT_BLOCKS_SINCE);
+    expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
+    expect(novidade?.link?.href).toBe("/ajustes/preferencias");
+    // The first stage's novidade keeps its own day.
+    expect(tipById("novidade-inicio-personalizavel")?.since).toBe("2026-11-02");
   });
 
   it("knows its own ids only", () => {
