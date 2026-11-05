@@ -62,16 +62,40 @@ export async function getBalanceSummary(
   ctx: UserContext,
   range: PeriodRange,
 ): Promise<BalanceSummary> {
+  const liquidIds = (await accountsOf(ctx))
+    .filter(isLiquid)
+    .map((account) => account.id);
+  const [{ balanceCents, forecast }, monthChange] = await Promise.all([
+    forecastUntil(ctx, range.end),
+    monthChangeCents(ctx, range, liquidIds),
+  ]);
+  return { balanceCents, monthChangeCents: monthChange, forecast };
+}
+
+export type LiquidForecast = {
+  /** Saldo em contas: paid balances of the liquid accounts. */
+  balanceCents: number;
+  forecast: Forecast;
+};
+
+/**
+ * Saldo previsto up to a day (doc 03 §12): the end of the period for the
+ * Saldo, the day before an income for "quanto dá para gastar por dia até lá"
+ * (the daily notices).
+ */
+export async function forecastUntil(
+  ctx: UserContext,
+  until: string,
+): Promise<LiquidForecast> {
   const liquid = (await accountsOf(ctx)).filter(isLiquid);
   const liquidIds = new Set(liquid.map((account) => account.id));
   const balanceCents = liquid.reduce(
     (sum, account) => sum + account.balanceCents,
     0,
   );
-  const [pending, { invoicesByCard }, monthChange] = await Promise.all([
-    pendingUntil(ctx, range.end),
+  const [pending, { invoicesByCard }] = await Promise.all([
+    pendingUntil(ctx, until),
     cardInvoicesOf(ctx),
-    monthChangeCents(ctx, range, [...liquidIds]),
   ]);
   const forecast = forecastBalance({
     balanceCents,
@@ -83,9 +107,9 @@ export async function getBalanceSummary(
       totalCents: invoice.totalCents,
       paidCents: invoice.paidCents,
     })),
-    until: parse(range.end),
+    until: parse(until),
   });
-  return { balanceCents, monthChangeCents: monthChange, forecast };
+  return { balanceCents, forecast };
 }
 
 /**

@@ -101,6 +101,17 @@ export function monthLabel(month: string): string {
   return `${MONTHS[m.month - 1]} de ${m.year}`;
 }
 
+/** "outubro" for "2026-10". */
+export function monthNameLabel(month: string): string {
+  return MONTHS[parseMonth(month).month - 1];
+}
+
+/** "ter, 10 nov": the data em cabeçalho of doc 02 §10.1, without "Hoje ·". */
+export function weekdayDateLabel(date: string): string {
+  const d = parse(date);
+  return `${WEEKDAYS[dayOfWeek(d)]}, ${d.day} ${SHORT_MONTHS[d.month - 1]}`;
+}
+
 /** "out/26" for "2026-10". */
 export function shortMonthLabel(month: string): string {
   const m = parseMonth(month);

@@ -151,7 +151,7 @@ async function Settings() {
             <InsetListItem
               icon={<Bell />}
               label="Notificações"
-              description="Avisos neste aparelho e o número no ícone"
+              description="Resumos e contas a vencer"
               href="/ajustes/notificacoes"
             />
           </InsetList>

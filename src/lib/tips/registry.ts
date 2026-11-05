@@ -264,6 +264,21 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-avisos-notificacoes",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like "Notificações no aparelho": the row
+    // sits below the fold of Ajustes.
+    routes: [],
+    anchor: null,
+    title: "Avisos todo dia pela manhã",
+    body: "Contas a vencer e resumos da semana e do mês já vêm ligados. Ligue também o resumo do dia e a próxima receita. Os valores, só se você quiser.",
+    since: "2026-11-05",
+    order: 11,
+    when: { flag: "notificacoes_push" },
+    icon: "bell",
+    link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

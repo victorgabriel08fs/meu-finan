@@ -1,5 +1,6 @@
 // Shapes stored in jsonb columns. Writers validate them with Zod before saving;
 // these types only describe what is persisted. Rates are decimals (0.1 = 10%).
+import type { ReminderNotificationType } from "./enums";
 
 /** goals.expected_rate; null means the goal has no yield ("sem rendimento"). */
 export type GoalExpectedRate =
@@ -83,6 +84,17 @@ export type NotificationPayload =
       title: string;
       body: string;
       href?: string;
+    }
+  | {
+      /** A notice of the daily job, as it was sent (amounts only if shown). */
+      type: ReminderNotificationType;
+      /** The person's local date it was sent for. */
+      date: string;
+      title: string;
+      body: string;
+      url: string;
+      /** bills_due: the bills it announced (see selectBillReminders). */
+      itemKeys?: string[];
     };
 
 export type JsonValue =

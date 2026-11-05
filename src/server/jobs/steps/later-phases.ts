@@ -18,8 +18,3 @@ export const snapshotBalances = laterPhase(
   "snapshotBalances",
   "O histórico de saldos (patrimônio) chega na fase F3.",
 );
-
-export const sendReminders = laterPhase(
-  "sendReminders",
-  "Lembretes por push e e-mail chegam na fase F3.",
-);

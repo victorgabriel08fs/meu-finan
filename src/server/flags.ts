@@ -3,7 +3,7 @@
 // on every request, so a change in Administração › Flags counts on the next
 // request; within a request, React `cache` reads them once.
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { defaultFlags, type FlagKey, type Flags } from "@/lib/flags/registry";
 import { resolveFlags } from "@/lib/flags/resolve";
@@ -29,6 +29,39 @@ export async function loadFlags(
       .where(eq(featureFlagOverrides.userId, userId)),
   ]);
   return resolveFlags(globals, overrides);
+}
+
+/**
+ * Effective flags of several people at once (the daily job): the global
+ * values read once, each person's own in one query.
+ */
+export async function loadFlagsForUsers(
+  userIds: readonly string[],
+  executor: Executor = db,
+): Promise<Map<string, Flags>> {
+  if (userIds.length === 0) return new Map();
+  const [globals, overrides] = await Promise.all([
+    executor
+      .select({ key: featureFlags.key, enabled: featureFlags.enabled })
+      .from(featureFlags),
+    executor
+      .select({
+        userId: featureFlagOverrides.userId,
+        key: featureFlagOverrides.key,
+        enabled: featureFlagOverrides.enabled,
+      })
+      .from(featureFlagOverrides)
+      .where(inArray(featureFlagOverrides.userId, [...userIds])),
+  ]);
+  return new Map(
+    userIds.map((userId) => [
+      userId,
+      resolveFlags(
+        globals,
+        overrides.filter((row) => row.userId === userId),
+      ),
+    ]),
+  );
 }
 
 /** Effective flags of a person, memoised for the request. */

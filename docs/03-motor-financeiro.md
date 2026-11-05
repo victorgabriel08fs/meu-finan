@@ -557,8 +557,12 @@ Rollover (opcional por orçamento): sobra (ou excesso) do mês anterior soma ao 
 | **Taxa de poupança** | (receitas − despesas) / receitas no período, sem transferências; **só meses completos** quando o período inclui o mês corrente (no mockup: 26,8% de nov/25 a set/26) |
 | **Fluxo de caixa diário** | saldo acumulado dia a dia: realizado até hoje; projeção com os pendentes conhecidos até o fim do período |
 | **Variação de categoria** | gasto no período ÷ média dos 3 períodos anteriores **no mesmo ponto do período** (dias 1..E) − 1 |
+| **Por dia até a próxima receita** (`spendablePerDay`) | $\min\big(\max(0, \lfloor P / n \rfloor),\ G\big)$, com $P$ = saldo previsto até o **dia anterior** à receita, $n$ = dias de hoje (inclusive) até a receita (exclusive) e $G$ = "pode gastar por dia" do orçamento do mês (§11), quando há orçamento. Sem dias restantes, 0. O teto do orçamento existe porque o dinheiro das contas não é todo para gastar (a reserva entra no saldo previsto) |
+| **Comparação com a média semanal** (`compareToAverage`) | despesas pagas da semana (seg–dom) vs. a média das 4 semanas anteriores, contadas em blocos de 7 dias a partir do início da semana; **só entram semanas com despesa** (as de antes de usar o app não puxam a média para baixo). Menos de 2 semanas com despesa: sem comparação. Razão = (semana − média) / média; ±5% ou mais vira "X% abaixo/acima da sua média", entre −5% e +5% "perto da sua média" |
 
 Exemplo (mockups, 14/out): saldo R$ 27.670,15 − aluguel R$ 2.100,00 − internet R$ 119,90 − fatura R$ 1.380,42 + freelance R$ 650,00 = **previsto R$ 24.719,83**.
+
+Exemplos dos avisos (doc 02 §10.3): previsão R$ 426,00 até a véspera de uma receita daqui a 5 dias, sem orçamento → **R$ 85,20 por dia**; a mesma previsão com o orçamento permitindo R$ 26,66 por dia → **R$ 26,66 por dia** (vale o menor). Semana com R$ 1.245,30 e semanas anteriores de R$ 1.500, R$ 0, R$ 1.540 e R$ 1.516 → média R$ 1.518,67 (o R$ 0 fica de fora), **18% abaixo da sua média**.
 
 Regras de insight (no máximo 1 por vez no Início; cada uma com `dedupe_key` mensal):
 

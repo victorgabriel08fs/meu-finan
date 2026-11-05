@@ -40,6 +40,11 @@ type SegmentedControlProps = {
    * sidebar. The label stays the accessible name and the tooltip.
    */
   iconOnly?: boolean;
+  /**
+   * Long labels wrap onto more lines (and the track grows) instead of being
+   * cut, for larger text sizes (doc 02 §11).
+   */
+  wrap?: boolean;
   className?: string;
 };
 
@@ -50,6 +55,7 @@ export function SegmentedControl({
   onValueChange,
   ariaLabel,
   iconOnly = false,
+  wrap = false,
   className,
 }: SegmentedControlProps) {
   const layoutId = `segmented-thumb-${useId()}`;
@@ -92,7 +98,12 @@ export function SegmentedControl({
       role="radiogroup"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={cn(trackClass, iconOnly && "h-9 w-auto", className)}
+      className={cn(
+        trackClass,
+        iconOnly && "h-9 w-auto",
+        wrap && "h-auto min-h-10",
+        className,
+      )}
     >
       {options.map((option, index) => {
         const selected = index === selectedIndex;
@@ -112,6 +123,7 @@ export function SegmentedControl({
             className={cn(
               segmentClass,
               iconOnly && "w-9 flex-none px-0",
+              wrap && "h-auto min-h-8 px-2 py-1",
               selected ? "text-fg" : "text-fg-2 hover:text-fg",
             )}
           >
@@ -124,7 +136,15 @@ export function SegmentedControl({
             ) : null}
             <span className="relative flex min-w-0 items-center gap-1.5">
               {option.icon}
-              <span className={iconOnly ? "sr-only" : "truncate"}>
+              <span
+                className={
+                  iconOnly
+                    ? "sr-only"
+                    : wrap
+                      ? "text-center break-words"
+                      : "truncate"
+                }
+              >
                 {option.label}
               </span>
             </span>

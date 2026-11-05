@@ -2,40 +2,7 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 1. Notificações: novos eventos configuráveis pelo cron diário
-
-**Pedido do dono (04/11/2026).** Cinco eventos de notificação enviados pelo cron diário, cada um ligado ou desligado pela pessoa:
-
-- [ ] **Resumo do dia**: como o dia começa — saldo em contas, o que vence hoje e quanto dá para gastar hoje sem passar do orçamento (e quanto saiu ontem).
-- [ ] **Contas a vencer**: pendentes e faturas que vencem em breve, com a antecedência escolhida (no dia, 1 ou 3 dias antes); vencidas não pagas também.
-- [ ] **Dias até a próxima receita**: "Faltam 5 dias para o Salário (R$ 7.950)", com quanto dá para gastar por dia até lá.
-- [ ] **Resumo semanal**: na segunda-feira, a semana anterior — receitas, despesas, categorias que mais pesaram e a comparação com a média.
-- [ ] **Resumo mensal**: no primeiro dia do mês financeiro (respeitando `month_start_day`), o mês fechado — receitas, despesas, quanto sobrou, orçamentos cumpridos e estourados.
-
-Conteúdo aprovado pelo dono em 05/11/2026.
-
-### O que entra
-
-- O passo `sendReminders` do cron (`src/server/jobs/steps/later-phases.ts`, hoje pulado) passa a montar e enviar os eventos, usando a infraestrutura da etapa 1 (`sendPush`, a tabela `notifications` e o número no ícone).
-- **Configurável por pessoa** em Ajustes › Notificações › Avisos (hoje "Em breve"): um interruptor por evento, mais as opções de cada um (antecedência das contas a vencer; resumo semanal e mensal ligados ou não). Definir os padrões de quem nunca mexeu.
-- Tudo atrás da flag `notificacoes_push`; só recebe quem tem a flag e pelo menos um aparelho inscrito.
-- **Idempotente**: a Vercel pode entregar o cron mais de uma vez e o dono pode chamá-lo à mão. Cada evento é enviado uma vez por pessoa por dia, garantido no banco (chave única por pessoa, evento e data), não só na memória.
-- Datas no fuso da pessoa (`user_settings.timezone`) e valores com `formatBRL`.
-- **Valores na tela bloqueada** (decidido pelo dono em 05/11/2026): opção "Mostrar valores nas notificações" em Ajustes › Notificações, **desligada por padrão**. Sem ela, o texto não traz valores ("Aluguel vence amanhã" em vez de "Aluguel vence amanhã: R$ 2.100").
-- Textos curtos em pt-BR (doc 02 §10), cada notificação abrindo a tela certa ao tocar (Início, Extrato filtrado, Relatórios).
-
-### Limites do plano Hobby da Vercel
-
-- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo. **Decidido pelo dono (05/11/2026): fica no Hobby, tudo às 6h**; o horário não é configurável.
-- O passo precisa caber no tempo do job (240 s de orçamento): enviar em lotes e registrar o que não foi enviado.
-
-### Pronto quando
-
-- Cada evento tem teste de unidade da montagem do texto (funções puras), integração do passo contra o PGlite (quem recebe, quem não recebe, flag desligada, evento desligado, segunda execução no mesmo dia não reenvia, isolamento entre contas) e o resultado aparece em `job_runs`.
-- Ajustes › Notificações mostra os interruptores e as opções, aprovados pelo `qa-ui-ux`.
-- README (Notificações, Cron diário), doc 01 §9 e doc 02 §6.14 atualizados.
-
-## 2. Extrato — melhorias
+## 1. Extrato — melhorias
 
 Pendências pequenas achadas na correção dos filtros (04/11/2026), que já existiam antes dela:
 
@@ -46,7 +13,7 @@ Pendências pequenas achadas na correção dos filtros (04/11/2026), que já exi
 - **Criar subcategorias pelo app** (decidido pelo dono em 05/11/2026): em Ajustes › Categorias, escolher a categoria mãe ao criar ou editar. O filtro do Extrato já trata mãe e filhas.
 - Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
 
-## 3. Início e Relatórios — melhorias
+## 2. Início e Relatórios — melhorias
 
 Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
 
@@ -56,9 +23,41 @@ Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
 - Rótulos dos marcadores truncados no gráfico do Fluxo de caixa ("Curso de…").
 - Skeleton por fase do mês também em Receitas/Despesas, Orçamento e Receitas × despesas por mês (hoje só o Fluxo de caixa muda com a fase).
 - axe no tema claro (o e2e roda o axe só no escuro).
-- `?mes=` nos relatórios por período (Visão geral, Categorias, Patrimônio): o link "Ver relatório" dos blocos não leva o mês do Início.
+- `?mes=` nos relatórios por período (Visão geral, Categorias, Patrimônio): o link "Ver relatório" dos blocos não leva o mês do Início, e o toque no aviso Resumo mensal abre a Visão geral no período atual, não no mês que fechou. Quando ela aceitar `?mes=`, o link do aviso passa a levar o mês (`src/server/reminders.ts`).
+
+## 3. Notificações — próximos avisos
+
+Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lista "Em breve" de Ajustes › Notificações). Cada um entra como mais um interruptor em Avisos, no mesmo passo `sendReminders` (doc 01 §9), com a mesma regra de uma vez por pessoa e por dia e sem valores quando "Mostrar valores nas notificações" estiver desligado:
+
+- **Fatura fechando**: dias antes do fechamento, com o total até agora (doc 02 §10.3).
+- **Orçamento a 80% e a 100%**: quando o total ou uma categoria chega lá; uma vez por limite e por mês.
+- **Meta atingida**: quando o saldo da meta chega ao alvo.
+- **Central de notificações no sino** (doc 02 §6.15): a lista dos avisos, com "Marcar todas como lidas". Com ela, abrir o app deixa de marcar tudo como lido e o número no ícone passa a seguir a central.
+
+## 4. Acessibilidade e textos
+
+Achados do `qa-ui-ux` nas Notificações (05/11/2026) que valem para o app inteiro:
+
+- **Texto a 200% em 360 px**: títulos cortados, descrições passando por baixo dos interruptores e a barra inferior truncando os rótulos. Sugestões: empilhar o interruptor abaixo do texto por container query; barra só com ícones (e `aria-label`) acima de um tamanho de texto; títulos que quebram linha em vez de cortar.
+- **Botão de ação dos toasts** ("Desfazer", "Tentar de novo") com 36 px de altura, abaixo dos 44 px de doc 02 §11.
+- **Concordância no toast das flags**: "Notificações ligado para Bruno" (`src/components/admin/flags-manager.tsx`, `onOff`); o rótulo da flag é feminino ou plural.
+- **Contraste do `Switch` desligado no tema claro**: a trilha fica fraca contra a superfície; medir e ajustar o token (doc 02 §3.1).
 
 ## Entregue
+
+### Notificações: avisos pelo cron diário — 05/11/2026
+
+Pedido do dono (04/11/2026), conteúdo aprovado em 05/11/2026. O passo `sendReminders` envia, uma vez por dia entre 06:00 e 06:59 de Brasília, os avisos que cada pessoa ligou em Ajustes › Notificações › Avisos:
+
+- [x] **Resumo do dia** (desligado por padrão): saldo em contas, o que vence hoje, quanto dá para gastar hoje pelo orçamento e quanto saiu ontem.
+- [x] **Contas a vencer** (ligado; 1 dia antes): pendentes e faturas, com a antecedência escolhida (No dia · 1 dia · 3 dias); cada conta avisada uma vez antes e uma vez vencida (até 7 dias).
+- [x] **Próxima receita** (desligado): todo dia nos 7 dias antes, com quanto dá para gastar por dia até lá (o menor entre a previsão e o "pode gastar por dia" do orçamento).
+- [x] **Resumo semanal** (ligado): na segunda, a semana anterior, as categorias que mais pesaram e a comparação com a média das 4 semanas anteriores (só semanas com despesa).
+- [x] **Resumo mensal** (ligado): no 1º dia do mês financeiro (`month_start_day`), o mês fechado e os orçamentos cumpridos e estourados.
+
+Também entraram: "Mostrar valores nas notificações" (desligado por padrão: sem R$ na tela bloqueada), "Enviar prévia dos avisos" para administradores, o número no ícone que zera ao abrir o app, a limpeza dos avisos lidos há mais de 90 dias, a novidade "Avisos todo dia pela manhã" (`when: { flag: "notificacoes_push" }`) e a correção da nota "Vale só para este aparelho", que nunca aparecia. Tudo atrás da flag `notificacoes_push`; `job_runs` só com contagens.
+
+Testes de unidade (`src/lib/notifications`, `spendablePerDay`, `compareToAverage`, datas), integração contra o PGlite (`src/server/reminders.integration.test.ts`: quem recebe, isolamento, execuções simultâneas, push com erro e aparelho removido, contas de uma semana inteira, prazo, `runDailyJob`, fuso do Havaí, número no ícone e prévia; preferências e action em `src/server/domain/preferences.integration.test.ts`) e e2e (`e2e/notificacoes.spec.ts` com axe no escuro e no claro, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README (Notificações, Notificações no celular, Cron diário), doc 01 §6.3, §9, §10 e §11.10, doc 02 §6.14 e §10.3, doc 03 §12.
 
 ### Início personalizável (etapa 2): blocos dos relatórios — 05/11/2026
 

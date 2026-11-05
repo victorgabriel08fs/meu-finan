@@ -4,11 +4,13 @@ import {
   durationLabel,
   fullDateLabel,
   monthLabel,
+  monthNameLabel,
   periodLabel,
   relativeDayLabel,
   shortDateLabel,
   shortMonthLabel,
   todayInTimeZone,
+  weekdayDateLabel,
 } from "./date";
 
 // 14/out/2025 is a Tuesday ("ter"), as in the doc 02 mockups.
@@ -91,6 +93,17 @@ describe("month labels", () => {
   it("rejects anything but YYYY-MM", () => {
     expect(() => monthLabel("2026-10-01")).toThrow(RangeError);
     expect(() => shortMonthLabel("10/2026")).toThrow(RangeError);
+  });
+});
+
+describe("monthNameLabel and weekdayDateLabel", () => {
+  it("names the month and the weekday", () => {
+    expect(monthNameLabel("2026-10")).toBe("outubro");
+    expect(monthNameLabel("2027-03")).toBe("março");
+    expect(weekdayDateLabel("2026-11-10")).toBe("ter, 10 nov");
+    expect(weekdayDateLabel("2026-11-14")).toBe("sáb, 14 nov");
+    expect(() => monthNameLabel("2026-13")).toThrow(RangeError);
+    expect(() => weekdayDateLabel("2026-02-30")).toThrow(RangeError);
   });
 });
 

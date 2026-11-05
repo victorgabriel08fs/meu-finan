@@ -3,6 +3,7 @@
  * the same in the browser (simulator) and on the server (goals, reports, cron).
  * Invalid arguments throw RangeError; see each function for its rules.
  */
+export * from "./averages";
 export * from "./budget";
 export * from "./cash-flow";
 export * from "./compound";

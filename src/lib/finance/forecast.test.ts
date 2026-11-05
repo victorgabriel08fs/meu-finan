@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { parse } from "./dates";
 import {
@@ -5,6 +6,7 @@ import {
   forecastBalance,
   type MonthTotals,
   savingsRate,
+  spendablePerDay,
 } from "./forecast";
 
 const D = parse;
@@ -208,5 +210,64 @@ describe("savingsRate (taxa de poupança)", () => {
     expect(() =>
       savingsRate({ currentMonth, months: [month(2026, 9, 1, Number.NaN)] }),
     ).toThrow(RangeError);
+  });
+});
+
+describe("spendablePerDay", () => {
+  it("spreads the forecast over the days left, rounded down", () => {
+    expect(spendablePerDay(42_600, 5)).toBe(8520);
+    expect(spendablePerDay(100, 3)).toBe(33);
+    expect(spendablePerDay(100, 1)).toBe(100);
+  });
+
+  it("is zero with a negative forecast or no days left", () => {
+    expect(spendablePerDay(-23_000, 5)).toBe(0);
+    expect(spendablePerDay(10_000, 0)).toBe(0);
+    expect(spendablePerDay(10_000, -2)).toBe(0);
+  });
+
+  it("never goes negative nor past the forecast", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -1_000_000_000, max: 1_000_000_000 }),
+        fc.integer({ min: -10, max: 400 }),
+        (forecast, days) => {
+          const perDay = spendablePerDay(forecast, days);
+          expect(Number.isSafeInteger(perDay)).toBe(true);
+          expect(perDay).toBeGreaterThanOrEqual(0);
+          if (forecast >= 0 && days > 0) {
+            expect(perDay * days).toBeLessThanOrEqual(forecast);
+            expect(forecast - perDay * days).toBeLessThan(days);
+          }
+        },
+      ),
+    );
+  });
+
+  it("never goes past the budget's pode gastar por dia", () => {
+    expect(spendablePerDay(3_876_250, 6, 8769)).toBe(8769);
+    expect(spendablePerDay(42_600, 5, 10_000)).toBe(8520);
+    expect(spendablePerDay(-23_000, 5, 8769)).toBe(0);
+    expect(spendablePerDay(42_600, 5, 0)).toBe(0);
+    expect(spendablePerDay(42_600, 5, null)).toBe(8520);
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -1_000_000_000, max: 1_000_000_000 }),
+        fc.integer({ min: -10, max: 400 }),
+        fc.integer({ min: 0, max: 10_000_000 }),
+        (forecast, days, budget) => {
+          const capped = spendablePerDay(forecast, days, budget);
+          expect(capped).toBeGreaterThanOrEqual(0);
+          expect(capped).toBeLessThanOrEqual(budget);
+          expect(capped).toBeLessThanOrEqual(spendablePerDay(forecast, days));
+        },
+      ),
+    );
+  });
+
+  it("rejects invalid input", () => {
+    expect(() => spendablePerDay(1.5, 2)).toThrow(RangeError);
+    expect(() => spendablePerDay(100, 1.5)).toThrow(RangeError);
+    expect(() => spendablePerDay(100, 2, 0.5)).toThrow(RangeError);
   });
 });

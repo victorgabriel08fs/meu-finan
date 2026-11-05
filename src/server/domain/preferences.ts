@@ -1,8 +1,12 @@
 // Owner preferences kept on the account (user_settings). The theme is the
 // only one read outside getUserContext: the app shell needs it on its own;
-// the Início reads its blocks on its own too.
+// the Início reads its blocks on its own too, and the daily job the notices.
 import { eq } from "drizzle-orm";
 import { type HomeLayout, resolveHomeLayout } from "@/lib/home/layout";
+import {
+  type NotificationPreferences,
+  resolveNotificationPreferences,
+} from "@/lib/notifications/preferences";
 import { DEFAULT_THEME } from "@/lib/theme";
 import { db, type Executor } from "@/server/db/client";
 import {
@@ -74,5 +78,41 @@ export async function setHomeLayout(
     .onConflictDoUpdate({
       target: userSettings.userId,
       set: { homeLayout, updatedAt: new Date() },
+    });
+}
+
+/**
+ * The notices the person chose (Ajustes › Notificações › Avisos, doc 02
+ * §6.14); the defaults when they never changed them.
+ */
+export async function getNotificationPreferences(
+  userId: string,
+  executor: Executor = db,
+): Promise<NotificationPreferences> {
+  const [row] = await executor
+    .select({ notificationPrefs: userSettings.notificationPrefs })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId))
+    .limit(1);
+  return resolveNotificationPreferences(row?.notificationPrefs ?? null);
+}
+
+/** Saves the whole choice of notices on the account. */
+export async function setNotificationPreferences(
+  userId: string,
+  preferences: NotificationPreferences,
+  executor: Executor = db,
+): Promise<void> {
+  const notificationPrefs = {
+    events: { ...preferences.events },
+    billsLeadDays: preferences.billsLeadDays,
+    showAmounts: preferences.showAmounts,
+  };
+  await executor
+    .insert(userSettings)
+    .values({ userId, notificationPrefs })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: { notificationPrefs, updatedAt: new Date() },
     });
 }

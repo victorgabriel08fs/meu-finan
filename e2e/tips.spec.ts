@@ -145,7 +145,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+7 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+8 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -169,6 +169,15 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   });
   await expect(enablePush).toBeVisible();
   await expect(enablePush).toHaveAttribute("href", "/ajustes/notificacoes");
+  // The daily notices, behind the same flag.
+  await expect(
+    item("Avisos todo dia pela manhã").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item("Avisos todo dia pela manhã").getByRole("link", {
+      name: "Escolher avisos",
+    }),
+  ).toHaveAttribute("href", "/ajustes/notificacoes");
   // And inicio_personalizavel on: its novidade leads to Preferências.
   await expect(
     item("Monte o seu Início").getByText("Nova", { exact: true }),

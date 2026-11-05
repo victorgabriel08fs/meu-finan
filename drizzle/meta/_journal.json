@@ -50,6 +50,13 @@
       "when": 1793649603997,
       "tag": "0006_inicio_personalizavel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793887097395,
+      "tag": "0007_avisos_notificacoes",
+      "breakpoints": true
     }
   ]
 }

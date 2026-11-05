@@ -6,6 +6,7 @@ import {
   type LocalDate,
   type YearMonth,
 } from "./dates";
+import { assertInteger } from "./guards";
 import { invoiceOutstandingCents } from "./invoices";
 import { assertCents } from "./money";
 
@@ -89,6 +90,28 @@ export function forecastBalance(input: ForecastInput): Forecast {
     invoicesDueCents,
     forecastCents,
   };
+}
+
+/**
+ * "Dá para gastar por dia" until a date (doc 03 §12): the forecast balance
+ * spread over the days left, rounded down, never negative. `days` counts
+ * today and leaves the target day out (an income on that day pays for it);
+ * none left gives 0. With the month's budget, never more than its "pode
+ * gastar por dia" (doc 03 §11): the money in the accounts is not all for
+ * spending (the reserve counts in the forecast too).
+ */
+export function spendablePerDay(
+  forecastCents: number,
+  days: number,
+  budgetPerDayCents: number | null = null,
+): number {
+  assertCents(forecastCents, "forecastCents");
+  assertInteger(days, "days");
+  const fromForecast =
+    days > 0 ? Math.max(0, Math.floor(forecastCents / days)) : 0;
+  if (budgetPerDayCents === null) return fromForecast;
+  assertCents(budgetPerDayCents, "budgetPerDayCents");
+  return Math.min(fromForecast, Math.max(0, budgetPerDayCents));
 }
 
 export type MonthTotals = {

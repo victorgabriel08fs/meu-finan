@@ -1,0 +1,2 @@
+ALTER TABLE "user_settings" ADD COLUMN "notification_prefs" jsonb;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_notification_prefs_check" CHECK ("user_settings"."notification_prefs" is null or jsonb_typeof("user_settings"."notification_prefs") = 'object');
