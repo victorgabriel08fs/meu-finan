@@ -1,11 +1,33 @@
 // The daily notices (step sendReminders) against a real (in-memory)
 // Postgres, with the push service mocked, on Monday 09/nov/2026 at 06:15 in
 // São Paulo: who gets which notice, with and without amounts, and a second
-// run the same day sending nothing again.
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+// run the same day sending nothing again. Then each notice once whatever
+// happens (runs at the same time, a push service that fails or forgot the
+// device, the deadline, a week of bills), the job_runs report with counts
+// only, and the number on the icon.
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("next/cache", () => ({
+  refresh: vi.fn(),
+  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
+}));
+// runDailyJob also syncs the market rates: no network in the tests.
+vi.mock("./jobs/bcb-sgs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./jobs/bcb-sgs")>()),
+  fetchSgsSeries: async () => {
+    throw new Error("offline");
+  },
+}));
 // The signed-in administrator for the preview, normally from the session.
 const signedIn = vi.hoisted(() => ({
   admin: null as null | { id: string; name: string; role: string },
@@ -15,12 +37,15 @@ vi.mock("@/server/dal", () => ({
   getAdmin: async () => signedIn.admin,
   getSession: async () => null,
 }));
-// The push service: records what would be sent.
+// The push service: records what would be sent; an endpoint listed in
+// `status` answers with that error instead.
 const pushService = vi.hoisted(() => ({
   sent: [] as { endpoint: string; body: Record<string, unknown> }[],
+  status: new Map<string, number>(),
 }));
 vi.mock("web-push", () => {
   class WebPushError extends Error {
+    readonly body = "";
     constructor(
       message: string,
       readonly statusCode: number,
@@ -32,6 +57,8 @@ vi.mock("web-push", () => {
     WebPushError,
     default: {
       sendNotification: async (target: { endpoint: string }, body: string) => {
+        const status = pushService.status.get(target.endpoint);
+        if (status) throw new WebPushError(`status ${status}`, status);
         pushService.sent.push({
           endpoint: target.endpoint,
           body: JSON.parse(body),
@@ -68,7 +95,15 @@ const run = () =>
 const sentTo = (userId: string) =>
   pushService.sent
     .filter((push) => push.endpoint === endpointOf(userId))
-    .map((push) => push.body as { title: string; body: string; tag: string });
+    .map(
+      (push) =>
+        push.body as {
+          title: string;
+          body: string;
+          tag: string;
+          badge: number;
+        },
+    );
 
 beforeAll(async () => {
   const { migrate } = await import("drizzle-orm/pglite/migrator");
@@ -246,6 +281,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   pushService.sent = [];
+  pushService.status.clear();
 });
 
 describe("sendDailyReminders", () => {
@@ -393,5 +429,399 @@ describe("preview (administrators)", () => {
       "Você já enviou algumas prévias. Espere um minuto e tente de novo.",
     );
     signedIn.admin = null;
+  });
+});
+
+describe("each notice once, whatever happens", () => {
+  // Hilo lives in Honolulu: at 09:15 UTC it is still Sunday 08/nov there.
+  // Fabi wants only Contas a vencer, 3 days ahead, with four bills in a row.
+  const FABI_BILLS = [
+    ["Água", "2026-11-09"],
+    ["Gás", "2026-11-10"],
+    ["Escola", "2026-11-11"],
+    ["Seguro", "2026-11-12"],
+  ] as const;
+  /** Ana 5, Bruno 2, Hilo 1, Fabi 1 on Monday 09/nov. */
+  const MONDAY_NOTICES = 9;
+
+  /** 06:15 in São Paulo on another day of November 2026. */
+  const morningOf = (day: number) => new Date(Date.UTC(2026, 10, day, 9, 15));
+
+  const resetNotices = async () => {
+    await m.db.delete(m.schema.notifications);
+  };
+
+  const sentTotal = (report: { sent: Record<string, number> }) =>
+    Object.values(report.sent).reduce((sum, count) => sum + count, 0);
+
+  const noticesOf = async (userId: string) => {
+    const { eq } = await import("drizzle-orm");
+    return m.db
+      .select({
+        dedupeKey: m.schema.notifications.dedupeKey,
+        payload: m.schema.notifications.payload,
+      })
+      .from(m.schema.notifications)
+      .where(eq(m.schema.notifications.userId, userId));
+  };
+
+  beforeAll(async () => {
+    const { eq } = await import("drizzle-orm");
+    const { ensureOwnerDefaults } = await import("./db/seed-defaults");
+    const { createAccount } = await import("./domain/accounts");
+    const { listCategories } = await import("./domain/categories");
+    const { createTransaction } = await import("./domain/transactions");
+    const { getUserContext } = await import("./domain/context");
+
+    // One device each: Ana's second one belonged to the preview.
+    await m.db
+      .delete(m.schema.pushSubscriptions)
+      .where(
+        eq(
+          m.schema.pushSubscriptions.endpoint,
+          "https://fcm.googleapis.com/fcm/send/ana-notebook",
+        ),
+      );
+    await m.db.insert(m.schema.user).values([
+      { id: "hilo", name: "Hilo", email: "hilo@exemplo.com" },
+      { id: "fabi", name: "Fabi", email: "fabi@exemplo.com" },
+    ]);
+    for (const id of ["hilo", "fabi"]) await ensureOwnerDefaults(id);
+    await m.db
+      .update(m.schema.userSettings)
+      .set({ timezone: "Pacific/Honolulu" })
+      .where(eq(m.schema.userSettings.userId, "hilo"));
+    await m.db
+      .update(m.schema.userSettings)
+      .set({
+        notificationPrefs: {
+          events: {
+            daily_summary: false,
+            bills_due: true,
+            income_countdown: false,
+            weekly_summary: false,
+            monthly_summary: false,
+          },
+          billsLeadDays: 3,
+          showAmounts: false,
+        },
+      })
+      .where(eq(m.schema.userSettings.userId, "fabi"));
+    await m.db.insert(m.schema.featureFlagOverrides).values(
+      ["hilo", "fabi"].map((userId) => ({
+        userId,
+        key: "notificacoes_push",
+        enabled: true,
+      })),
+    );
+    await m.db.insert(m.schema.pushSubscriptions).values(
+      ["hilo", "fabi"].map((userId) => ({
+        userId,
+        endpoint: endpointOf(userId),
+        ...KEYS,
+      })),
+    );
+
+    const pending = async (
+      userId: string,
+      bills: readonly (readonly [string, string])[],
+    ) => {
+      const ctx = await getUserContext(userId, { now: NOW.getTime() });
+      const accountId = await createAccount(userId, {
+        name: "Conta Principal",
+        type: "checking",
+        initialBalanceCents: 300_000,
+      });
+      const categories = await listCategories(userId);
+      const category = categories.find((item) => item.name === "Moradia");
+      if (!category) throw new Error("categoria Moradia");
+      for (const [description, occurredOn] of bills) {
+        await createTransaction(ctx, {
+          kind: "expense",
+          accountId,
+          categoryId: category.id,
+          description,
+          amountCents: 10_000,
+          occurredOn,
+          paid: false,
+        });
+      }
+    };
+    // Monday the 9th is Hilo's tomorrow.
+    await pending("hilo", [["Luz", "2026-11-09"]]);
+    await pending("fabi", FABI_BILLS);
+  }, 120_000);
+
+  beforeEach(resetNotices);
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("takes each person's own date: still Sunday in Honolulu", async () => {
+    const report = await run();
+    expect(report).toMatchObject({ recipients: 4, processed: 4, errors: 0 });
+    expect(sentTotal(report)).toBe(MONDAY_NOTICES);
+
+    // The defaults, but no weekly summary: her Monday has not come yet.
+    expect(sentTo("hilo")).toEqual([
+      expect.objectContaining({ tag: "contas", title: "Luz vence amanhã" }),
+    ]);
+    expect((await noticesOf("hilo")).map((row) => row.dedupeKey)).toEqual([
+      "bills_due:2026-11-08",
+    ]);
+
+    expect(sentTo("fabi")).toEqual([
+      expect.objectContaining({
+        tag: "contas",
+        title: "4 contas vencem em breve",
+        body: "Hoje: Água. Amanhã: Gás. Em 2 dias: Escola. Em 3 dias: Seguro.",
+      }),
+    ]);
+
+    // Nobody's notice names someone else's bills.
+    const texts = (userId: string) =>
+      sentTo(userId)
+        .map((push) => `${push.title} ${push.body}`)
+        .join(" ");
+    expect(texts("ana")).not.toMatch(/Condomínio|Feira|Luz|Água/);
+    expect(texts("bruno")).not.toMatch(/Aluguel|Internet|Salário|Luz|Água/);
+    expect(texts("fabi")).not.toMatch(/Aluguel|Condomínio|Luz/);
+  });
+
+  it("sends each notice once when two runs overlap", async () => {
+    const [first, second] = await Promise.all([run(), run()]);
+    expect(sentTotal(first) + sentTotal(second)).toBe(MONDAY_NOTICES);
+    // What one run sent, the other found taken (or, for bills it read
+    // after the claim, already announced: nothing to send).
+    expect(
+      first.alreadySent +
+        second.alreadySent +
+        first.nothingToSend +
+        second.nothingToSend,
+    ).toBe(MONDAY_NOTICES);
+    expect(first.errors + second.errors).toBe(0);
+    expect(first.undelivered + second.undelivered).toBe(0);
+    expect(pushService.sent).toHaveLength(MONDAY_NOTICES);
+    const pairs = pushService.sent.map(
+      (push) => `${push.endpoint} ${String(push.body.tag)}`,
+    );
+    expect(new Set(pairs).size).toBe(MONDAY_NOTICES);
+  });
+
+  it("gives an undelivered notice back, and the next run sends it", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    pushService.status.set(endpointOf("bruno"), 500);
+    const failed = await run();
+    expect(failed).toMatchObject({ undelivered: 2, errors: 0 });
+    expect(sentTotal(failed)).toBe(MONDAY_NOTICES - 2);
+    expect(sentTo("bruno")).toEqual([]);
+    expect(await noticesOf("bruno")).toEqual([]);
+
+    pushService.status.clear();
+    const retried = await run();
+    expect(retried).toMatchObject({
+      undelivered: 0,
+      alreadySent: MONDAY_NOTICES - 2,
+      sent: { bills_due: 1, weekly_summary: 1 },
+    });
+    expect(sentTo("bruno").map((push) => push.tag)).toEqual([
+      "contas",
+      "resumo-semana",
+    ]);
+  });
+
+  it("forgets a device the push service no longer knows", async () => {
+    const { eq } = await import("drizzle-orm");
+    const gone = "https://fcm.googleapis.com/fcm/send/bruno-celular-antigo";
+    await m.db
+      .insert(m.schema.pushSubscriptions)
+      .values({ userId: "bruno", endpoint: gone, ...KEYS });
+    pushService.status.set(gone, 410);
+
+    const report = await run();
+    expect(report).toMatchObject({ devicesRemoved: 1, undelivered: 0 });
+    // The other device still got both.
+    expect(sentTo("bruno")).toHaveLength(2);
+    expect(
+      await m.db
+        .select({ id: m.schema.pushSubscriptions.id })
+        .from(m.schema.pushSubscriptions)
+        .where(eq(m.schema.pushSubscriptions.endpoint, gone)),
+    ).toEqual([]);
+  });
+
+  it("announces each bill once before the due date and once overdue", async () => {
+    const titles: Record<number, string[]> = {};
+    for (let day = 9; day <= 17; day += 1) {
+      pushService.sent = [];
+      await m.reminders.sendDailyReminders({
+        now: morningOf(day),
+        deadline: Date.now() + 60_000,
+      });
+      titles[day] = sentTo("fabi").map((push) => push.title);
+    }
+    expect(titles).toEqual({
+      9: ["4 contas vencem em breve"],
+      10: ["Água venceu ontem"],
+      11: ["Gás venceu ontem"],
+      12: ["Escola venceu ontem"],
+      13: ["Seguro venceu ontem"],
+      14: [],
+      15: [],
+      16: [],
+      17: [],
+    });
+
+    const keys = (await noticesOf("fabi")).flatMap((row) =>
+      row.payload.type === "bills_due" ? (row.payload.itemKeys ?? []) : [],
+    );
+    expect(keys).toHaveLength(FABI_BILLS.length * 2);
+    expect(new Set(keys).size).toBe(keys.length);
+    for (const [, dueOn] of FABI_BILLS) {
+      expect(keys.filter((key) => key.endsWith(`:${dueOn}`))).toHaveLength(1);
+      expect(
+        keys.filter((key) => key.endsWith(`:${dueOn}:vencida`)),
+      ).toHaveLength(1);
+    }
+  });
+
+  it("leaves whoever the deadline left out to the next run", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    const { sendReminders } = await import("./jobs/steps/send-reminders");
+
+    const aborted = new AbortController();
+    aborted.abort();
+    const late = await sendReminders.run({
+      signal: aborted.signal,
+      startedAt: NOW,
+    });
+    expect(late).toMatchObject({
+      status: "partial",
+      error: "4 people not reached before the deadline",
+      details: { recipients: 4, processed: 0, notReached: 4 },
+    });
+    expect(pushService.sent).toEqual([]);
+
+    const past = await m.reminders.sendDailyReminders({
+      now: NOW,
+      deadline: Date.now(),
+    });
+    expect(past).toMatchObject({ processed: 0, notReached: 4 });
+
+    const next = await sendReminders.run({
+      signal: new AbortController().signal,
+      startedAt: NOW,
+    });
+    expect(next).toMatchObject({
+      status: "ok",
+      details: { processed: 4, notReached: 0, alreadySent: 0 },
+    });
+    expect(pushService.sent).toHaveLength(MONDAY_NOTICES);
+  });
+
+  it("is skipped without the VAPID keys", async () => {
+    const { sendReminders } = await import("./jobs/steps/send-reminders");
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
+    try {
+      expect(
+        await sendReminders.run({
+          signal: new AbortController().signal,
+          startedAt: NOW,
+        }),
+      ).toEqual({
+        status: "skipped",
+        reason: "Chaves VAPID não configuradas.",
+      });
+    } finally {
+      process.env.VAPID_PRIVATE_KEY = privateKey;
+    }
+    expect(pushService.sent).toEqual([]);
+  });
+
+  it("records only counts in job_runs: no names, ids or amounts", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { eq } = await import("drizzle-orm");
+    const { runDailyJob } = await import("./jobs/daily");
+
+    const summary = await runDailyJob();
+    const step = summary.steps.find((entry) => entry.name === "sendReminders");
+    expect(step).toMatchObject({
+      status: "ok",
+      details: {
+        recipients: 4,
+        processed: 4,
+        sent: {
+          daily_summary: 1,
+          bills_due: 4,
+          income_countdown: 1,
+          weekly_summary: 2,
+          monthly_summary: 1,
+        },
+      },
+    });
+    expect(pushService.sent).toHaveLength(MONDAY_NOTICES);
+
+    const [row] = await m.db
+      .select({ report: m.schema.jobRuns.report })
+      .from(m.schema.jobRuns)
+      .where(eq(m.schema.jobRuns.id, summary.runId));
+    const stored = (
+      row?.report as { steps: { name: string; details?: unknown }[] }
+    ).steps.find((entry) => entry.name === "sendReminders");
+    expect(stored).toEqual(step);
+    // Every value in the step's details is a count.
+    const counts = (value: unknown): boolean =>
+      typeof value === "number" ||
+      (typeof value === "object" &&
+        value !== null &&
+        Object.values(value).every(counts));
+    expect(counts(stored?.details)).toBe(true);
+    const text = JSON.stringify(row?.report);
+    expect(text).not.toMatch(/R\$/);
+    for (const word of [
+      "ana",
+      "bruno",
+      "hilo",
+      "fabi",
+      "Aluguel",
+      "Condomínio",
+      "Salário",
+      "push.apple.com",
+    ]) {
+      expect(text).not.toContain(word);
+    }
+  });
+
+  it("counts the unread notices on the icon until the app is opened", async () => {
+    const { markNotificationsRead, countUnreadNotifications } = await import(
+      "./domain/push"
+    );
+    await run();
+    expect(sentTo("ana").map((push) => push.badge)).toEqual([1, 2, 3, 4, 5]);
+    expect(sentTo("bruno").map((push) => push.badge)).toEqual([1, 2]);
+
+    // Ana opens the app: hers go to zero, Bruno's stay.
+    await markNotificationsRead("ana");
+    expect(await countUnreadNotifications("ana")).toBe(0);
+    expect(await countUnreadNotifications("bruno")).toBe(2);
+
+    // Tuesday: the number starts over from what is new.
+    pushService.sent = [];
+    await m.reminders.sendDailyReminders({
+      now: morningOf(10),
+      deadline: Date.now() + 60_000,
+    });
+    expect(sentTo("ana").map((push) => [push.tag, push.badge])).toEqual([
+      ["resumo-dia", 1],
+      ["contas", 2],
+      ["receita", 3],
+    ]);
+    expect(sentTo("ana")[1]?.title).toBe("Internet venceu ontem");
   });
 });
