@@ -67,7 +67,7 @@
 | RF-11 | Simulador | Juros compostos com valor inicial, aporte mensal (com reajuste anual), taxa (a.m., a.a., % do CDI, IPCA+), prazo, IR regressivo, inflação; modos "quanto terei", "quanto investir", "em quanto tempo"; comparar até 3 cenários; salvar e compartilhar |
 | RF-12 | Relatórios | Visão geral (receitas × despesas, taxa de poupança), por categoria (com drill-down), fluxo de caixa com projeção, patrimônio líquido, calendário de gastos; regime de competência ou caixa; exportar CSV/PDF |
 | RF-13 | Importação | Upload de OFX/CSV, pré-visualização, deduplicação, categorização sugerida por regras aprendidas |
-| RF-14 | Notificações | Contas a vencer, fatura fechando, orçamento a 80%/100%, meta atingida — via Web Push (resumo por e-mail opcional, em fase posterior) |
+| RF-14 | Notificações | Via Web Push, uma vez por dia pelo cron: Resumo do dia, Contas a vencer, Próxima receita, Resumo semanal e Resumo mensal, cada um ligado ou desligado pela pessoa (05/11/2026). Depois: fatura fechando, orçamento a 80%/100%, meta atingida (resumo por e-mail opcional, em fase posterior) |
 | RF-15 | Insights | Cartões de observação automáticos (ex.: gasto atípico em uma categoria) |
 | RF-16 | Privacidade e dados | Modo discreto (oculta valores), exportar todos os dados (backup), apagar todos os dados (recomeçar do zero) |
 | RF-17 | Ajustes | Categorias (criar, editar, mesclar, reordenar), tema, dia de início do mês, notificações, segurança (passkeys, senha, sessões) |
@@ -373,6 +373,10 @@ create table user_settings (
   onboarding_done_at   timestamptz,
   home_layout          jsonb check (home_layout is null or jsonb_typeof(home_layout) = 'array'),
                        -- blocos do Início escolhidos (doc 02 §6.3): [{ id, visible }], sem o Saldo; null = padrão do app
+  notification_prefs   jsonb check (notification_prefs is null or jsonb_typeof(notification_prefs) = 'object'),
+                       -- avisos do cron (doc 02 §6.14): { events: { daily_summary, bills_due, income_countdown,
+                       -- weekly_summary, monthly_summary }, billsLeadDays: 0|1|3, showAmounts }; null = padrão;
+                       -- lido campo a campo (campo ausente ou inválido e evento novo ficam no padrão)
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
@@ -611,9 +615,12 @@ create table push_subscriptions (
 create table notifications (
   id          uuid primary key,
   user_id     text not null references "user"(id) on delete cascade,
-  type        text not null,           -- bill_due | invoice_closing | budget_80 | budget_100 | goal_reached | insight
-  dedupe_key  text not null,           -- ex.: 'bill_due:<txn_id>' (evita repetir)
-  payload     jsonb not null,
+  type        text not null,           -- avisos do cron: daily_summary | bills_due | income_countdown | weekly_summary
+                                       -- | monthly_summary; reservados: bill_due | invoice_closing | budget_80
+                                       -- | budget_100 | goal_reached | insight
+  dedupe_key  text not null,           -- '{tipo}:{data local}', ex.: 'weekly_summary:2026-11-09' (um por dia)
+  payload     jsonb not null,          -- o texto como foi enviado (título, corpo, link); bills_due guarda
+                                       -- itemKeys ('t:{id}:{vencimento}', 'f:{id}:{vencimento}', '…:vencida')
   read_at     timestamptz,
   created_at  timestamptz not null default now(),
   unique (user_id, dedupe_key)
@@ -965,10 +972,21 @@ export async function GET(req: Request) {
 | 2. `rollInvoices` | cria a fatura do próximo ciclo quando a atual fecha; marca fechadas | `unique (account_id, reference_month)` |
 | 3. `syncMarketRates` | busca CDI, Selic e IPCA no SGS/BCB; `upsert` em `market_rates`; `updateTag('rates')` | PK (`index`, `ref_date`) |
 | 4. `snapshotBalances` | no 1º dia do mês, grava saldo de fim de mês de cada conta | PK (`account_id`, `on_date`) |
-| 5. `sendReminders` | contas que vencem em ≤ 3 dias, fatura fechando em 2 dias, orçamento ≥ 80%/100%, meta atingida → Web Push (e o resumo semanal por e-mail, quando entrar) | `notifications.dedupe_key` |
-| 6. `purge` | apaga lançamentos com `deleted_at` > 30 dias, importações e blobs órfãos > 7 dias | naturalmente idempotente |
+| 5. `sendReminders` | os avisos ligados por cada pessoa (doc 02 §6.14) → Web Push: Resumo do dia, Contas a vencer, Próxima receita, Resumo semanal (segunda) e Resumo mensal (1º dia do mês financeiro) | `unique (user_id, dedupe_key)` com `'{tipo}:{data local}'`, reservado antes de enviar |
+| 6. `purge` | apaga lançamentos com `deleted_at` > 30 dias e avisos lidos há mais de 90 dias (importações e blobs órfãos > 7 dias, quando entrarem) | naturalmente idempotente |
 
 Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e retoma no dia seguinte, registrando no `job_runs`). Com poucas contas (uso pessoal ou familiar) o volume é pequeno; o orçamento de tempo é só uma proteção.
+
+**Avisos (`sendReminders`, 05/11/2026).** Implementado em `src/server/reminders.ts` (o passo em `src/server/jobs/steps/send-reminders.ts`):
+
+- **Quem recebe**: quem tem pelo menos um aparelho inscrito, a conta não bloqueada (`banned`), a flag `notificacoes_push` (`loadFlagsForUsers`, e o `sendPush` confere de novo) e pelo menos um aviso ligado em `user_settings.notification_prefs`. Sem as chaves VAPID, o passo fica `skipped`.
+- **Sem sessão**: cada pessoa ganha um `UserContext` novo (`getUserContext(id, { now: startedAt })`), com a data e o mês financeiro dela; as leituras do Início (`request-reads.ts`) usam esse contexto como chave. Só os aparelhos da própria pessoa recebem.
+- **Uma vez por dia**: para cada aviso, monta o texto (nada a dizer, nada enviado), reserva a linha em `notifications` (`INSERT … ON CONFLICT DO NOTHING`; sem linha, outra execução já enviou), envia e, se nenhum aparelho recebeu, apaga a reserva para a próxima execução tentar. Duas execuções ao mesmo tempo enviam cada aviso uma vez.
+- **Contas a vencer**: cada conta é avisada uma vez antes do vencimento (de hoje até a antecedência escolhida) e uma vez vencida (até 7 dias depois). As chaves avisadas ficam em `payload.itemKeys` dos últimos 14 dias.
+- **Lotes e prazo**: 4 pessoas por vez; nenhuma pessoa começa depois de 200 s do início do job. Quem ficou de fora conta como `notReached`, o passo termina `partial` e a execução seguinte completa.
+- **`job_runs` só com contagens**: `recipients`, `processed`, `notReached`, `sent` por aviso, `alreadySent`, `nothingToSend`, `undelivered`, `devicesRemoved`, `errors`. Nada de ids, nomes ou valores; erros nos logs só pelo `describeError`. O texto com valores fica só em `notifications.payload` da própria pessoa.
+- **Prévia** (administradores): Ajustes › Notificações › "Enviar prévia dos avisos" (`previewRemindersAction`: `adminAction`, a flag do administrador e 3 por minuto) envia os avisos ligados, com os dados de hoje, só para o aparelho que pediu. Ignora o dia do disparo e o que já foi enviado, e não grava nada.
+- **Plano Hobby**: um envio por dia, entre 06:00 e 06:59 de Brasília. Quem mora em outro fuso recebe no horário dele correspondente, com a data dele (às 06:15 de Brasília ainda é domingo no Havaí: sem o resumo semanal).
 
 ---
 
@@ -979,7 +997,7 @@ Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e 
 | **BCB — SGS** | taxas para simulador, metas e rendimento de contas | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/{n}?formato=json` — séries: **432** (meta Selic, % a.a.), **4389** (CDI anualizado base 252, % a.a.), **12** (CDI diário), **433** (IPCA mensal, %). Respostas com data `dd/MM/yyyy` e valor com ponto decimal em string. Cache no banco; o app nunca chama o BCB em tempo de requisição |
 | BCB — Focus (opcional) | expectativa de IPCA/Selic para cenários default | API Olinda de expectativas de mercado |
 | Resend (opcional, fase posterior) | resumo semanal e alertas por e-mail | domínio próprio com SPF/DKIM/DMARC; templates React Email. O login e a recuperação não dependem de e-mail |
-| **Web Push** | lembretes e o número no ícone do app | VAPID, com `web-push` (`aes128gcm`); no iOS funciona apenas com o PWA instalado na tela de início (iOS 16.4+), e a permissão só pode ser pedida num toque. O service worker (`public/sw.js`, sem cache offline por enquanto) mostra a notificação e põe no ícone o número de avisos não lidos (`notifications.read_at` nulo, Badging API); o app acerta o número a cada abertura. O servidor só envia para endpoints https dos serviços de push (Apple, Google, Mozilla, Microsoft); 404/410 apagam a inscrição. Um aparelho tem uma inscrição só: ela é de quem ativou por último, quem entra no aparelho a toma de quem estava antes, e sair da conta desliga as notificações dele. Atrás da flag `notificacoes_push` |
+| **Web Push** | lembretes e o número no ícone do app | VAPID, com `web-push` (`aes128gcm`); no iOS funciona apenas com o PWA instalado na tela de início (iOS 16.4+), e a permissão só pode ser pedida num toque. O service worker (`public/sw.js`, sem cache offline por enquanto) mostra a notificação e põe no ícone o número de avisos não lidos (`notifications.read_at` nulo, Badging API). Abrir o app marca os avisos da pessoa como lidos (`markNotificationsRead` em `syncPushDeviceAction`) e zera o número, até existir a central do sino (doc 02 §6.15). O servidor só envia para endpoints https dos serviços de push (Apple, Google, Mozilla, Microsoft); 404/410 apagam a inscrição. Um aparelho tem uma inscrição só: ela é de quem ativou por último, quem entra no aparelho a toma de quem estava antes, e sair da conta desliga as notificações dele. Atrás da flag `notificacoes_push` |
 | **Vercel Blob** | comprovantes e arquivos de importação | upload direto do navegador com token de curta duração; caminho com sufixo aleatório; download só via rota autenticada |
 | Open Finance (fase 4) | sincronização automática de contas | via agregador certificado (ex.: Pluggy, Belvo); webhooks em `/api/webhooks/*` |
 
@@ -1145,7 +1163,7 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 - **Efeito imediato**: sem cache entre requisições; a mudança vale na próxima tela que cada pessoa abrir.
 - **Painel**: Administração › Flags, com Padrão · Ligado · Desligado para todos e exceções por pessoa.
 - **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados e de Ajustes › Novidades, `/importar` responde com a página 404 e as três actions da importação recusam.
-- **Segunda flag**: `notificacoes_push` (desligada por padrão). Desligada, some de Ajustes e de Ajustes › Novidades, `/ajustes/notificacoes` responde com a página 404, as actions de ativar e de testar recusam e o servidor não envia push (desligar e sincronizar o aparelho funcionam sempre, §7).
+- **Segunda flag**: `notificacoes_push` (desligada por padrão). Desligada, some de Ajustes e de Ajustes › Novidades, `/ajustes/notificacoes` responde com a página 404, as actions de ativar, de testar, de salvar os avisos e de prévia recusam, e o servidor não envia push nem avisos do cron (desligar e sincronizar o aparelho funcionam sempre, §7). A escolha dos avisos fica guardada e volta se a flag for ligada de novo.
 - **Terceira flag**: `inicio_personalizavel` (desligada por padrão). Desligada, o Início fica no padrão do app (a página nem lê a escolha), o botão "Personalizar o Início" e a seção Início de Preferências somem, a dica e a novidade não aparecem e `saveHomeLayoutAction` recusa. A escolha salva continua guardada e volta se a flag for ligada de novo.
 - **Dicas e novidades**: uma dica ou novidade sobre uma funcionalidade atrás de flag declara `when: { flag }` (doc 02 §6.16) e só chega a quem tem a flag ligada, para nenhum balão ou link levar a uma tela recusada.
 

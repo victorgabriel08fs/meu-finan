@@ -16,7 +16,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - **Dados**: importar extrato OFX/CSV (sem duplicar) e exportar os lançamentos em CSV.
 - **Tema escuro por padrão**, com Claro e Sistema: a escolha fica salva na conta e vale em todos os aparelhos (troca rápida no Início e na barra lateral).
 - **Dicas e novidades**: balões que apontam o que fazer na primeira visita a cada tela (com "Pular dicas" e "Não mostrar mais") e uma lista do que chegou ao app, com aviso de não lidas; em Preferências, ligar, desligar e "Rever dicas".
-- **Notificações** (atrás da flag `notificacoes_push`, desligada por padrão): ativar por aparelho em Ajustes › Notificações, com notificação de teste e o número de avisos não lidos no ícone do app. No iPhone, só no app da Tela de Início (iOS 16.4+). Os lembretes de contas, faturas, orçamentos e metas chegam nas próximas etapas.
+- **Notificações** (atrás da flag `notificacoes_push`, desligada por padrão): ativar por aparelho em Ajustes › Notificações, com notificação de teste e o número de avisos não lidos no ícone do app (zera ao abrir o app). No iPhone, só no app da Tela de Início (iOS 16.4+). **Avisos** todo dia entre 6h e 7h, cada um ligado ou desligado pela pessoa: Resumo do dia, Contas a vencer (no dia, 1 ou 3 dias antes, e as vencidas sem pagar), Próxima receita (nos 7 dias antes, com quanto dá para gastar por dia), Resumo semanal (segunda) e Resumo mensal (no 1º dia do mês financeiro). Valores na tela bloqueada só com "Mostrar valores nas notificações" (desligado por padrão). Administradores enviam uma prévia dos avisos ao próprio aparelho. Fatura fechando, orçamento 80%/100% e meta atingida chegam depois.
 - **Ajustes**: passkeys, senha e sessões; aparência, início do mês e dicas de uso; categorias; onboarding em 4 passos.
 - **Administração** (só administradores): convidar pessoas por link, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; feature flags para todos ou por pessoa; atividade (auditoria).
 
@@ -132,12 +132,15 @@ As notificações usam Web Push, sem app de loja. No iPhone e no iPad elas só e
 3. Em **Administração › Flags**, ligue `notificacoes_push` para você (ou para todos).
 4. No iPhone, abra o app no Safari, toque em **Compartilhar › Adicionar à Tela de Início** e abra o Meu Finan pelo ícone.
 5. Em **Ajustes › Notificações**, ligue "Receber notificações", permita e toque em "Enviar notificação de teste". O número no ícone some quando você abre o app.
+6. Em **Avisos**, escolha o que receber (o padrão liga Contas a vencer, Resumo semanal e Resumo mensal) e, em **Privacidade**, se os valores aparecem na tela bloqueada. Como administrador, "Enviar prévia dos avisos" mostra na hora, neste aparelho, como eles chegam com os dados de hoje.
 
-Cada aparelho ativa as suas. Ao sair da conta num aparelho, as notificações dele são desligadas; trocar o par de chaves obriga todos a ativar de novo.
+Cada aparelho ativa as suas. Ao sair da conta num aparelho, as notificações dele são desligadas; trocar o par de chaves obriga todos a ativar de novo. Os avisos são da pessoa: valem para todos os aparelhos dela que recebem notificações.
+
+Para os avisos chegarem sozinhos, a Vercel precisa ter, no deploy de **produção**: `CRON_SECRET` (o cron diário, abaixo), `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` (sem elas o passo `sendReminders` é pulado) e a flag `notificacoes_push` ligada para quem vai receber. No plano Hobby, o cron roda uma vez por dia: todos os avisos chegam entre 06:00 e 06:59 de Brasília, sem horário configurável. Cada aviso sai no máximo uma vez por dia por pessoa (rodar o cron de novo à mão só envia o que faltou).
 
 ## Feature flags
 
-Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações e a novidade delas; desligada, a entrada e a novidade somem e o servidor não envia nem aceita inscrições. `inicio_personalizavel` (desligada por padrão) libera "Personalizar o Início", a dica em Preferências e a novidade; desligada, o Início fica no padrão do app, o botão e a seção somem e o servidor recusa salvar (a escolha já salva fica guardada). A demo liga as duas últimas só para a Ana.
+Funcionalidades podem ser ligadas e desligadas sem deploy, para todo mundo ou só para algumas pessoas, em **Administração › Flags** (Padrão · Ligado · Desligado). Vale o valor da pessoa; sem ele, o valor para todos; sem ele, o padrão do código. A mudança vale na próxima tela que cada pessoa abrir. A primeira flag é `importar_extrato` (ligada por padrão): desligada, a importação some de Ajustes e de Novidades e o servidor recusa `/importar` e as actions dela. `notificacoes_push` (desligada por padrão) libera Ajustes › Notificações, os avisos do cron e as novidades delas; desligada, a entrada e as novidades somem e o servidor não envia push nem avisos, não aceita inscrições e recusa salvar os avisos (a escolha já salva fica guardada). `inicio_personalizavel` (desligada por padrão) libera "Personalizar o Início", a dica em Preferências e a novidade; desligada, o Início fica no padrão do app, o botão e a seção somem e o servidor recusa salvar (a escolha já salva fica guardada). A demo liga as duas últimas só para a Ana.
 
 ### Como adicionar uma flag
 
@@ -166,8 +169,8 @@ A rota só aceita `Authorization: Bearer <CRON_SECRET>`, com comparação em tem
 | `rollInvoices` | Fechamento e abertura de faturas (fase F2; por enquanto, pulado) |
 | `syncMarketRates` | Busca CDI (SGS 4389), Selic (SGS 432) e IPCA (SGS 433) na API do Banco Central e atualiza `market_rates` |
 | `snapshotBalances` | Saldo de fim de mês para o patrimônio (fase F3; por enquanto, pulado) |
-| `sendReminders` | Lembretes por push e e-mail (fase F3; por enquanto, pulado) |
-| `purgeDeleted` | Apaga de vez os lançamentos excluídos há mais de 30 dias |
+| `sendReminders` | Envia por push os avisos que cada pessoa ligou (Resumo do dia, Contas a vencer, Próxima receita, Resumo semanal, Resumo mensal), uma vez por dia cada. Precisa das chaves VAPID (sem elas, pulado) e da flag `notificacoes_push`. No `job_runs`, só contagens: enviados por aviso, já enviados, nada a dizer, não entregues, aparelhos removidos, erros e quem ficou para a próxima execução (prazo de 200 s) |
+| `purgeDeleted` | Apaga de vez os lançamentos excluídos há mais de 30 dias e os avisos lidos há mais de 90 dias |
 
 Para rodar na hora (por exemplo, para carregar os índices logo após o primeiro deploy):
 
@@ -261,7 +264,7 @@ meu-finan/
 - [`docs/01-system-design.md`](docs/01-system-design.md): requisitos, arquitetura, modelo de dados, API, cache, jobs, segurança e CI/CD.
 - [`docs/02-frontend-design.md`](docs/02-frontend-design.md): design tokens, navegação, componentes, telas, microcopy, acessibilidade e PWA.
 - [`docs/03-motor-financeiro.md`](docs/03-motor-financeiro.md): fórmulas e algoritmos (juros compostos, CDI, IPCA+, IR regressivo, faturas, parcelamento, orçamento).
-- [`docs/tarefas.md`](docs/tarefas.md): o que falta fazer, em ordem de prioridade (próxima: novos eventos de notificação no cron diário).
+- [`docs/tarefas.md`](docs/tarefas.md): o que falta fazer, em ordem de prioridade (próxima: melhorias do Extrato).
 
 O desenvolvimento passa por quatro agentes do Claude Code, definidos em [`.claude/agents/`](.claude/agents/): `arquiteto` (planeja), `dev` (implementa), `qa-ui-ux` (revisa as telas no navegador contra o doc 02) e `testador-documentador-versionador` (testa, documenta e commita em etapas). O fluxo está no [`CLAUDE.md`](CLAUDE.md).
 
