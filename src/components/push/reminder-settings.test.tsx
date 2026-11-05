@@ -4,6 +4,7 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   type NotificationPreferences,
 } from "@/lib/notifications/preferences";
+import { previewMessage } from "./push-settings";
 import {
   devicesNote,
   persistNotificationPreferences,
@@ -17,8 +18,13 @@ const mocks = vi.hoisted(() => ({
 // Server Actions are not available outside Next.
 vi.mock("@/server/actions/notifications", () => ({
   saveNotificationPreferencesAction: mocks.save,
+  previewRemindersAction: vi.fn(),
 }));
+vi.mock("@/server/actions/push", () => ({}));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -160,5 +166,15 @@ describe("persistNotificationPreferences", () => {
       "Não conseguimos salvar. Verifique a conexão.",
       { action: { label: "Tentar de novo", onClick: retry } },
     );
+  });
+});
+
+describe("previewMessage", () => {
+  it("counts the previews sent", () => {
+    expect(previewMessage(0)).toBe(
+      "Nada para mostrar hoje nos avisos ligados.",
+    );
+    expect(previewMessage(1)).toBe("Enviamos 1 prévia para este aparelho.");
+    expect(previewMessage(3)).toBe("Enviamos 3 prévias para este aparelho.");
   });
 });

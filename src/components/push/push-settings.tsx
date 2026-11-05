@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LoaderCircle, Send } from "lucide-react";
+import { Bell, BellRing, LoaderCircle, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import {
   NETWORK_ERROR,
 } from "@/components/transactions/action-result";
 import type { PushSubscriptionInput } from "@/lib/push/subscription";
+import { previewRemindersAction } from "@/server/actions/notifications";
 import {
   sendTestPushAction,
   subscribePushAction,
@@ -27,6 +28,8 @@ import {
 
 const iconClass =
   "flex size-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-5";
+const actionRowClass =
+  "flex min-h-16 w-full items-center gap-3 border-t border-border px-4 py-2 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2 disabled:cursor-progress";
 
 /** Why the switch cannot be used here, in the person's words. */
 const BLOCKED: Record<Exclude<PushSupport, "ready">, string> = {
@@ -39,6 +42,14 @@ const BLOCKED: Record<Exclude<PushSupport, "ready">, string> = {
 };
 
 type DeviceState = "checking" | "on" | "off";
+
+/** The toast after "Enviar prévia dos avisos". */
+export function previewMessage(sent: number): string {
+  if (sent === 0) return "Nada para mostrar hoje nos avisos ligados.";
+  return sent === 1
+    ? "Enviamos 1 prévia para este aparelho."
+    : `Enviamos ${sent} prévias para este aparelho.`;
+}
 
 /**
  * Ajustes › Notificações › Neste aparelho: the switch that asks for
@@ -58,7 +69,7 @@ export function PushSettings({
   const [support, setSupport] = useState<PushSupport | null>(null);
   const [state, setState] = useState<DeviceState>("checking");
   const router = useRouter();
-  const [busy, setBusy] = useState<"toggle" | "test" | null>(null);
+  const [busy, setBusy] = useState<"toggle" | "test" | "preview" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +167,27 @@ export function PushSettings({
     }
   }
 
+  async function sendPreview() {
+    setBusy("preview");
+    try {
+      const subscription = await currentSubscription();
+      if (!subscription) {
+        setState("off");
+        return;
+      }
+      const result = await previewRemindersAction({
+        endpoint: subscription.endpoint,
+      });
+      const error = actionErrorMessage(result);
+      if (error) toast.error(error);
+      else toast(previewMessage(result?.data?.sent ?? 0));
+    } catch {
+      toast.error(NETWORK_ERROR);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const blocked = support && support !== "ready" ? BLOCKED[support] : null;
   // Null, not false, when configured: `??` only falls back on null.
   const unconfigured = publicKey
@@ -212,7 +244,7 @@ export function PushSettings({
             aria-busy={busy === "test" || undefined}
             disabled={busy !== null}
             onClick={() => void sendTest()}
-            className="flex min-h-16 w-full items-center gap-3 border-t border-border px-4 py-2 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2 disabled:cursor-progress"
+            className={actionRowClass}
           >
             <span aria-hidden="true" className={iconClass}>
               <Send />
@@ -226,6 +258,33 @@ export function PushSettings({
               </span>
             </span>
             {busy === "test" ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-5 shrink-0 animate-spin text-fg-3"
+              />
+            ) : null}
+          </button>
+        ) : null}
+        {on && support === "ready" && isAdmin ? (
+          <button
+            type="button"
+            aria-busy={busy === "preview" || undefined}
+            disabled={busy !== null}
+            onClick={() => void sendPreview()}
+            className={actionRowClass}
+          >
+            <span aria-hidden="true" className={iconClass}>
+              <BellRing />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-body font-semibold text-fg">
+                Enviar prévia dos avisos
+              </span>
+              <span className="text-caption text-fg-3">
+                Os avisos ligados, com os dados de hoje, só neste aparelho.
+              </span>
+            </span>
+            {busy === "preview" ? (
               <LoaderCircle
                 aria-hidden="true"
                 className="size-5 shrink-0 animate-spin text-fg-3"

@@ -9,6 +9,7 @@
 // The report carries counts only: no ids, names or amounts.
 import "server-only";
 import { statementHref } from "@/components/transactions/statement-params";
+import { addDays, dayOfWeek } from "@/lib/finance";
 import type { ReminderEvent } from "@/lib/notifications/events";
 import {
   billsDueMessage,
@@ -27,6 +28,7 @@ import {
   isMonthlySummaryDay,
   isWeeklySummaryDay,
   NOTIFIED_BILLS_LOOKBACK_DAYS,
+  previousWeek,
   selectBillReminders,
 } from "@/lib/notifications/schedule";
 import { getUserContext, type UserContext } from "@/server/domain/context";
@@ -38,6 +40,7 @@ import {
   reminderDedupeKey,
   todaysReminderKeys,
 } from "@/server/domain/notifications";
+import { getNotificationPreferences } from "@/server/domain/preferences";
 import {
   listReminderRecipients,
   loadBillCandidates,
@@ -109,13 +112,17 @@ async function billsReminder(
   preferences: NotificationPreferences,
   options: MessageOptions,
   now: Date,
+  preview: boolean,
 ): Promise<Reminder | null> {
   const [items, notifiedKeys] = await Promise.all([
     loadBillCandidates(ctx),
-    recentBillKeys(
-      ctx.userId,
-      new Date(now.getTime() - NOTIFIED_BILLS_LOOKBACK_DAYS * DAY_MS),
-    ),
+    // The preview shows every bill in the window, announced or not.
+    preview
+      ? new Set<string>()
+      : recentBillKeys(
+          ctx.userId,
+          new Date(now.getTime() - NOTIFIED_BILLS_LOOKBACK_DAYS * DAY_MS),
+        ),
   ]);
   const selected = selectBillReminders(items, {
     todayIso: ctx.todayIso,
@@ -145,12 +152,26 @@ async function billsReminder(
   };
 }
 
-/** The notice of one event for today, or null when there is nothing to say. */
+/** Days ahead the preview looks for an income. */
+const PREVIEW_INCOME_HORIZON_DAYS = 60;
+
+/** Monday to Sunday of the week before this one (any weekday). */
+function lastFullWeek(ctx: UserContext): { start: string; end: string } {
+  const monday = addDays(ctx.today, -((dayOfWeek(ctx.today) + 6) % 7));
+  return previousWeek(monday);
+}
+
+/**
+ * The notice of one event for today, or null when there is nothing to say.
+ * The preview ignores the bills already announced, takes the last full
+ * week and looks further ahead for an income.
+ */
 async function buildReminder(
   ctx: UserContext,
   event: ReminderEvent,
   preferences: NotificationPreferences,
   now: Date,
+  preview = false,
 ): Promise<Reminder | null> {
   const options = {
     showAmounts: preferences.showAmounts,
@@ -162,14 +183,20 @@ async function buildReminder(
       return message && { ...message, url: "/inicio" };
     }
     case "bills_due":
-      return billsReminder(ctx, preferences, options, now);
+      return billsReminder(ctx, preferences, options, now, preview);
     case "income_countdown": {
-      const input = await loadIncomeCountdown(ctx);
+      const input = await loadIncomeCountdown(
+        ctx,
+        preview ? PREVIEW_INCOME_HORIZON_DAYS : undefined,
+      );
       const message = input && incomeCountdownMessage(input, options);
       return message && { ...message, url: "/inicio" };
     }
     case "weekly_summary": {
-      const input = await loadWeeklySummary(ctx);
+      const input = await loadWeeklySummary(
+        ctx,
+        preview ? lastFullWeek(ctx) : undefined,
+      );
       const message = weeklySummaryMessage(input, options);
       return (
         message && {
@@ -346,4 +373,50 @@ export async function sendDailyReminders({
     );
   }
   return report;
+}
+
+export type PreviewOutcome = {
+  /** Notices with something to say among the ones left on. */
+  built: number;
+  /** Of those, how many the device accepted. */
+  sent: number;
+  /** The device was gone (and is now forgotten). */
+  removed: boolean;
+};
+
+/**
+ * "Enviar prévia dos avisos" (administrators): every notice the person left
+ * on, with today's data, whatever the day (see buildReminder), sent only to
+ * this device of theirs. Nothing is recorded, so the day's real notices
+ * still go out.
+ */
+export async function previewReminders(
+  userId: string,
+  endpoint: string,
+  now: Date = new Date(),
+): Promise<PreviewOutcome> {
+  const [ctx, preferences] = await Promise.all([
+    getUserContext(userId, { now: now.getTime() }),
+    getNotificationPreferences(userId),
+  ]);
+  const outcome: PreviewOutcome = { built: 0, sent: 0, removed: false };
+  for (const event of enabledReminderEvents(preferences)) {
+    const reminder = await buildReminder(ctx, event, preferences, now, true);
+    if (!reminder) continue;
+    outcome.built += 1;
+    if (outcome.removed) continue;
+    const pushed = await sendPush(
+      userId,
+      {
+        title: reminder.title,
+        body: reminder.body,
+        url: reminder.url,
+        tag: `previa-${event}`,
+      },
+      { endpoint, ttlSeconds: 60 },
+    );
+    outcome.sent += pushed.sent;
+    outcome.removed = pushed.removed > 0;
+  }
+  return outcome;
 }

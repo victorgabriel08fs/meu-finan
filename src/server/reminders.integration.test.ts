@@ -5,6 +5,16 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+// The signed-in administrator for the preview, normally from the session.
+const signedIn = vi.hoisted(() => ({
+  admin: null as null | { id: string; name: string; role: string },
+}));
+vi.mock("@/server/dal", () => ({
+  requireUser: async () => null,
+  getAdmin: async () => signedIn.admin,
+  getSession: async () => null,
+}));
 // The push service: records what would be sent.
 const pushService = vi.hoisted(() => ({
   sent: [] as { endpoint: string; body: Record<string, unknown> }[],
@@ -315,5 +325,73 @@ describe("sendDailyReminders", () => {
       .from(m.schema.notifications);
     expect(rows).toHaveLength(7);
     expect(rows.map((row) => row.dedupeKey)).toContain("bills_due:2026-11-09");
+  });
+});
+
+describe("preview (administrators)", () => {
+  const notices = () =>
+    m.db.select({ id: m.schema.notifications.id }).from(m.schema.notifications);
+
+  it("sends every notice left on to that device only, and records nothing", async () => {
+    await m.db.insert(m.schema.pushSubscriptions).values({
+      userId: "ana",
+      endpoint: "https://fcm.googleapis.com/fcm/send/ana-notebook",
+      ...KEYS,
+    });
+    const before = (await notices()).length;
+    const outcome = await m.reminders.previewReminders(
+      "ana",
+      endpointOf("ana"),
+      NOW,
+    );
+    expect(outcome).toEqual({ built: 5, sent: 5, removed: false });
+    expect(pushService.sent.map((push) => push.endpoint)).toEqual(
+      Array(5).fill(endpointOf("ana")),
+    );
+    expect(sentTo("ana").map((push) => push.tag)).toEqual([
+      "previa-daily_summary",
+      "previa-bills_due",
+      "previa-income_countdown",
+      "previa-weekly_summary",
+      "previa-monthly_summary",
+    ]);
+    expect((await notices()).length).toBe(before);
+  });
+
+  it("never reaches someone else's device", async () => {
+    const outcome = await m.reminders.previewReminders(
+      "ana",
+      endpointOf("bruno"),
+      NOW,
+    );
+    expect(outcome.sent).toBe(0);
+    expect(pushService.sent).toEqual([]);
+  });
+
+  it("is only for administrators, a few times a minute", async () => {
+    const { previewRemindersAction } = await import("./actions/notifications");
+    signedIn.admin = null;
+    const refused = await previewRemindersAction({
+      endpoint: endpointOf("bruno"),
+    });
+    expect(refused.serverError).toBeDefined();
+    expect(pushService.sent).toEqual([]);
+
+    signedIn.admin = { id: "ana", name: "Ana", role: "admin" };
+    const first = await previewRemindersAction({ endpoint: endpointOf("ana") });
+    // The action reads the real clock: how many depends on the day.
+    expect(first.data?.sent).toBeGreaterThan(0);
+    expect(
+      pushService.sent.every((push) => push.endpoint === endpointOf("ana")),
+    ).toBe(true);
+    await previewRemindersAction({ endpoint: endpointOf("ana") });
+    await previewRemindersAction({ endpoint: endpointOf("ana") });
+    const fourth = await previewRemindersAction({
+      endpoint: endpointOf("ana"),
+    });
+    expect(fourth.serverError).toBe(
+      "Você já enviou algumas prévias. Espere um minuto e tente de novo.",
+    );
+    signedIn.admin = null;
   });
 });
