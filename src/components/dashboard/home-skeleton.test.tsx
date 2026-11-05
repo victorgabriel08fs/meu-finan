@@ -32,4 +32,18 @@ describe("HomeBlockSkeleton", () => {
     // 36 + 216 = 252px, the block's measured height.
     expect(render("upcoming-bills")).toContain("h-54 rounded-card");
   });
+
+  it("measures the tiles and the budget by the block's width, not the screen's", () => {
+    for (const id of ["month-totals", "budget"] as const) {
+      const html = render(id);
+      expect(html, id).toMatch(/^<div class="@container">/);
+      expect(html, id).toContain("@sm:");
+      expect(html, id).not.toContain("min-[26.25rem]");
+      expect(html, id).not.toContain("xl:");
+    }
+    expect(
+      render("month-totals").match(/h-37 rounded-card @sm:h-32.5/g),
+    ).toHaveLength(2);
+    expect(render("budget")).toContain("h-99.75 rounded-card @sm:h-94.75");
+  });
 });

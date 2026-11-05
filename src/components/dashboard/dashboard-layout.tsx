@@ -197,7 +197,8 @@ export function HomeBlockFrame({
   );
 }
 
-const TILE_SKELETON = "h-37 rounded-card min-[26.25rem]:h-32.5 xl:h-37";
+/** In an @container around the tiles: their support text wraps a line more when narrow. */
+const TILE_SKELETON = "h-37 rounded-card @sm:h-32.5";
 
 /** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
 function SectionSkeleton({ children }: { children: ReactNode }) {
@@ -215,20 +216,25 @@ function SectionSkeleton({ children }: { children: ReactNode }) {
 export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
   switch (id) {
     // Heights measured in the app (Ana of the demo, 360 to 1280px). Narrow
-    // columns (phones under 420px, the xl columns) wrap a line more in the
-    // tiles' support text and in the budget.
+    // blocks (under 24rem: small phones, the xl columns) wrap a line more in
+    // the tiles' support text and in the budget: measured by the block's own
+    // width (an @container inside the skeleton), not the screen's.
     case "balance":
       return <Skeleton className="h-61.25 rounded-card" />;
     case "month-totals":
       return (
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className={TILE_SKELETON} />
-          <Skeleton className={TILE_SKELETON} />
+        <div className="@container">
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className={TILE_SKELETON} />
+            <Skeleton className={TILE_SKELETON} />
+          </div>
         </div>
       );
     case "budget":
       return (
-        <Skeleton className="h-99.75 rounded-card min-[26.25rem]:h-94.75 xl:h-99.75" />
+        <div className="@container">
+          <Skeleton className="h-99.75 rounded-card @sm:h-94.75" />
+        </div>
       );
     case "upcoming-bills":
       return (
