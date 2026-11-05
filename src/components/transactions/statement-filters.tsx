@@ -1,11 +1,12 @@
 "use client";
 
 import { Check, ChevronDown, X } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import { cn } from "@/lib/utils";
-import type { KindParam } from "./statement-params";
+import { categoryTree, type KindParam } from "./statement-params";
 import { useStatementFilters } from "./use-statement-filters";
 
 export type FilterAccount = {
@@ -33,6 +34,11 @@ const KIND_OPTIONS: { value: KindParam; label: string }[] = [
 ];
 
 type SheetName = "conta" | "categoria" | "tipo";
+type FilterPatch = {
+  conta?: string | null;
+  categoria?: string | null;
+  tipo?: KindParam | null;
+};
 
 /**
  * Filter chips of the statement (doc 02 §5.12, §6.4): Conta, Categoria, Tipo
@@ -48,24 +54,44 @@ export function StatementFilterBar({
 }) {
   const { filters, setFilters, isPending } = useStatementFilters();
   const [sheet, setSheet] = useState<SheetName | null>(null);
-  const [lastSheet, setLastSheet] = useState<SheetName>("conta");
 
-  const account = accounts.find((item) => item.id === filters.conta);
-  const category = categories.find((item) => item.id === filters.categoria);
-  const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
-  const anyActive = Boolean(
-    filters.conta || filters.categoria || filters.tipo || filters.status,
+  // The server ignores ids that are not the person's own (or malformed), so
+  // a chip is on only for a value found in its list.
+  const account = accounts.find(
+    (item) => item.id === filters.conta?.toLowerCase(),
   );
+  const category = categories.find(
+    (item) => item.id === filters.categoria?.toLowerCase(),
+  );
+  const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
+  const anyActive = Boolean(account || category || kind || filters.status);
 
-  function open(name: SheetName) {
-    setLastSheet(name);
-    setSheet(name);
+  // Each list has a sheet of its own, and a sheet closes only itself: a tap
+  // on the next chip while the previous sheet still slides out reaches that
+  // sheet as a tap outside (on touch, Radix acts on the click that follows),
+  // which would close the new one if they shared a Dialog.
+  function close(name: SheetName) {
+    setSheet((current) => (current === name ? null : current));
   }
 
-  function choose(patch: Parameters<typeof setFilters>[0]) {
-    void setFilters(patch);
+  // A choice closes the sheet first and changes the URL once the sheet's
+  // history entry is gone: pushed earlier, the sheet's step back would undo
+  // it (useBackToClose). Choosing what is already on only closes the sheet:
+  // nuqs would push the same URL again, and Back would seem to do nothing.
+  const chosen = useRef<FilterPatch | null>(null);
+  function choose(patch: FilterPatch) {
+    const keys = Object.keys(patch) as (keyof FilterPatch)[];
+    if (keys.some((key) => patch[key] !== filters[key])) {
+      chosen.current = patch;
+    }
     setSheet(null);
   }
+  useEffect(() => {
+    const patch = chosen.current;
+    if (sheet !== null || patch === null) return;
+    chosen.current = null;
+    afterSheetsClose(() => void setFilters(patch));
+  }, [sheet, setFilters]);
 
   return (
     <fieldset
@@ -75,23 +101,23 @@ export function StatementFilterBar({
       <legend className="sr-only">Filtros</legend>
       <FilterChip
         label="Conta"
-        value={filters.conta ? (account?.name ?? "Conta") : null}
+        value={account?.name ?? null}
         placeholder="Contas"
-        onOpen={() => open("conta")}
+        onOpen={() => setSheet("conta")}
         onClear={() => void setFilters({ conta: null })}
       />
       <FilterChip
         label="Categoria"
-        value={filters.categoria ? (category?.name ?? "Categoria") : null}
+        value={category?.name ?? null}
         placeholder="Categorias"
-        onOpen={() => open("categoria")}
+        onOpen={() => setSheet("categoria")}
         onClear={() => void setFilters({ categoria: null })}
       />
       <FilterChip
         label="Tipo"
         value={kind?.label ?? null}
         placeholder="Tipo"
-        onOpen={() => open("tipo")}
+        onOpen={() => setSheet("tipo")}
         onClear={() => void setFilters({ tipo: null })}
       />
       <ToggleChip
@@ -112,112 +138,129 @@ export function StatementFilterBar({
       {anyActive ? (
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
             void setFilters({
               conta: null,
               categoria: null,
               tipo: null,
               status: null,
-            })
-          }
+            });
+            focusFirstFilterChip();
+          }}
           className="inline-flex h-9 shrink-0 items-center rounded-full px-3 text-callout font-bold text-primary hover:bg-primary-soft/60"
         >
           Limpar
         </button>
       ) : null}
 
-      <Sheet
-        open={sheet !== null}
-        onOpenChange={(next) => {
-          if (!next) setSheet(null);
-        }}
+      <ChoiceSheet
+        title="Filtrar por conta"
+        open={sheet === "conta"}
+        onClose={() => close("conta")}
       >
-        <SheetContent
-          title={
-            lastSheet === "conta"
-              ? "Filtrar por conta"
-              : lastSheet === "categoria"
-                ? "Filtrar por categoria"
-                : "Filtrar por tipo"
+        <OptionList
+          selected={account?.id ?? null}
+          allLabel="Todas as contas"
+          onSelect={(id) => choose({ conta: id })}
+          groups={[
+            {
+              title: null,
+              options: accounts.map((item) => ({
+                id: item.id,
+                label: item.name,
+                detail: item.archived
+                  ? `${item.typeLabel} · arquivada`
+                  : item.typeLabel,
+                icon: (
+                  <CategoryIcon
+                    icon={item.icon}
+                    color={item.color}
+                    shape="square"
+                    size="sm"
+                    className="rounded-chip"
+                  />
+                ),
+              })),
+            },
+          ]}
+        />
+      </ChoiceSheet>
+      <ChoiceSheet
+        title="Filtrar por categoria"
+        open={sheet === "categoria"}
+        onClose={() => close("categoria")}
+      >
+        <OptionList
+          selected={category?.id ?? null}
+          allLabel="Todas as categorias"
+          onSelect={(id) => choose({ categoria: id })}
+          groups={(["expense", "income"] as const).map((group) => ({
+            title: group === "expense" ? "Despesas" : "Receitas",
+            options: categoryTree(categories)
+              .filter((item) => item.kind === group)
+              .map((item) => ({
+                id: item.id,
+                label: categoryLabel(item, categories),
+                detail: null,
+                icon: (
+                  <CategoryIcon icon={item.icon} color={item.color} size="sm" />
+                ),
+              })),
+          }))}
+        />
+      </ChoiceSheet>
+      <ChoiceSheet
+        title="Filtrar por tipo"
+        open={sheet === "tipo"}
+        onClose={() => close("tipo")}
+      >
+        <OptionList
+          selected={kind?.value ?? null}
+          allLabel="Todos os tipos"
+          onSelect={(value) =>
+            choose({
+              tipo:
+                KIND_OPTIONS.find((item) => item.value === value)?.value ??
+                null,
+            })
           }
-        >
-          {lastSheet === "conta" ? (
-            <OptionList
-              selected={filters.conta}
-              allLabel="Todas as contas"
-              onSelect={(id) => choose({ conta: id })}
-              groups={[
-                {
-                  title: null,
-                  options: accounts.map((item) => ({
-                    id: item.id,
-                    label: item.name,
-                    detail: item.archived
-                      ? `${item.typeLabel} · arquivada`
-                      : item.typeLabel,
-                    icon: (
-                      <CategoryIcon
-                        icon={item.icon}
-                        color={item.color}
-                        shape="square"
-                        size="sm"
-                        className="rounded-chip"
-                      />
-                    ),
-                  })),
-                },
-              ]}
-            />
-          ) : lastSheet === "categoria" ? (
-            <OptionList
-              selected={filters.categoria}
-              allLabel="Todas as categorias"
-              onSelect={(id) => choose({ categoria: id })}
-              groups={(["expense", "income"] as const).map((group) => ({
-                title: group === "expense" ? "Despesas" : "Receitas",
-                options: categories
-                  .filter((item) => item.kind === group)
-                  .map((item) => ({
-                    id: item.id,
-                    label: item.name,
-                    detail: null,
-                    icon: (
-                      <CategoryIcon
-                        icon={item.icon}
-                        color={item.color}
-                        size="sm"
-                      />
-                    ),
-                  })),
-              }))}
-            />
-          ) : (
-            <OptionList
-              selected={filters.tipo}
-              allLabel="Todos os tipos"
-              onSelect={(value) =>
-                choose({
-                  tipo:
-                    KIND_OPTIONS.find((item) => item.value === value)?.value ??
-                    null,
-                })
-              }
-              groups={[
-                {
-                  title: null,
-                  options: KIND_OPTIONS.map((item) => ({
-                    id: item.value,
-                    label: item.label,
-                    detail: null,
-                    icon: null,
-                  })),
-                },
-              ]}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+          groups={[
+            {
+              title: null,
+              options: KIND_OPTIONS.map((item) => ({
+                id: item.value,
+                label: item.label,
+                detail: null,
+                icon: null,
+              })),
+            },
+          ]}
+        />
+      </ChoiceSheet>
     </fieldset>
+  );
+}
+
+function ChoiceSheet({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <SheetContent title={title}>{children}</SheetContent>
+    </Sheet>
   );
 }
 
@@ -235,6 +278,7 @@ function FilterChip({
   onClear: () => void;
 }) {
   const active = value !== null;
+  const main = useRef<HTMLButtonElement>(null);
   return (
     <div
       className={cn(
@@ -245,8 +289,10 @@ function FilterChip({
       )}
     >
       <button
+        ref={main}
         type="button"
         aria-haspopup="dialog"
+        data-filter-chip=""
         onClick={onOpen}
         className={cn(
           "relative inline-flex h-full min-w-0 items-center gap-1.5 rounded-full after:absolute after:inset-x-0 after:-inset-y-1",
@@ -263,7 +309,11 @@ function FilterChip({
         <button
           type="button"
           aria-label={`Limpar filtro de ${label.toLowerCase()}`}
-          onClick={onClear}
+          onClick={() => {
+            onClear();
+            // The "×" leaves with the filter: the focus stays on the chip.
+            focusWhenReady(() => main.current);
+          }}
           className="relative mr-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-primary/10 after:absolute after:-inset-1"
         >
           <X aria-hidden="true" className="size-4" />
@@ -271,6 +321,25 @@ function FilterChip({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Clearing a filter removes the button that had the focus, which would fall
+ * to the body (WCAG 2.4.3, doc 02 §11): it moves to the first filter chip.
+ */
+export function focusFirstFilterChip() {
+  focusWhenReady(() =>
+    document.querySelector<HTMLElement>("[data-filter-chip]"),
+  );
+}
+
+/** Focuses the element once it is in the DOM, trying for about a second. */
+function focusWhenReady(find: () => HTMLElement | null, frames = 60) {
+  const target = find();
+  if (target?.isConnected) target.focus();
+  else if (frames > 0) {
+    requestAnimationFrame(() => focusWhenReady(find, frames - 1));
+  }
 }
 
 function ToggleChip({
@@ -399,4 +468,15 @@ function OptionButton({
       ) : null}
     </button>
   );
+}
+
+/** A subcategory reads "Parent › Child", as in the category picker. */
+function categoryLabel(
+  category: FilterCategory,
+  categories: FilterCategory[],
+): string {
+  const parent = category.parentId
+    ? categories.find((item) => item.id === category.parentId)
+    : null;
+  return parent ? `${parent.name} › ${category.name}` : category.name;
 }
