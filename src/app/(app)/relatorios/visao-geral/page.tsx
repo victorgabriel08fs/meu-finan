@@ -12,6 +12,7 @@ import {
   incomeExpenseSummary,
   monthSavingsRate,
   parseReportPeriod,
+  partialProgress,
   periodQuery,
   savingsCaption,
   sumTotals,
@@ -21,7 +22,6 @@ import { SavingsRateCard } from "@/components/reports/savings-rate-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
-import { daysBetween, parse, periodDays } from "@/lib/finance";
 import { formatBRL } from "@/lib/format/money";
 import { formatPercent } from "@/lib/format/number";
 import { requireUser } from "@/server/dal";
@@ -83,8 +83,6 @@ async function Overview({
   }
 
   const complete = series.filter((point) => !point.partial);
-  const elapsed = daysBetween(parse(range.start), ctx.today) + 1;
-  const partialProgress = `até o dia ${elapsed} de ${periodDays(range.period)}`;
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
@@ -129,9 +127,7 @@ async function Overview({
           )}
           defaultSelected={defaultSelectedMonth(series)}
           summary={incomeExpenseSummary(series)}
-          partialProgress={
-            series.some((point) => point.partial) ? partialProgress : null
-          }
+          partialProgress={partialProgress(series, range, ctx.todayIso)}
         />
       </div>
 

@@ -5,6 +5,7 @@ import {
   type SpokenOptions,
   spokenMoney,
 } from "@/components/charts/format";
+import { daysBetween, parse, periodDays } from "@/lib/finance";
 import { monthLabel, shortMonthLabel } from "@/lib/format/date";
 import { formatPercent } from "@/lib/format/number";
 
@@ -78,6 +79,24 @@ export function defaultSelectedMonth(
     if (!series[index]?.partial) return index;
   }
   return series.length - 1;
+}
+
+/**
+ * "até o dia 14 de 31": how far the running period went, for the footnote
+ * of a partial month; null when the series has none. `current` is the period
+ * containing today (the only one a series marks partial), whatever day the
+ * person's month starts on.
+ */
+export function partialProgress(
+  series: readonly Pick<MonthTotals, "partial">[],
+  current: { start: string; end: string },
+  todayIso: string,
+): string | null {
+  if (!series.some((point) => point.partial)) return null;
+  const start = parse(current.start);
+  const elapsed = daysBetween(start, parse(todayIso)) + 1;
+  const total = periodDays({ start, end: parse(current.end) });
+  return `até o dia ${elapsed} de ${total}`;
 }
 
 /**

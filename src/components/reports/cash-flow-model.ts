@@ -133,6 +133,23 @@ export function defaultCashFlowIndex(
   return index === -1 ? Math.max(0, days.length - 1) : index;
 }
 
+/**
+ * Nothing to draw: no paid entry, nothing scheduled and every balance at
+ * zero (a month before the first entry, or accounts that never moved).
+ */
+export function isCashFlowEmpty(
+  report: Pick<CashFlowReport, "paidCount" | "scheduled" | "days">,
+): boolean {
+  return (
+    report.paidCount === 0 &&
+    report.scheduled.length === 0 &&
+    report.days.every(
+      (day) =>
+        (day.realizedCents ?? 0) === 0 && (day.projectedCents ?? 0) === 0,
+    )
+  );
+}
+
 export type LowestTone = "warning" | "danger" | null;
 
 /**

@@ -9,6 +9,7 @@ import {
   netWorthChange,
   netWorthSummary,
   parseReportPeriod,
+  partialProgress,
   periodQuery,
   savingsCaption,
   savingsSummary,
@@ -101,6 +102,29 @@ describe("income × expenses", () => {
     expect(incomeExpenseMonthLabel(october, { hideValues: true })).toBe(
       "outubro de 2026 (parcial): receitas valor oculto, despesas valor oculto",
     );
+  });
+
+  it("says how far the partial month went", () => {
+    const october = { start: "2026-10-01", end: "2026-10-31" };
+    expect(partialProgress(series, october, "2026-10-14")).toBe(
+      "até o dia 14 de 31",
+    );
+    expect(partialProgress(series, october, "2026-10-01")).toBe(
+      "até o dia 1 de 31",
+    );
+    // A month that starts on the 5th: day 10 of the period on 14/out.
+    expect(
+      partialProgress(
+        series,
+        { start: "2026-10-05", end: "2026-11-04" },
+        "2026-10-14",
+      ),
+    ).toBe("até o dia 10 de 31");
+    // Only complete months: nothing to say.
+    expect(
+      partialProgress(series.slice(0, 2), october, "2026-10-14"),
+    ).toBeNull();
+    expect(partialProgress([], october, "2026-10-14")).toBeNull();
   });
 });
 

@@ -11,6 +11,7 @@ import {
   cashFlowValueText,
   cashFlowXLabels,
   defaultCashFlowIndex,
+  isCashFlowEmpty,
   lowestTone,
   pickMarkers,
   shortLabel,
@@ -296,5 +297,46 @@ describe("spoken text", () => {
     expect(cashFlowValueText(days[24], "2026-10-14", hidden)).toBe(
       "25 de outubro: saldo previsto valor oculto",
     );
+  });
+});
+
+describe("isCashFlowEmpty", () => {
+  const zero = (date: string): CashFlowDayPoint => ({
+    date,
+    realizedCents: 0,
+    projectedCents: null,
+  });
+  const empty = {
+    paidCount: 0,
+    scheduled: [],
+    days: [zero("2026-10-01"), zero("2026-10-02")],
+  };
+
+  it("is empty with nothing paid, nothing scheduled and every balance at zero", () => {
+    expect(isCashFlowEmpty(empty)).toBe(true);
+    expect(isCashFlowEmpty({ ...empty, days: [] })).toBe(true);
+  });
+
+  it("is not empty with a balance, a paid entry or something scheduled", () => {
+    expect(
+      isCashFlowEmpty({
+        ...empty,
+        days: [
+          { date: "2026-10-01", realizedCents: 5_000, projectedCents: null },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      isCashFlowEmpty({
+        ...empty,
+        days: [
+          { date: "2026-10-01", realizedCents: null, projectedCents: -100 },
+        ],
+      }),
+    ).toBe(false);
+    expect(isCashFlowEmpty({ ...empty, paidCount: 1 })).toBe(false);
+    expect(
+      isCashFlowEmpty({ ...empty, scheduled: [item(20, "Aluguel", -210_000)] }),
+    ).toBe(false);
   });
 });
