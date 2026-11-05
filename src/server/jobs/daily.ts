@@ -1,13 +1,10 @@
 import "server-only";
 import { dbJobRunStore } from "./job-run-store";
 import { type JobRunSummary, type JobStep, runJob } from "./runner";
-import {
-  rollInvoices,
-  sendReminders,
-  snapshotBalances,
-} from "./steps/later-phases";
+import { rollInvoices, snapshotBalances } from "./steps/later-phases";
 import { materializeRecurrences } from "./steps/materialize-recurrences";
 import { purgeDeleted } from "./steps/purge-deleted";
+import { sendReminders } from "./steps/send-reminders";
 import { syncMarketRates } from "./steps/sync-market-rates";
 
 export const DAILY_JOB = "daily";
