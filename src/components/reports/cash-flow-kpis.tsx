@@ -17,6 +17,11 @@ type CashFlowKpiTilesProps = {
   tileClassName?: string;
   /** On the third tile only (e.g. its column span). */
   lastTileClassName?: string;
+  /**
+   * Only the lowest balance: on the Início the Saldo already shows today's
+   * balance and the forecast for the end of the month.
+   */
+  only?: "lowest";
 };
 
 /**
@@ -32,6 +37,7 @@ export function CashFlowKpiTiles({
   today,
   tileClassName,
   lastTileClassName,
+  only,
 }: CashFlowKpiTilesProps) {
   const endLabel = shortDateLabel(end);
   const todayPoint = report.days.find((day) => day.date === today);
@@ -39,6 +45,16 @@ export function CashFlowKpiTiles({
     report.phase === "past" ? report.lowestRealized : report.lowestProjected;
   const tone = lowestTone(report);
   const projects = report.phase !== "past";
+
+  const lowest = (
+    <KpiTile
+      className={cn(tileClassName, lastTileClassName)}
+      label={projects ? "Menor saldo previsto" : "Menor saldo"}
+      value={<CompactMoney cents={low?.cents ?? report.endCents} />}
+      support={low ? <LowSupport date={low.date} tone={tone} /> : null}
+    />
+  );
+  if (only === "lowest") return lowest;
 
   return (
     <>
@@ -84,12 +100,7 @@ export function CashFlowKpiTiles({
           support="com os agendados e as faturas"
         />
       )}
-      <KpiTile
-        className={cn(tileClassName, lastTileClassName)}
-        label={projects ? "Menor saldo previsto" : "Menor saldo"}
-        value={<CompactMoney cents={low?.cents ?? report.endCents} />}
-        support={low ? <LowSupport date={low.date} tone={tone} /> : null}
-      />
+      {lowest}
     </>
   );
 }

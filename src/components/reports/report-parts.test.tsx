@@ -168,6 +168,22 @@ describe("CashFlowKpiTiles", () => {
     expect(html.match(/col-span-2/g)).toHaveLength(1);
   });
 
+  it("shows only the lowest balance when asked (the Início)", () => {
+    const html = render(current, "2026-10-14", {
+      only: "lowest",
+      tileClassName: "bg-surface-2 shadow-none",
+      lastTileClassName: "col-span-2",
+    });
+    expect(html).toContain("Menor saldo previsto");
+    expect(html).toContain("em 15/out");
+    expect(html).not.toContain("Saldo hoje");
+    expect(html).not.toContain("Previsto para");
+    expect(html.match(/bg-surface-2 shadow-none col-span-2/g)).toHaveLength(1);
+    expect(render(past, "2026-11-20", { only: "lowest" })).toContain(
+      ">Menor saldo<",
+    );
+  });
+
   it("flags a balance that goes negative", () => {
     expect(
       renderToStaticMarkup(<LowSupport date="2026-10-25" tone={null} />),
