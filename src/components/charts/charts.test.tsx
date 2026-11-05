@@ -157,5 +157,37 @@ describe("DataTable", () => {
     expect(html).toContain("<caption");
     expect(html).toContain('scope="row"');
     expect(html).toContain("font-bold");
+    // Nothing scrolls: no region, no tab stop.
+    expect(html).not.toContain('role="region"');
+    expect(html).not.toContain("tabindex");
+  });
+
+  it("lets the keyboard reach a table that scrolls", () => {
+    const columns = [
+      { key: "m", header: "Mês", align: "start" as const },
+      { key: "v", header: "Valor", align: "end" as const },
+    ];
+    const rows = [{ key: "1", header: "out", cells: ["R$ 1"] }];
+    const named = renderToStaticMarkup(
+      <DataTable
+        caption="Saldo em contas no fim de cada dia"
+        columns={columns}
+        rows={rows}
+        maxHeightClassName="max-h-80"
+        regionLabel="Tabela do saldo dia a dia"
+      />,
+    );
+    expect(named).toMatch(
+      /^<div role="region" tabindex="0" aria-label="Tabela do saldo dia a dia" class="[^"]*overflow-y-auto[^"]*focus-visible:outline-focus[^"]*max-h-80/,
+    );
+    const byCaption = renderToStaticMarkup(
+      <DataTable
+        caption="Gastos por dia"
+        columns={columns}
+        rows={rows}
+        maxHeightClassName="max-h-80"
+      />,
+    );
+    expect(byCaption).toContain('aria-label="Gastos por dia"');
   });
 });

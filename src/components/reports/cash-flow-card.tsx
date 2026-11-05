@@ -215,6 +215,7 @@ export function CashFlowChart({ report, today, note }: CashFlowCardProps) {
             caption="Saldo em contas no fim de cada dia"
             columns={columns}
             maxHeightClassName="max-h-80"
+            regionLabel="Tabela do saldo dia a dia"
             rows={days.map((item) => {
               const cells: ReactNode[] = [];
               if (hasRealized) {
