@@ -317,3 +317,43 @@ describe("actions", () => {
     expect(pushService.sent).toEqual([]);
   });
 });
+
+describe("purgeDeleted", () => {
+  it("deletes the notices read more than 90 days ago, and only those", async () => {
+    const { purgeDeleted } = await import("./jobs/steps/purge-deleted");
+    const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000);
+    await unread("bruno", "lido-ha-91-dias");
+    await unread("bruno", "lido-ha-89-dias");
+    await unread("bruno", "nunca-lido");
+    await unread("ana", "lido-ha-120-dias");
+    const { eq } = await import("drizzle-orm");
+    const readAt = (dedupeKey: string, at: Date) =>
+      m.db
+        .update(m.schema.notifications)
+        .set({ readAt: at, createdAt: daysAgo(200) })
+        .where(eq(m.schema.notifications.dedupeKey, dedupeKey));
+    await readAt("lido-ha-91-dias", daysAgo(91));
+    await readAt("lido-ha-89-dias", daysAgo(89));
+    await readAt("lido-ha-120-dias", daysAgo(120));
+    await m.db
+      .update(m.schema.notifications)
+      .set({ createdAt: daysAgo(200) })
+      .where(eq(m.schema.notifications.dedupeKey, "nunca-lido"));
+
+    const result = await purgeDeleted.run({
+      signal: new AbortController().signal,
+      startedAt: new Date(),
+    });
+    expect(result).toMatchObject({
+      status: "ok",
+      details: { purgedNotifications: 2, notificationRetentionDays: 90 },
+    });
+    const left = await m.db
+      .select({ dedupeKey: m.schema.notifications.dedupeKey })
+      .from(m.schema.notifications);
+    expect(left.map((row) => row.dedupeKey).sort()).toEqual([
+      "lido-ha-89-dias",
+      "nunca-lido",
+    ]);
+  });
+});
