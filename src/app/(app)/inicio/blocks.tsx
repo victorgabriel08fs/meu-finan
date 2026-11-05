@@ -230,7 +230,7 @@ async function GoalsBlock({ ctx }: HomeBlockProps) {
 /** Nothing at all without a highlight, so the slot collapses. */
 async function InsightBlock({ ctx, range }: HomeBlockProps) {
   const insight = await categoryInsight(ctx, range);
-  return insight ? <InsightCard insight={insight} /> : null;
+  return insight ? <InsightCard insight={insight} userId={ctx.userId} /> : null;
 }
 
 /** Calendário de gastos: the report's heatmap for the month on screen. */
