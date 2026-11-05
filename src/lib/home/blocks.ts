@@ -5,9 +5,6 @@
 // Ids are stored on the accounts (user_settings.home_layout): never rename or
 // reuse one. A retired id is simply removed from here; a stored copy of it is
 // ignored.
-//
-// Reserved for the second stage (reports on the Início), not in the catalog
-// yet: `net-worth`.
 
 export type HomeBlockSize = "narrow" | "wide";
 
@@ -135,6 +132,15 @@ export const HOME_BLOCKS = {
     weight: 445,
     since: REPORT_BLOCKS_SINCE,
   },
+  "net-worth": {
+    label: "Patrimônio",
+    description: "O que você tem menos o que deve, e como mudou em 6 meses.",
+    errorTitle: "Não deu para carregar o patrimônio",
+    size: "narrow",
+    inDefault: false,
+    weight: 187,
+    since: REPORT_BLOCKS_SINCE,
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -157,6 +163,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "cash-flow",
   "category-breakdown",
   "income-expense",
+  "net-worth",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

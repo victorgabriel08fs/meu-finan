@@ -15,6 +15,7 @@ import {
   IncomeExpenseBlock,
   IncomeExpenseInvite,
 } from "./income-expense-block";
+import { NetWorthBlock, NetWorthInvite } from "./net-worth-block";
 
 // The blocks of the reports on the Início (doc 02 §6.3): the report's chart
 // under a heading of its own, the way to the report, and an invite when
@@ -273,5 +274,57 @@ describe("IncomeExpenseBlock", () => {
       "Com seus lançamentos, o gráfico compara o que entrou e saiu a cada mês.",
     );
     expect(html).toContain("Adicionar lançamento");
+  });
+});
+
+describe("NetWorthBlock", () => {
+  const points = ["04", "05", "06", "07", "08", "09", "10"].map((m, k) => ({
+    month: `2026-${m}`,
+    cents: 1_000_000 + k * 50_000,
+  }));
+
+  it("shows the net worth, its change in 6 months and the way to the report", () => {
+    const html = plain(
+      renderToStaticMarkup(
+        <NetWorthBlock
+          points={points}
+          caption="hoje"
+          reportHref="/relatorios/patrimonio?periodo=6"
+        />,
+      ),
+    );
+    expect(html).toContain('<section aria-labelledby="inicio-patrimonio"');
+    expect(html).toContain('id="inicio-patrimonio"');
+    expect(html).not.toContain('id="relatorio-patrimonio"');
+    expect(html).toContain(
+      '<h2 id="inicio-patrimonio" class="text-headline text-fg">Patrimônio</h2>',
+    );
+    expect(html).toContain(">hoje</p>");
+    expect(html).toContain('href="/relatorios/patrimonio?periodo=6"');
+    expect(html).toContain("Ver relatório");
+    expect(html).toContain("+R$ 3.000,00 em 6 meses");
+    expect(html).toContain(
+      '<span data-privacy-mask="">Patrimônio subiu de valor oculto para valor oculto em 6 meses.</span>',
+    );
+  });
+
+  it("says when a past month ends", () => {
+    const html = renderToStaticMarkup(
+      <NetWorthBlock
+        points={points}
+        caption="no fim de setembro"
+        reportHref="/relatorios/patrimonio?periodo=6"
+      />,
+    );
+    expect(html).toContain(">no fim de setembro</p>");
+  });
+
+  it("invites to the accounts while it is all zero", () => {
+    const html = renderToStaticMarkup(<NetWorthInvite />);
+    expect(html).toContain("Seu patrimônio está zerado");
+    expect(html).toContain(
+      "Com saldo nas contas, a evolução dos últimos meses aparece aqui.",
+    );
+    expect(html).toContain('href="/contas"');
   });
 });

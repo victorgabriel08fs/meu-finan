@@ -298,8 +298,9 @@ export function HomeBlockSkeleton({
       // "Previsto" key, a month ahead a footnote more.
       return <Skeleton className={CASH_FLOW_SKELETON[phase]} />;
     // The narrow blocks of the reports wrap a line more in the xl columns
-    // under 20rem; Receitas × despesas its title too under 22.25rem. The
-    // ranking with its five categories and "Outras", a month's usual shape.
+    // under 20rem; Receitas × despesas its title too under 22.25rem, and the
+    // Patrimônio its change under 21.75rem. The ranking with its five
+    // categories and "Outras", a month's usual shape.
     case "category-breakdown":
       return (
         <div className="@container">
@@ -310,6 +311,12 @@ export function HomeBlockSkeleton({
       return (
         <div className="@container">
           <Skeleton className="h-131.25 rounded-card @xs:h-116.75 @min-[22.25rem]:h-111.25 @lg:h-105.75" />
+        </div>
+      );
+    case "net-worth":
+      return (
+        <div className="@container">
+          <Skeleton className="h-51.25 rounded-card @min-[21.75rem]:h-46.75" />
         </div>
       );
   }

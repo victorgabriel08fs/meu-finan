@@ -51,6 +51,7 @@ describe("defaultHomeLayout", () => {
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
       { id: "income-expense", visible: false },
+      { id: "net-worth", visible: false },
     ]);
   });
 });
@@ -68,6 +69,7 @@ describe("resolveHomeLayout", () => {
   it("keeps the saved order and visibility, the Saldo first", () => {
     const { entries, customized } = resolveHomeLayout([
       { id: "spending-calendar", visible: true },
+      { id: "net-worth", visible: true },
       { id: "budget", visible: false },
       { id: "month-totals", visible: true },
       { id: "upcoming-bills", visible: true },
@@ -82,6 +84,7 @@ describe("resolveHomeLayout", () => {
     expect(entries).toEqual([
       { id: "balance", visible: true },
       { id: "spending-calendar", visible: true },
+      { id: "net-worth", visible: true },
       { id: "budget", visible: false },
       { id: "month-totals", visible: true },
       { id: "upcoming-bills", visible: true },
@@ -132,6 +135,7 @@ describe("resolveHomeLayout", () => {
       "cash-flow",
       "category-breakdown",
       "income-expense",
+      "net-worth",
     ]);
     for (const entry of entries.slice(3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
@@ -166,6 +170,7 @@ describe("resolveHomeLayout", () => {
       "cash-flow",
       "category-breakdown",
       "income-expense",
+      "net-worth",
     ];
     const since = HOME_BLOCKS["cash-flow"].since;
     for (const id of reports) expect(HOME_BLOCKS[id].since, id).toBe(since);
@@ -185,8 +190,8 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-3)).toEqual(reports);
-    for (const entry of saved.slice(-3)) {
+    expect(ids(saved).slice(-4)).toEqual(reports);
+    for (const entry of saved.slice(-4)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -246,6 +251,7 @@ describe("toStoredLayout", () => {
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
       { id: "income-expense", visible: false },
+      { id: "net-worth", visible: false },
     ]);
   });
 });
@@ -262,7 +268,7 @@ describe("moveHomeBlock", () => {
     const layout = defaultHomeLayout();
     expect(moveHomeBlock(layout, "balance", "down")).toEqual(layout);
     expect(moveHomeBlock(layout, "month-totals", "up")).toEqual(layout);
-    expect(moveHomeBlock(layout, "income-expense", "down")).toEqual(layout);
+    expect(moveHomeBlock(layout, "net-worth", "down")).toEqual(layout);
   });
 
   it("keeps the same blocks, the Saldo first, whatever the moves", () => {
@@ -302,8 +308,8 @@ describe("canMoveHomeBlock", () => {
     expect(canMoveHomeBlock(layout, "month-totals", "down")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(true);
-    expect(canMoveHomeBlock(layout, "income-expense", "up")).toBe(true);
-    expect(canMoveHomeBlock(layout, "income-expense", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "net-worth", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "net-worth", "down")).toBe(false);
   });
 
   it("agrees with moveHomeBlock", () => {
@@ -402,25 +408,21 @@ describe("packHomeLayout", () => {
         "cash-flow",
         "category-breakdown",
         "income-expense",
+        "net-worth",
       ]),
     ).toEqual([
       { kind: "hero-wide", hero: "balance", id: "cash-flow" },
       {
         kind: "columns",
-        groups: [["category-breakdown"], ["income-expense"]],
+        groups: [["category-breakdown"], ["income-expense"], ["net-worth"]],
       },
     ]);
     expect(
-      packHomeLayout([
-        "balance",
-        "month-totals",
-        "cash-flow",
-        "category-breakdown",
-      ]),
+      packHomeLayout(["balance", "month-totals", "cash-flow", "net-worth"]),
     ).toEqual([
       { kind: "columns", groups: [["balance"], ["month-totals"]] },
       { kind: "wide", id: "cash-flow" },
-      { kind: "columns", groups: [["category-breakdown"]] },
+      { kind: "columns", groups: [["net-worth"]] },
     ]);
   });
 

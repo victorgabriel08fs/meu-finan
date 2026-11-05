@@ -27,6 +27,11 @@ import {
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
 import {
+  NET_WORTH_BLOCK_POINTS,
+  NetWorthBlock,
+  NetWorthInvite,
+} from "@/components/dashboard/net-worth-block";
+import {
   SpendingCalendarBlock,
   SpendingCalendarInvite,
 } from "@/components/dashboard/spending-calendar-block";
@@ -56,6 +61,7 @@ import {
   categoryBreakdown,
   dailySpending,
   monthlySeries,
+  netWorthSeries,
   reportPhase,
 } from "@/server/domain/reports";
 import { periodTotals } from "@/server/domain/transactions";
@@ -82,6 +88,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "cash-flow": CashFlowBlockLoader,
   "category-breakdown": CategoryBreakdownBlockLoader,
   "income-expense": IncomeExpenseBlockLoader,
+  "net-worth": NetWorthBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -366,6 +373,27 @@ async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
         ctx.todayIso,
       )}
       reportHref={`/relatorios/visao-geral?periodo=${INCOME_EXPENSE_BLOCK_MONTHS}`}
+    />
+  );
+}
+
+/** Patrimônio: the end of each of the last months, up to the one on screen. */
+async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
+  const points = await netWorthSeries(
+    ctx,
+    seriesEnd(ctx, range),
+    NET_WORTH_BLOCK_POINTS,
+  );
+  if (points.every((point) => point.cents === 0)) return <NetWorthInvite />;
+  return (
+    <NetWorthBlock
+      points={points}
+      caption={
+        reportPhase(ctx, range) === "past"
+          ? `no fim de ${monthName(range.month)}`
+          : "hoje"
+      }
+      reportHref="/relatorios/patrimonio?periodo=6"
     />
   );
 }

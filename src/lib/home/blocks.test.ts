@@ -60,17 +60,19 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-4)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-5)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
       "income-expense",
+      "net-worth",
     ]);
     expect(HOME_BLOCKS["cash-flow"].size).toBe("wide");
     for (const id of [
       "cash-flow",
       "category-breakdown",
       "income-expense",
+      "net-worth",
     ] as const) {
       expect(HOME_BLOCKS[id].inDefault, id).toBe(false);
       expect(HOME_BLOCKS[id].since, id).toBe(REPORT_BLOCKS_SINCE);
