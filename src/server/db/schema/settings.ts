@@ -19,6 +19,17 @@ import { REPORT_BASES, THEMES } from "./enums";
  */
 export type StoredHomeLayout = { id: string; visible: boolean }[];
 
+/**
+ * The notices a person chose (src/lib/notifications/preferences.ts). Read
+ * field by field: an event added later, or a missing field, takes the
+ * default.
+ */
+export type StoredNotificationPreferences = {
+  events?: Record<string, boolean>;
+  billsLeadDays?: number;
+  showAmounts?: boolean;
+};
+
 /** Owner preferences, one row per user. */
 export const userSettings = pgTable(
   "user_settings",
@@ -41,6 +52,9 @@ export const userSettings = pgTable(
     onboardingDoneAt: timestamptz("onboarding_done_at"),
     // Null: the app's own Início (doc 02 §6.3), later default blocks included.
     homeLayout: jsonb("home_layout").$type<StoredHomeLayout>(),
+    // Null: the default notices (doc 02 §6.14), later events included.
+    notificationPrefs:
+      jsonb("notification_prefs").$type<StoredNotificationPreferences>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -57,6 +71,10 @@ export const userSettings = pgTable(
     check(
       "user_settings_home_layout_check",
       sql`${t.homeLayout} is null or jsonb_typeof(${t.homeLayout}) = 'array'`,
+    ),
+    check(
+      "user_settings_notification_prefs_check",
+      sql`${t.notificationPrefs} is null or jsonb_typeof(${t.notificationPrefs}) = 'object'`,
     ),
   ],
 );

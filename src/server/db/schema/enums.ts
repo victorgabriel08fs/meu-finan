@@ -97,6 +97,20 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 export const JOB_RUN_STATUSES = ["running", "ok", "partial", "failed"] as const;
 export type JobRunStatus = (typeof JOB_RUN_STATUSES)[number];
 
+/**
+ * The notices of the daily job, one per person per day each (the same list
+ * as REMINDER_EVENTS in src/lib/notifications/events.ts).
+ */
+export const REMINDER_NOTIFICATION_TYPES = [
+  "daily_summary",
+  "bills_due",
+  "income_countdown",
+  "weekly_summary",
+  "monthly_summary",
+] as const;
+export type ReminderNotificationType =
+  (typeof REMINDER_NOTIFICATION_TYPES)[number];
+
 export const NOTIFICATION_TYPES = [
   "bill_due",
   "invoice_closing",
@@ -104,6 +118,7 @@ export const NOTIFICATION_TYPES = [
   "budget_100",
   "goal_reached",
   "insight",
+  ...REMINDER_NOTIFICATION_TYPES,
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
