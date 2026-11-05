@@ -32,7 +32,11 @@ describe("SpendingCalendarBlock", () => {
     );
     expect(html).toContain('aria-labelledby="inicio-calendario"');
     expect(html).toContain('id="inicio-calendario"');
-    expect(html).toContain("Gastos por dia");
+    // The name in "Personalizar o Início" (doc 02 §10.4).
+    expect(html).toContain(">Calendário de gastos</h2>");
+    expect(html).toContain(
+      "Despesas pagas por dia; no cartão, na data da compra",
+    );
     expect(html).toContain('href="/relatorios/calendario"');
     expect(html).toContain("Ver relatório");
     expect(html).toContain(

@@ -16,6 +16,8 @@ type NetWorthCardProps = {
   /** End-of-month net worth, from the month before the window to now. */
   points: { month: string; cents: number }[];
   period: ReportPeriod;
+  /** The heading: "Patrimônio líquido" in the report, "Patrimônio" on the Início. */
+  title?: string;
   /** Id of the heading, unique on the page. */
   headingId?: string;
   /** Line under the heading ("no fim de setembro", "hoje"). */
@@ -32,6 +34,7 @@ type NetWorthCardProps = {
 export function NetWorthCard({
   points,
   period,
+  title = "Patrimônio líquido",
   headingId = "relatorio-patrimonio",
   caption,
   action,
@@ -48,7 +51,7 @@ export function NetWorthCard({
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-col">
             <h2 id={headingId} className="text-headline text-fg">
-              Patrimônio líquido
+              {title}
             </h2>
             {caption ? (
               <p className="text-caption text-fg-3">{caption}</p>

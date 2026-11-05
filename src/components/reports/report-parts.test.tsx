@@ -303,11 +303,12 @@ describe("NetWorthCard", () => {
     expect(html).toContain("items-start [&amp;&gt;svg]:mt-0.5");
   });
 
-  it("takes the heading id, a caption and an action from the Início", () => {
+  it("takes the title, heading id, a caption and an action from the Início", () => {
     const html = renderToStaticMarkup(
       <NetWorthCard
         points={points}
         period={6}
+        title="Patrimônio"
         headingId="inicio-patrimonio"
         caption="hoje"
         action={<a href="/relatorios/patrimonio?periodo=6">Ver relatório</a>}
@@ -315,6 +316,9 @@ describe("NetWorthCard", () => {
     );
     expect(html).toContain('aria-labelledby="inicio-patrimonio"');
     expect(html).toContain('id="inicio-patrimonio"');
+    // The name in "Personalizar o Início" (doc 02 §10.4).
+    expect(html).toContain('class="text-headline text-fg">Patrimônio</h2>');
+    expect(html).not.toContain("Patrimônio líquido");
     expect(html).not.toContain('relatorio-patrimonio"');
     expect(html).toContain(">hoje</p>");
     expect(html).toContain('href="/relatorios/patrimonio?periodo=6"');

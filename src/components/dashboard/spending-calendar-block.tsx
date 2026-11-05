@@ -63,10 +63,10 @@ export function SpendingCalendarBlock({
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col">
             <h2 id="inicio-calendario" className="text-headline text-fg">
-              Gastos por dia
+              Calendário de gastos
             </h2>
             <p className="text-caption text-fg-3">
-              Despesas pagas; no cartão, na data da compra
+              Despesas pagas por dia; no cartão, na data da compra
             </p>
           </div>
           <BlockLink href={reportHref}>Ver relatório</BlockLink>
