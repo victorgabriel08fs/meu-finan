@@ -348,3 +348,56 @@ test("conta e tipo que não valem não acendem chip nem Limpar", async ({
   await expectSomeRow(page, (label) => amountOf(label).kind === "despesa");
   await expectSomeRow(page, (label) => !inReserva(label));
 });
+
+test("tocar no próximo chip enquanto a folha anterior fecha abre a folha nova", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openStatement(page);
+  // Where the Conta chip is: while a sheet is open the page behind it is
+  // hidden from the accessibility tree, so it is measured now.
+  const conta = await filterChip(page, "Conta").boundingBox();
+  if (!conta) throw new Error("chip Conta");
+  // CSS animations at a tenth of the speed. A sheet that closes fades its
+  // scrim out in 160 ms (1.6 s here) and slides away in 240 ms (2.4 s): the
+  // tap lands in between, on the chip, while the sheet is still leaving.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Animation.enable");
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: 0.1 });
+
+  await filterChip(page, "Tipo").tap();
+  const tipo = sheetOf(page, "tipo");
+  await expect(tipo).toBeVisible();
+  await tipo.getByRole("button", { name: "Receitas", exact: true }).tap();
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('[data-slot="sheet-overlay"]') &&
+      document.querySelector(
+        '[data-slot="sheet-content"][data-state="closed"]',
+      ),
+  );
+  await page.touchscreen.tap(
+    conta.x + conta.width / 2,
+    conta.y + conta.height / 2,
+  );
+  await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
+  await expect(
+    page.locator('[data-slot="sheet-content"][data-state="closed"]'),
+  ).toHaveCount(0, { timeout: 10_000 });
+
+  // The new sheet stays open (a tap outside the sheet that was leaving once
+  // closed it on the `click` that follows a touch), and the choice went on.
+  const sheet = sheetOf(page, "conta");
+  await expect(sheet).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(sheet).toBeVisible();
+  await expect(page).toHaveURL(/tipo=receita/);
+
+  // It closes as usual, and Back after that undoes the filter.
+  await sheet.getByRole("button", { name: /^Reserva/ }).tap();
+  await expect(sheet).toBeHidden({ timeout: 10_000 });
+  await expect(page).toHaveURL(/conta=.*tipo=receita|tipo=receita.*conta=/);
+  await page.goBack();
+  await expect(page).toHaveURL(/tipo=receita/);
+  await expect(page).not.toHaveURL(/conta=/);
+});
