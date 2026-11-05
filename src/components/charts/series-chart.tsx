@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 import { cn } from "@/lib/utils";
+import { usePrivacyStore } from "@/stores/privacy";
 import {
   areaPath,
   labelAnchor,
@@ -51,6 +52,8 @@ export type SeriesScrub = {
   label: string;
   /** Spoken description of a position ("25 de outubro: saldo previsto …"). */
   valueText: (index: number) => string;
+  /** The same in privacy mode, amounts hidden ("…: saldo previsto valor oculto"). */
+  hiddenValueText: (index: number) => string;
 };
 
 type SeriesChartProps = {
@@ -74,6 +77,8 @@ type SeriesChartProps = {
   highlight?: number | null;
   /** Spoken summary of the whole chart. */
   summary: string;
+  /** The summary in privacy mode, amounts hidden ("valor oculto"). */
+  hiddenSummary: string;
   /** Height of the plot (the x labels add 22px below it). */
   plotClassName?: string;
   className?: string;
@@ -112,10 +117,14 @@ export function SeriesChart({
   scrub,
   highlight = null,
   summary,
+  hiddenSummary,
   plotClassName = "h-40",
   className,
 }: SeriesChartProps) {
   const summaryId = useId();
+  // False on the server and until the store rehydrates, like every client
+  // read of privacy mode; only the scrub's value text depends on it.
+  const hidden = usePrivacyStore((state) => state.hidden);
   const dragging = useRef(false);
   const count = Math.max(
     0,
@@ -169,10 +178,12 @@ export function SeriesChart({
   }
 
   // Static, the chart is an image named by its summary; with a scrub, the
-  // range input speaks and the summary describes it.
+  // range input speaks and the summary describes it. The summary is text, not
+  // an aria-label: privacy mode (CSS, like <Money>) swaps it for the one
+  // without amounts.
   const imageProps = scrub
     ? {}
-    : { role: "img" as const, "aria-label": summary };
+    : { role: "img" as const, "aria-labelledby": summaryId };
 
   return (
     <div
@@ -180,11 +191,10 @@ export function SeriesChart({
       className={cn("relative pt-5", className)}
       style={{ "--line": color } as CSSProperties}
     >
-      {scrub ? (
-        <p id={summaryId} className="sr-only">
-          {summary}
-        </p>
-      ) : null}
+      <p id={summaryId} className="sr-only">
+        <span data-privacy-value="">{summary}</span>
+        <span data-privacy-mask="">{hiddenSummary}</span>
+      </p>
       <div className={cn("relative", plotClassName)}>
         {ticks.values.map((value) => (
           <div
@@ -308,7 +318,9 @@ export function SeriesChart({
                 step={1}
                 value={selected ?? 0}
                 aria-label={scrub.label}
-                aria-valuetext={scrub.valueText(selected ?? 0)}
+                aria-valuetext={(hidden
+                  ? scrub.hiddenValueText
+                  : scrub.valueText)(selected ?? 0)}
                 aria-describedby={summaryId}
                 onChange={(event) =>
                   scrub.onSelectedChange(Number(event.target.value))

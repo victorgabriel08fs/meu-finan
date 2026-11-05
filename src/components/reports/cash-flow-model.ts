@@ -1,4 +1,4 @@
-import { formatMoneyShort } from "@/components/charts/format";
+import { type SpokenOptions, spokenMoney } from "@/components/charts/format";
 import { balanceTicks } from "@/components/charts/range-ticks";
 import { type Ticks, topPercent } from "@/components/charts/scale";
 import { shortDateLabel } from "@/lib/format/date";
@@ -151,7 +151,7 @@ export function lowestTone(
   return report.endCents < 0 ? "danger" : "warning";
 }
 
-/** Spoken summary of the chart. */
+/** Spoken summary of the chart; in privacy mode the amounts read "valor oculto". */
 export function cashFlowSummary(
   report: Pick<
     CashFlowReport,
@@ -163,22 +163,24 @@ export function cashFlowSummary(
     | "lowestProjected"
   >,
   today: string,
+  options: SpokenOptions = {},
 ): string {
+  const money = (cents: number) => spokenMoney(cents, options);
   const last = report.days.at(-1);
   if (!last) return "Sem saldo para mostrar.";
   const end = shortDateLabel(last.date);
   if (report.phase === "past") {
     const low = report.lowestRealized;
-    return `Saldo começou o mês em ${formatMoneyShort(report.startCents)} e fechou em ${formatMoneyShort(
+    return `Saldo começou o mês em ${money(report.startCents)} e fechou em ${money(
       report.endCents,
-    )} em ${end}${low ? `; menor saldo ${formatMoneyShort(low.cents)} em ${shortDateLabel(low.date)}` : ""}.`;
+    )} em ${end}${low ? `; menor saldo ${money(low.cents)} em ${shortDateLabel(low.date)}` : ""}.`;
   }
   const low = report.lowestProjected;
   const lowText = low
-    ? `; menor saldo previsto ${formatMoneyShort(low.cents)} em ${shortDateLabel(low.date)}`
+    ? `; menor saldo previsto ${money(low.cents)} em ${shortDateLabel(low.date)}`
     : "";
   if (report.phase === "future") {
-    return `Previsão: começa em ${formatMoneyShort(report.startCents)} e termina em ${formatMoneyShort(
+    return `Previsão: começa em ${money(report.startCents)} e termina em ${money(
       report.endCents,
     )} em ${end}${lowText}.`;
   }
@@ -186,26 +188,31 @@ export function cashFlowSummary(
   const nowText =
     now?.realizedCents === null || now?.realizedCents === undefined
       ? ""
-      : `Saldo de ${formatMoneyShort(now.realizedCents)} hoje; `;
-  return `${nowText}previsto ${formatMoneyShort(report.endCents)} em ${end}${lowText}.`;
+      : `Saldo de ${money(now.realizedCents)} hoje; `;
+  return `${nowText}previsto ${money(report.endCents)} em ${end}${lowText}.`;
 }
 
-/** What the scrub says for a day ("25 de outubro: saldo previsto R$ 1.234"). */
+/**
+ * What the scrub says for a day ("25 de outubro: saldo previsto R$ 1.234");
+ * "valor oculto" in privacy mode.
+ */
 export function cashFlowValueText(
   day: CashFlowDayPoint | undefined,
   today: string,
+  options: SpokenOptions = {},
 ): string {
   if (!day) return "";
+  const money = (cents: number) => spokenMoney(cents, options);
   const date = dayMonthLabel(day.date);
   if (day.date === today && day.realizedCents !== null) {
     const projected =
       day.projectedCents !== null && day.projectedCents !== day.realizedCents
-        ? `; com os atrasados, ${formatMoneyShort(day.projectedCents)}`
+        ? `; com os atrasados, ${money(day.projectedCents)}`
         : "";
-    return `${date}, hoje: saldo ${formatMoneyShort(day.realizedCents)}${projected}`;
+    return `${date}, hoje: saldo ${money(day.realizedCents)}${projected}`;
   }
   if (day.realizedCents !== null) {
-    return `${date}: saldo ${formatMoneyShort(day.realizedCents)}`;
+    return `${date}: saldo ${money(day.realizedCents)}`;
   }
-  return `${date}: saldo previsto ${formatMoneyShort(day.projectedCents ?? 0)}`;
+  return `${date}: saldo previsto ${money(day.projectedCents ?? 0)}`;
 }

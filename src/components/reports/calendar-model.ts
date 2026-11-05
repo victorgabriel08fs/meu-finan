@@ -1,5 +1,5 @@
 import type { HeatmapDay } from "@/components/charts/calendar-heatmap";
-import { formatMoneyShort } from "@/components/charts/format";
+import { formatMoneyShort, HIDDEN_VALUE } from "@/components/charts/format";
 import { heatLevels } from "@/components/charts/heat-scale";
 import { isValidDate } from "@/lib/finance/dates";
 import type { DaySpending } from "@/server/domain/reports";
@@ -14,9 +14,6 @@ const expenses = (count: number, scheduled = false) =>
   `${count} ${count === 1 ? "despesa" : "despesas"}${
     scheduled ? (count === 1 ? " agendada" : " agendadas") : ""
   }`;
-
-/** What screen readers hear for an amount in privacy mode, like <Money>. */
-const HIDDEN_VALUE = "valor oculto";
 
 /**
  * "14 de outubro: R$ 230,40 em 3 despesas"; days to come speak of what is

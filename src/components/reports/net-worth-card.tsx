@@ -62,6 +62,9 @@ export function NetWorthCard({ points, period }: NetWorthCardProps) {
                 <Sparkline
                   values={values}
                   summary={netWorthSummary(values, period)}
+                  hiddenSummary={netWorthSummary(values, period, {
+                    hideValues: true,
+                  })}
                 />
               ) : null}
             </div>

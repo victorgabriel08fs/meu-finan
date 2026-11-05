@@ -1,10 +1,11 @@
 import {
-  formatMoneyShort,
   monthAbbrev,
   monthName,
   monthsCount,
+  type SpokenOptions,
+  spokenMoney,
 } from "@/components/charts/format";
-import { shortMonthLabel } from "@/lib/format/date";
+import { monthLabel, shortMonthLabel } from "@/lib/format/date";
 import { formatPercent } from "@/lib/format/number";
 
 /**
@@ -81,9 +82,13 @@ export function defaultSelectedMonth(
 
 /**
  * "Receitas superaram as despesas em 11 de 12 meses; maior despesa em
- * dezembro, R$ 8.940. Outubro está parcial."
+ * dezembro, R$ 8.940. Outubro está parcial." In privacy mode the amount
+ * reads "valor oculto".
  */
-export function incomeExpenseSummary(series: readonly MonthTotals[]): string {
+export function incomeExpenseSummary(
+  series: readonly MonthTotals[],
+  options: SpokenOptions = {},
+): string {
   if (series.length === 0) return "Sem lançamentos no período.";
   const ahead = series.filter(
     (point) => point.incomeCents > point.expenseCents,
@@ -101,13 +106,27 @@ export function incomeExpenseSummary(series: readonly MonthTotals[]): string {
         : `Receitas superaram as despesas em ${ahead} de ${series.length} meses`,
   ];
   if (peak.expenseCents > 0 && series.length > 1) {
-    parts[0] += `; maior despesa em ${monthName(peak.month)}, ${formatMoneyShort(peak.expenseCents)}`;
+    parts[0] += `; maior despesa em ${monthName(peak.month)}, ${spokenMoney(peak.expenseCents, options)}`;
   }
   const partial = series.find((point) => point.partial);
   const tail = partial
     ? ` ${monthName(partial.month).replace(/^./, (letter) => letter.toUpperCase())} está parcial.`
     : "";
   return `${parts[0]}.${tail}`;
+}
+
+/**
+ * Name of a month's column: "setembro de 2026: receitas R$ 8.700, despesas
+ * R$ 6.020", the running month "(parcial)"; "valor oculto" in privacy mode.
+ */
+export function incomeExpenseMonthLabel(
+  point: MonthTotals,
+  options: SpokenOptions = {},
+): string {
+  return `${monthLabel(point.month)}${point.partial ? " (parcial)" : ""}: receitas ${spokenMoney(
+    point.incomeCents,
+    options,
+  )}, despesas ${spokenMoney(point.expenseCents, options)}`;
 }
 
 /** Savings rate of one month, or null without income (and for the partial month). */
@@ -180,14 +199,16 @@ export function netWorthChange(values: readonly number[]) {
   return { first, last, delta: last - first };
 }
 
+/** "Patrimônio subiu de R$ 16.480 para R$ 26.290 em 12 meses"; "valor oculto" in privacy mode. */
 export function netWorthSummary(
   values: readonly number[],
   period: ReportPeriod,
+  options: SpokenOptions = {},
 ): string {
   if (values.length < 2) return "Patrimônio líquido no período.";
   const { first, last, delta } = netWorthChange(values);
   const verb = delta > 0 ? "subiu" : delta < 0 ? "caiu" : "ficou estável";
-  return `Patrimônio ${verb} de ${formatMoneyShort(first)} para ${formatMoneyShort(last)} em ${
+  return `Patrimônio ${verb} de ${spokenMoney(first, options)} para ${spokenMoney(last, options)} em ${
     period === 1 ? "1 mês" : `${period} meses`
   }.`;
 }

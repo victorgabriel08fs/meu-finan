@@ -34,8 +34,11 @@ type GroupedColumnChartProps = {
   onSelect: (index: number) => void;
   ticks: Ticks;
   formatTick: (value: number) => ReactNode;
-  /** Accessible name of each group's button ("setembro de 2026: receitas …"). */
-  describeGroup: (index: number) => string;
+  /**
+   * Accessible name of each group's button ("setembro de 2026: receitas …");
+   * with `hideValues`, the one for privacy mode ("receitas valor oculto, …").
+   */
+  describeGroup: (index: number, hideValues: boolean) => string;
   /** Accessible name of the whole chart. */
   label: string;
   plotClassName?: string;
@@ -129,11 +132,19 @@ export function GroupedColumnChart({
                 }}
                 type="button"
                 aria-pressed={selected === index}
-                aria-label={describeGroup(index)}
                 tabIndex={index === focusIndex ? 0 : -1}
                 onClick={() => onSelect(index)}
                 className="flex h-full min-w-6 flex-1 items-end justify-center gap-0.5 rounded-t-chip px-0.5 -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/50"
               >
+                {/* The name, from the content: privacy mode (CSS, like
+                    <Money>) swaps it for the one without amounts, which an
+                    aria-label could not. */}
+                <span data-privacy-value="" className="sr-only">
+                  {describeGroup(index, false)}
+                </span>
+                <span data-privacy-mask="" className="sr-only">
+                  {describeGroup(index, true)}
+                </span>
                 {group.values.map((value, seriesIndex) => {
                   const color = series[seriesIndex]?.color ?? "var(--primary)";
                   const height =

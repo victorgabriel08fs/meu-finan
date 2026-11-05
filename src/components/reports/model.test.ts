@@ -3,6 +3,7 @@ import { NBSP } from "@/lib/format/money";
 import {
   defaultSelectedMonth,
   highlightIndices,
+  incomeExpenseMonthLabel,
   incomeExpenseSummary,
   monthSavingsRate,
   netWorthChange,
@@ -84,6 +85,22 @@ describe("income × expenses", () => {
     expect(plain(incomeExpenseSummary(series))).toBe(
       "Receitas superaram as despesas em 2 de 3 meses; maior despesa em setembro, R$ 8.940. Outubro está parcial.",
     );
+    expect(incomeExpenseSummary(series, { hideValues: true })).toBe(
+      "Receitas superaram as despesas em 2 de 3 meses; maior despesa em setembro, valor oculto. Outubro está parcial.",
+    );
+  });
+
+  it("names each month's columns, amounts hidden in privacy mode", () => {
+    const [september, october] = series.slice(1) as typeof series;
+    expect(plain(incomeExpenseMonthLabel(september))).toBe(
+      "setembro de 2026: receitas R$ 8.700, despesas R$ 8.940",
+    );
+    expect(plain(incomeExpenseMonthLabel(october))).toBe(
+      "outubro de 2026 (parcial): receitas R$ 8.700, despesas R$ 1.500",
+    );
+    expect(incomeExpenseMonthLabel(october, { hideValues: true })).toBe(
+      "outubro de 2026 (parcial): receitas valor oculto, despesas valor oculto",
+    );
   });
 });
 
@@ -129,5 +146,8 @@ describe("net worth", () => {
     expect(plain(netWorthSummary([1_648_000, 2_628_973], 12))).toBe(
       "Patrimônio subiu de R$ 16.480 para R$ 26.289,73 em 12 meses.",
     );
+    expect(
+      netWorthSummary([1_648_000, 2_628_973], 6, { hideValues: true }),
+    ).toBe("Patrimônio subiu de valor oculto para valor oculto em 6 meses.");
   });
 });

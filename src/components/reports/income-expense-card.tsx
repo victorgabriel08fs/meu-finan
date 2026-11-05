@@ -5,7 +5,6 @@ import { ChartViewSwitch } from "@/components/charts/chart-view-switch";
 import { DataTable } from "@/components/charts/data-table";
 import {
   axisMoneyLabel,
-  formatMoneyShort,
   monthAbbrev,
   monthName,
 } from "@/components/charts/format";
@@ -15,8 +14,11 @@ import { Masked } from "@/components/charts/masked";
 import { niceTicks } from "@/components/charts/scale";
 import { Money } from "@/components/money/money";
 import { Card } from "@/components/ui/card";
-import { monthLabel } from "@/lib/format/date";
-import type { MonthTotals } from "./model";
+import {
+  incomeExpenseMonthLabel,
+  incomeExpenseSummary,
+  type MonthTotals,
+} from "./model";
 
 const INCOME = "var(--chart-3)";
 const EXPENSE = "var(--chart-2)";
@@ -70,7 +72,12 @@ export function IncomeExpenseCard({
             ]}
           />
         </div>
-        <p className="sr-only">{summary}</p>
+        <p className="sr-only">
+          <span data-privacy-value="">{summary}</span>
+          <span data-privacy-mask="">
+            {incomeExpenseSummary(months, { hideValues: true })}
+          </span>
+        </p>
 
         {point ? (
           <div
@@ -134,12 +141,11 @@ export function IncomeExpenseCard({
               onSelect={setSelected}
               ticks={ticks}
               formatTick={(value) => <Masked>{axisMoneyLabel(value)}</Masked>}
-              describeGroup={(index) => {
+              describeGroup={(index, hideValues) => {
                 const month = months[index];
-                if (!month) return "";
-                return `${monthLabel(month.month)}${month.partial ? " (parcial)" : ""}: receitas ${formatMoneyShort(
-                  month.incomeCents,
-                )}, despesas ${formatMoneyShort(month.expenseCents)}`;
+                return month
+                  ? incomeExpenseMonthLabel(month, { hideValues })
+                  : "";
               }}
             />
           }

@@ -1,4 +1,4 @@
-import { formatMoneyShort } from "@/components/charts/format";
+import { type SpokenOptions, spokenMoney } from "@/components/charts/format";
 import { niceTicks, type Ticks } from "@/components/charts/scale";
 import { monthLabel, shortMonthLabel } from "@/lib/format/date";
 import type { NetWorthBreakdownPoint } from "@/server/domain/reports";
@@ -69,17 +69,22 @@ export function deltaTone(
       : "bad";
 }
 
-/** "Ativos subiram de R$ 585 mil para R$ 1,3 mi em 12 meses." */
+/**
+ * "Ativos subiram de R$ 585 mil para R$ 1,3 mi em 12 meses."; "valor oculto"
+ * in privacy mode.
+ */
 export function breakdownSummary(
   key: BreakdownKey,
   values: readonly number[],
   period: ReportPeriod,
+  options: SpokenOptions = {},
 ): string {
+  const money = (cents: number) => spokenMoney(cents, options);
   const { subject, plural } = BREAKDOWN_LABELS[key];
   const first = values[0];
   const last = values.at(-1);
   if (first === undefined || last === undefined || values.length < 2) {
-    return `${subject} ${plural ? "estão" : "está"} em ${formatMoneyShort(last ?? 0)}.`;
+    return `${subject} ${plural ? "estão" : "está"} em ${money(last ?? 0)}.`;
   }
   const delta = last - first;
   const verb =
@@ -95,8 +100,8 @@ export function breakdownSummary(
           ? "ficaram estáveis"
           : "ficou estável";
   return delta === 0
-    ? `${subject} ${verb} em ${formatMoneyShort(last)} ${windowLabel(period)}.`
-    : `${subject} ${verb} de ${formatMoneyShort(first)} para ${formatMoneyShort(last)} ${windowLabel(period)}.`;
+    ? `${subject} ${verb} em ${money(last)} ${windowLabel(period)}.`
+    : `${subject} ${verb} de ${money(first)} para ${money(last)} ${windowLabel(period)}.`;
 }
 
 /** Label of a point: "fim de setembro de 2026", or "hoje" for the last one. */
@@ -111,15 +116,17 @@ export function pointLabel(
     : `fim de ${monthLabel(point.month)}`;
 }
 
-/** What the scrub says for a month. */
+/** What the scrub says for a month; "valor oculto" in privacy mode. */
 export function breakdownValueText(
   points: readonly NetWorthBreakdownPoint[],
   index: number,
+  options: SpokenOptions = {},
 ): string {
+  const money = (cents: number) => spokenMoney(cents, options);
   const point = points[index];
   if (!point) return "";
   const when = pointLabel(points, index);
-  return `${when.charAt(0).toUpperCase()}${when.slice(1)}: patrimônio ${formatMoneyShort(
+  return `${when.charAt(0).toUpperCase()}${when.slice(1)}: patrimônio ${money(
     point.netCents,
-  )}; ativos ${formatMoneyShort(point.assetsCents)}; passivos ${formatMoneyShort(point.liabilitiesCents)}`;
+  )}; ativos ${money(point.assetsCents)}; passivos ${money(point.liabilitiesCents)}`;
 }

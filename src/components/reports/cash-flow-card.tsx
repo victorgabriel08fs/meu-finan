@@ -163,11 +163,16 @@ export function CashFlowCard({ report, today, note }: CashFlowCardProps) {
               xLabels={cashFlowXLabels(days, today)}
               markers={markers}
               summary={cashFlowSummary(report, today)}
+              hiddenSummary={cashFlowSummary(report, today, {
+                hideValues: true,
+              })}
               scrub={{
                 selected,
                 onSelectedChange: setChosen,
                 label: "Percorrer o saldo dia a dia",
                 valueText: (index) => cashFlowValueText(days[index], today),
+                hiddenValueText: (index) =>
+                  cashFlowValueText(days[index], today, { hideValues: true }),
               }}
               plotClassName="h-44"
             />

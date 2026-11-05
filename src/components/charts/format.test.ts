@@ -5,10 +5,12 @@ import {
   axisPercentLabel,
   formatMoneyShort,
   formatWholeReais,
+  HIDDEN_VALUE,
   monthAbbrev,
   monthName,
   monthsCount,
   monthYearLabel,
+  spokenMoney,
 } from "./format";
 
 describe("axis labels", () => {
@@ -36,6 +38,13 @@ describe("money in summaries", () => {
     expect(formatMoneyShort(268_000, { sign: "always" })).toBe(
       `+R$${NBSP}2.680`,
     );
+  });
+
+  it("speaks an amount, or hides it in privacy mode like <Money>", () => {
+    expect(spokenMoney(41_000)).toBe(`R$${NBSP}410`);
+    expect(spokenMoney(41_000, { hideValues: false })).toBe(`R$${NBSP}410`);
+    expect(spokenMoney(41_000, { hideValues: true })).toBe("valor oculto");
+    expect(HIDDEN_VALUE).toBe("valor oculto");
   });
 
   it("rounds whole reais towards zero", () => {

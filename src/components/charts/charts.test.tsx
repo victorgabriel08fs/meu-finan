@@ -72,12 +72,19 @@ describe("GroupedColumnChart", () => {
         onSelect={() => {}}
         ticks={niceTicks(0, 100)}
         formatTick={(value) => String(value)}
-        describeGroup={(index) => `grupo ${index}`}
+        describeGroup={(index, hideValues) =>
+          `grupo ${index}${hideValues ? " oculto" : ""}`
+        }
       />,
     );
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html.match(/aria-pressed="false"/g)).toHaveLength(1);
-    expect(html).toContain('aria-label="grupo 1"');
+    // Each column named by its content, the version without amounts for
+    // privacy mode beside it (CSS shows one, like <Money>).
+    expect(html).toContain(
+      '<span data-privacy-value="" class="sr-only">grupo 1</span><span data-privacy-mask="" class="sr-only">grupo 1 oculto</span>',
+    );
+    expect(html).not.toContain('aria-label="grupo');
     expect(html).toContain("out*");
     expect(html).toContain('role="toolbar"');
   });
@@ -104,9 +111,17 @@ describe("LineChart", () => {
 describe("Sparkline and SplitBar", () => {
   it("draws a sparkline with an end dot", () => {
     const html = renderToStaticMarkup(
-      <Sparkline values={[1, 3, 2]} summary="Subiu" />,
+      <Sparkline
+        values={[1, 3, 2]}
+        summary="Subiu para R$ 2"
+        hiddenSummary="Subiu para valor oculto"
+      />,
     );
-    expect(html).toContain('aria-label="Subiu"');
+    const id = html.match(/role="img" aria-labelledby="([^"]+)"/)?.[1];
+    expect(html).toContain(
+      `<span id="${id}" class="sr-only"><span data-privacy-value="">Subiu para R$ 2</span><span data-privacy-mask="">Subiu para valor oculto</span></span>`,
+    );
+    expect(html).not.toContain("aria-label=");
     expect(html).toContain("left:100%");
   });
 
