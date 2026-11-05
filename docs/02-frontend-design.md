@@ -590,6 +590,8 @@ Sonner, posição inferior acima da tab bar (`bottom: 64px + safe-area + 12px`),
 
 Blocos `--surface-2` com o **formato exato** do conteúdo final (mesmas alturas → zero CLS). Brilho diagonal de 1,2 s (desligado com movimento reduzido). Ao **recarregar** dados já exibidos, nunca voltar ao skeleton: manter o conteúdo a 60% de opacidade com spinner discreto.
 
+No Início, cada skeleton tem a altura medida do bloco carregado. A altura segue a **largura do próprio bloco** (container query), não a da tela: o mesmo bloco quebra uma linha a mais numa coluna estreita do `xl` e num celular pequeno. Quando a forma muda com o mês (o Fluxo de caixa num mês passado, no atual ou num futuro), o skeleton também segue a **fase do mês** em tela.
+
 ### 5.18 Inputs de formulário
 
 Campo 52 px, raio 14, fundo `--surface`, borda 1 px `--border-strong`; foco: borda 2 px `--primary` + anel. Rótulo **sempre visível** acima (`callout` 600), nunca só placeholder. Erro: borda `--danger`, ícone + mensagem `caption` abaixo, anunciada (`aria-describedby` + `aria-invalid`). `enterKeyHint`, `autocomplete` e `inputMode` corretos em todos.
@@ -600,7 +602,7 @@ Sheet com atalhos ("Hoje", "Ontem", "Anteontem", "Início do mês") + calendári
 
 ### 5.20 InsightCard
 
-Card com ícone `lightbulb` em `--primary-soft`, texto `body` com o número em destaque (`headline`), ação `ghost` ("Ver Restaurantes") e botão fechar (dispensa e não repete por 30 dias).
+Card com ícone `lightbulb` em `--primary-soft`, texto `body` com o número em destaque (`headline`), ação `ghost` ("Ver Restaurantes") e botão fechar (dispensa e não repete por 30 dias, para esta pessoa neste aparelho: a lista de dispensas no `localStorage` tem o id da pessoa na chave).
 
 ---
 
@@ -728,6 +730,12 @@ Atrás da flag `inicio_personalizavel` (desligada por padrão; doc 01 §11.10). 
 | Metas | Como andam as suas metas. | estreito | sim |
 | Destaque do mês | Um gasto fora do seu normal, quando houver. | estreito | sim |
 | Calendário de gastos | Quanto você gastou em cada dia do mês. | largo | não |
+| Fluxo de caixa | O saldo das contas dia a dia, com o que ainda vai cair. | largo | não |
+| Para onde foi o dinheiro | As categorias em que você mais gastou no mês. | estreito | não |
+| Receitas × despesas por mês | O que entrou e saiu em cada um dos últimos 6 meses. | estreito | não |
+| Patrimônio | O que você tem menos o que deve, e como mudou em 6 meses. | estreito | não |
+
+"Receitas × despesas por mês" leva "por mês" para não confundir com "Receitas e despesas", os dois cards do mês. O título de cada bloco no Início é o nome dele na folha.
 
 **Mesclagem**: o Saldo vem sempre primeiro e visível. Ids desconhecidos, repetidos (vale o primeiro) ou mal formados são ignorados. Um bloco do catálogo que a pessoa não conhecia ao salvar entra no fim, escondido, com o selo "Novo". Um bloco fora do padrão também leva "Novo" nos primeiros 30 dias depois de lançado.
 
@@ -742,11 +750,20 @@ Atrás da flag `inicio_personalizavel` (desligada por padrão; doc 01 §11.10). 
 
 **Desktop**: os blocos seguem a ordem escolhida. Cada bloco largo ocupa uma linha inteira; os estreitos entre dois largos se dividem em até 3 colunas contíguas, equilibradas pela altura estimada de cada bloco (com o padrão, saem as três colunas de sempre). Com 3 colunas, a primeira ocupa a largura toda em `md` e as três ficam lado a lado a partir de `xl`. Coluna ou linha cujos blocos não mostram nada some, e as outras ocupam o espaço. O Saldo nunca fica sozinho numa linha: quando um bloco largo vem logo depois dele, os dois dividem a linha a partir de `xl` (um terço e dois terços); abaixo disso, empilham. Os blocos largos se arranjam pela largura que recebem (container queries), não pela da tela.
 
-**Calendário de gastos** (bloco largo): card "Gastos por dia", legenda "Despesas pagas; no cartão, na data da compra" e o link "Ver relatório". O mapa de calor do relatório (§6.12, com "Ver como tabela") mostra o mês do Início (`?mes=`); ao lado, ou embaixo quando falta largura, ficam "Gasto no mês", "Média por dia" e "Dia mais caro" (somem num mês que ainda não começou). Tocar num dia abre Relatórios › Calendário nesse dia (`dia=`, com o `mes=` do Início). Mês sem despesas → convite compacto: "Nenhuma despesa em {mês}", "Quando houver, o calendário mostra os dias de mais gasto." e "Adicionar despesa".
+**Calendário de gastos** (bloco largo): card "Calendário de gastos", legenda "Despesas pagas por dia; no cartão, na data da compra" e o link "Ver relatório". O mapa de calor do relatório (§6.12, com "Ver como tabela") mostra o mês do Início (`?mes=`); ao lado, ou embaixo quando falta largura, ficam "Gasto no mês", "Média por dia" e "Dia mais caro" (somem num mês que ainda não começou). Tocar num dia abre Relatórios › Calendário nesse dia (`dia=`, com o `mes=` do Início). Mês sem despesas → convite compacto: "Nenhuma despesa em {mês}", "Quando houver, o calendário mostra os dias de mais gasto." e "Adicionar despesa".
+
+**Blocos dos relatórios** (05/11/2026). Os quatro reaproveitam as consultas e os gráficos dos Relatórios (§6.12), com o mês do Início (`?mes=`), e entram fora do padrão, com "Novo" por 30 dias. Cada um tem título, legenda e um link `ghost` de 44 px à direita. Quando não há o que mostrar, um convite compacto toma o lugar do gráfico (ícone, título, uma linha e o próximo passo). No modo discreto, além dos valores, a fala dos gráficos diz "valor oculto".
+
+- **Fluxo de caixa** (largo): legenda "Saldo dia a dia, sem os cartões", link "Ver relatório" para Relatórios › Fluxo no mesmo mês. Mostra a legenda Realizado/Previsto, o gráfico do saldo com o dia escolhido e "Ver como tabela", e só o indicador "Menor saldo previsto" ("Menor saldo" num mês passado): o saldo de hoje e o previsto para o fim do mês já estão no Saldo. O indicador fica embaixo do gráfico e ao lado dele quando o bloco tem uma linha inteira do desktop (container query). Num mês futuro, a nota "Só entra o que já está agendado…". Sem conta fora dos cartões → "Nenhuma conta fora dos cartões" / "O fluxo de caixa acompanha o saldo das suas contas, sem os cartões." e "Ver contas"; mês sem nada → "Nenhum lançamento em {mês}" / "Quando houver, o gráfico mostra o saldo dia a dia." e "Adicionar lançamento".
+- **Para onde foi o dinheiro** (estreito): legenda "Despesas pagas em {mês}, até hoje" (no mês atual) ou "Despesas pagas em {mês}", o total do mês e o ranking do relatório com as 5 maiores categorias e "Outras N categorias". No mês atual, "Ver relatório" leva a Relatórios › Categorias do mês (`?periodo=1`); em outro mês, "Ver no extrato" abre as despesas pagas daquele mês. Sem despesa paga (um mês futuro também) → "Nenhuma despesa paga em {mês}" / "Quando houver, o ranking mostra para onde foi o dinheiro." e "Adicionar despesa".
+- **Receitas × despesas por mês** (estreito): legenda "Últimos 6 meses, até {mês}", legenda de cores e as colunas do relatório, com o mês escolhido em cima e a nota do mês parcial ("* outubro parcial (até o dia 14 de 31)"). Num mês futuro, a série termina no mês atual. Link "Ver relatório" para a Visão geral em 6 meses. Seis meses sem nada → "Nenhuma receita ou despesa em 6 meses" / "Com seus lançamentos, o gráfico compara o que entrou e saiu a cada mês." e "Adicionar lançamento".
+- **Patrimônio** (estreito): o card da Visão geral (valor, variação em 6 meses e sparkline), com a legenda "no fim de {mês}" num mês passado ou "hoje". Num mês futuro, termina hoje. Link "Ver relatório" para Relatórios › Patrimônio em 6 meses. Tudo zerado → "Seu patrimônio está zerado" / "Com saldo nas contas, a evolução dos últimos meses aparece aqui." e "Ver contas".
+
+No desktop, só o Fluxo de caixa ocupa uma linha inteira (e divide a linha com o Saldo a partir de `xl` quando vem logo depois dele); os estreitos entram nas colunas como os outros. O skeleton de cada um segue a largura do bloco (§5.17) e, no Fluxo, a fase do mês. O de "Para onde foi o dinheiro" tem a altura do ranking cheio (5 categorias e "Outras"): no começo do mês, com menos categorias, o bloco carregado fica mais baixo que o skeleton, o que foi aceito.
 
 **Flag desligada**: o Início é o padrão do app (a página nem lê a escolha), sem botão e sem a seção em Preferências; o servidor recusa salvar. A escolha salva fica guardada para quando a flag voltar.
 
-**Dica e novidade** (§6.16, ambas com `when: { flag }`): a dica "Seu Início, do seu jeito" aponta para a linha de Preferências (o Início já tem 3 dicas, e o botão fica abaixo da dobra); a novidade "Monte o seu Início" fica só em Ajustes › Novidades, com o link "Personalizar o Início" para Preferências.
+**Dica e novidade** (§6.16, ambas com `when: { flag }`): a dica "Seu Início, do seu jeito" aponta para a linha de Preferências (o Início já tem 3 dicas, e o botão fica abaixo da dobra); a novidade "Monte o seu Início" fica só em Ajustes › Novidades, com o link "Personalizar o Início" para Preferências. A novidade "Mais blocos para o Início" (05/11/2026; "Agora dá para trazer o fluxo de caixa, as categorias, receitas × despesas e o patrimônio para o Início.") segue o mesmo caminho.
 
 ### 6.4 Extrato
 
@@ -1221,8 +1238,8 @@ Textos de vazio:
 
 ### 9.5 Acessibilidade de gráficos
 
-- Todo gráfico tem **"Ver como tabela"** (mesmos dados, tabela acessível).
-- `role="img"` + `aria-label` com resumo ("Receitas superaram despesas em 11 de 12 meses; maior despesa em dezembro, R$ 8.940").
+- Todo gráfico tem **"Ver como tabela"** (mesmos dados, tabela acessível). Uma tabela com rolagem própria é uma região que recebe foco (`role="region"`, nome próprio), para o teclado também rolar.
+- `role="img"` nomeado por um resumo ("Receitas superaram despesas em 11 de 12 meses; maior despesa em dezembro, R$ 8.940"). O resumo é texto ligado por `aria-labelledby`, não `aria-label`: no modo discreto, o CSS troca pela versão sem valores ("…maior despesa em dezembro, valor oculto"), como no `<Money>`. O `aria-valuetext` do percorrer e o nome das colunas seguem a mesma regra.
 - Identidade nunca só por cor: legenda + rótulo direto; em impressão/alto contraste, hachura a 45°/135° (opt-in).
 - Tema escuro usa os passos escuros da paleta (§3.3), não uma inversão automática.
 

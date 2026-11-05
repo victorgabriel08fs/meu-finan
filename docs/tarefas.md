@@ -2,34 +2,7 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 1. Início personalizável — etapa 2: blocos dos relatórios
-
-**Continuação da tarefa entregue em 04/11/2026** (veja Entregue, no fim). O catálogo já reserva os ids, sem entrada: `cash-flow`, `category-breakdown`, `income-expense` e `net-worth` (`src/lib/home/blocks.ts`).
-
-### O que entra
-
-- Um bloco por commit, cada um com loader próprio em `src/app/(app)/inicio/blocks.tsx`, skeleton com a altura medida, erro de bloco e convite quando vazio, reaproveitando as consultas e os componentes dos Relatórios:
-  - **Fluxo de caixa** (`cashFlowReport` + `CashFlowCard`), largo.
-  - **Para onde foi o dinheiro** (`categoryBreakdown` + `CategoryRanking` com 5 categorias).
-  - **Receitas × despesas** (`monthlySeries(ctx, range, 6)`).
-  - **Patrimônio** (`netWorthSeries(ctx, range, 7)`).
-- Os blocos novos entram fora do padrão, com "Novo" por 30 dias, e uma novidade "Mais blocos para o Início" (`when: { flag: "inicio_personalizavel" }`).
-
-### Pendências pequenas da etapa 1
-
-- Skeletons de Contas (148 → 156 px) e Metas (180 → 188 px), medidos pelo `qa-ui-ux`.
-- O breakpoint solto `min-[26.25rem]` nos skeletons de Receitas/Despesas e Orçamento: virar um breakpoint do tema ou sair.
-- axe no e2e (`@axe-core/playwright` não está instalado): `/inicio` com a folha fechada e aberta e `/ajustes/preferencias`.
-- A dispensa do Destaque fica em `localStorage` sem a chave da pessoa (CLAUDE.md › One device, several accounts).
-- Decidido pelo dono (05/11/2026): quando o Saldo divide a linha com um bloco largo (`hero-wide`), fica como está — a tela segue a ordem da folha, mesmo com o espaço vazio sob o Saldo.
-
-### Pronto quando
-
-- Cada bloco aparece na folha "Personalizar o Início", carrega sozinho, respeita `?mes=` e o modo discreto, e o `qa-ui-ux` aprova em 360/430 px e desktop, escuro e claro.
-- Testes de unidade dos componentes, integração dos loaders e e2e de ligar um bloco novo.
-- README, doc 02 §6.3 e a novidade atualizados.
-
-## 2. Notificações: novos eventos configuráveis pelo cron diário
+## 1. Notificações: novos eventos configuráveis pelo cron diário
 
 **Pedido do dono (04/11/2026).** Cinco eventos de notificação enviados pelo cron diário, cada um ligado ou desligado pela pessoa:
 
@@ -62,7 +35,7 @@ Conteúdo aprovado pelo dono em 05/11/2026.
 - Ajustes › Notificações mostra os interruptores e as opções, aprovados pelo `qa-ui-ux`.
 - README (Notificações, Cron diário), doc 01 §9 e doc 02 §6.14 atualizados.
 
-## 3. Extrato — melhorias
+## 2. Extrato — melhorias
 
 Pendências pequenas achadas na correção dos filtros (04/11/2026), que já existiam antes dela:
 
@@ -73,7 +46,39 @@ Pendências pequenas achadas na correção dos filtros (04/11/2026), que já exi
 - **Criar subcategorias pelo app** (decidido pelo dono em 05/11/2026): em Ajustes › Categorias, escolher a categoria mãe ao criar ou editar. O filtro do Extrato já trata mãe e filhas.
 - Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
 
+## 3. Início e Relatórios — melhorias
+
+Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
+
+- **Mês anterior a qualquer lançamento** (`?mes=2024-01`): o Fluxo de caixa e o Patrimônio mostram o saldo projetado para trás, como se já houvesse dinheiro. Mostrar "Sem registros em {mês}" nos dois lugares, no bloco do Início e no relatório.
+- Receitas × despesas: no tema claro, as colunas dos meses não selecionados ficam com contraste baixo.
+- Resumo falado com variação zero diz "ficou estável de R$ 5.150 para R$ 5.150": dizer "ficou estável em R$ 5.150".
+- Rótulos dos marcadores truncados no gráfico do Fluxo de caixa ("Curso de…").
+- Skeleton por fase do mês também em Receitas/Despesas, Orçamento e Receitas × despesas por mês (hoje só o Fluxo de caixa muda com a fase).
+- axe no tema claro (o e2e roda o axe só no escuro).
+- `?mes=` nos relatórios por período (Visão geral, Categorias, Patrimônio): o link "Ver relatório" dos blocos não leva o mês do Início.
+
 ## Entregue
+
+### Início personalizável (etapa 2): blocos dos relatórios — 05/11/2026
+
+Quatro blocos novos no catálogo, fora do padrão e com "Novo" por 30 dias: **Fluxo de caixa** (largo, só o menor saldo previsto, skeleton pela fase do mês), **Para onde foi o dinheiro**, **Receitas × despesas por mês** e **Patrimônio**. Cada um segue `?mes=`, leva ao relatório e mostra um convite quando não há o que mostrar. Novidade "Mais blocos para o Início" (`when: { flag: "inicio_personalizavel" }`). Títulos dos blocos com o nome da folha ("Calendário de gastos", "Patrimônio").
+
+Também entraram:
+
+- Gráficos sem falar valores no modo discreto (resumos, percorrer e colunas dizem "valor oculto").
+- O Fluxo de caixa e o Saldo leem contas, faturas e pendentes uma vez por requisição (`request-reads.ts`).
+- Tabelas com rolagem recebem foco pelo teclado.
+
+Pendências pequenas da etapa 1, resolvidas:
+
+- Skeletons de Contas (156 px) e Metas (188 px) com a altura do cabeçalho.
+- O breakpoint solto `min-[26.25rem]` saiu: os skeletons medem pela largura do bloco (container queries).
+- axe no e2e (`@axe-core/playwright`, `e2e/axe.ts`): `/inicio` com os 4 blocos, a folha aberta e a tabela do Fluxo, e `/ajustes/preferencias`, no tema escuro, sem violações.
+- A dispensa do Destaque passou a ser por pessoa no aparelho (chave com o id da pessoa).
+- Mantido, por decisão do dono: quando o Saldo divide a linha com um bloco largo (`hero-wide`), a tela segue a ordem da folha.
+
+Testes de unidade, integração dos carregadores (`src/app/(app)/inicio/blocks.integration.test.tsx`) e e2e (`e2e/inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 02 §5.17, §5.20, §6.3 e §9.5, doc 01 §8.
 
 ### Extrato: filtros de conta, categoria e tipo — 04/11/2026
 

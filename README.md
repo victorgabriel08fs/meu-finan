@@ -7,7 +7,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 ## O que já dá para fazer
 
 - **Início**: saldo em contas, previsão para o fim do mês (com agendados e faturas), receitas e despesas, orçamento do mês com ritmo, próximas contas (sempre os próximos 7 dias a partir de hoje), contas e metas. Cada bloco carrega sozinho, com o próprio skeleton e o próprio erro.
-- **Início personalizável** (atrás da flag `inicio_personalizavel`, desligada por padrão): em "Personalizar o Início" (no fim do Início e em Ajustes › Preferências), mostrar, esconder e reordenar os blocos com "Subir" e "Descer", e trazer o **Calendário de gastos** dos Relatórios (toque no dia abre o relatório nesse dia). O Saldo fica sempre no topo. A escolha fica na conta e vale em todos os aparelhos; "Restaurar padrão" volta ao Início do app, com desfazer.
+- **Início personalizável** (atrás da flag `inicio_personalizavel`, desligada por padrão): em "Personalizar o Início" (no fim do Início e em Ajustes › Preferências), mostrar, esconder e reordenar os blocos com "Subir" e "Descer", e trazer blocos dos Relatórios: **Calendário de gastos** (toque no dia abre o relatório nesse dia), **Fluxo de caixa** (saldo dia a dia e o menor saldo previsto), **Para onde foi o dinheiro** (as 5 categorias com mais gasto), **Receitas × despesas por mês** (últimos 6 meses) e **Patrimônio** (valor e variação em 6 meses). Cada um segue o mês em tela e leva ao relatório. O Saldo fica sempre no topo. A escolha fica na conta e vale em todos os aparelhos; "Restaurar padrão" volta ao Início do app, com desfazer.
 - **Lançamento rápido** ("+" em qualquer tela, atalhos N/R/T no desktop e no ícone do app instalado): despesa, receita ou transferência, com teclado de valor, parcelas, repetição e desfazer.
 - **Extrato** com busca sem acento, filtros na URL (conta, categoria com as subcategorias, tipo e pendentes; Voltar desfaz), agendados à parte e detalhe para editar, pagar ou excluir — inclusive "este e os próximos" em parcelas e recorrências.
 - **Contas e cartões**: saldos, ajuste de saldo, faturas por mês, pagamento de fatura e melhor dia de compra.
@@ -30,7 +30,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 | Autenticação | Better Auth 1.7 com passkeys (sessão em banco) |
 | Dados | Postgres: Neon em produção (WebSocket Pool) e PGlite embutido no desenvolvimento local · Drizzle ORM e drizzle-kit |
 | Datas | motor próprio em `src/lib/finance` · @date-fns/tz (fuso `America/Sao_Paulo`) |
-| Qualidade | Biome (lint e formatação) · Vitest · fast-check · Playwright (celular emulado) |
+| Qualidade | Biome (lint e formatação) · Vitest · fast-check · Playwright (celular emulado) · axe-core (acessibilidade no e2e) |
 | Hospedagem | Vercel (funções em `gru1`, São Paulo) · Vercel Cron |
 
 ## Requisitos
@@ -203,7 +203,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 | `npm run test:watch` | Testes em modo observação |
 | `npm run test:coverage` | Testes com cobertura |
 | `npm run check` | Lint, tipos e testes (rode antes de abrir um pull request) |
-| `npm run test:e2e` | Recria os dados de demonstração (com as dicas desligadas), faz o build e roda o Playwright num celular emulado; `e2e/tips.spec.ts` liga as dicas, testa e desliga de novo |
+| `npm run test:e2e` | Recria os dados de demonstração (com as dicas desligadas), faz o build e roda o Playwright num celular emulado; `e2e/tips.spec.ts` liga as dicas, testa e desliga de novo; `e2e/axe.ts` (`expectNoA11yViolations`) roda o axe-core com as regras WCAG 2.0, 2.1 e 2.2 A e AA |
 | `npm run db:generate` | Gera uma migração SQL a partir do schema Drizzle |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:studio` | Abre o Drizzle Studio |
@@ -261,7 +261,7 @@ meu-finan/
 - [`docs/01-system-design.md`](docs/01-system-design.md): requisitos, arquitetura, modelo de dados, API, cache, jobs, segurança e CI/CD.
 - [`docs/02-frontend-design.md`](docs/02-frontend-design.md): design tokens, navegação, componentes, telas, microcopy, acessibilidade e PWA.
 - [`docs/03-motor-financeiro.md`](docs/03-motor-financeiro.md): fórmulas e algoritmos (juros compostos, CDI, IPCA+, IR regressivo, faturas, parcelamento, orçamento).
-- [`docs/tarefas.md`](docs/tarefas.md): o que falta fazer, em ordem de prioridade (próxima: Início personalizável).
+- [`docs/tarefas.md`](docs/tarefas.md): o que falta fazer, em ordem de prioridade (próxima: novos eventos de notificação no cron diário).
 
 O desenvolvimento passa por quatro agentes do Claude Code, definidos em [`.claude/agents/`](.claude/agents/): `arquiteto` (planeja), `dev` (implementa), `qa-ui-ux` (revisa as telas no navegador contra o doc 02) e `testador-documentador-versionador` (testa, documenta e commita em etapas). O fluxo está no [`CLAUDE.md`](CLAUDE.md).
 
