@@ -18,6 +18,25 @@ Every task (beyond a one-line fix or a question) goes through the agents defined
 
 Findings from 3 and 4 go back to `dev`, then through 3 and 4 again. The main session coordinates them, pushes the branch and opens the pull request, and merges or deploys only with the owner. Pending work is listed in `docs/tarefas.md`.
 
+### Model per call (the owner asked to save tokens)
+
+Each agent has a default model in its frontmatter: `arquiteto` opus; `dev`, `qa-ui-ux` and `testador-documentador-versionador` sonnet. The main session picks the model (and effort) of each call by the work at hand, passing `model`/`effort` to the Agent tool:
+
+| Work | Model | Effort |
+|---|---|---|
+| Plan a new feature, data model, money, security, concurrency, a bug with no known cause | opus | default |
+| Plan a small or well-understood change | sonnet | default |
+| Implement from a plan, fix QA findings, write tests, split commits | sonnet | default |
+| Implement domain logic with transactions, locks, migrations or finance formulas | opus | default |
+| QA of a new screen or flow | sonnet | default |
+| QA recheck of a few listed fixes; docs-only updates; a single commit of reviewed work; running the suites | haiku | low |
+
+To keep tokens down:
+- Resume an agent (SendMessage) for a short follow-up on the same task; start a fresh one for a new task or once its context is large.
+- Save the arquiteto's plan to a file in the session's scratchpad and pass the path; never paste the plan into a prompt.
+- One-line fixes and small copy changes the main session makes itself, without agents.
+- Skip the QA recheck when the fixes are not visible; run the full `npm run test:e2e` once per task, at the end.
+
 ## Commands
 
 - `npm run dev` · `npm run build` (must work without a database) · `npm run build:vercel` (migrations, then build)
