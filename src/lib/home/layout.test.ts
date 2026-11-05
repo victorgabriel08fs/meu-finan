@@ -342,7 +342,7 @@ describe("packHomeLayout", () => {
       { kind: "hero-wide", hero: "balance", id: "spending-calendar" },
       {
         kind: "columns",
-        // 126 | 380 | 252 + 148: the tallest column is as short as it gets.
+        // 126 | 380 | 252 + 156: the tallest column is as short as it gets.
         groups: [["month-totals"], ["budget"], ["upcoming-bills", "accounts"]],
       },
     ]);

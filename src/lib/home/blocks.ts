@@ -74,7 +74,7 @@ export const HOME_BLOCKS = {
     errorTitle: "Não deu para carregar as contas",
     size: "narrow",
     inDefault: true,
-    weight: 148,
+    weight: 156,
     since: "2026-11-02",
   },
   goals: {
@@ -83,7 +83,7 @@ export const HOME_BLOCKS = {
     errorTitle: "Não deu para carregar as metas",
     size: "narrow",
     inDefault: true,
-    weight: 180,
+    weight: 188,
     since: "2026-11-02",
   },
   insight: {

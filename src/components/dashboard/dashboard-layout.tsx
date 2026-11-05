@@ -199,10 +199,13 @@ export function HomeBlockFrame({
 
 const TILE_SKELETON = "h-37 rounded-card min-[26.25rem]:h-32.5 xl:h-37";
 
+/** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
 function SectionSkeleton({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col">
-      <Skeleton className="mb-3 h-4 w-28 rounded-chip" />
+      <div className="mb-3 flex h-6 items-center">
+        <Skeleton className="h-4 w-28 rounded-chip" />
+      </div>
       {children}
     </div>
   );
@@ -230,7 +233,7 @@ export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
     case "upcoming-bills":
       return (
         <SectionSkeleton>
-          <Skeleton className="h-56 rounded-card" />
+          <Skeleton className="h-54 rounded-card" />
         </SectionSkeleton>
       );
     case "accounts":
