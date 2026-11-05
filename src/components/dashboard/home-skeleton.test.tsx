@@ -37,13 +37,16 @@ describe("HomeBlockSkeleton", () => {
     for (const id of ["month-totals", "budget"] as const) {
       const html = render(id);
       expect(html, id).toMatch(/^<div class="@container">/);
-      expect(html, id).toContain("@sm:");
       expect(html, id).not.toContain("min-[26.25rem]");
       expect(html, id).not.toContain("xl:");
     }
+    // Measured: the tiles wrap under 23rem (357px yes, 368px no), the budget
+    // under 21rem (328px yes, 342px no).
     expect(
-      render("month-totals").match(/h-37 rounded-card @sm:h-32.5/g),
-    ).toHaveLength(2);
-    expect(render("budget")).toContain("h-99.75 rounded-card @sm:h-94.75");
+      render("month-totals").split("h-37 rounded-card @min-[23rem]:h-32.5"),
+    ).toHaveLength(3);
+    expect(render("budget")).toContain(
+      "h-99.75 rounded-card @min-[21rem]:h-94.75",
+    );
   });
 });

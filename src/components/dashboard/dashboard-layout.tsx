@@ -197,8 +197,11 @@ export function HomeBlockFrame({
   );
 }
 
-/** In an @container around the tiles: their support text wraps a line more when narrow. */
-const TILE_SKELETON = "h-37 rounded-card @sm:h-32.5";
+/**
+ * In an @container around the tiles: their support text wraps a line more
+ * when the block is under 23rem (measured: 357px wraps, 368px does not).
+ */
+const TILE_SKELETON = "h-37 rounded-card @min-[23rem]:h-32.5";
 
 /** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
 function SectionSkeleton({ children }: { children: ReactNode }) {
@@ -233,7 +236,7 @@ export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
     case "budget":
       return (
         <div className="@container">
-          <Skeleton className="h-99.75 rounded-card @sm:h-94.75" />
+          <Skeleton className="h-99.75 rounded-card @min-[21rem]:h-94.75" />
         </div>
       );
     case "upcoming-bills":
