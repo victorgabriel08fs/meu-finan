@@ -282,7 +282,18 @@ describe("actions", () => {
 
     await m.domain.savePushSubscription("bruno", device(IPHONE), null);
     const own = await m.actions.syncPushDeviceAction({ endpoint: IPHONE });
-    expect(own.data).toEqual({ on: true, badge: 1 });
+    expect(own.data).toEqual({ on: true, badge: 0 });
+  });
+
+  it("opening the app marks the person's notices as read", async () => {
+    await m.domain.savePushSubscription("bruno", device(IPHONE), null);
+    await unread("bruno", "a");
+    await unread("bruno", "b");
+    await unread("ana", "a");
+    const synced = await m.actions.syncPushDeviceAction({ endpoint: IPHONE });
+    expect(synced.data).toEqual({ on: true, badge: 0 });
+    expect(await m.domain.countUnreadNotifications("bruno")).toBe(0);
+    expect(await m.domain.countUnreadNotifications("ana")).toBe(1);
   });
 
   it("sends a test to this device with one more than the unread count", async () => {

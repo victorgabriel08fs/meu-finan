@@ -6,6 +6,7 @@ import { badgeNumber, pushSubscriptionSchema } from "@/lib/push/subscription";
 import {
   countUnreadNotifications,
   devicePushState,
+  markNotificationsRead,
   removePushSubscription,
   savePushSubscription,
 } from "@/server/domain/push";
@@ -45,11 +46,13 @@ export const unsubscribePushAction = authAction
 /**
  * On every page load of the app: whether this device sends the person's
  * notifications (taking it over from whoever used it before) and the number
- * for the app icon, which is only shown on a device that is theirs.
+ * for the app icon, which is only shown on a device that is theirs. Opening
+ * the app marks the notices as read, so the number goes back to zero.
  */
 export const syncPushDeviceAction = authAction
   .inputSchema(z.object({ endpoint: endpoint.nullable() }))
   .action(async ({ parsedInput, ctx: { user } }) => {
+    await markNotificationsRead(user.id);
     const state = parsedInput.endpoint
       ? await devicePushState(user.id, parsedInput.endpoint)
       : "off";

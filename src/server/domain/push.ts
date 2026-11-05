@@ -141,3 +141,17 @@ export async function countUnreadNotifications(
     .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
   return row?.total ?? 0;
 }
+
+/**
+ * Opening the app marks the person's notices as read, so the number on the
+ * icon goes back to zero (until the notification center lists them).
+ */
+export async function markNotificationsRead(
+  userId: string,
+  executor: Executor = db,
+): Promise<void> {
+  await executor
+    .update(notifications)
+    .set({ readAt: new Date() })
+    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+}
