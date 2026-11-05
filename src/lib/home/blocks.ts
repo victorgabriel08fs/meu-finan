@@ -7,7 +7,7 @@
 // ignored.
 //
 // Reserved for the second stage (reports on the Início), not in the catalog
-// yet: `income-expense`, `net-worth`.
+// yet: `net-worth`.
 
 export type HomeBlockSize = "narrow" | "wide";
 
@@ -125,6 +125,16 @@ export const HOME_BLOCKS = {
     weight: 545,
     since: REPORT_BLOCKS_SINCE,
   },
+  "income-expense": {
+    // "por mês": not to be confused with "Receitas e despesas", the tiles.
+    label: "Receitas × despesas por mês",
+    description: "O que entrou e saiu em cada um dos últimos 6 meses.",
+    errorTitle: "Não deu para carregar o comparativo de receitas e despesas",
+    size: "narrow",
+    inDefault: false,
+    weight: 445,
+    since: REPORT_BLOCKS_SINCE,
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -146,6 +156,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "spending-calendar",
   "cash-flow",
   "category-breakdown",
+  "income-expense",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

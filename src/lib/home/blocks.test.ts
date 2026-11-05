@@ -60,17 +60,26 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-3)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-4)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
+      "income-expense",
     ]);
     expect(HOME_BLOCKS["cash-flow"].size).toBe("wide");
-    for (const id of ["cash-flow", "category-breakdown"] as const) {
+    for (const id of [
+      "cash-flow",
+      "category-breakdown",
+      "income-expense",
+    ] as const) {
       expect(HOME_BLOCKS[id].inDefault, id).toBe(false);
       expect(HOME_BLOCKS[id].since, id).toBe(REPORT_BLOCKS_SINCE);
       if (id !== "cash-flow") expect(HOME_BLOCKS[id].size, id).toBe("narrow");
     }
+    // Not "Receitas e despesas", the name of the tiles.
+    expect(HOME_BLOCKS["income-expense"].label).toBe(
+      "Receitas × despesas por mês",
+    );
   });
 
   it("knows its own ids only", () => {

@@ -19,6 +19,11 @@ import {
   CategoryBreakdownInvite,
 } from "@/components/dashboard/category-breakdown-block";
 import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
+import {
+  INCOME_EXPENSE_BLOCK_MONTHS,
+  IncomeExpenseBlock,
+  IncomeExpenseInvite,
+} from "@/components/dashboard/income-expense-block";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
 import {
@@ -28,6 +33,7 @@ import {
 import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
 import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
+import { partialProgress } from "@/components/reports/model";
 import { monthViewHref } from "@/components/reports/views";
 import { statementHref } from "@/components/transactions/statement-params";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
@@ -49,6 +55,7 @@ import {
   cashFlowReport,
   categoryBreakdown,
   dailySpending,
+  monthlySeries,
   reportPhase,
 } from "@/server/domain/reports";
 import { periodTotals } from "@/server/domain/transactions";
@@ -74,6 +81,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "spending-calendar": SpendingCalendarBlockLoader,
   "cash-flow": CashFlowBlockLoader,
   "category-breakdown": CategoryBreakdownBlockLoader,
+  "income-expense": IncomeExpenseBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -337,6 +345,39 @@ async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
       }
     />
   );
+}
+
+/** Receitas × despesas: the 6 months up to the one on screen. */
+async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
+  const end = seriesEnd(ctx, range);
+  const months = await monthlySeries(ctx, end, INCOME_EXPENSE_BLOCK_MONTHS);
+  if (
+    months.every((month) => month.incomeCents === 0 && month.expenseCents === 0)
+  ) {
+    return <IncomeExpenseInvite />;
+  }
+  return (
+    <IncomeExpenseBlock
+      months={months}
+      endMonthName={monthName(end.month)}
+      partialProgress={partialProgress(
+        months,
+        resolvePeriod(ctx, null),
+        ctx.todayIso,
+      )}
+      reportHref={`/relatorios/visao-geral?periodo=${INCOME_EXPENSE_BLOCK_MONTHS}`}
+    />
+  );
+}
+
+/**
+ * The last month of a series of months: the one on screen, or today's for a
+ * month ahead (nothing has happened there yet to chart).
+ */
+export function seriesEnd(ctx: UserContext, range: PeriodRange): PeriodRange {
+  return reportPhase(ctx, range) === "future"
+    ? resolvePeriod(ctx, null)
+    : range;
 }
 
 /** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */

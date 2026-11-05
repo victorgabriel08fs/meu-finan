@@ -50,6 +50,7 @@ describe("defaultHomeLayout", () => {
       { id: "spending-calendar", visible: false },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
+      { id: "income-expense", visible: false },
     ]);
   });
 });
@@ -75,6 +76,7 @@ describe("resolveHomeLayout", () => {
       { id: "insight", visible: true },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: true },
+      { id: "income-expense", visible: false },
     ]);
     expect(customized).toBe(true);
     expect(entries).toEqual([
@@ -88,6 +90,7 @@ describe("resolveHomeLayout", () => {
       { id: "insight", visible: true },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: true },
+      { id: "income-expense", visible: false },
     ]);
   });
 
@@ -128,6 +131,7 @@ describe("resolveHomeLayout", () => {
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
+      "income-expense",
     ]);
     for (const entry of entries.slice(3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
@@ -158,7 +162,11 @@ describe("resolveHomeLayout", () => {
   });
 
   it("marks the blocks of the reports new for 30 days from their release", () => {
-    const reports: HomeBlockId[] = ["cash-flow", "category-breakdown"];
+    const reports: HomeBlockId[] = [
+      "cash-flow",
+      "category-breakdown",
+      "income-expense",
+    ];
     const since = HOME_BLOCKS["cash-flow"].since;
     for (const id of reports) expect(HOME_BLOCKS[id].since, id).toBe(since);
     const day = (offset: number) =>
@@ -177,8 +185,8 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-2)).toEqual(reports);
-    for (const entry of saved.slice(-2)) {
+    expect(ids(saved).slice(-3)).toEqual(reports);
+    for (const entry of saved.slice(-3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -237,6 +245,7 @@ describe("toStoredLayout", () => {
       { id: "spending-calendar", visible: false },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
+      { id: "income-expense", visible: false },
     ]);
   });
 });
@@ -253,7 +262,7 @@ describe("moveHomeBlock", () => {
     const layout = defaultHomeLayout();
     expect(moveHomeBlock(layout, "balance", "down")).toEqual(layout);
     expect(moveHomeBlock(layout, "month-totals", "up")).toEqual(layout);
-    expect(moveHomeBlock(layout, "category-breakdown", "down")).toEqual(layout);
+    expect(moveHomeBlock(layout, "income-expense", "down")).toEqual(layout);
   });
 
   it("keeps the same blocks, the Saldo first, whatever the moves", () => {
@@ -293,8 +302,8 @@ describe("canMoveHomeBlock", () => {
     expect(canMoveHomeBlock(layout, "month-totals", "down")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(true);
-    expect(canMoveHomeBlock(layout, "category-breakdown", "up")).toBe(true);
-    expect(canMoveHomeBlock(layout, "category-breakdown", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "income-expense", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "income-expense", "down")).toBe(false);
   });
 
   it("agrees with moveHomeBlock", () => {
@@ -388,12 +397,17 @@ describe("packHomeLayout", () => {
 
   it("puts the Fluxo de caixa beside the Saldo, the narrow reports in columns", () => {
     expect(
-      packHomeLayout(["balance", "cash-flow", "category-breakdown"]),
+      packHomeLayout([
+        "balance",
+        "cash-flow",
+        "category-breakdown",
+        "income-expense",
+      ]),
     ).toEqual([
       { kind: "hero-wide", hero: "balance", id: "cash-flow" },
       {
         kind: "columns",
-        groups: [["category-breakdown"]],
+        groups: [["category-breakdown"], ["income-expense"]],
       },
     ]);
     expect(

@@ -11,6 +11,10 @@ import {
   CategoryBreakdownBlock,
   CategoryBreakdownInvite,
 } from "./category-breakdown-block";
+import {
+  IncomeExpenseBlock,
+  IncomeExpenseInvite,
+} from "./income-expense-block";
 
 // The blocks of the reports on the Início (doc 02 §6.3): the report's chart
 // under a heading of its own, the way to the report, and an invite when
@@ -221,5 +225,53 @@ describe("CategoryBreakdownBlock", () => {
       "Quando houver, o ranking mostra para onde foi o dinheiro.",
     );
     expect(html).toContain("Adicionar despesa");
+  });
+});
+
+describe("IncomeExpenseBlock", () => {
+  const months = ["05", "06", "07", "08", "09", "10"].map((m, k) => ({
+    month: `2026-${m}`,
+    incomeCents: 870_000,
+    expenseCents: 500_000 + k * 10_000,
+    partial: m === "10",
+  }));
+
+  it("compares the 6 months up to the one on screen", () => {
+    const html = plain(
+      renderToStaticMarkup(
+        <IncomeExpenseBlock
+          months={months}
+          endMonthName="outubro"
+          partialProgress="até o dia 14 de 31"
+          reportHref="/relatorios/visao-geral?periodo=6"
+        />,
+      ),
+    );
+    expect(html).toContain(
+      '<section aria-labelledby="inicio-receitas-despesas"',
+    );
+    expect(html).toContain('id="inicio-receitas-despesas"');
+    expect(html).not.toContain('id="relatorio-receitas-despesas"');
+    expect(html).toContain(">Receitas × despesas por mês</h2>");
+    expect(html).toContain("Últimos 6 meses, até outubro");
+    expect(html).toContain('href="/relatorios/visao-geral?periodo=6"');
+    expect(html.match(/aria-pressed=/g)).toHaveLength(6);
+    // The last complete month is selected; the running one is partial.
+    expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
+    expect(html).toContain("setembro");
+    expect(html).toContain("* outubro parcial (até o dia 14 de 31)");
+    expect(html).toContain("--swatch:var(--chart-3)");
+    expect(html).toContain(
+      '<span data-privacy-mask="" class="sr-only">maio de 2026: receitas valor oculto, despesas valor oculto</span>',
+    );
+  });
+
+  it("invites to add entries after 6 empty months", () => {
+    const html = renderToStaticMarkup(<IncomeExpenseInvite />);
+    expect(html).toContain("Nenhuma receita ou despesa em 6 meses");
+    expect(html).toContain(
+      "Com seus lançamentos, o gráfico compara o que entrou e saiu a cada mês.",
+    );
+    expect(html).toContain("Adicionar lançamento");
   });
 });
