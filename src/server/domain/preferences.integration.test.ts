@@ -1,7 +1,9 @@
 // Preferences against a real (in-memory) Postgres, with a mocked session.
 // The theme: the column default, the migration that moved old rows to dark,
 // the domain functions and the Server Action. The Início: the stored blocks,
-// the check on the column and the action behind inicio_personalizavel.
+// the check on the column and the action behind inicio_personalizavel. The
+// notices (Ajustes › Notificações): defaults, reading what was stored field
+// by field, and the action behind notificacoes_push.
 import { readFileSync } from "node:fs";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,6 +25,7 @@ type Modules = {
   preferences: typeof import("./preferences");
   action: typeof import("../actions/preferences")["setThemeAction"];
   saveHomeLayout: typeof import("../actions/preferences")["saveHomeLayoutAction"];
+  saveNotices: typeof import("../actions/notifications")["saveNotificationPreferencesAction"];
   sql: typeof import("drizzle-orm")["sql"];
   eq: typeof import("drizzle-orm")["eq"];
 };
@@ -51,6 +54,8 @@ beforeAll(async () => {
     action: (await import("../actions/preferences")).setThemeAction,
     saveHomeLayout: (await import("../actions/preferences"))
       .saveHomeLayoutAction,
+    saveNotices: (await import("../actions/notifications"))
+      .saveNotificationPreferencesAction,
     sql,
     eq,
   };
@@ -404,5 +409,201 @@ describe("saveHomeLayoutAction", () => {
     expect(outro.serverError).toBeUndefined();
     expect(await storedHomeLayout("outro")).toEqual(CALENDAR_SECOND);
     expect(await storedHomeLayout("owner")).toBeNull();
+  });
+});
+
+const storedNotices = async (userId: string) => {
+  const [row] = await m.db
+    .select({ prefs: m.schema.userSettings.notificationPrefs })
+    .from(m.schema.userSettings)
+    .where(m.eq(m.schema.userSettings.userId, userId));
+  return row?.prefs;
+};
+
+/** Turns notificacoes_push on for one person (it is off by default). */
+const enableNotices = (userId: string) =>
+  m.db
+    .insert(m.schema.featureFlagOverrides)
+    .values({ userId, key: "notificacoes_push", enabled: true });
+
+const resetNotices = async () => {
+  await m.db.update(m.schema.userSettings).set({ notificationPrefs: null });
+  await m.db.delete(m.schema.featureFlagOverrides);
+  await m.db.delete(m.schema.featureFlags);
+};
+
+const DEFAULT_NOTICES = {
+  events: {
+    daily_summary: false,
+    bills_due: true,
+    income_countdown: false,
+    weekly_summary: true,
+    monthly_summary: true,
+  },
+  billsLeadDays: 1,
+  showAmounts: false,
+};
+
+const ALL_NOTICES = {
+  events: {
+    daily_summary: true,
+    bills_due: true,
+    income_countdown: true,
+    weekly_summary: true,
+    monthly_summary: true,
+  },
+  billsLeadDays: 3,
+  showAmounts: true,
+} as const;
+
+describe("notification preferences", () => {
+  beforeEach(resetNotices);
+
+  it("are the defaults until changed, with or without a settings row", async () => {
+    await m.db
+      .delete(m.schema.userSettings)
+      .where(m.eq(m.schema.userSettings.userId, "outro"));
+    expect(await storedNotices("owner")).toBeNull();
+    for (const userId of ["owner", "outro"]) {
+      expect(await m.preferences.getNotificationPreferences(userId)).toEqual(
+        DEFAULT_NOTICES,
+      );
+    }
+  });
+
+  it("saves the whole choice and reads it back, creating the row", async () => {
+    await m.db
+      .delete(m.schema.userSettings)
+      .where(m.eq(m.schema.userSettings.userId, "outro"));
+    await m.preferences.setNotificationPreferences("outro", ALL_NOTICES);
+    expect(await storedNotices("outro")).toEqual(ALL_NOTICES);
+    expect(await m.preferences.getNotificationPreferences("outro")).toEqual(
+      ALL_NOTICES,
+    );
+    expect(await storedNotices("owner")).toBeNull();
+  });
+
+  it("reads what was stored field by field", async () => {
+    // An older save without a later event, an invalid lead time and an
+    // unknown key: each falls back to its default.
+    await m.db.execute(
+      m.sql.raw(
+        `update user_settings set notification_prefs = '{"events":{"daily_summary":true,"bills_due":false},"billsLeadDays":2,"showAmounts":true,"sound":"alto"}'::jsonb where user_id = 'owner'`,
+      ),
+    );
+    expect(await m.preferences.getNotificationPreferences("owner")).toEqual({
+      events: {
+        ...DEFAULT_NOTICES.events,
+        daily_summary: true,
+        bills_due: false,
+      },
+      billsLeadDays: 1,
+      showAmounts: true,
+    });
+  });
+
+  it("refuses anything but an object in the column", async () => {
+    for (const value of [`'[]'`, `'"todos"'`, `'null'`, `'1'`]) {
+      await expect(
+        m.db.execute(
+          m.sql.raw(
+            `update user_settings set notification_prefs = ${value}::jsonb where user_id = 'owner'`,
+          ),
+        ),
+      ).rejects.toThrow();
+    }
+    expect(await storedNotices("owner")).toBeNull();
+  });
+});
+
+describe("saveNotificationPreferencesAction", () => {
+  beforeEach(resetNotices);
+
+  it("is refused on the server while the flag is off", async () => {
+    const result = await m.saveNotices(ALL_NOTICES);
+    expect(result.serverError).toBe("As notificações não estão disponíveis.");
+    expect(await storedNotices("owner")).toBeNull();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("saves the session owner's choice and refreshes the page", async () => {
+    await enableNotices("owner");
+    const result = await m.saveNotices(ALL_NOTICES);
+    expect(result.serverError).toBeUndefined();
+    expect(result.validationErrors).toBeUndefined();
+    expect(await storedNotices("owner")).toEqual(ALL_NOTICES);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("takes only the whole, valid choice", async () => {
+    await enableNotices("owner");
+    const invalid = [
+      { ...ALL_NOTICES, billsLeadDays: 2 },
+      { ...ALL_NOTICES, showAmounts: "sim" },
+      { events: ALL_NOTICES.events, billsLeadDays: 1 },
+      { ...ALL_NOTICES, events: { daily_summary: true } },
+      {
+        ...ALL_NOTICES,
+        events: { ...ALL_NOTICES.events, budget_80: true },
+      },
+      { ...ALL_NOTICES, quietHours: "22-7" },
+    ];
+    for (const choice of invalid) {
+      const result = await m.saveNotices(choice as never);
+      expect(result.validationErrors, JSON.stringify(choice)).toBeDefined();
+    }
+    expect(await storedNotices("owner")).toBeNull();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("never takes the user from the client", async () => {
+    await enableNotices("owner");
+    await enableNotices("outro");
+    const result = await m.saveNotices({
+      ...ALL_NOTICES,
+      userId: "outro",
+    } as never);
+    expect(result.validationErrors).toBeDefined();
+    expect(await storedNotices("owner")).toBeNull();
+    expect(await storedNotices("outro")).toBeNull();
+  });
+
+  it("keeps each account's choice to itself", async () => {
+    await enableNotices("owner");
+    await enableNotices("outro");
+    await m.saveNotices(ALL_NOTICES);
+    mocks.requireUser.mockResolvedValue(OUTRO);
+    const outro = { ...DEFAULT_NOTICES, billsLeadDays: 0 as const };
+    await m.saveNotices(outro);
+    expect(await storedNotices("owner")).toEqual(ALL_NOTICES);
+    expect(await storedNotices("outro")).toEqual(outro);
+  });
+
+  it("follows the flag per person, the global value under it", async () => {
+    await m.db
+      .insert(m.schema.featureFlags)
+      .values({ key: "notificacoes_push", enabled: true });
+    await m.db.insert(m.schema.featureFlagOverrides).values({
+      userId: "outro",
+      key: "notificacoes_push",
+      enabled: false,
+    });
+    const owner = await m.saveNotices(ALL_NOTICES);
+    expect(owner.serverError).toBeUndefined();
+    mocks.requireUser.mockResolvedValue(OUTRO);
+    const outro = await m.saveNotices(ALL_NOTICES);
+    expect(outro.serverError).toBe("As notificações não estão disponíveis.");
+    expect(await storedNotices("outro")).toBeNull();
+  });
+
+  it("writes nothing without a session", async () => {
+    await enableNotices("owner");
+    mocks.requireUser.mockRejectedValue(new Error("no session"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await m.saveNotices(ALL_NOTICES);
+    error.mockRestore();
+    expect(result.serverError).toBeDefined();
+    expect(await storedNotices("owner")).toBeNull();
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });
