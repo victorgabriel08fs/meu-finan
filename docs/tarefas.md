@@ -21,7 +21,7 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - O breakpoint solto `min-[26.25rem]` nos skeletons de Receitas/Despesas e Orçamento: virar um breakpoint do tema ou sair.
 - axe no e2e (`@axe-core/playwright` não está instalado): `/inicio` com a folha fechada e aberta e `/ajustes/preferencias`.
 - A dispensa do Destaque fica em `localStorage` sem a chave da pessoa (CLAUDE.md › One device, several accounts).
-- Decidir (o dono ainda não decidiu) se Receitas e despesas vão para a coluna do Saldo quando ele divide a linha com um bloco largo (`hero-wide`).
+- Decidido pelo dono (05/11/2026): quando o Saldo divide a linha com um bloco largo (`hero-wide`), fica como está — a tela segue a ordem da folha, mesmo com o espaço vazio sob o Saldo.
 
 ### Pronto quando
 
@@ -39,7 +39,7 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - [ ] **Resumo semanal**: na segunda-feira, a semana anterior — receitas, despesas, categorias que mais pesaram e a comparação com a média.
 - [ ] **Resumo mensal**: no primeiro dia do mês financeiro (respeitando `month_start_day`), o mês fechado — receitas, despesas, quanto sobrou, orçamentos cumpridos e estourados.
 
-O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o dono antes de implementar.
+Conteúdo aprovado pelo dono em 05/11/2026.
 
 ### O que entra
 
@@ -47,12 +47,13 @@ O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o don
 - **Configurável por pessoa** em Ajustes › Notificações › Avisos (hoje "Em breve"): um interruptor por evento, mais as opções de cada um (antecedência das contas a vencer; resumo semanal e mensal ligados ou não). Definir os padrões de quem nunca mexeu.
 - Tudo atrás da flag `notificacoes_push`; só recebe quem tem a flag e pelo menos um aparelho inscrito.
 - **Idempotente**: a Vercel pode entregar o cron mais de uma vez e o dono pode chamá-lo à mão. Cada evento é enviado uma vez por pessoa por dia, garantido no banco (chave única por pessoa, evento e data), não só na memória.
-- Datas no fuso da pessoa (`user_settings.timezone`); valores com `formatBRL` e o modo discreto não se aplica a notificações (avaliar se o texto da notificação deve omitir valores, já que aparece na tela bloqueada).
+- Datas no fuso da pessoa (`user_settings.timezone`) e valores com `formatBRL`.
+- **Valores na tela bloqueada** (decidido pelo dono em 05/11/2026): opção "Mostrar valores nas notificações" em Ajustes › Notificações, **desligada por padrão**. Sem ela, o texto não traz valores ("Aluguel vence amanhã" em vez de "Aluguel vence amanhã: R$ 2.100").
 - Textos curtos em pt-BR (doc 02 §10), cada notificação abrindo a tela certa ao tocar (Início, Extrato filtrado, Relatórios).
 
 ### Limites do plano Hobby da Vercel
 
-- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo.
+- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo. **Decidido pelo dono (05/11/2026): fica no Hobby, tudo às 6h**; o horário não é configurável.
 - O passo precisa caber no tempo do job (240 s de orçamento): enviar em lotes e registrar o que não foi enviado.
 
 ### Pronto quando
@@ -69,7 +70,7 @@ Pendências pequenas achadas na correção dos filtros (04/11/2026), que já exi
 - A folha de categorias tem mais de 20 opções e não tem busca (doc 02 §4.4 pede busca acima de 8).
 - Com zoom de 200%, os valores do resumo e das linhas são cortados (doc 02 §3.4 e §11).
 - Subcategoria arquivada não entra no filtro da categoria mãe (a página só conhece as categorias ativas).
-- Não há como criar subcategoria pelo app: o filtro já trata mãe e filhas, mas hoje só categorias criadas direto no banco têm filhas.
+- **Criar subcategorias pelo app** (decidido pelo dono em 05/11/2026): em Ajustes › Categorias, escolher a categoria mãe ao criar ou editar. O filtro do Extrato já trata mãe e filhas.
 - Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
 
 ## Entregue
