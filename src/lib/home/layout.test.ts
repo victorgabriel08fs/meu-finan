@@ -48,6 +48,7 @@ describe("defaultHomeLayout", () => {
       { id: "goals", visible: true },
       { id: "insight", visible: true },
       { id: "spending-calendar", visible: false },
+      { id: "cash-flow", visible: false },
     ]);
   });
 });
@@ -71,6 +72,7 @@ describe("resolveHomeLayout", () => {
       { id: "accounts", visible: false },
       { id: "goals", visible: true },
       { id: "insight", visible: true },
+      { id: "cash-flow", visible: false },
     ]);
     expect(customized).toBe(true);
     expect(entries).toEqual([
@@ -82,6 +84,7 @@ describe("resolveHomeLayout", () => {
       { id: "accounts", visible: false },
       { id: "goals", visible: true },
       { id: "insight", visible: true },
+      { id: "cash-flow", visible: false },
     ]);
   });
 
@@ -120,6 +123,7 @@ describe("resolveHomeLayout", () => {
       "accounts",
       "insight",
       "spending-calendar",
+      "cash-flow",
     ]);
     for (const entry of entries.slice(3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
@@ -128,14 +132,14 @@ describe("resolveHomeLayout", () => {
   });
 
   it("marks a block out of the default new for its first 30 days", () => {
-    // The calendar shipped on 2026-11-02.
+    // The calendar shipped on 2026-11-02, before the blocks of the reports.
     const newOnes = (stored: unknown, today: string) =>
       resolveHomeLayout(stored, { today })
         .entries.filter((entry) => entry.isNew)
         .map((entry) => entry.id);
     expect(newOnes(null, "2026-11-02")).toEqual(["spending-calendar"]);
-    expect(newOnes(null, "2026-12-01")).toEqual(["spending-calendar"]);
-    expect(newOnes(null, "2026-12-02")).toEqual([]);
+    expect(newOnes(null, "2026-12-01")).toContain("spending-calendar");
+    expect(newOnes(null, "2026-12-02")).not.toContain("spending-calendar");
     expect(newOnes(null, "2026-11-01")).toEqual([]);
     // Saved and even shown: still new while it is recent.
     const shown = [{ id: "spending-calendar", visible: true }];
@@ -147,6 +151,32 @@ describe("resolveHomeLayout", () => {
     // Without today, only the blocks missing from what was saved.
     expect(newOnes(null, "")).toEqual([]);
     expect(resolveHomeLayout(null).entries.some((e) => e.isNew)).toBe(false);
+  });
+
+  it("marks the blocks of the reports new for 30 days from their release", () => {
+    const reports: HomeBlockId[] = ["cash-flow"];
+    const since = HOME_BLOCKS["cash-flow"].since;
+    for (const id of reports) expect(HOME_BLOCKS[id].since, id).toBe(since);
+    const day = (offset: number) =>
+      new Date(Date.parse(since) + offset * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+    const newOnes = (today: string) =>
+      resolveHomeLayout(null, { today })
+        .entries.filter((entry) => entry.isNew && reports.includes(entry.id))
+        .map((entry) => entry.id);
+    expect(newOnes(day(-1))).toEqual([]);
+    expect(newOnes(day(0))).toEqual(reports);
+    expect(newOnes(day(29))).toEqual(reports);
+    expect(newOnes(day(30))).toEqual([]);
+    // An Início saved before them: they come at the end, hidden and new.
+    const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
+      today: day(60),
+    }).entries;
+    expect(ids(saved).slice(-1)).toEqual(reports);
+    for (const entry of saved.slice(-1)) {
+      expect(entry).toMatchObject({ visible: false, isNew: true });
+    }
   });
 
   it("keeps the order and visibility whatever today is", () => {
@@ -201,6 +231,7 @@ describe("toStoredLayout", () => {
       { id: "goals", visible: true },
       { id: "insight", visible: true },
       { id: "spending-calendar", visible: false },
+      { id: "cash-flow", visible: false },
     ]);
   });
 });
@@ -208,7 +239,7 @@ describe("toStoredLayout", () => {
 describe("moveHomeBlock", () => {
   it("swaps a block with its neighbour", () => {
     const moved = moveHomeBlock(defaultHomeLayout(), "spending-calendar", "up");
-    expect(ids(moved).slice(-2)).toEqual(["spending-calendar", "insight"]);
+    expect(ids(moved).slice(6, 8)).toEqual(["spending-calendar", "insight"]);
     const back = moveHomeBlock(moved, "spending-calendar", "down");
     expect(back).toEqual(defaultHomeLayout());
   });
@@ -217,7 +248,7 @@ describe("moveHomeBlock", () => {
     const layout = defaultHomeLayout();
     expect(moveHomeBlock(layout, "balance", "down")).toEqual(layout);
     expect(moveHomeBlock(layout, "month-totals", "up")).toEqual(layout);
-    expect(moveHomeBlock(layout, "spending-calendar", "down")).toEqual(layout);
+    expect(moveHomeBlock(layout, "cash-flow", "down")).toEqual(layout);
   });
 
   it("keeps the same blocks, the Saldo first, whatever the moves", () => {
@@ -256,7 +287,9 @@ describe("canMoveHomeBlock", () => {
     expect(canMoveHomeBlock(layout, "month-totals", "up")).toBe(false);
     expect(canMoveHomeBlock(layout, "month-totals", "down")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
-    expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(true);
+    expect(canMoveHomeBlock(layout, "cash-flow", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "cash-flow", "down")).toBe(false);
   });
 
   it("agrees with moveHomeBlock", () => {
@@ -345,6 +378,19 @@ describe("packHomeLayout", () => {
         // 126 | 380 | 252 + 156: the tallest column is as short as it gets.
         groups: [["month-totals"], ["budget"], ["upcoming-bills", "accounts"]],
       },
+    ]);
+  });
+
+  it("puts the Fluxo de caixa beside the Saldo, the narrow reports in columns", () => {
+    expect(packHomeLayout(["balance", "cash-flow"])).toEqual([
+      { kind: "hero-wide", hero: "balance", id: "cash-flow" },
+    ]);
+    expect(
+      packHomeLayout(["balance", "month-totals", "cash-flow", "goals"]),
+    ).toEqual([
+      { kind: "columns", groups: [["balance"], ["month-totals"]] },
+      { kind: "wide", id: "cash-flow" },
+      { kind: "columns", groups: [["goals"]] },
     ]);
   });
 

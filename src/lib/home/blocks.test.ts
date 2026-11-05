@@ -7,6 +7,7 @@ import {
   isHomeBlockId,
   isPinnedHomeBlock,
   MOVABLE_HOME_BLOCK_IDS,
+  REPORT_BLOCKS_SINCE,
 } from "./blocks";
 
 const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -56,6 +57,18 @@ describe("home blocks catalog", () => {
   it("offers the spending calendar as a wide block, out of the default", () => {
     expect(HOME_BLOCKS["spending-calendar"].size).toBe("wide");
     expect(HOME_BLOCKS["spending-calendar"].inDefault).toBe(false);
+  });
+
+  it("offers the blocks of the reports out of the default, after the calendar", () => {
+    expect(HOME_BLOCK_IDS.slice(-2)).toEqual([
+      "spending-calendar",
+      "cash-flow",
+    ]);
+    expect(HOME_BLOCKS["cash-flow"].size).toBe("wide");
+    for (const id of ["cash-flow"] as const) {
+      expect(HOME_BLOCKS[id].inDefault, id).toBe(false);
+      expect(HOME_BLOCKS[id].since, id).toBe(REPORT_BLOCKS_SINCE);
+    }
   });
 
   it("knows its own ids only", () => {

@@ -12,6 +12,7 @@ import {
   visibleHomeBlocks,
 } from "@/lib/home/layout";
 import { cn } from "@/lib/utils";
+import type { ReportPhase } from "@/server/domain/reports";
 import { HomeBlockBoundary } from "./block-error";
 import { firstName, initials } from "./labels";
 
@@ -185,14 +186,19 @@ function HomeBlockSlot({
  */
 export function HomeBlockFrame({
   id,
+  phase,
   children,
 }: {
   id: HomeBlockId;
+  /** Where the month on screen stands: some blocks change shape with it. */
+  phase?: ReportPhase;
   children: ReactNode;
 }) {
   return (
     <HomeBlockBoundary title={HOME_BLOCKS[id].errorTitle}>
-      <Suspense fallback={<HomeBlockSkeleton id={id} />}>{children}</Suspense>
+      <Suspense fallback={<HomeBlockSkeleton id={id} phase={phase} />}>
+        {children}
+      </Suspense>
     </HomeBlockBoundary>
   );
 }
@@ -202,6 +208,15 @@ export function HomeBlockFrame({
  * when the block is under 23rem (measured: 357px wraps, 368px does not).
  */
 const TILE_SKELETON = "h-37 rounded-card @min-[23rem]:h-32.5";
+
+/** Fluxo de caixa by the phase of the month (heights measured in the app). */
+const CASH_FLOW_SKELETON: Record<ReportPhase, string> = {
+  past: "h-129.75 rounded-card @2xl:h-102.75",
+  current: "h-137.25 rounded-card @2xl:h-110.25",
+  // The footnote takes three lines under 24rem, two under 27.5rem.
+  future:
+    "h-146.25 rounded-card @sm:h-141.75 @min-[27.5rem]:h-137.25 @2xl:h-110.25",
+};
 
 /** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
 function SectionSkeleton({ children }: { children: ReactNode }) {
@@ -216,12 +231,19 @@ function SectionSkeleton({ children }: { children: ReactNode }) {
 }
 
 /** Same shape, same height as the loaded block (zero layout shift, §5.17). */
-export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
+export function HomeBlockSkeleton({
+  id,
+  phase = "current",
+}: {
+  id: HomeBlockId;
+  /** The month on screen: past, current (the default) or ahead. */
+  phase?: ReportPhase;
+}) {
   switch (id) {
-    // Heights measured in the app (Ana of the demo, 360 to 1280px). Narrow
-    // blocks (under 24rem: small phones, the xl columns) wrap a line more in
-    // the tiles' support text and in the budget: measured by the block's own
-    // width (an @container inside the skeleton), not the screen's.
+    // Heights measured in the app (Ana of the demo, 360 to 1440px). Narrow
+    // blocks (small phones, the xl columns) wrap a line more in the tiles'
+    // support text and in the budget: measured by the block's own width (an
+    // @container inside the skeleton), not the screen's.
     case "balance":
       return <Skeleton className="h-61.25 rounded-card" />;
     case "month-totals":
@@ -270,6 +292,11 @@ export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
       return (
         <Skeleton className="h-170.25 rounded-card @min-[34rem]:h-150.75 @2xl:h-123.75" />
       );
+    case "cash-flow":
+      // By the width of its slot, like the block (the lowest balance under
+      // the chart, or beside it), and by the month: a past one has no
+      // "Previsto" key, a month ahead a footnote more.
+      return <Skeleton className={CASH_FLOW_SKELETON[phase]} />;
   }
 }
 

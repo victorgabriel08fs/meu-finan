@@ -1,0 +1,150 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { NBSP } from "@/lib/format/money";
+import type { CashFlowDayPoint, CashFlowReport } from "@/server/domain/reports";
+import {
+  CashFlowBlock,
+  CashFlowInvite,
+  CashFlowNoAccountsInvite,
+} from "./cash-flow-block";
+
+// The blocks of the reports on the Início (doc 02 §6.3): the report's chart
+// under a heading of its own, the way to the report, and an invite when
+// there is nothing to show.
+
+const plain = (html: string) => html.replaceAll(NBSP, " ");
+
+function octoberDays(today: number | null): CashFlowDayPoint[] {
+  return Array.from({ length: 31 }, (_, k) => {
+    const day = k + 1;
+    const balance = 2_000_000 - (day >= 15 ? 210_000 : 0);
+    return {
+      date: `2026-10-${String(day).padStart(2, "0")}`,
+      realizedCents: today === null || day <= today ? balance : null,
+      projectedCents: today !== null && day >= today ? balance : null,
+    };
+  });
+}
+
+const current: CashFlowReport = {
+  phase: "current",
+  hasAccounts: true,
+  days: octoberDays(14),
+  startCents: 2_000_000,
+  endCents: 1_790_000,
+  lowestRealized: { date: "2026-10-01", cents: 2_000_000 },
+  lowestProjected: { date: "2026-10-15", cents: 1_790_000 },
+  scheduled: [
+    {
+      date: "2026-10-15",
+      label: "Aluguel",
+      amountCents: -210_000,
+      kind: "entry",
+      overdue: false,
+    },
+  ],
+  paidCount: 4,
+};
+
+describe("CashFlowBlock", () => {
+  const render = (
+    report: CashFlowReport,
+    today: string,
+    reportHref = "/relatorios/fluxo",
+  ) =>
+    plain(
+      renderToStaticMarkup(
+        <CashFlowBlock
+          report={report}
+          start="2026-10-01"
+          end="2026-10-31"
+          today={today}
+          reportHref={reportHref}
+        />,
+      ),
+    );
+
+  it("shows the report's daily balance, its lowest point and the way to it", () => {
+    const html = render(current, "2026-10-14");
+    expect(html).toContain('<section aria-labelledby="inicio-fluxo"');
+    expect(html).toContain('id="inicio-fluxo"');
+    expect(html).not.toContain('id="relatorio-fluxo"');
+    // The name in "Personalizar o Início" (doc 02 §10.4).
+    expect(html).toContain(">Fluxo de caixa</h2>");
+    expect(html).toContain("Saldo dia a dia, sem os cartões");
+    expect(html).toContain('href="/relatorios/fluxo"');
+    expect(html).toContain("Ver relatório");
+    expect(html).toContain("Realizado");
+    expect(html).toContain('stroke-dasharray="5 4"');
+    expect(html).toContain('aria-label="Percorrer o saldo dia a dia"');
+    expect(html).toContain("Ver como tabela");
+    // Only the lowest balance: today's and the forecast are the Saldo's.
+    expect(html).toContain("Menor saldo previsto");
+    expect(html).toContain("em 15/out");
+    expect(html).not.toContain("Saldo hoje");
+    expect(html).not.toContain("Previsto para 31/out");
+    // A tile a step down from the card, beside the chart in a whole row.
+    expect(html.match(/bg-surface-2 shadow-none/g)).toHaveLength(1);
+    expect(html).toContain("@2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]");
+  });
+
+  it("speaks no amount in privacy mode", () => {
+    const html = render(current, "2026-10-14");
+    expect(html).toContain(
+      '<span data-privacy-mask="">Saldo de valor oculto hoje; previsto valor oculto em 31/out; menor saldo previsto valor oculto em 15/out.</span>',
+    );
+  });
+
+  it("looks back on a past month and keeps its month in the link", () => {
+    const html = render(
+      {
+        ...current,
+        phase: "past",
+        days: octoberDays(null),
+        lowestProjected: null,
+      },
+      "2026-11-20",
+      "/relatorios/fluxo?mes=2026-10",
+    );
+    expect(html).toContain('href="/relatorios/fluxo?mes=2026-10"');
+    expect(html).toContain(">Menor saldo<");
+    expect(html).toContain("em 1/out");
+    expect(html).not.toContain("Variação no mês");
+    expect(html).not.toContain("stroke-dasharray");
+    expect(html).not.toContain("Só entra o que já está agendado");
+  });
+
+  it("says what a month ahead leaves out", () => {
+    const html = render(
+      {
+        ...current,
+        phase: "future",
+        days: current.days.map((day) => ({ ...day, realizedCents: null })),
+      },
+      "2026-09-20",
+      "/relatorios/fluxo?mes=2026-10",
+    );
+    expect(html).toContain("Menor saldo previsto");
+    expect(html).not.toContain("Previsto em 1/out");
+    expect(html).toContain("Só entra o que já está agendado");
+  });
+
+  it("invites to the accounts without any off the cards", () => {
+    const html = renderToStaticMarkup(<CashFlowNoAccountsInvite />);
+    expect(html).toContain("Nenhuma conta fora dos cartões");
+    expect(html).toContain(
+      "O fluxo de caixa acompanha o saldo das suas contas, sem os cartões.",
+    );
+    expect(html).toContain('href="/contas"');
+    expect(html).toContain("Ver contas");
+  });
+
+  it("invites to add an entry in an empty month", () => {
+    const html = renderToStaticMarkup(<CashFlowInvite monthName="janeiro" />);
+    expect(html).toContain("Nenhum lançamento em janeiro");
+    expect(html).toContain(
+      "Quando houver, o gráfico mostra o saldo dia a dia.",
+    );
+    expect(html).toContain("Adicionar lançamento");
+  });
+});

@@ -49,4 +49,32 @@ describe("HomeBlockSkeleton", () => {
       "h-99.75 rounded-card @min-[21rem]:h-94.75",
     );
   });
+
+  it("sizes the Fluxo de caixa by its slot and by the month on screen", () => {
+    const of = (phase?: "past" | "current" | "future") =>
+      renderToStaticMarkup(<HomeBlockSkeleton id="cash-flow" phase={phase} />);
+    // The slot of a wide block is the @container (HomeGrid).
+    expect(of()).not.toContain("@container");
+    // Measured: the chart over the lowest balance, or beside it from @2xl.
+    expect(of()).toContain("h-137.25 rounded-card @2xl:h-110.25");
+    expect(of("current")).toBe(of());
+    // No "Previsto" key in a past month.
+    expect(of("past")).toContain("h-129.75 rounded-card @2xl:h-102.75");
+    // A month ahead: the footnote in three, two or one line.
+    expect(of("future")).toContain(
+      "h-146.25 rounded-card @sm:h-141.75 @min-[27.5rem]:h-137.25 @2xl:h-110.25",
+    );
+  });
+
+  it("leaves the other blocks alike in every phase", () => {
+    for (const id of HOME_BLOCK_IDS.filter((id) => id !== "cash-flow")) {
+      const html = render(id);
+      for (const phase of ["past", "future"] as const) {
+        expect(
+          renderToStaticMarkup(<HomeBlockSkeleton id={id} phase={phase} />),
+          `${id} ${phase}`,
+        ).toBe(html);
+      }
+    }
+  });
 });

@@ -7,7 +7,7 @@
 // ignored.
 //
 // Reserved for the second stage (reports on the Início), not in the catalog
-// yet: `cash-flow`, `category-breakdown`, `income-expense`, `net-worth`.
+// yet: `category-breakdown`, `income-expense`, `net-worth`.
 
 export type HomeBlockSize = "narrow" | "wide";
 
@@ -29,6 +29,9 @@ export type HomeBlockDefinition = {
   /** When the block was added, YYYY-MM-DD. */
   since: string;
 };
+
+/** The day the blocks of the reports shipped (and their novidade). */
+export const REPORT_BLOCKS_SINCE = "2026-11-05";
 
 export const HOME_BLOCKS = {
   balance: {
@@ -104,6 +107,15 @@ export const HOME_BLOCKS = {
     weight: 448,
     since: "2026-11-02",
   },
+  "cash-flow": {
+    label: "Fluxo de caixa",
+    description: "O saldo das contas dia a dia, com o que ainda vai cair.",
+    errorTitle: "Não deu para carregar o fluxo de caixa",
+    size: "wide",
+    inDefault: false,
+    weight: 441,
+    since: REPORT_BLOCKS_SINCE,
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -123,6 +135,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "goals",
   "insight",
   "spending-calendar",
+  "cash-flow",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

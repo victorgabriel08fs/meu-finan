@@ -9,6 +9,11 @@ import { StatTile } from "@/components/app/stat-tile";
 import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
 import { BalanceHero } from "@/components/dashboard/balance-hero";
 import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
+import {
+  CashFlowBlock,
+  CashFlowInvite,
+  CashFlowNoAccountsInvite,
+} from "@/components/dashboard/cash-flow-block";
 import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
@@ -18,6 +23,7 @@ import {
 } from "@/components/dashboard/spending-calendar-block";
 import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
+import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
 import { monthViewHref } from "@/components/reports/views";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
@@ -34,7 +40,11 @@ import {
   getUpcoming,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
-import { dailySpending, reportPhase } from "@/server/domain/reports";
+import {
+  cashFlowReport,
+  dailySpending,
+  reportPhase,
+} from "@/server/domain/reports";
 import { periodTotals } from "@/server/domain/transactions";
 
 type HomeBlockProps = {
@@ -43,7 +53,8 @@ type HomeBlockProps = {
   range: PeriodRange;
 };
 
-const BLOCKS: Record<
+/** The loader of every block of the catalog. */
+export const HOME_BLOCK_LOADERS: Record<
   HomeBlockId,
   (props: HomeBlockProps) => Promise<ReactNode> | ReactNode
 > = {
@@ -55,6 +66,7 @@ const BLOCKS: Record<
   goals: GoalsBlock,
   insight: InsightBlock,
   "spending-calendar": SpendingCalendarBlockLoader,
+  "cash-flow": CashFlowBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -62,7 +74,7 @@ export function HomeBlock({
   id,
   ...props
 }: HomeBlockProps & { id: HomeBlockId }) {
-  const Block = BLOCKS[id];
+  const Block = HOME_BLOCK_LOADERS[id];
   return <Block {...props} />;
 }
 
@@ -250,6 +262,28 @@ async function SpendingCalendarBlockLoader({ ctx, range }: HomeBlockProps) {
         resolvePeriod(ctx, null).month,
       )}
       phase={reportPhase(ctx, range)}
+    />
+  );
+}
+
+/** Fluxo de caixa: the report's daily balance for the month on screen. */
+async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
+  const report = await cashFlowReport(ctx, range);
+  if (!report.hasAccounts) return <CashFlowNoAccountsInvite />;
+  if (isCashFlowEmpty(report)) {
+    return <CashFlowInvite monthName={monthName(range.month)} />;
+  }
+  return (
+    <CashFlowBlock
+      report={report}
+      start={range.start}
+      end={range.end}
+      today={ctx.todayIso}
+      reportHref={monthViewHref(
+        "/relatorios/fluxo",
+        range.month,
+        resolvePeriod(ctx, null).month,
+      )}
     />
   );
 }
