@@ -21,12 +21,20 @@ describe("SeriesChart", () => {
           { position: 0, label: "set/25" },
           { position: 1, label: "hoje" },
         ]}
-        summary="Patrimônio subiu"
+        summary="Patrimônio subiu de R$ 1 para R$ 3"
+        hiddenSummary="Patrimônio subiu de valor oculto para valor oculto"
         highlight={1}
       />,
     );
     expect(html).toContain('role="img"');
-    expect(html).toContain('aria-label="Patrimônio subiu"');
+    // Named by text, never an aria-label: privacy mode (CSS, like <Money>)
+    // shows the summary without amounts instead.
+    const id = html.match(/role="img" aria-labelledby="([^"]+)"/)?.[1];
+    expect(id).toBeTruthy();
+    expect(html).toContain(
+      `<p id="${id}" class="sr-only"><span data-privacy-value="">Patrimônio subiu de R$ 1 para R$ 3</span><span data-privacy-mask="">Patrimônio subiu de valor oculto para valor oculto</span></p>`,
+    );
+    expect(html).not.toContain("aria-label=");
     // The area wash and the highlighted point.
     expect(html).toContain('fill-opacity="0.12"');
     expect(html).toContain("left:50%");
@@ -53,11 +61,13 @@ describe("SeriesChart", () => {
           { index: 3, value: 100, label: "Aluguel", placement: "below" },
         ]}
         summary="Resumo"
+        hiddenSummary="Resumo oculto"
         scrub={{
           selected: 3,
           onSelectedChange: () => {},
           label: "Percorrer o saldo",
           valueText: (index) => `dia ${index + 1}`,
+          hiddenValueText: (index) => `dia ${index + 1}: valor oculto`,
         }}
       />,
     );
@@ -69,7 +79,10 @@ describe("SeriesChart", () => {
     expect(html).toContain('type="range"');
     expect(html).toContain('aria-valuetext="dia 4"');
     expect(html).toContain('aria-label="Percorrer o saldo"');
-    expect(html).toMatch(/aria-describedby="[^"]+"/);
+    const id = html.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(html).toContain(
+      `<p id="${id}" class="sr-only"><span data-privacy-value="">Resumo</span><span data-privacy-mask="">Resumo oculto</span></p>`,
+    );
     expect(html).not.toContain('role="img"');
   });
 
@@ -81,11 +94,13 @@ describe("SeriesChart", () => {
         formatTick={(value) => String(value)}
         xLabels={[{ position: 0, label: "hoje" }]}
         summary="Um ponto"
+        hiddenSummary="Um ponto"
         scrub={{
           selected: 9,
           onSelectedChange: () => {},
           label: "Percorrer",
           valueText: (index) => `ponto ${index}`,
+          hiddenValueText: (index) => `ponto ${index} oculto`,
         }}
       />,
     );

@@ -12,6 +12,7 @@ import {
   visibleHomeBlocks,
 } from "@/lib/home/layout";
 import { cn } from "@/lib/utils";
+import type { ReportPhase } from "@/server/domain/reports";
 import { HomeBlockBoundary } from "./block-error";
 import { firstName, initials } from "./labels";
 
@@ -185,52 +186,85 @@ function HomeBlockSlot({
  */
 export function HomeBlockFrame({
   id,
+  phase,
   children,
 }: {
   id: HomeBlockId;
+  /** Where the month on screen stands: some blocks change shape with it. */
+  phase?: ReportPhase;
   children: ReactNode;
 }) {
   return (
     <HomeBlockBoundary title={HOME_BLOCKS[id].errorTitle}>
-      <Suspense fallback={<HomeBlockSkeleton id={id} />}>{children}</Suspense>
+      <Suspense fallback={<HomeBlockSkeleton id={id} phase={phase} />}>
+        {children}
+      </Suspense>
     </HomeBlockBoundary>
   );
 }
 
-const TILE_SKELETON = "h-37 rounded-card min-[26.25rem]:h-32.5 xl:h-37";
+/**
+ * In an @container around the tiles: their support text wraps a line more
+ * when the block is under 23rem (measured: 357px wraps, 368px does not).
+ */
+const TILE_SKELETON = "h-37 rounded-card @min-[23rem]:h-32.5";
 
+/** Fluxo de caixa by the phase of the month (heights measured in the app). */
+const CASH_FLOW_SKELETON: Record<ReportPhase, string> = {
+  past: "h-129.75 rounded-card @2xl:h-102.75",
+  current: "h-137.25 rounded-card @2xl:h-110.25",
+  // The footnote takes three lines under 24rem, two under 27.5rem.
+  future:
+    "h-146.25 rounded-card @sm:h-141.75 @min-[27.5rem]:h-137.25 @2xl:h-110.25",
+};
+
+/** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
 function SectionSkeleton({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col">
-      <Skeleton className="mb-3 h-4 w-28 rounded-chip" />
+      <div className="mb-3 flex h-6 items-center">
+        <Skeleton className="h-4 w-28 rounded-chip" />
+      </div>
       {children}
     </div>
   );
 }
 
 /** Same shape, same height as the loaded block (zero layout shift, §5.17). */
-export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
+export function HomeBlockSkeleton({
+  id,
+  phase = "current",
+}: {
+  id: HomeBlockId;
+  /** The month on screen: past, current (the default) or ahead. */
+  phase?: ReportPhase;
+}) {
   switch (id) {
-    // Heights measured in the app (Ana of the demo, 360 to 1280px). Narrow
-    // columns (phones under 420px, the xl columns) wrap a line more in the
-    // tiles' support text and in the budget.
+    // Heights measured in the app (Ana of the demo, 360 to 1440px). Narrow
+    // blocks (small phones, the xl columns) wrap a line more in the tiles'
+    // support text and in the budget: measured by the block's own width (an
+    // @container inside the skeleton), not the screen's.
     case "balance":
       return <Skeleton className="h-61.25 rounded-card" />;
     case "month-totals":
       return (
-        <div className="grid grid-cols-2 gap-3">
-          <Skeleton className={TILE_SKELETON} />
-          <Skeleton className={TILE_SKELETON} />
+        <div className="@container">
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className={TILE_SKELETON} />
+            <Skeleton className={TILE_SKELETON} />
+          </div>
         </div>
       );
     case "budget":
       return (
-        <Skeleton className="h-99.75 rounded-card min-[26.25rem]:h-94.75 xl:h-99.75" />
+        <div className="@container">
+          <Skeleton className="h-99.75 rounded-card @min-[21rem]:h-94.75" />
+        </div>
       );
     case "upcoming-bills":
       return (
         <SectionSkeleton>
-          <Skeleton className="h-56 rounded-card" />
+          <Skeleton className="h-54 rounded-card" />
         </SectionSkeleton>
       );
     case "accounts":
@@ -257,6 +291,33 @@ export function HomeBlockSkeleton({ id }: { id: HomeBlockId }) {
       // heatmap over two rows of figures, over one row, or beside them.
       return (
         <Skeleton className="h-170.25 rounded-card @min-[34rem]:h-150.75 @2xl:h-123.75" />
+      );
+    case "cash-flow":
+      // By the width of its slot, like the block (the lowest balance under
+      // the chart, or beside it), and by the month: a past one has no
+      // "Previsto" key, a month ahead a footnote more.
+      return <Skeleton className={CASH_FLOW_SKELETON[phase]} />;
+    // The narrow blocks of the reports wrap a line more in the xl columns
+    // under 20rem; Receitas × despesas its title too under 22.25rem, and the
+    // Patrimônio its change under 21.75rem. The ranking with its five
+    // categories and "Outras", a month's usual shape.
+    case "category-breakdown":
+      return (
+        <div className="@container">
+          <Skeleton className="h-146.25 rounded-card @xs:h-136.25" />
+        </div>
+      );
+    case "income-expense":
+      return (
+        <div className="@container">
+          <Skeleton className="h-131.25 rounded-card @xs:h-116.75 @min-[22.25rem]:h-111.25 @lg:h-105.75" />
+        </div>
+      );
+    case "net-worth":
+      return (
+        <div className="@container">
+          <Skeleton className="h-51.25 rounded-card @min-[21.75rem]:h-46.75" />
+        </div>
       );
   }
 }

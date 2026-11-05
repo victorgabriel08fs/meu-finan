@@ -9,16 +9,38 @@ import { StatTile } from "@/components/app/stat-tile";
 import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
 import { BalanceHero } from "@/components/dashboard/balance-hero";
 import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
+import {
+  CashFlowBlock,
+  CashFlowInvite,
+  CashFlowNoAccountsInvite,
+} from "@/components/dashboard/cash-flow-block";
+import {
+  CategoryBreakdownBlock,
+  CategoryBreakdownInvite,
+} from "@/components/dashboard/category-breakdown-block";
 import { GoalsCard, GoalsInvite } from "@/components/dashboard/goals-card";
+import {
+  INCOME_EXPENSE_BLOCK_MONTHS,
+  IncomeExpenseBlock,
+  IncomeExpenseInvite,
+} from "@/components/dashboard/income-expense-block";
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
+import {
+  NET_WORTH_BLOCK_POINTS,
+  NetWorthBlock,
+  NetWorthInvite,
+} from "@/components/dashboard/net-worth-block";
 import {
   SpendingCalendarBlock,
   SpendingCalendarInvite,
 } from "@/components/dashboard/spending-calendar-block";
 import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
+import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
+import { partialProgress } from "@/components/reports/model";
 import { monthViewHref } from "@/components/reports/views";
+import { statementHref } from "@/components/transactions/statement-params";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { getBudgets } from "@/server/domain/budgets";
@@ -34,7 +56,14 @@ import {
   getUpcoming,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
-import { dailySpending, reportPhase } from "@/server/domain/reports";
+import {
+  cashFlowReport,
+  categoryBreakdown,
+  dailySpending,
+  monthlySeries,
+  netWorthSeries,
+  reportPhase,
+} from "@/server/domain/reports";
 import { periodTotals } from "@/server/domain/transactions";
 
 type HomeBlockProps = {
@@ -43,7 +72,8 @@ type HomeBlockProps = {
   range: PeriodRange;
 };
 
-const BLOCKS: Record<
+/** The loader of every block of the catalog. */
+export const HOME_BLOCK_LOADERS: Record<
   HomeBlockId,
   (props: HomeBlockProps) => Promise<ReactNode> | ReactNode
 > = {
@@ -55,6 +85,10 @@ const BLOCKS: Record<
   goals: GoalsBlock,
   insight: InsightBlock,
   "spending-calendar": SpendingCalendarBlockLoader,
+  "cash-flow": CashFlowBlockLoader,
+  "category-breakdown": CategoryBreakdownBlockLoader,
+  "income-expense": IncomeExpenseBlockLoader,
+  "net-worth": NetWorthBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -62,7 +96,7 @@ export function HomeBlock({
   id,
   ...props
 }: HomeBlockProps & { id: HomeBlockId }) {
-  const Block = BLOCKS[id];
+  const Block = HOME_BLOCK_LOADERS[id];
   return <Block {...props} />;
 }
 
@@ -230,7 +264,7 @@ async function GoalsBlock({ ctx }: HomeBlockProps) {
 /** Nothing at all without a highlight, so the slot collapses. */
 async function InsightBlock({ ctx, range }: HomeBlockProps) {
   const insight = await categoryInsight(ctx, range);
-  return insight ? <InsightCard insight={insight} /> : null;
+  return insight ? <InsightCard insight={insight} userId={ctx.userId} /> : null;
 }
 
 /** Calendário de gastos: the report's heatmap for the month on screen. */
@@ -252,6 +286,126 @@ async function SpendingCalendarBlockLoader({ ctx, range }: HomeBlockProps) {
       phase={reportPhase(ctx, range)}
     />
   );
+}
+
+/** Fluxo de caixa: the report's daily balance for the month on screen. */
+async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
+  const report = await cashFlowReport(ctx, range);
+  if (!report.hasAccounts) return <CashFlowNoAccountsInvite />;
+  if (isCashFlowEmpty(report)) {
+    return <CashFlowInvite monthName={monthName(range.month)} />;
+  }
+  return (
+    <CashFlowBlock
+      report={report}
+      start={range.start}
+      end={range.end}
+      today={ctx.todayIso}
+      reportHref={monthViewHref(
+        "/relatorios/fluxo",
+        range.month,
+        resolvePeriod(ctx, null).month,
+      )}
+    />
+  );
+}
+
+/**
+ * Para onde foi o dinheiro: what was paid in the month on screen. The report
+ * only takes a window of months up to today (`?periodo=`), so another month
+ * opens its expenses in the statement instead.
+ */
+async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
+  const { items, totalCents } = await categoryBreakdown(
+    ctx,
+    range.start,
+    range.end,
+  );
+  if (items.length === 0) {
+    return <CategoryBreakdownInvite monthName={monthName(range.month)} />;
+  }
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <CategoryBreakdownBlock
+      items={items}
+      totalCents={totalCents}
+      month={range.month}
+      monthName={monthName(range.month)}
+      isCurrent={range.isCurrent}
+      link={
+        range.isCurrent
+          ? { href: "/relatorios/categorias?periodo=1", label: "Ver relatório" }
+          : {
+              href: statementHref(
+                {
+                  month: range.month,
+                  accountId: null,
+                  categoryId: null,
+                  kind: "expense",
+                  status: "paid",
+                  q: "",
+                },
+                currentMonth,
+              ),
+              label: "Ver no extrato",
+            }
+      }
+    />
+  );
+}
+
+/** Receitas × despesas: the 6 months up to the one on screen. */
+async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
+  const end = seriesEnd(ctx, range);
+  const months = await monthlySeries(ctx, end, INCOME_EXPENSE_BLOCK_MONTHS);
+  if (
+    months.every((month) => month.incomeCents === 0 && month.expenseCents === 0)
+  ) {
+    return <IncomeExpenseInvite />;
+  }
+  return (
+    <IncomeExpenseBlock
+      months={months}
+      endMonthName={monthName(end.month)}
+      partialProgress={partialProgress(
+        months,
+        resolvePeriod(ctx, null),
+        ctx.todayIso,
+      )}
+      reportHref={`/relatorios/visao-geral?periodo=${INCOME_EXPENSE_BLOCK_MONTHS}`}
+    />
+  );
+}
+
+/** Patrimônio: the end of each of the last months, up to the one on screen. */
+async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
+  const points = await netWorthSeries(
+    ctx,
+    seriesEnd(ctx, range),
+    NET_WORTH_BLOCK_POINTS,
+  );
+  if (points.every((point) => point.cents === 0)) return <NetWorthInvite />;
+  return (
+    <NetWorthBlock
+      points={points}
+      caption={
+        reportPhase(ctx, range) === "past"
+          ? `no fim de ${monthName(range.month)}`
+          : "hoje"
+      }
+      reportHref="/relatorios/patrimonio?periodo=6"
+    />
+  );
+}
+
+/**
+ * The last month of a series of months: the one on screen, or today's for a
+ * month ahead (nothing has happened there yet to chart).
+ */
+export function seriesEnd(ctx: UserContext, range: PeriodRange): PeriodRange {
+  return reportPhase(ctx, range) === "future"
+    ? resolvePeriod(ctx, null)
+    : range;
 }
 
 /** Ghost link of a section header ("Ver todas"): 44px tall, 24px in the row. */

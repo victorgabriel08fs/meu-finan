@@ -3,11 +3,13 @@ import { NBSP } from "@/lib/format/money";
 import {
   defaultSelectedMonth,
   highlightIndices,
+  incomeExpenseMonthLabel,
   incomeExpenseSummary,
   monthSavingsRate,
   netWorthChange,
   netWorthSummary,
   parseReportPeriod,
+  partialProgress,
   periodQuery,
   savingsCaption,
   savingsSummary,
@@ -84,6 +86,45 @@ describe("income × expenses", () => {
     expect(plain(incomeExpenseSummary(series))).toBe(
       "Receitas superaram as despesas em 2 de 3 meses; maior despesa em setembro, R$ 8.940. Outubro está parcial.",
     );
+    expect(incomeExpenseSummary(series, { hideValues: true })).toBe(
+      "Receitas superaram as despesas em 2 de 3 meses; maior despesa em setembro, valor oculto. Outubro está parcial.",
+    );
+  });
+
+  it("names each month's columns, amounts hidden in privacy mode", () => {
+    const [september, october] = series.slice(1) as typeof series;
+    expect(plain(incomeExpenseMonthLabel(september))).toBe(
+      "setembro de 2026: receitas R$ 8.700, despesas R$ 8.940",
+    );
+    expect(plain(incomeExpenseMonthLabel(october))).toBe(
+      "outubro de 2026 (parcial): receitas R$ 8.700, despesas R$ 1.500",
+    );
+    expect(incomeExpenseMonthLabel(october, { hideValues: true })).toBe(
+      "outubro de 2026 (parcial): receitas valor oculto, despesas valor oculto",
+    );
+  });
+
+  it("says how far the partial month went", () => {
+    const october = { start: "2026-10-01", end: "2026-10-31" };
+    expect(partialProgress(series, october, "2026-10-14")).toBe(
+      "até o dia 14 de 31",
+    );
+    expect(partialProgress(series, october, "2026-10-01")).toBe(
+      "até o dia 1 de 31",
+    );
+    // A month that starts on the 5th: day 10 of the period on 14/out.
+    expect(
+      partialProgress(
+        series,
+        { start: "2026-10-05", end: "2026-11-04" },
+        "2026-10-14",
+      ),
+    ).toBe("até o dia 10 de 31");
+    // Only complete months: nothing to say.
+    expect(
+      partialProgress(series.slice(0, 2), october, "2026-10-14"),
+    ).toBeNull();
+    expect(partialProgress([], october, "2026-10-14")).toBeNull();
   });
 });
 
@@ -129,5 +170,8 @@ describe("net worth", () => {
     expect(plain(netWorthSummary([1_648_000, 2_628_973], 12))).toBe(
       "Patrimônio subiu de R$ 16.480 para R$ 26.289,73 em 12 meses.",
     );
+    expect(
+      netWorthSummary([1_648_000, 2_628_973], 6, { hideValues: true }),
+    ).toBe("Patrimônio subiu de valor oculto para valor oculto em 6 meses.");
   });
 });

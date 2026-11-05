@@ -8,17 +8,29 @@ import { cn } from "@/lib/utils";
 import type { Insight } from "@/server/domain/dashboard";
 import { splitInsight } from "./labels";
 
-/** localStorage: { [insight.key]: dismissed at (ms) }, one map per device. */
-const STORAGE_KEY = "meu-finan:observacoes-dispensadas";
+/**
+ * The map of the first release, shared by everyone on the device. Dropped on
+ * the first read, not carried over: it cannot tell whose dismissals it holds.
+ */
+const LEGACY_KEY = "meu-finan:observacoes-dispensadas";
 /** A dismissed insight stays hidden for 30 days (doc 02 §5.20). */
 const HIDE_FOR_MS = 30 * 24 * 60 * 60 * 1000;
 
-function readDismissed(): Record<string, number> {
+/**
+ * localStorage: { [insight.key]: dismissed at (ms) }, one map per person on
+ * the device (CLAUDE.md › One device, several accounts).
+ */
+export function dismissedKey(userId: string): string {
+  return `${LEGACY_KEY}:${userId}`;
+}
+
+export function readDismissed(userId: string): Record<string, number> {
   try {
+    window.localStorage.removeItem(LEGACY_KEY);
     const parsed: unknown = JSON.parse(
-      window.localStorage.getItem(STORAGE_KEY) ?? "{}",
+      window.localStorage.getItem(dismissedKey(userId)) ?? "{}",
     );
-    return parsed && typeof parsed === "object"
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? (parsed as Record<string, number>)
       : {};
   } catch {
@@ -26,9 +38,12 @@ function readDismissed(): Record<string, number> {
   }
 }
 
-function writeDismissed(map: Record<string, number>) {
+export function writeDismissed(
+  userId: string,
+  map: Record<string, number>,
+): void {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    window.localStorage.setItem(dismissedKey(userId), JSON.stringify(map));
   } catch {
     // Storage unavailable: the insight comes back on the next visit.
   }
@@ -37,28 +52,36 @@ function writeDismissed(map: Record<string, number>) {
 /**
  * InsightCard (doc 02 §5.20): one observation at a time, the figure in bold,
  * a ghost action to the category and a close button that hides it for 30
- * days on this device. Renders after hydration, once storage was checked.
+ * days, for this person on this device. Renders after hydration, once
+ * storage was checked.
  */
-export function InsightCard({ insight }: { insight: Insight }) {
+export function InsightCard({
+  insight,
+  userId,
+}: {
+  insight: Insight;
+  /** The session's user: whose dismissals to read and write. */
+  userId: string;
+}) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const dismissedAt = readDismissed()[insight.key];
+    const dismissedAt = readDismissed(userId)[insight.key];
     setVisible(
       typeof dismissedAt !== "number" || Date.now() - dismissedAt > HIDE_FOR_MS,
     );
-  }, [insight.key]);
+  }, [insight.key, userId]);
 
   if (!visible) return null;
 
   function dismiss() {
     const now = Date.now();
-    const map = readDismissed();
+    const map = readDismissed(userId);
     for (const [key, at] of Object.entries(map)) {
       if (typeof at !== "number" || now - at > HIDE_FOR_MS) delete map[key];
     }
     map[insight.key] = now;
-    writeDismissed(map);
+    writeDismissed(userId, map);
     setVisible(false);
   }
 

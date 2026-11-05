@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { type CSSProperties, useId } from "react";
 import { cn } from "@/lib/utils";
 import { linePath, type Point, VIEWBOX } from "./scale";
 
@@ -6,6 +6,8 @@ type SparklineProps = {
   values: readonly number[];
   /** Summary read by screen readers ("Patrimônio subiu de … para …"). */
   summary: string;
+  /** The summary in privacy mode, amounts hidden ("valor oculto"). */
+  hiddenSummary: string;
   color?: string;
   className?: string;
 };
@@ -17,9 +19,11 @@ type SparklineProps = {
 export function Sparkline({
   values,
   summary,
+  hiddenSummary,
   color = "var(--primary)",
   className,
 }: SparklineProps) {
+  const summaryId = useId();
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min;
@@ -38,10 +42,16 @@ export function Sparkline({
   return (
     <div
       role="img"
-      aria-label={summary}
+      aria-labelledby={summaryId}
       className={cn("relative h-11 w-30", className)}
       style={{ "--line": color } as CSSProperties}
     >
+      {/* Named by text, not an aria-label: privacy mode (CSS, like <Money>)
+          swaps the summary for the one without amounts. */}
+      <span id={summaryId} className="sr-only">
+        <span data-privacy-value="">{summary}</span>
+        <span data-privacy-mask="">{hiddenSummary}</span>
+      </span>
       <svg
         aria-hidden="true"
         viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}

@@ -14,6 +14,7 @@ type Domain = {
   transactions: typeof import("./transactions");
   budgets: typeof import("./budgets");
   dashboard: typeof import("./dashboard");
+  requestReads: typeof import("./request-reads");
   reports: typeof import("./reports");
 };
 
@@ -54,6 +55,7 @@ beforeAll(async () => {
     transactions: await import("./transactions"),
     budgets: await import("./budgets"),
     dashboard: await import("./dashboard"),
+    requestReads: await import("./request-reads"),
     reports: await import("./reports"),
   };
   ctx = await d.context.getUserContext("owner", { now: NOW });
@@ -401,7 +403,7 @@ describe("planning and overview", () => {
     expect(strip.accounts.map((account) => account.id).sort()).toEqual(
       [ids.checking, ids.reserve, ids.wallet, ids.card].sort(),
     );
-    expect(await d.dashboard.accountsOf(ctx)).toEqual(strip.accounts);
+    expect(await d.requestReads.accountsOf(ctx)).toEqual(strip.accounts);
     // October's invoice: today's ride and the 2nd installment of the shoes.
     expect(strip.currentInvoiceCents).toEqual({
       [ids.card]: 2_290 + 9_998,

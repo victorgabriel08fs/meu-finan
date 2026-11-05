@@ -5,9 +5,6 @@
 // Ids are stored on the accounts (user_settings.home_layout): never rename or
 // reuse one. A retired id is simply removed from here; a stored copy of it is
 // ignored.
-//
-// Reserved for the second stage (reports on the Início), not in the catalog
-// yet: `cash-flow`, `category-breakdown`, `income-expense`, `net-worth`.
 
 export type HomeBlockSize = "narrow" | "wide";
 
@@ -29,6 +26,9 @@ export type HomeBlockDefinition = {
   /** When the block was added, YYYY-MM-DD. */
   since: string;
 };
+
+/** The day the blocks of the reports shipped (and their novidade). */
+export const REPORT_BLOCKS_SINCE = "2026-11-05";
 
 export const HOME_BLOCKS = {
   balance: {
@@ -74,7 +74,7 @@ export const HOME_BLOCKS = {
     errorTitle: "Não deu para carregar as contas",
     size: "narrow",
     inDefault: true,
-    weight: 148,
+    weight: 156,
     since: "2026-11-02",
   },
   goals: {
@@ -83,7 +83,7 @@ export const HOME_BLOCKS = {
     errorTitle: "Não deu para carregar as metas",
     size: "narrow",
     inDefault: true,
-    weight: 180,
+    weight: 188,
     since: "2026-11-02",
   },
   insight: {
@@ -104,6 +104,43 @@ export const HOME_BLOCKS = {
     weight: 448,
     since: "2026-11-02",
   },
+  "cash-flow": {
+    label: "Fluxo de caixa",
+    description: "O saldo das contas dia a dia, com o que ainda vai cair.",
+    errorTitle: "Não deu para carregar o fluxo de caixa",
+    size: "wide",
+    inDefault: false,
+    weight: 441,
+    since: REPORT_BLOCKS_SINCE,
+  },
+  "category-breakdown": {
+    label: "Para onde foi o dinheiro",
+    description: "As categorias em que você mais gastou no mês.",
+    errorTitle: "Não deu para carregar os gastos por categoria",
+    size: "narrow",
+    inDefault: false,
+    weight: 545,
+    since: REPORT_BLOCKS_SINCE,
+  },
+  "income-expense": {
+    // "por mês": not to be confused with "Receitas e despesas", the tiles.
+    label: "Receitas × despesas por mês",
+    description: "O que entrou e saiu em cada um dos últimos 6 meses.",
+    errorTitle: "Não deu para carregar o comparativo de receitas e despesas",
+    size: "narrow",
+    inDefault: false,
+    weight: 445,
+    since: REPORT_BLOCKS_SINCE,
+  },
+  "net-worth": {
+    label: "Patrimônio",
+    description: "O que você tem menos o que deve, e como mudou em 6 meses.",
+    errorTitle: "Não deu para carregar o patrimônio",
+    size: "narrow",
+    inDefault: false,
+    weight: 187,
+    since: REPORT_BLOCKS_SINCE,
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -123,6 +160,10 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "goals",
   "insight",
   "spending-calendar",
+  "cash-flow",
+  "category-breakdown",
+  "income-expense",
+  "net-worth",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

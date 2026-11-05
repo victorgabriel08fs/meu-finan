@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { expectNoA11yViolations } from "./axe";
 import { OWNER_STATE } from "./demo";
 
 // Início personalizável (doc 02 §6.3), as Ana: the demo turns the
@@ -120,7 +121,7 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await customizeButton(page).click();
   const sheet = sheetOf(page);
   await expect(sheet).toBeVisible();
-  // The calendar is new, out of the default: last, hidden.
+  // The calendar is out of the default: after the default blocks, hidden.
   const calendar = sheet.getByRole("switch", { name: "Calendário de gastos" });
   await expect(calendar).toHaveAttribute("aria-checked", "false");
   await calendar.click();
@@ -134,12 +135,12 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 8.",
+    "Calendário de gastos na posição 2 de 12.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 8.",
+    "Calendário de gastos na posição 2 de 12.",
   );
 
   const saved = homeSaved(page);
@@ -237,4 +238,161 @@ test("restaurar padrão volta ao Início do app, com desfazer", async ({
   await expect(
     sheetOf(page).getByRole("button", { name: "Restaurar padrão" }),
   ).toHaveCount(0);
+});
+
+// The blocks of the reports (doc 02 §6.3), out of the default: turned on
+// here, after the Início is back in the default above, and off again at the
+// end.
+
+/** The default Início with the four blocks of the reports at the end. */
+const WITH_REPORTS = [
+  ...DEFAULT_ORDER,
+  "cash-flow",
+  "category-breakdown",
+  "income-expense",
+  "net-worth",
+];
+
+/** A block on screen by its heading's id (not the hidden streaming copy). */
+const blockOf = (page: Page, headingId: string) =>
+  page.locator(`section[aria-labelledby="${headingId}"]:visible`);
+
+test("liga os blocos dos relatórios, cada um com o nome da folha e o caminho do relatório", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await expectBlocks(page, DEFAULT_ORDER);
+
+  await customizeButton(page).click();
+  const sheet = sheetOf(page);
+  for (const name of [
+    "Fluxo de caixa",
+    "Para onde foi o dinheiro",
+    "Receitas × despesas por mês",
+    "Patrimônio",
+  ]) {
+    const block = sheet.getByRole("switch", { name, exact: true });
+    await expect(block).toHaveAttribute("aria-checked", "false");
+    await block.click();
+    await expect(block).toHaveAttribute("aria-checked", "true");
+  }
+  const saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(sheet).toBeHidden();
+  await expectBlocks(page, WITH_REPORTS);
+
+  // The heading is the block's name in the sheet (doc 02 §10.4).
+  for (const [id, name, href] of [
+    ["inicio-fluxo", "Fluxo de caixa", "/relatorios/fluxo"],
+    [
+      "inicio-categorias",
+      "Para onde foi o dinheiro",
+      "/relatorios/categorias?periodo=1",
+    ],
+    [
+      "inicio-receitas-despesas",
+      "Receitas × despesas por mês",
+      "/relatorios/visao-geral?periodo=6",
+    ],
+    ["inicio-patrimonio", "Patrimônio", "/relatorios/patrimonio?periodo=6"],
+  ] as const) {
+    const block = blockOf(page, id);
+    await expect(
+      block.getByRole("heading", { level: 2, name, exact: true }),
+    ).toBeVisible();
+    await expect(
+      block.getByRole("link", { name: "Ver relatório" }),
+    ).toHaveAttribute("href", href);
+  }
+});
+
+test("em outro mês, o Fluxo leva o mês e as categorias abrem no extrato", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const month = previousMonth();
+  await page.goto(`/inicio?mes=${month}`);
+  await expectBlocks(page, WITH_REPORTS);
+  await expect(
+    blockOf(page, "inicio-fluxo").getByRole("link", { name: "Ver relatório" }),
+  ).toHaveAttribute("href", `/relatorios/fluxo?mes=${month}`);
+  await expect(
+    blockOf(page, "inicio-categorias").getByRole("link", {
+      name: "Ver no extrato",
+    }),
+  ).toHaveAttribute("href", `/extrato?mes=${month}&tipo=despesa&status=pago`);
+});
+
+test("no modo discreto, os gráficos dos blocos não falam valores", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await expectBlocks(page, WITH_REPORTS);
+  const scrub = blockOf(page, "inicio-fluxo").getByRole("slider", {
+    name: "Percorrer o saldo dia a dia",
+  });
+  await expect(scrub).toHaveAttribute("aria-valuetext", /R\$/);
+
+  const toggle = page.getByRole("button", { name: "Ocultar valores" });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(scrub).toHaveAttribute("aria-valuetext", /valor oculto/);
+  await expect(scrub).not.toHaveAttribute("aria-valuetext", /R\$/);
+  // Names from text, swapped by CSS like <Money>.
+  await expect(
+    blockOf(page, "inicio-receitas-despesas").locator(
+      'button[aria-pressed="true"]',
+    ),
+  ).toHaveAccessibleName(/receitas valor oculto, despesas valor oculto$/);
+  // The sparkline (a masked amount is an image too: "valor oculto").
+  await expect(
+    blockOf(page, "inicio-patrimonio").locator('[role="img"][aria-labelledby]'),
+  ).toHaveAccessibleName(/^Patrimônio .*valor oculto/);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(scrub).toHaveAttribute("aria-valuetext", /R\$/);
+});
+
+test("sem violações do axe no Início com os blocos dos relatórios e em Preferências", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.goto("/inicio");
+  await expectBlocks(page, WITH_REPORTS);
+  await expect(
+    blockOf(page, "inicio-patrimonio").getByRole("heading"),
+  ).toBeVisible();
+  await expectNoA11yViolations(page);
+
+  // The Fluxo's table: a region that scrolls, reachable by keyboard.
+  const fluxo = blockOf(page, "inicio-fluxo");
+  await fluxo.getByRole("button", { name: "Ver como tabela" }).click();
+  await expect(
+    fluxo.getByRole("region", { name: "Tabela do saldo dia a dia" }),
+  ).toBeVisible();
+  await expectNoA11yViolations(page);
+
+  await customizeButton(page).click();
+  await expect(sheetOf(page)).toBeVisible();
+  await expectNoA11yViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(sheetOf(page)).toBeHidden();
+
+  await page.goto("/ajustes/preferencias");
+  await expect(
+    page.getByRole("heading", { name: "Mês financeiro" }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expectNoA11yViolations(page);
+
+  // Back to the default Início, as the other suites expect it.
+  await page.goto("/inicio");
+  await customizeButton(page).click({ timeout: 30_000 });
+  const restored = homeSaved(page);
+  await sheetOf(page).getByRole("button", { name: "Restaurar padrão" }).click();
+  expect((await restored).ok()).toBe(true);
+  await expectBlocks(page, DEFAULT_ORDER);
 });

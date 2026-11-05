@@ -236,10 +236,15 @@ describe("NetWorthReport", () => {
     expect(html).toContain(">Passivos<");
     expect(html).toContain("em 3 meses");
     expect(html).toContain('aria-label="Percorrer o patrimônio mês a mês"');
-    // Two small multiples, each an image of its own.
-    expect(
-      html.match(/role="img" aria-label="(Ativos|Passivos) /g),
-    ).toHaveLength(2);
+    // Two small multiples, each an image of its own, named by a summary that
+    // privacy mode swaps for one without amounts.
+    expect(html.match(/role="img" aria-labelledby="/g)).toHaveLength(2);
+    expect(html).toMatch(
+      /<span data-privacy-value="">Ativos subiram de R\$[^<]+<\/span><span data-privacy-mask="">Ativos subiram de valor oculto para valor oculto em 3 meses.<\/span>/,
+    );
+    expect(html).toContain(
+      '<span data-privacy-mask="">Passivos caíram de valor oculto para valor oculto em 3 meses.</span>',
+    );
     expect(html).toContain('href="/contas"');
     expect(html.match(/Ver como tabela/g)).toHaveLength(3);
   });

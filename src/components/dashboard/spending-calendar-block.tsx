@@ -1,7 +1,6 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { QuickAddButton } from "@/components/quick-add/quick-add-trigger";
@@ -14,6 +13,8 @@ import { SpendingCalendarView } from "@/components/reports/spending-calendar";
 import { Card } from "@/components/ui/card";
 import { shortDateLabel } from "@/lib/format/date";
 import type { DaySpending, ReportPhase } from "@/server/domain/reports";
+import { BlockInvite } from "./block-invite";
+import { BlockLink } from "./block-link";
 
 type SpendingCalendarBlockProps = {
   /** Every day of the month the Início shows. */
@@ -62,18 +63,13 @@ export function SpendingCalendarBlock({
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col">
             <h2 id="inicio-calendario" className="text-headline text-fg">
-              Gastos por dia
+              Calendário de gastos
             </h2>
             <p className="text-caption text-fg-3">
-              Despesas pagas; no cartão, na data da compra
+              Despesas pagas por dia; no cartão, na data da compra
             </p>
           </div>
-          <Link
-            href={reportHref}
-            className="-my-1.5 -mr-2 inline-flex h-11 shrink-0 items-center rounded-control px-2 text-callout font-semibold text-primary transition-colors duration-100 hover:bg-primary-soft/60 active:bg-primary-soft"
-          >
-            Ver relatório
-          </Link>
+          <BlockLink href={reportHref}>Ver relatório</BlockLink>
         </div>
         {/* By the width of its place on the Início (an @container): beside
             the figures in a whole row, over them in two thirds of one. */}
@@ -134,24 +130,15 @@ export function SpendingCalendarBlock({
  */
 export function SpendingCalendarInvite({ monthName }: { monthName: string }) {
   return (
-    <Card className="flex flex-wrap items-center gap-3">
-      <span
-        aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-on-primary-soft"
-      >
-        <CalendarDays className="size-5" />
-      </span>
-      <div className="flex min-w-0 flex-1 basis-48 flex-col">
-        <h2 className="text-headline text-fg">
-          Nenhuma despesa em {monthName}
-        </h2>
-        <p className="text-caption text-fg-3">
-          Quando houver, o calendário mostra os dias de mais gasto.
-        </p>
-      </div>
-      <QuickAddButton kind="expense" variant="tonal" size="sm">
-        Adicionar despesa
-      </QuickAddButton>
-    </Card>
+    <BlockInvite
+      icon={<CalendarDays />}
+      title={`Nenhuma despesa em ${monthName}`}
+      description="Quando houver, o calendário mostra os dias de mais gasto."
+      action={
+        <QuickAddButton kind="expense" variant="tonal" size="sm">
+          Adicionar despesa
+        </QuickAddButton>
+      }
+    />
   );
 }

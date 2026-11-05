@@ -23,6 +23,11 @@ type DataTableProps = {
   rows: DataRow[];
   /** Scroll inside with a sticky header (long tables such as "Ano a ano"). */
   maxHeightClassName?: string;
+  /**
+   * Name of the scrolling region ("Tabela do saldo dia a dia"); the caption
+   * by default. Only with `maxHeightClassName`.
+   */
+  regionLabel?: string;
   className?: string;
 };
 
@@ -35,12 +40,24 @@ export function DataTable({
   columns,
   rows,
   maxHeightClassName,
+  regionLabel,
   className,
 }: DataTableProps) {
+  // A region that scrolls takes the focus, so the keyboard can scroll it too
+  // (WCAG 2.1.1; axe scrollable-region-focusable).
+  const scrolls = Boolean(maxHeightClassName);
   return (
     <div
+      {...(scrolls
+        ? {
+            role: "region",
+            tabIndex: 0,
+            "aria-label": regionLabel ?? caption,
+          }
+        : {})}
       className={cn(
-        maxHeightClassName && "overflow-y-auto overscroll-contain",
+        scrolls &&
+          "overflow-y-auto overscroll-contain rounded-chip focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         maxHeightClassName,
         className,
       )}

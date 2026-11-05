@@ -72,12 +72,19 @@ describe("GroupedColumnChart", () => {
         onSelect={() => {}}
         ticks={niceTicks(0, 100)}
         formatTick={(value) => String(value)}
-        describeGroup={(index) => `grupo ${index}`}
+        describeGroup={(index, hideValues) =>
+          `grupo ${index}${hideValues ? " oculto" : ""}`
+        }
       />,
     );
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html.match(/aria-pressed="false"/g)).toHaveLength(1);
-    expect(html).toContain('aria-label="grupo 1"');
+    // Each column named by its content, the version without amounts for
+    // privacy mode beside it (CSS shows one, like <Money>).
+    expect(html).toContain(
+      '<span data-privacy-value="" class="sr-only">grupo 1</span><span data-privacy-mask="" class="sr-only">grupo 1 oculto</span>',
+    );
+    expect(html).not.toContain('aria-label="grupo');
     expect(html).toContain("out*");
     expect(html).toContain('role="toolbar"');
   });
@@ -104,9 +111,17 @@ describe("LineChart", () => {
 describe("Sparkline and SplitBar", () => {
   it("draws a sparkline with an end dot", () => {
     const html = renderToStaticMarkup(
-      <Sparkline values={[1, 3, 2]} summary="Subiu" />,
+      <Sparkline
+        values={[1, 3, 2]}
+        summary="Subiu para R$ 2"
+        hiddenSummary="Subiu para valor oculto"
+      />,
     );
-    expect(html).toContain('aria-label="Subiu"');
+    const id = html.match(/role="img" aria-labelledby="([^"]+)"/)?.[1];
+    expect(html).toContain(
+      `<span id="${id}" class="sr-only"><span data-privacy-value="">Subiu para R$ 2</span><span data-privacy-mask="">Subiu para valor oculto</span></span>`,
+    );
+    expect(html).not.toContain("aria-label=");
     expect(html).toContain("left:100%");
   });
 
@@ -142,5 +157,37 @@ describe("DataTable", () => {
     expect(html).toContain("<caption");
     expect(html).toContain('scope="row"');
     expect(html).toContain("font-bold");
+    // Nothing scrolls: no region, no tab stop.
+    expect(html).not.toContain('role="region"');
+    expect(html).not.toContain("tabindex");
+  });
+
+  it("lets the keyboard reach a table that scrolls", () => {
+    const columns = [
+      { key: "m", header: "Mês", align: "start" as const },
+      { key: "v", header: "Valor", align: "end" as const },
+    ];
+    const rows = [{ key: "1", header: "out", cells: ["R$ 1"] }];
+    const named = renderToStaticMarkup(
+      <DataTable
+        caption="Saldo em contas no fim de cada dia"
+        columns={columns}
+        rows={rows}
+        maxHeightClassName="max-h-80"
+        regionLabel="Tabela do saldo dia a dia"
+      />,
+    );
+    expect(named).toMatch(
+      /^<div role="region" tabindex="0" aria-label="Tabela do saldo dia a dia" class="[^"]*overflow-y-auto[^"]*focus-visible:outline-focus[^"]*max-h-80/,
+    );
+    const byCaption = renderToStaticMarkup(
+      <DataTable
+        caption="Gastos por dia"
+        columns={columns}
+        rows={rows}
+        maxHeightClassName="max-h-80"
+      />,
+    );
+    expect(byCaption).toContain('aria-label="Gastos por dia"');
   });
 });

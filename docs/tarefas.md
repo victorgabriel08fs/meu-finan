@@ -2,34 +2,7 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 1. Início personalizável — etapa 2: blocos dos relatórios
-
-**Continuação da tarefa entregue em 04/11/2026** (veja Entregue, no fim). O catálogo já reserva os ids, sem entrada: `cash-flow`, `category-breakdown`, `income-expense` e `net-worth` (`src/lib/home/blocks.ts`).
-
-### O que entra
-
-- Um bloco por commit, cada um com loader próprio em `src/app/(app)/inicio/blocks.tsx`, skeleton com a altura medida, erro de bloco e convite quando vazio, reaproveitando as consultas e os componentes dos Relatórios:
-  - **Fluxo de caixa** (`cashFlowReport` + `CashFlowCard`), largo.
-  - **Para onde foi o dinheiro** (`categoryBreakdown` + `CategoryRanking` com 5 categorias).
-  - **Receitas × despesas** (`monthlySeries(ctx, range, 6)`).
-  - **Patrimônio** (`netWorthSeries(ctx, range, 7)`).
-- Os blocos novos entram fora do padrão, com "Novo" por 30 dias, e uma novidade "Mais blocos para o Início" (`when: { flag: "inicio_personalizavel" }`).
-
-### Pendências pequenas da etapa 1
-
-- Skeletons de Contas (148 → 156 px) e Metas (180 → 188 px), medidos pelo `qa-ui-ux`.
-- O breakpoint solto `min-[26.25rem]` nos skeletons de Receitas/Despesas e Orçamento: virar um breakpoint do tema ou sair.
-- axe no e2e (`@axe-core/playwright` não está instalado): `/inicio` com a folha fechada e aberta e `/ajustes/preferencias`.
-- A dispensa do Destaque fica em `localStorage` sem a chave da pessoa (CLAUDE.md › One device, several accounts).
-- Decidir (o dono ainda não decidiu) se Receitas e despesas vão para a coluna do Saldo quando ele divide a linha com um bloco largo (`hero-wide`).
-
-### Pronto quando
-
-- Cada bloco aparece na folha "Personalizar o Início", carrega sozinho, respeita `?mes=` e o modo discreto, e o `qa-ui-ux` aprova em 360/430 px e desktop, escuro e claro.
-- Testes de unidade dos componentes, integração dos loaders e e2e de ligar um bloco novo.
-- README, doc 02 §6.3 e a novidade atualizados.
-
-## 2. Notificações: novos eventos configuráveis pelo cron diário
+## 1. Notificações: novos eventos configuráveis pelo cron diário
 
 **Pedido do dono (04/11/2026).** Cinco eventos de notificação enviados pelo cron diário, cada um ligado ou desligado pela pessoa:
 
@@ -39,7 +12,7 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 - [ ] **Resumo semanal**: na segunda-feira, a semana anterior — receitas, despesas, categorias que mais pesaram e a comparação com a média.
 - [ ] **Resumo mensal**: no primeiro dia do mês financeiro (respeitando `month_start_day`), o mês fechado — receitas, despesas, quanto sobrou, orçamentos cumpridos e estourados.
 
-O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o dono antes de implementar.
+Conteúdo aprovado pelo dono em 05/11/2026.
 
 ### O que entra
 
@@ -47,12 +20,13 @@ O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o don
 - **Configurável por pessoa** em Ajustes › Notificações › Avisos (hoje "Em breve"): um interruptor por evento, mais as opções de cada um (antecedência das contas a vencer; resumo semanal e mensal ligados ou não). Definir os padrões de quem nunca mexeu.
 - Tudo atrás da flag `notificacoes_push`; só recebe quem tem a flag e pelo menos um aparelho inscrito.
 - **Idempotente**: a Vercel pode entregar o cron mais de uma vez e o dono pode chamá-lo à mão. Cada evento é enviado uma vez por pessoa por dia, garantido no banco (chave única por pessoa, evento e data), não só na memória.
-- Datas no fuso da pessoa (`user_settings.timezone`); valores com `formatBRL` e o modo discreto não se aplica a notificações (avaliar se o texto da notificação deve omitir valores, já que aparece na tela bloqueada).
+- Datas no fuso da pessoa (`user_settings.timezone`) e valores com `formatBRL`.
+- **Valores na tela bloqueada** (decidido pelo dono em 05/11/2026): opção "Mostrar valores nas notificações" em Ajustes › Notificações, **desligada por padrão**. Sem ela, o texto não traz valores ("Aluguel vence amanhã" em vez de "Aluguel vence amanhã: R$ 2.100").
 - Textos curtos em pt-BR (doc 02 §10), cada notificação abrindo a tela certa ao tocar (Início, Extrato filtrado, Relatórios).
 
 ### Limites do plano Hobby da Vercel
 
-- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo.
+- O cron roda **uma vez por dia**, a qualquer momento entre 06:00 e 06:59 de Brasília (`0 9 * * *` UTC). Todos os eventos saem nesse horário; horário escolhido pela pessoa ou mais de um envio por dia exigiria o plano Pro ou um agendador externo. **Decidido pelo dono (05/11/2026): fica no Hobby, tudo às 6h**; o horário não é configurável.
 - O passo precisa caber no tempo do job (240 s de orçamento): enviar em lotes e registrar o que não foi enviado.
 
 ### Pronto quando
@@ -61,7 +35,7 @@ O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o don
 - Ajustes › Notificações mostra os interruptores e as opções, aprovados pelo `qa-ui-ux`.
 - README (Notificações, Cron diário), doc 01 §9 e doc 02 §6.14 atualizados.
 
-## 3. Extrato — melhorias
+## 2. Extrato — melhorias
 
 Pendências pequenas achadas na correção dos filtros (04/11/2026), que já existiam antes dela:
 
@@ -69,10 +43,42 @@ Pendências pequenas achadas na correção dos filtros (04/11/2026), que já exi
 - A folha de categorias tem mais de 20 opções e não tem busca (doc 02 §4.4 pede busca acima de 8).
 - Com zoom de 200%, os valores do resumo e das linhas são cortados (doc 02 §3.4 e §11).
 - Subcategoria arquivada não entra no filtro da categoria mãe (a página só conhece as categorias ativas).
-- Não há como criar subcategoria pelo app: o filtro já trata mãe e filhas, mas hoje só categorias criadas direto no banco têm filhas.
+- **Criar subcategorias pelo app** (decidido pelo dono em 05/11/2026): em Ajustes › Categorias, escolher a categoria mãe ao criar ou editar. O filtro do Extrato já trata mãe e filhas.
 - Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
 
+## 3. Início e Relatórios — melhorias
+
+Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
+
+- **Mês anterior a qualquer lançamento** (`?mes=2024-01`): o Fluxo de caixa e o Patrimônio mostram o saldo projetado para trás, como se já houvesse dinheiro. Mostrar "Sem registros em {mês}" nos dois lugares, no bloco do Início e no relatório.
+- Receitas × despesas: no tema claro, as colunas dos meses não selecionados ficam com contraste baixo.
+- Resumo falado com variação zero diz "ficou estável de R$ 5.150 para R$ 5.150": dizer "ficou estável em R$ 5.150".
+- Rótulos dos marcadores truncados no gráfico do Fluxo de caixa ("Curso de…").
+- Skeleton por fase do mês também em Receitas/Despesas, Orçamento e Receitas × despesas por mês (hoje só o Fluxo de caixa muda com a fase).
+- axe no tema claro (o e2e roda o axe só no escuro).
+- `?mes=` nos relatórios por período (Visão geral, Categorias, Patrimônio): o link "Ver relatório" dos blocos não leva o mês do Início.
+
 ## Entregue
+
+### Início personalizável (etapa 2): blocos dos relatórios — 05/11/2026
+
+Quatro blocos novos no catálogo, fora do padrão e com "Novo" por 30 dias: **Fluxo de caixa** (largo, só o menor saldo previsto, skeleton pela fase do mês), **Para onde foi o dinheiro**, **Receitas × despesas por mês** e **Patrimônio**. Cada um segue `?mes=`, leva ao relatório e mostra um convite quando não há o que mostrar. Novidade "Mais blocos para o Início" (`when: { flag: "inicio_personalizavel" }`). Títulos dos blocos com o nome da folha ("Calendário de gastos", "Patrimônio").
+
+Também entraram:
+
+- Gráficos sem falar valores no modo discreto (resumos, percorrer e colunas dizem "valor oculto").
+- O Fluxo de caixa e o Saldo leem contas, faturas e pendentes uma vez por requisição (`request-reads.ts`).
+- Tabelas com rolagem recebem foco pelo teclado.
+
+Pendências pequenas da etapa 1, resolvidas:
+
+- Skeletons de Contas (156 px) e Metas (188 px) com a altura do cabeçalho.
+- O breakpoint solto `min-[26.25rem]` saiu: os skeletons medem pela largura do bloco (container queries).
+- axe no e2e (`@axe-core/playwright`, `e2e/axe.ts`): `/inicio` com os 4 blocos, a folha aberta e a tabela do Fluxo, e `/ajustes/preferencias`, no tema escuro, sem violações.
+- A dispensa do Destaque passou a ser por pessoa no aparelho (chave com o id da pessoa).
+- Mantido, por decisão do dono: quando o Saldo divide a linha com um bloco largo (`hero-wide`), a tela segue a ordem da folha.
+
+Testes de unidade, integração dos carregadores (`src/app/(app)/inicio/blocks.integration.test.tsx`) e e2e (`e2e/inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 02 §5.17, §5.20, §6.3 e §9.5, doc 01 §8.
 
 ### Extrato: filtros de conta, categoria e tipo — 04/11/2026
 

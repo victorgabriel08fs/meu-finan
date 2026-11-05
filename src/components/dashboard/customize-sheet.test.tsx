@@ -57,13 +57,9 @@ describe("HomeBlockList", () => {
     expect(first).toMatch(
       /aria-label="Descer Receitas e despesas"(?! aria-disabled)/,
     );
-    const last = row(html, "spending-calendar");
-    expect(last).toMatch(
-      /aria-label="Subir Calendário de gastos"(?! aria-disabled)/,
-    );
-    expect(last).toMatch(
-      /aria-label="Descer Calendário de gastos" aria-disabled="true"/,
-    );
+    const last = row(html, "net-worth");
+    expect(last).toMatch(/aria-label="Subir Patrimônio"(?! aria-disabled)/);
+    expect(last).toMatch(/aria-label="Descer Patrimônio" aria-disabled="true"/);
     // aria-disabled, never disabled: the focus stays on the button.
     expect(html).not.toMatch(/<button[^>]* disabled=""/);
     expect(html.match(/aria-disabled="true"/g)).toHaveLength(2);
@@ -71,7 +67,7 @@ describe("HomeBlockList", () => {
 
   it("gives each block a switch named and described by its row", () => {
     const html = list();
-    expect(html.match(/role="switch"/g)).toHaveLength(7);
+    expect(html.match(/role="switch"/g)).toHaveLength(11);
     const budget = row(html, "budget");
     expect(budget).toContain('aria-checked="true"');
     const labelledBy = /aria-labelledby="([^"]+)"/.exec(budget)?.[1];
@@ -87,7 +83,8 @@ describe("HomeBlockList", () => {
     const html = list(entries);
     expect(row(html, "goals")).not.toContain("Novo");
     expect(row(html, "spending-calendar")).toContain("Novo");
-    expect(html.match(/>Novo</g)).toHaveLength(6);
+    expect(row(html, "income-expense")).toContain("Novo");
+    expect(html.match(/>Novo</g)).toHaveLength(10);
   });
 
   it("marks a recent block new and tells the switch about it", () => {
@@ -113,10 +110,13 @@ describe("HomeBlockList", () => {
 describe("positionAnnouncement", () => {
   it("counts the Saldo in the position", () => {
     expect(positionAnnouncement(defaultHomeLayout(), "month-totals")).toBe(
-      "Receitas e despesas na posição 2 de 8.",
+      "Receitas e despesas na posição 2 de 12.",
     );
     expect(positionAnnouncement(defaultHomeLayout(), "spending-calendar")).toBe(
-      "Calendário de gastos na posição 8 de 8.",
+      "Calendário de gastos na posição 8 de 12.",
+    );
+    expect(positionAnnouncement(defaultHomeLayout(), "net-worth")).toBe(
+      "Patrimônio na posição 12 de 12.",
     );
   });
 });

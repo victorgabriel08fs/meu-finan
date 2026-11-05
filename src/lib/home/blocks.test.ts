@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { tipById } from "@/lib/tips/registry";
 import {
   DEFAULT_HOME_ORDER,
   HOME_BLOCK_IDS,
@@ -7,6 +8,7 @@ import {
   isHomeBlockId,
   isPinnedHomeBlock,
   MOVABLE_HOME_BLOCK_IDS,
+  REPORT_BLOCKS_SINCE,
 } from "./blocks";
 
 const ISO_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -56,6 +58,41 @@ describe("home blocks catalog", () => {
   it("offers the spending calendar as a wide block, out of the default", () => {
     expect(HOME_BLOCKS["spending-calendar"].size).toBe("wide");
     expect(HOME_BLOCKS["spending-calendar"].inDefault).toBe(false);
+  });
+
+  it("offers the blocks of the reports out of the default, after the calendar", () => {
+    expect(HOME_BLOCK_IDS.slice(-5)).toEqual([
+      "spending-calendar",
+      "cash-flow",
+      "category-breakdown",
+      "income-expense",
+      "net-worth",
+    ]);
+    expect(HOME_BLOCKS["cash-flow"].size).toBe("wide");
+    for (const id of [
+      "cash-flow",
+      "category-breakdown",
+      "income-expense",
+      "net-worth",
+    ] as const) {
+      expect(HOME_BLOCKS[id].inDefault, id).toBe(false);
+      expect(HOME_BLOCKS[id].since, id).toBe(REPORT_BLOCKS_SINCE);
+      if (id !== "cash-flow") expect(HOME_BLOCKS[id].size, id).toBe("narrow");
+    }
+    // Not "Receitas e despesas", the name of the tiles.
+    expect(HOME_BLOCKS["income-expense"].label).toBe(
+      "Receitas × despesas por mês",
+    );
+  });
+
+  it("ships the blocks of the reports on the day of their novidade", () => {
+    const novidade = tipById("novidade-inicio-blocos-relatorios");
+    expect(novidade?.kind).toBe("novidade");
+    expect(novidade?.since).toBe(REPORT_BLOCKS_SINCE);
+    expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
+    expect(novidade?.link?.href).toBe("/ajustes/preferencias");
+    // The first stage's novidade keeps its own day.
+    expect(tipById("novidade-inicio-personalizavel")?.since).toBe("2026-11-02");
   });
 
   it("knows its own ids only", () => {

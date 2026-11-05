@@ -151,11 +151,16 @@ export function NetWorthReport({ points, period }: NetWorthReportProps) {
                 formatTick={formatTick}
                 xLabels={breakdownXLabels(points)}
                 summary={breakdownSummary("netCents", net, period)}
+                hiddenSummary={breakdownSummary("netCents", net, period, {
+                  hideValues: true,
+                })}
                 scrub={{
                   selected,
                   onSelectedChange: setChosen,
                   label: "Percorrer o patrimônio mês a mês",
                   valueText: (index) => breakdownValueText(points, index),
+                  hiddenValueText: (index) =>
+                    breakdownValueText(points, index, { hideValues: true }),
                 }}
               />
             }
@@ -257,6 +262,9 @@ function BreakdownCard({
               formatTick={formatTick}
               xLabels={breakdownXLabels(points)}
               summary={breakdownSummary(name, values, period)}
+              hiddenSummary={breakdownSummary(name, values, period, {
+                hideValues: true,
+              })}
               highlight={selected}
               plotClassName="h-24"
               className="mt-1"

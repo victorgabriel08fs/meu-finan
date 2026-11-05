@@ -1,14 +1,14 @@
-import { ChartLine, TriangleAlert } from "lucide-react";
+import { ChartLine } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
 import { QuickAddButton } from "@/components/quick-add/quick-add-trigger";
 import { CashFlowCard } from "@/components/reports/cash-flow-card";
 import {
-  type LowestTone,
-  lowestTone,
-} from "@/components/reports/cash-flow-model";
-import { CompactMoney, KpiTile } from "@/components/reports/kpi-tile";
+  CashFlowKpiTiles,
+  cashFlowFutureNote,
+} from "@/components/reports/cash-flow-kpis";
+import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
 import {
   ReportMonthSwitcher,
   ReportMonthSwitcherSkeleton,
@@ -21,8 +21,7 @@ import { shortDateLabel } from "@/lib/format/date";
 import { cn } from "@/lib/utils";
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
-import { type CashFlowReport, cashFlowReport } from "@/server/domain/reports";
-import { RECURRENCE_HORIZON_DAYS } from "@/server/domain/transactions";
+import { cashFlowReport } from "@/server/domain/reports";
 
 export const metadata: Metadata = { title: "Relatórios · Fluxo de caixa" };
 
@@ -58,14 +57,7 @@ async function CashFlow({
     />
   );
 
-  const nothing =
-    report.paidCount === 0 &&
-    report.scheduled.length === 0 &&
-    report.days.every(
-      (day) =>
-        (day.realizedCents ?? 0) === 0 && (day.projectedCents ?? 0) === 0,
-    );
-  if (!report.hasAccounts || nothing) {
+  if (!report.hasAccounts || isCashFlowEmpty(report)) {
     return (
       <>
         {switcher}
@@ -82,10 +74,6 @@ async function CashFlow({
   }
 
   const endLabel = shortDateLabel(range.end);
-  const today = report.days.find((day) => day.date === ctx.todayIso);
-  const low =
-    report.phase === "past" ? report.lowestRealized : report.lowestProjected;
-  const tone = lowestTone(report);
   const projects = report.phase !== "past";
 
   return (
@@ -93,48 +81,12 @@ async function CashFlow({
       {switcher}
       <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-3">
         <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 lg:col-span-3">
-          {report.phase === "current" ? (
-            <KpiTile
-              label="Saldo hoje"
-              value={<CompactMoney cents={today?.realizedCents ?? 0} />}
-              support="em contas, sem cartões"
-            />
-          ) : report.phase === "past" ? (
-            <KpiTile
-              label={`Saldo em ${endLabel}`}
-              value={<CompactMoney cents={report.endCents} />}
-              support="no fim do mês"
-            />
-          ) : (
-            <KpiTile
-              label={`Previsto em ${shortDateLabel(range.start)}`}
-              value={<CompactMoney cents={report.startCents} />}
-              support="no início do mês"
-            />
-          )}
-          {report.phase === "past" ? (
-            <KpiTile
-              label="Variação no mês"
-              value={
-                <CompactMoney
-                  cents={report.endCents - report.startCents}
-                  sign="always"
-                />
-              }
-              support={`de ${shortDateLabel(range.start)} a ${endLabel}`}
-            />
-          ) : (
-            <KpiTile
-              label={`Previsto para ${endLabel}`}
-              value={<CompactMoney cents={report.endCents} />}
-              support="com os agendados e as faturas"
-            />
-          )}
-          <KpiTile
-            className="col-span-2 md:col-span-1"
-            label={projects ? "Menor saldo previsto" : "Menor saldo"}
-            value={<CompactMoney cents={low?.cents ?? report.endCents} />}
-            support={low ? <LowSupport date={low.date} tone={tone} /> : null}
+          <CashFlowKpiTiles
+            report={report}
+            start={range.start}
+            end={range.end}
+            today={ctx.todayIso}
+            lastTileClassName="col-span-2 md:col-span-1"
           />
         </div>
 
@@ -143,7 +95,7 @@ async function CashFlow({
             key={range.month}
             report={report}
             today={ctx.todayIso}
-            note={futureNote(report)}
+            note={cashFlowFutureNote(report)}
           />
         </div>
 
@@ -167,28 +119,6 @@ async function CashFlow({
       </div>
     </>
   );
-}
-
-/** "em 25/out", or "negativo em 25/out" with an icon in the status tone. */
-function LowSupport({ date, tone }: { date: string; tone: LowestTone }) {
-  if (!tone) return <>em {shortDateLabel(date)}</>;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 font-bold",
-        tone === "danger" ? "text-danger" : "text-warning",
-      )}
-    >
-      <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" />
-      negativo em {shortDateLabel(date)}
-    </span>
-  );
-}
-
-/** A month ahead only knows what is already scheduled. */
-function futureNote(report: CashFlowReport): string | undefined {
-  if (report.phase !== "future") return undefined;
-  return `Só entra o que já está agendado; repetições aparecem até ${RECURRENCE_HORIZON_DAYS} dias à frente.`;
 }
 
 function CashFlowSkeleton() {

@@ -20,8 +20,9 @@ import {
 } from "@/lib/home/layout";
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
-import { accountsOf } from "@/server/domain/dashboard";
 import { getHomeLayout } from "@/server/domain/preferences";
+import { reportPhase } from "@/server/domain/reports";
+import { accountsOf } from "@/server/domain/request-reads";
 import { isFlagEnabled } from "@/server/flags";
 import { HomeBlock } from "./blocks";
 
@@ -85,6 +86,7 @@ async function Summary({
   const sections = packHomeLayout(
     visibleHomeBlocks(layout?.entries ?? defaultHomeLayout()),
   );
+  const phase = reportPhase(ctx, range);
 
   return (
     <>
@@ -108,7 +110,7 @@ async function Summary({
       <HomeGrid
         sections={sections}
         renderBlock={(id) => (
-          <HomeBlockFrame id={id}>
+          <HomeBlockFrame id={id} phase={phase}>
             <HomeBlock id={id} ctx={ctx} range={range} />
           </HomeBlockFrame>
         )}

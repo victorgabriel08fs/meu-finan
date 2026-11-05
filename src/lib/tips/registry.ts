@@ -246,6 +246,24 @@ export const TIPS: readonly Tip[] = [
     icon: "layout",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+
+  // Novidades de 5/nov/2026 ---------------------------------------------------
+  {
+    id: "novidade-inicio-blocos-relatorios",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like "Monte o seu Início": the blocks
+    // come in hidden, so the way to them is Preferências.
+    routes: [],
+    anchor: null,
+    title: "Mais blocos para o Início",
+    body: "Agora dá para trazer o fluxo de caixa, as categorias, receitas × despesas e o patrimônio para o Início.",
+    // REPORT_BLOCKS_SINCE in src/lib/home/blocks.ts (a test keeps them equal).
+    since: "2026-11-05",
+    order: 10,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

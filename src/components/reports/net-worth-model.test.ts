@@ -98,4 +98,20 @@ describe("net worth view model", () => {
     );
     expect(breakdownValueText(points, 5)).toBe("");
   });
+
+  it("hides the amounts in privacy mode, like <Money>", () => {
+    const hidden = { hideValues: true };
+    expect(breakdownSummary("liabilitiesCents", [300_000, 0], 1, hidden)).toBe(
+      "Passivos caíram de valor oculto para valor oculto no mês.",
+    );
+    expect(breakdownSummary("assetsCents", [500, 500], 6, hidden)).toBe(
+      "Ativos ficaram estáveis em valor oculto em 6 meses.",
+    );
+    expect(breakdownSummary("netCents", [700], 1, hidden)).toBe(
+      "Patrimônio está em valor oculto.",
+    );
+    expect(breakdownValueText(points, 2, hidden)).toBe(
+      "Hoje: patrimônio valor oculto; ativos valor oculto; passivos valor oculto",
+    );
+  });
 });

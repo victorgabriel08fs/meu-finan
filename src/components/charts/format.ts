@@ -44,6 +44,24 @@ export function formatMoneyShort(
   return cents % 100 === 0 ? text.replace(/,00$/, "") : text;
 }
 
+/** What screen readers hear for an amount in privacy mode, like <Money>. */
+export const HIDDEN_VALUE = "valor oculto";
+
+/**
+ * Spoken descriptions of a chart: with `hideValues` (privacy mode) every
+ * amount reads "valor oculto"; the chart swaps the two versions (CSS pairs,
+ * or the privacy store for an attribute such as `aria-valuetext`).
+ */
+export type SpokenOptions = { hideValues?: boolean };
+
+/** `formatMoneyShort`, or "valor oculto" in privacy mode. */
+export function spokenMoney(
+  cents: number,
+  { hideValues = false }: SpokenOptions = {},
+): string {
+  return hideValues ? HIDDEN_VALUE : formatMoneyShort(cents);
+}
+
 /** Whole reais rounded towards zero ("R$ 53 por dia" never overstates). */
 export function formatWholeReais(cents: number): string {
   return formatMoneyShort(Math.trunc(cents / 100) * 100);
