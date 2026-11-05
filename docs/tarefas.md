@@ -63,21 +63,20 @@ O conteúdo de cada resumo acima é uma proposta: o arquiteto confirma com o don
 
 ## 3. Extrato — melhorias
 
-Pendências pequenas achadas na correção dos filtros (04/11/2026). A primeira veio com a correção; as outras já existiam antes dela:
-
-- No toque, abrir outro chip enquanto a folha anterior ainda anima o fechamento (~250 ms), depois de uma escolha que muda a URL, abre e fecha a folha nova na hora: é preciso tocar de novo.
+Pendências pequenas achadas na correção dos filtros (04/11/2026), que já existiam antes dela:
 
 - Com dois ou mais chips ativos, a 360 e 430 px o "Limpar" fica fora da tela, no fim da linha rolável.
 - A folha de categorias tem mais de 20 opções e não tem busca (doc 02 §4.4 pede busca acima de 8).
 - Com zoom de 200%, os valores do resumo e das linhas são cortados (doc 02 §3.4 e §11).
 - Subcategoria arquivada não entra no filtro da categoria mãe (a página só conhece as categorias ativas).
 - Não há como criar subcategoria pelo app: o filtro já trata mãe e filhas, mas hoje só categorias criadas direto no banco têm filhas.
+- Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
 
 ## Entregue
 
 ### Extrato: filtros de conta, categoria e tipo — 04/11/2026
 
-Bug relatado pelo dono: escolher conta ou categoria na folha não filtrava, e o Tipo também estava quebrado. O servidor estava certo; a folha, ao fechar, voltava um passo no histórico e desfazia a troca de URL. Agora a URL muda depois que a folha fecha (`afterSheetsClose` em `use-back-to-close.ts`), Voltar desfaz o filtro, filtrar a categoria mãe traz as filhas, id inválido na URL não acende chip e limpar um filtro deixa o foco num chip. Testes de unidade, integração de cada filtro (`listTransactions`, `periodTotals`) e e2e (`e2e/extrato-filtros.spec.ts`, que falhava antes da correção). Detalhes: doc 02 §6.4.
+Bug relatado pelo dono: escolher conta ou categoria na folha não filtrava, e o Tipo também estava quebrado. O servidor estava certo; a folha, ao fechar, voltava um passo no histórico e desfazia a troca de URL. Agora a URL muda depois que a folha fecha (`afterSheetsClose` em `use-back-to-close.ts`), Voltar desfaz o filtro, filtrar a categoria mãe traz as filhas, id inválido na URL não acende chip e limpar um filtro deixa o foco num chip. Também corrigido (05/11/2026), e já existia antes: no toque, tocar no próximo chip enquanto a folha anterior ainda saía abria e fechava a nova na hora; agora cada filtro tem a sua folha. Testes de unidade, integração de cada filtro (`listTransactions`, `periodTotals`) e e2e (`e2e/extrato-filtros.spec.ts`, que falhava antes da correção). Detalhes: doc 02 §6.4.
 
 ### Início personalizável (etapa 1) — 04/11/2026
 
