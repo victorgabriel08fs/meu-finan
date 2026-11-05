@@ -152,11 +152,12 @@ export function PushSettings({
   }
 
   const blocked = support && support !== "ready" ? BLOCKED[support] : null;
-  const unconfigured =
-    !publicKey &&
-    (isAdmin
+  // Null, not false, when configured: `??` only falls back on null.
+  const unconfigured = publicKey
+    ? null
+    : isAdmin
       ? "O envio ainda não está configurado: defina VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY na Vercel e faça um novo deploy."
-      : "As notificações ainda não estão disponíveis.");
+      : "As notificações ainda não estão disponíveis.";
   const note = blocked ?? unconfigured;
   const on = state === "on";
 
