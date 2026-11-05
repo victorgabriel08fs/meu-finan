@@ -54,7 +54,6 @@ export function StatementFilterBar({
 }) {
   const { filters, setFilters, isPending } = useStatementFilters();
   const [sheet, setSheet] = useState<SheetName | null>(null);
-  const [lastSheet, setLastSheet] = useState<SheetName>("conta");
 
   // The server ignores ids that are not the person's own (or malformed), so
   // a chip is on only for a value found in its list.
@@ -67,9 +66,12 @@ export function StatementFilterBar({
   const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
   const anyActive = Boolean(account || category || kind || filters.status);
 
-  function open(name: SheetName) {
-    setLastSheet(name);
-    setSheet(name);
+  // Each list has a sheet of its own, and a sheet closes only itself: a tap
+  // on the next chip while the previous sheet still slides out reaches that
+  // sheet as a tap outside (on touch, Radix acts on the click that follows),
+  // which would close the new one if they shared a Dialog.
+  function close(name: SheetName) {
+    setSheet((current) => (current === name ? null : current));
   }
 
   // A choice closes the sheet first and changes the URL once the sheet's
@@ -101,21 +103,21 @@ export function StatementFilterBar({
         label="Conta"
         value={account?.name ?? null}
         placeholder="Contas"
-        onOpen={() => open("conta")}
+        onOpen={() => setSheet("conta")}
         onClear={() => void setFilters({ conta: null })}
       />
       <FilterChip
         label="Categoria"
         value={category?.name ?? null}
         placeholder="Categorias"
-        onOpen={() => open("categoria")}
+        onOpen={() => setSheet("categoria")}
         onClear={() => void setFilters({ categoria: null })}
       />
       <FilterChip
         label="Tipo"
         value={kind?.label ?? null}
         placeholder="Tipo"
-        onOpen={() => open("tipo")}
+        onOpen={() => setSheet("tipo")}
         onClear={() => void setFilters({ tipo: null })}
       />
       <ToggleChip
@@ -151,98 +153,114 @@ export function StatementFilterBar({
         </button>
       ) : null}
 
-      <Sheet
-        open={sheet !== null}
-        onOpenChange={(next) => {
-          if (!next) setSheet(null);
-        }}
+      <ChoiceSheet
+        title="Filtrar por conta"
+        open={sheet === "conta"}
+        onClose={() => close("conta")}
       >
-        <SheetContent
-          title={
-            lastSheet === "conta"
-              ? "Filtrar por conta"
-              : lastSheet === "categoria"
-                ? "Filtrar por categoria"
-                : "Filtrar por tipo"
+        <OptionList
+          selected={account?.id ?? null}
+          allLabel="Todas as contas"
+          onSelect={(id) => choose({ conta: id })}
+          groups={[
+            {
+              title: null,
+              options: accounts.map((item) => ({
+                id: item.id,
+                label: item.name,
+                detail: item.archived
+                  ? `${item.typeLabel} · arquivada`
+                  : item.typeLabel,
+                icon: (
+                  <CategoryIcon
+                    icon={item.icon}
+                    color={item.color}
+                    shape="square"
+                    size="sm"
+                    className="rounded-chip"
+                  />
+                ),
+              })),
+            },
+          ]}
+        />
+      </ChoiceSheet>
+      <ChoiceSheet
+        title="Filtrar por categoria"
+        open={sheet === "categoria"}
+        onClose={() => close("categoria")}
+      >
+        <OptionList
+          selected={category?.id ?? null}
+          allLabel="Todas as categorias"
+          onSelect={(id) => choose({ categoria: id })}
+          groups={(["expense", "income"] as const).map((group) => ({
+            title: group === "expense" ? "Despesas" : "Receitas",
+            options: categoryTree(categories)
+              .filter((item) => item.kind === group)
+              .map((item) => ({
+                id: item.id,
+                label: categoryLabel(item, categories),
+                detail: null,
+                icon: (
+                  <CategoryIcon icon={item.icon} color={item.color} size="sm" />
+                ),
+              })),
+          }))}
+        />
+      </ChoiceSheet>
+      <ChoiceSheet
+        title="Filtrar por tipo"
+        open={sheet === "tipo"}
+        onClose={() => close("tipo")}
+      >
+        <OptionList
+          selected={kind?.value ?? null}
+          allLabel="Todos os tipos"
+          onSelect={(value) =>
+            choose({
+              tipo:
+                KIND_OPTIONS.find((item) => item.value === value)?.value ??
+                null,
+            })
           }
-        >
-          {lastSheet === "conta" ? (
-            <OptionList
-              selected={account?.id ?? null}
-              allLabel="Todas as contas"
-              onSelect={(id) => choose({ conta: id })}
-              groups={[
-                {
-                  title: null,
-                  options: accounts.map((item) => ({
-                    id: item.id,
-                    label: item.name,
-                    detail: item.archived
-                      ? `${item.typeLabel} · arquivada`
-                      : item.typeLabel,
-                    icon: (
-                      <CategoryIcon
-                        icon={item.icon}
-                        color={item.color}
-                        shape="square"
-                        size="sm"
-                        className="rounded-chip"
-                      />
-                    ),
-                  })),
-                },
-              ]}
-            />
-          ) : lastSheet === "categoria" ? (
-            <OptionList
-              selected={category?.id ?? null}
-              allLabel="Todas as categorias"
-              onSelect={(id) => choose({ categoria: id })}
-              groups={(["expense", "income"] as const).map((group) => ({
-                title: group === "expense" ? "Despesas" : "Receitas",
-                options: categoryTree(categories)
-                  .filter((item) => item.kind === group)
-                  .map((item) => ({
-                    id: item.id,
-                    label: categoryLabel(item, categories),
-                    detail: null,
-                    icon: (
-                      <CategoryIcon
-                        icon={item.icon}
-                        color={item.color}
-                        size="sm"
-                      />
-                    ),
-                  })),
-              }))}
-            />
-          ) : (
-            <OptionList
-              selected={kind?.value ?? null}
-              allLabel="Todos os tipos"
-              onSelect={(value) =>
-                choose({
-                  tipo:
-                    KIND_OPTIONS.find((item) => item.value === value)?.value ??
-                    null,
-                })
-              }
-              groups={[
-                {
-                  title: null,
-                  options: KIND_OPTIONS.map((item) => ({
-                    id: item.value,
-                    label: item.label,
-                    detail: null,
-                    icon: null,
-                  })),
-                },
-              ]}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+          groups={[
+            {
+              title: null,
+              options: KIND_OPTIONS.map((item) => ({
+                id: item.value,
+                label: item.label,
+                detail: null,
+                icon: null,
+              })),
+            },
+          ]}
+        />
+      </ChoiceSheet>
     </fieldset>
+  );
+}
+
+function ChoiceSheet({
+  title,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <SheetContent title={title}>{children}</SheetContent>
+    </Sheet>
   );
 }
 
