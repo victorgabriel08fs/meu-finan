@@ -29,9 +29,8 @@ import {
 import { db } from "@/server/db/client";
 import { categories, finAccounts, transactions } from "@/server/db/schema";
 import { type AccountListItem, listAccounts } from "./accounts";
-import { listInvoices } from "./cards";
 import { type PeriodRange, toRange, type UserContext } from "./context";
-import { pendingEntries } from "./transactions";
+import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
 
 export type MonthPoint = {
   month: string;
@@ -457,8 +456,8 @@ export async function cashFlowReport(
   range: PeriodRange,
 ): Promise<CashFlowReport> {
   const phase = reportPhase(ctx, range);
-  const accounts = await listAccounts(ctx.userId);
-  const liquid = accounts.filter(isLiquid);
+  // Shared with the Saldo of the Início, read once per request.
+  const liquid = (await accountsOf(ctx)).filter(isLiquid);
   if (liquid.length === 0) {
     return {
       phase,
@@ -473,10 +472,9 @@ export async function cashFlowReport(
     };
   }
   const liquidIds = new Set(liquid.map((account) => account.id));
-  const cards = accounts.filter((account) => account.type === "credit_card");
   const projects = phase !== "past";
 
-  const [paidRows, pending, invoicesByCard] = await Promise.all([
+  const [paidRows, pending, { cards, invoicesByCard }] = await Promise.all([
     db
       .select({
         day: transactions.occurredOn,
@@ -497,10 +495,10 @@ export async function cashFlowReport(
         ),
       )
       .groupBy(transactions.occurredOn),
-    projects ? pendingEntries(ctx, range.end) : Promise.resolve([]),
+    projects ? pendingUntil(ctx, range.end) : Promise.resolve([]),
     projects
-      ? Promise.all(cards.map((card) => listInvoices(ctx, card.id)))
-      : Promise.resolve([]),
+      ? cardInvoicesOf(ctx)
+      : Promise.resolve({ cards: [], invoicesByCard: [] }),
   ]);
 
   // The ledger before the month: today's balance minus everything paid since.

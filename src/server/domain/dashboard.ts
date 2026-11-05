@@ -2,7 +2,6 @@
 // The other blocks read straight from their domains: periodTotals,
 // getBudgets, listGoals.
 import { and, between, eq, isNull, ne, sql } from "drizzle-orm";
-import { cache } from "react";
 import {
   addDays,
   type Forecast,
@@ -15,11 +14,10 @@ import {
 } from "@/lib/finance";
 import { db } from "@/server/db/client";
 import { categories, finAccounts, transactions } from "@/server/db/schema";
-import { type AccountListItem, listAccounts } from "./accounts";
-import { listInvoices } from "./cards";
+import type { AccountListItem } from "./accounts";
 import type { PeriodRange, UserContext } from "./context";
 import { liquidPendingFlows } from "./reports";
-import { pendingEntries } from "./transactions";
+import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
 
 export type UpcomingItem = {
   id: string;
@@ -51,32 +49,7 @@ const isLiquid = (account: AccountListItem) =>
 
 // One loader per block of the Início, so each block streams on its own and
 // only the visible ones read anything. What several blocks share is read once
-// per request: React `cache` keys on the context object, which
-// getUserContext memoises for the request too.
-
-/** The person's accounts: the Saldo, the Contas and the first run. */
-export const accountsOf = cache(
-  (ctx: UserContext): Promise<AccountListItem[]> => listAccounts(ctx.userId),
-);
-
-/** The credit cards and, in the same order, each one's invoices. */
-const cardInvoicesOf = cache(async (ctx: UserContext) => {
-  const cards = (await accountsOf(ctx)).filter(
-    (account) => account.type === "credit_card",
-  );
-  const invoicesByCard = await Promise.all(
-    cards.map((card) => listInvoices(ctx, card.id)),
-  );
-  return { cards, invoicesByCard };
-});
-
-/**
- * Pending transactions up to a day: the end of the period for the forecast,
- * today + 7 for the próximas contas (one read when the two meet).
- */
-const pendingUntil = cache((ctx: UserContext, until: string) =>
-  pendingEntries(ctx, until),
-);
+// per request (./request-reads).
 
 export type BalanceSummary = {
   balanceCents: number;

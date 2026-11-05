@@ -20,8 +20,8 @@ import {
 } from "@/lib/home/layout";
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
-import { accountsOf } from "@/server/domain/dashboard";
 import { getHomeLayout } from "@/server/domain/preferences";
+import { accountsOf } from "@/server/domain/request-reads";
 import { isFlagEnabled } from "@/server/flags";
 import { HomeBlock } from "./blocks";
 
