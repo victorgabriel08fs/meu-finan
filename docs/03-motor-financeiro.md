@@ -541,13 +541,15 @@ export function budgetPace(a: {
 
 Exemplo (mockups): orçamento R$ 4.500, gasto R$ 1.445, aluguel agendado R$ 2.100, 14/out de 31 dias → disponível R$ 955, **R$ 53,05 por dia** nos 18 dias restantes, marcador em 45%.
 
-"Gasto" de uma categoria = − Σ despesas efetivadas da categoria (e subcategorias) no período, incluindo compras no cartão pela data da compra; estornos reduzem o gasto. "Agendado" = despesas pendentes da categoria com data dentro do período.
+"Gasto" de uma categoria = − Σ despesas efetivadas da categoria (e subcategorias) no período, incluindo compras no cartão pela data da compra; estornos reduzem o gasto. **Subcategorias** (decisão do dono, 05/11/2026): o orçamento fica só em categorias principais e o gasto dele soma as subcategorias, pagas e pendentes, sem contar nada duas vezes (`getBudgets` agrupa os lançamentos por `coalesce(parent_id, id)`). "Criar orçamento" e as sugestões só listam categorias principais; um orçamento antigo numa subcategoria conta só os lançamentos dela, e "copiar do mês anterior" copia só os de categorias principais. "Agendado" = despesas pendentes da categoria com data dentro do período.
 
 Rollover (opcional por orçamento): sobra (ou excesso) do mês anterior soma ao orçamento do mês atual.
 
 ---
 
 ## 12. Previsões e indicadores
+
+**Subcategorias nos relatórios** (D2, 05/11/2026): todo resumo por categoria soma as subcategorias na mãe: "Para onde foi o dinheiro", Visão geral, Categorias, o bloco do Início, "as categorias que mais pesaram" do resumo semanal, as médias das sugestões de orçamento e os insights (`categoryBreakdown` em `reports.ts` e `spentBy` em `dashboard.ts` agrupam pela raiz, com um JOIN e GROUP BY). A variação de categoria (abaixo) compara a mãe com a mãe. A divisão por subcategoria fica para o detalhe da categoria (`docs/tarefas.md`).
 
 | Indicador | Definição |
 |---|---|

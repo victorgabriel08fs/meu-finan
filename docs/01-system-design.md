@@ -439,6 +439,14 @@ create table categories (
   archived_at timestamptz,
   unique nulls not distinct (user_id, parent_id, name)
 );
+-- Subcategorias (doc 02 §6.14): UM nível só. A mãe é sempre uma categoria
+-- principal (parent_id nulo), da MESMA pessoa e do MESMO tipo, e ativa ao
+-- criar a filha; uma categoria com filhas (ativas ou arquivadas) nunca vira
+-- filha, então não há netos nem ciclos. O domínio confere tudo numa transação
+-- que trava a categoria e a mãe (FOR UPDATE). Arquivar a mãe arquiva as filhas
+-- ativas com o MESMO archived_at; restaurar a mãe restaura as filhas com esse
+-- archived_at (o Desfazer é simétrico); restaurar uma filha com a mãe
+-- arquivada restaura a mãe. Orçamento só em categoria principal (doc 03 §11).
 
 create table tags (
   id       uuid primary key,
