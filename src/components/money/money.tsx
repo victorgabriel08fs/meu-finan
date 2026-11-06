@@ -1,5 +1,7 @@
+import type { CSSProperties } from "react";
 import { type BRLParts, brlParts, MINUS, NBSP } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
+import { moneyWidthEm } from "./fit";
 
 export type MoneyVariant =
   | "display"
@@ -25,7 +27,27 @@ type MoneyProps = {
    * neutral: --text · income: --income · transfer: --text-2, no sign.
    */
   tone?: MoneyTone;
+  /**
+   * The font size the variant is drawn at, when `className` sets another
+   * one (a CSS length, "1.75rem"): the amount shrinks from this size.
+   */
+  size?: string;
+  /**
+   * Shrinks the amount (down to half) to fit the width of the nearest
+   * container (`@container`) instead of overflowing it. On by default in
+   * display and title; list sizes opt in.
+   */
+  fit?: boolean;
   className?: string;
+};
+
+/** The font size of each variant (the `text-*` class carries the rest). */
+const FONT_SIZE: Record<MoneyVariant, string> = {
+  display: "2.5rem",
+  title: "1.375rem",
+  headline: "1rem",
+  callout: "0.875rem",
+  caption: "0.8125rem",
 };
 
 const SIZE: Record<MoneyVariant, string> = {
@@ -48,13 +70,17 @@ const TONE: Record<Exclude<MoneyTone, "auto">, string> = {
  * figures; list variants are one size with tabular figures. Screen readers
  * hear "menos 64 reais e 50 centavos". In privacy mode (<html
  * data-privacy="on">) CSS swaps the value for "R$ ••••" — no hooks, so it
- * renders in Server and Client Components alike.
+ * renders in Server and Client Components alike. The amount is always whole
+ * and exact: when it is wider than its container (large system text, a
+ * seven-figure balance) the font shrinks, to half at most (§5.4, `money-fit`).
  */
 export function Money({
   cents,
   variant = "headline",
   sign = "auto",
   tone = "auto",
+  size,
+  fit = variant === "display" || variant === "title",
   className,
 }: MoneyProps) {
   const resolvedTone =
@@ -70,12 +96,20 @@ export function Money({
   const parts = brlParts(cents, { sign: signDisplay });
   const split = variant === "display" || variant === "title";
   const partTone = resolvedTone === "neutral" ? "text-fg-2" : undefined;
+  const fitStyle = fit
+    ? ({
+        "--money-em": moneyWidthEm(parts, split),
+        "--money-size": size ?? FONT_SIZE[variant],
+      } as CSSProperties)
+    : undefined;
 
   return (
     <span
       data-slot="money"
+      style={fitStyle}
       className={cn(
         "whitespace-nowrap",
+        fit && "money-fit",
         SIZE[variant],
         !split && "tabular-nums",
         TONE[resolvedTone],

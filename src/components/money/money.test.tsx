@@ -58,6 +58,53 @@ describe("Money", () => {
     expect(html).toContain("text-fg-2");
     expect(html).not.toContain("text-income");
   });
+
+  describe("fit", () => {
+    it("exposes the width and the size to the shrink rule in display and title", () => {
+      const html = renderToStaticMarkup(
+        <Money cents={2767015} variant="display" tone="neutral" />,
+      );
+      expect(html).toContain("money-fit");
+      expect(html).toContain("--money-size:2.5rem");
+      expect(html).toMatch(/--money-em:\d+(\.\d+)?/);
+      expect(
+        renderToStaticMarkup(<Money cents={100} variant="title" />),
+      ).toContain("--money-size:1.375rem");
+    });
+
+    it("measures the amount, so a bigger one is declared wider", () => {
+      const em = (cents: number) =>
+        Number(
+          /--money-em:(\d+(?:\.\d+)?)/.exec(
+            renderToStaticMarkup(<Money cents={cents} variant="display" />),
+          )?.[1],
+        );
+      expect(em(123_456_789_00)).toBeGreaterThan(em(1_00));
+    });
+
+    it("leaves list sizes alone unless asked, and takes the size of the caller", () => {
+      const plain = renderToStaticMarkup(<Money cents={100} />);
+      expect(plain).not.toContain("money-fit");
+      expect(plain).not.toContain("--money-em");
+      const asked = renderToStaticMarkup(
+        <Money cents={100} fit size="1.0625rem" />,
+      );
+      expect(asked).toContain("money-fit");
+      expect(asked).toContain("--money-size:1.0625rem");
+      expect(
+        renderToStaticMarkup(
+          <Money cents={100} variant="title" size="1.75rem" />,
+        ),
+      ).toContain("--money-size:1.75rem");
+    });
+
+    it("still reads the whole amount, however much it shrinks", () => {
+      const html = renderToStaticMarkup(
+        <Money cents={123_456_789_00} variant="display" tone="neutral" />,
+      );
+      expect(html).toContain("123.456.789 reais");
+    });
+  });
 });
 
 describe("spokenAmount", () => {

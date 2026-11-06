@@ -29,7 +29,7 @@ export function GoalStatusPill({
   return (
     <Badge
       tone={pill.tone}
-      className={cn("h-6.5 rounded-full px-2.5", className)}
+      className={cn("min-h-6.5 rounded-full px-2.5 py-0.5", className)}
     >
       <Icon aria-hidden="true" />
       {pill.label}
