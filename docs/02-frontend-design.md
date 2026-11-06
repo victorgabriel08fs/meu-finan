@@ -65,6 +65,7 @@ Todos os pares texto/fundo abaixo foram medidos (WCAG 2.x): texto ≥ 4,5:1, com
 | `--surface` | `#FFFFFF` | `#14171C` | cards, sheets, tab bar |
 | `--surface-2` | `#EEF0F3` | `#1C2027` | chips, campos, trilho do segmented, teclas |
 | `--surface-3` | `#E5E8EC` | `#252A32` | estado pressionado |
+| `--switch-off` | `#7D8491` | `#6B7484` | trilha do interruptor desligado (3,8:1 / 3,8:1 sobre `--surface`; polegar 3,8:1 / 4,3:1 sobre a trilha) |
 | `--border` | `#E3E6EA` | `#262B33` | divisórias hairline (1 px) |
 | `--border-strong` | `#8A919E` | `#6B7484` | contorno de campos de formulário (3,2:1 / 3,8:1) |
 | `--text` | `#0E1116` | `#F2F4F7` | texto principal e valores |
@@ -182,6 +183,7 @@ Regras numéricas:
 - **Números grandes isolados** (herói, tiles): algarismos **proporcionais** (padrão da fonte).
 - **Números em coluna** (valores à direita na lista, tabelas, eixos): `font-variant-numeric: tabular-nums` para alinharem.
 - Tamanhos em `rem` (respeitam o tamanho de fonte do sistema); testar com 200% de zoom.
+- Texto grande: o corpo quebra palavras longas (`overflow-wrap: break-word`); títulos de página e de sheet hifenizam (`lang="pt-BR"`) e, se a palavra mais longa não cabe, encolhem até 60% (`title-fit`) em vez de partir no meio; **valores monetários encolhem até 50% para caber** no cartão (§5.4).
 
 **Anatomia do valor monetário (`<Money>`)**
 
@@ -218,6 +220,7 @@ Base de **4 px**.
 
 - Alvos de toque **≥ 44 × 44 px**, com ≥ 8 px entre alvos adjacentes.
 - Linha de lista: 64 px (com subtítulo) ou 52 px (uma linha).
+- Com o texto do sistema grande, o que não é texto cresce em `rem` até um teto (`min(2.75rem, 56px)`): alvo `--target`, barra inferior `--tab-bar-h` (80 px), ícone da barra `--tab-icon`, "+" `--fab` (60 px), interruptor `--switch-w`/`--switch-h`, ícone de linha `--row-icon` e avatar `--avatar`. A 100% os valores são os de sempre.
 - Conteúdo rolável termina com `padding-bottom: calc(64px + env(safe-area-inset-bottom) + 24px)` para nunca ficar sob a tab bar.
 
 ### 3.6 Raios
@@ -284,6 +287,8 @@ Coreografia:
 | `lg` | ≥ 1024 | **sidebar** de 248 px com rótulos; conteúdo em 2 colunas |
 | `xl` | ≥ 1280 | dashboard em 3 colunas; largura máxima do conteúdo 1200 px |
 
+**Largura do contêiner, não da tela, para o tamanho do texto.** O texto em `rem` cresce com a fonte do sistema, a largura em pixels não. Onde o layout precisa saber se o texto cabe, usa-se *container query* em `rem`: `@max-tight` (contêiner abaixo de `--container-tight`, 16 rem) e `@max-tighter` (`--container-tighter`, 12 rem); a barra inferior usa 21,5 rem (§4.2). A 100% nenhum celular chega a esses limites, então nada muda. Nunca *media query* para reagir ao tamanho do texto.
+
 `z-index`: cabeçalhos fixos 10 · tab bar 20 · botão "+" 30 · menus 40 · sheet/diálogo 50 · toast 60 · tooltip 70.
 
 ### 3.11 Implementação (Tailwind CSS v4)
@@ -301,7 +306,7 @@ O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.c
 :root {
   color-scheme: light;
   --bg: #F4F5F7;  --surface: #FFFFFF;  --surface-2: #EEF0F3;  --surface-3: #E5E8EC;
-  --border: #E3E6EA;  --border-strong: #8A919E;
+  --border: #E3E6EA;  --border-strong: #8A919E;  --switch-off: #7D8491;
   --text: #0E1116;  --text-2: #4A5260;  --text-3: #646B78;
   --primary: #0A7F58;  --on-primary: #FFFFFF;  --primary-soft: #E3F4EC;  --on-primary-soft: #075E41;
   --income: #0A7F58;  --expense: var(--text);  --transfer: #1F5BB5;  --transfer-soft: #E5EEFA;
@@ -317,7 +322,7 @@ O Tailwind v4 entra pelo loader `@tailwindcss/turbopack`, configurado no `next.c
 [data-theme="dark"] {
   color-scheme: dark;
   --bg: #0B0D10;  --surface: #14171C;  --surface-2: #1C2027;  --surface-3: #252A32;
-  --border: #262B33;  --border-strong: #6B7484;
+  --border: #262B33;  --border-strong: #6B7484;  --switch-off: #6B7484;
   --text: #F2F4F7;  --text-2: #B4BCC8;  --text-3: #8A93A1;
   --primary: #3DDC97;  --on-primary: #04130C;  --primary-soft: #1B3730;  --on-primary-soft: #7FEBC0;
   --income: #3DDC97;  --transfer: #9DC4FF;  --transfer-soft: #222E40;
@@ -415,24 +420,25 @@ Filtros e período vivem na URL (`?mes=2026-10&conta=…&categoria=…`) com **n
 
 **BottomNav**
 
-- 5 posições de mesma largura. Ícone 24 px + rótulo `micro` sempre visível.
+- 5 posições de mesma largura. Ícone 24 px + rótulo `micro` visível. Com texto grande, quando a barra tem menos de 21,5 rem, **só os ícones** ficam à vista e o rótulo vira `sr-only` (o link segue com o nome). A barra cresce em `rem` até 80 px (`--tab-bar-h`), o ícone até 28 px e a pílula até 36 px de altura.
 - Ativo: ícone e rótulo em `--primary`, pílula `--primary-soft` de 56 × 30 px atrás do ícone, que **desliza** entre abas (spring de seleção, `layoutId`).
 - Inativo: `--text-3`. Badge numérico (`--danger`, 16 px) para contas vencendo hoje, no ícone de Início.
-- Centro: botão **+** 52 × 52 px, raio 18, `--primary`, ícone `plus` 26 px em `--on-primary`, sombra do botão. Toque = abre "Nova transação" no tipo **Despesa**. Pressionar e segurar = menu rápido com Despesa / Receita / Transferência.
+- Centro: botão **+** 52 × 52 px (até 60 px com texto grande, `--fab`), raio 18, `--primary`, ícone `plus` 26 px em `--on-primary`, sombra do botão. Toque = abre "Nova transação" no tipo **Despesa**. Pressionar e segurar = menu rápido com Despesa / Receita / Transferência.
 - A tab bar **não se esconde** ao rolar (previsibilidade); fundo translúcido com blur.
 - Tocar na aba já ativa rola ao topo; tocar de novo volta à raiz da aba.
 
 **TopBar**
 
 - Início: avatar (iniciais sobre `--primary-soft`, 36 px), saudação `title-3` + data `caption`; à direita, botões de 44 px: tema (`moon`/`sun`, alterna escuro e claro; só abaixo de `lg`, onde não há sidebar), modo discreto (`eye`/`eye-off`) e notificações (`bell` com ponto).
-- Demais abas: **título grande** (`title-1`) que, após 40 px de rolagem, colapsa num título centralizado `headline` numa barra de 52 px com hairline.
+- Com texto grande, avatar, saudação e botões do Início quebram em linhas (a saudação desce inteira); as ações do cabeçalho de página também.
+- Demais abas: **título grande** (`title-1`, hifenizado) que, após 40 px de rolagem, colapsa num título centralizado `headline` numa barra de 52 px com hairline.
 - Telas empilhadas: voltar (`chevron-left` + rótulo da tela anterior em telas largas), título, até 2 ações.
 
 ### 4.3 Período ativo
 
-- `MonthSwitcher`: `‹  outubro de 2026  ›`, botões de seta de 44 px. Tocar no texto abre uma sheet com grade 3 × 4 de meses e seletor de ano.
+- `MonthSwitcher`: `‹  outubro de 2026  ›`, botões de seta de 44 px (`--target`); o rótulo ocupa o miolo de uma grade e quebra em duas linhas com texto grande. Tocar no texto abre uma sheet com grade 3 × 4 de meses e seletor de ano.
 - Deslizar horizontalmente sobre o cabeçalho de período troca o mês (com a mesma animação das setas).
-- Fora do mês atual aparece o chip **"Voltar para hoje"**.
+- Fora do mês atual aparece o chip **"Voltar para hoje"** (no mínimo 32 px de altura e 44 de toque; quebra com texto grande).
 - O período é compartilhado entre Início, Extrato, Orçamentos e Relatórios durante a sessão.
 - Com dia de início ≠ 1 (ex.: 5), o rótulo mostra o intervalo: "outubro · 5/out – 4/nov".
 
@@ -478,7 +484,7 @@ Cada componente define anatomia, variantes, estados e acessibilidade. Base: shad
 | `ghost` | transparente / `--primary` | links de ação ("Ver tudo") |
 | `destructive` | `--danger` / branco | somente em diálogos de confirmação |
 
-Tamanhos: `lg` 52 px (rodapé de sheet, largura total), `md` 44 px, `sm` 36 px (só dentro de linhas, com área de toque estendida a 44). Raio `--r-md`, rótulo `headline`. Estados: pressionado (`scale .97`, escurece 6%), carregando (spinner no lugar do ícone, largura fixa, `aria-busy`), desabilitado (opacidade 40% + motivo explicado próximo — nunca desabilitar sem dizer por quê).
+Tamanhos: `lg` 52 px (rodapé de sheet, largura total), `md` 44 px, `sm` 36 px (só dentro de linhas, com área de toque estendida a 44). Alturas são **mínimas**: com texto grande o rótulo quebra (`text-balance`, centralizado) e o botão cresce, nunca corta. Raio `--r-md`, rótulo `headline`. Estados: pressionado (`scale .97`, escurece 6%), carregando (spinner no lugar do ícone, largura fixa, `aria-busy`), desabilitado (opacidade 40% + motivo explicado próximo — nunca desabilitar sem dizer por quê).
 
 ### 5.2 IconButton
 
@@ -493,7 +499,7 @@ Tamanhos: `lg` 52 px (rodapé de sheet, largura total), `md` 44 px, `sm` 36 px (
 
 ### 5.4 Money
 
-Props: `value` (centavos), `variant` (`display` \| `title` \| `headline` \| `callout` \| `caption`), `sign` (`auto` \| `always` \| `never`), `tone` (`auto` \| `neutral` \| `income` \| `transfer`), `animate`. Regras da §3.4. Aplica `tabular-nums` nas variantes de lista. Respeita o modo discreto. Leitor de tela: "Despesa de 64 reais e 50 centavos" (via `aria-label` gerado).
+Props: `value` (centavos), `variant` (`display` \| `title` \| `headline` \| `callout` \| `caption`), `sign` (`auto` \| `always` \| `never`), `tone` (`auto` \| `neutral` \| `income` \| `transfer`), `animate`. Regras da §3.4. Aplica `tabular-nums` nas variantes de lista. **O valor sempre aparece inteiro e exato.** O tamanho é o da variante até onde cabe no contêiner (`@container`: `Card`, lista, cartão do carrossel) e encolhe até **50%** quando falta largura, pela largura estimada em `em` dos algarismos, vírgula, sinal e "R$" (`src/components/money/fit.ts`, utilitário `money-fit`). Formato compacto ("R$ 1,2 mi") só em eixos de gráfico e tiles, como sempre. Respeita o modo discreto. Leitor de tela: "Despesa de 64 reais e 50 centavos" (via `aria-label` gerado).
 
 ### 5.5 MoneyInput + Keypad
 
@@ -579,15 +585,15 @@ Linhas de chips roláveis horizontalmente com máscara de fade de 16 px nas bord
 
 ### 5.13 SegmentedControl
 
-Trilho `--surface-2` 40 px, raio 12; "polegar" `--thumb` com `shadow-thumb` que desliza (spring de seleção): igual a `--surface` no claro e mais claro que o trilho no escuro (§3.1), para o item selecionado parecer elevado. Rótulo `callout` 600. 2–4 opções. Teclado: setas trocam, `role="tablist"` ou `radiogroup` conforme o uso.
+Trilho `--surface-2` 40 px, raio 12; "polegar" `--thumb` com `shadow-thumb` que desliza (spring de seleção): igual a `--surface` no claro e mais claro que o trilho no escuro (§3.1), para o item selecionado parecer elevado. Rótulo `callout` 600. 2–4 opções. Rótulos longos quebram e o trilho cresce (`min-h-10`); com contêiner abaixo de 16 rem os itens quebram em linhas. Teclado: setas trocam, `role="tablist"` ou `radiogroup` conforme o uso.
 
 ### 5.14 Sheet
 
-Raio superior 28; alça; snap points `[0.5, 0.92]` para escolhas, altura total para formulários. Conteúdo rola dentro (`overscroll-behavior: contain`). Rodapé fixo com ação primária acima do `safe-area`. Foco preso dentro e devolvido ao gatilho ao fechar. Ajusta-se ao teclado via `visualViewport` (iOS) e `interactive-widget=resizes-content` (Android).
+Raio superior 28; alça; snap points `[0.5, 0.92]` para escolhas, altura total para formulários. Conteúdo rola dentro (`overscroll-behavior: contain`). Rodapé fixo com ação primária acima do `safe-area`. Folhas de altura total (`fullHeight`, a Nova transação) têm corpo e rodapé num só rolador: o rodapé fica colado embaixo enquanto a folha tem 32 rem de altura e, com texto grande, desce junto do conteúdo para não escondê-lo. O título da sheet encolhe se a palavra mais longa não cabe (§3.4). Foco preso dentro e devolvido ao gatilho ao fechar. Ajusta-se ao teclado via `visualViewport` (iOS) e `interactive-widget=resizes-content` (Android).
 
 ### 5.15 Toast
 
-Sonner, posição inferior acima da tab bar (`bottom: 64px + safe-area + 12px`), largura total − 32 px, raio 14, `--text` como fundo e `--surface` como texto (alto contraste nos dois temas). Ação à direita ("Desfazer") em `--primary` claro/escuro adequado. Duração 5 s (com ação) / 3 s (sem). Arrastar para baixo dispensa. `aria-live="polite"`.
+Sonner, posição inferior acima da tab bar (`bottom: 64px + safe-area + 12px`), largura total − 32 px, raio 14, `--text` como fundo e `--surface` como texto (alto contraste nos dois temas). Ação à direita ("Desfazer") em `--primary` claro/escuro adequado, com alvo de **44 px**; com texto grande ela desce para baixo da mensagem. A posição acompanha `--tab-bar-h`. Duração 5 s (com ação) / 3 s (sem). Arrastar para baixo dispensa. `aria-live="polite"`.
 
 ### 5.16 EmptyState
 
@@ -807,7 +813,7 @@ No desktop, só o Fluxo de caixa ocupa uma linha inteira (e divide a linha com o
   - Tudo fica na URL (`conta`, `categoria`, `tipo`, `status`, `q`, junto com `mes`): recarregar mantém, cada filtro escolhido é um passo no histórico (**Voltar desfaz o filtro**) e Voltar com a folha aberta só fecha a folha (§4.4).
   - Id que não é da pessoa, ou inválido, é ignorado pelo servidor e não acende chip nem "Limpar".
   - Ainda não há filtro de período (o mês faz esse papel), tags e valor, nem contagem ao vivo.
-- **Resumo** reflete exatamente o filtro aplicado. Com texto grande, as estatísticas quebram de linha (rótulo em cima, valor embaixo) em vez de cortar o valor; o desenho não tem divisórias entre elas. Valores a partir de R$ 1 mi a 200% em 360 px ainda podem passar do cartão (`docs/tarefas.md`, tarefa 4).
+- **Resumo** reflete exatamente o filtro aplicado. Com texto grande, as estatísticas quebram de linha (rótulo em cima, valor embaixo) em vez de cortar o valor; o desenho não tem divisórias entre elas. Valores a partir de R$ 1 mi a 200% em 360 px cabem: o `Money` encolhe (§5.4).
 - **Agrupamento por dia** com total do dia. Pendentes futuros aparecem em seção própria no topo: "Agendados (3)" recolhível.
 - **Seleção múltipla**: a TopBar vira "3 selecionados" com ações Categoria, Marcar pago, Excluir; o total dos selecionados aparece num rodapé.
 - **Rolagem infinita** com keyset (50 por página); ao chegar ao fim, "Isso é tudo de outubro" + botão "Ver setembro".
@@ -1035,7 +1041,7 @@ Recalcula a cada mudança **sem rede** (motor do doc 03 roda no cliente). Valore
 
 - Filtro de período **um só**, acima de tudo, vale para todas as visões.
 - **`?mes=AAAA-MM`** nas visões por período (Visão geral, Categorias, Patrimônio): o mês onde a janela termina; `?periodo=` é o tamanho (padrão 12). Sem `mes`, vale o mês atual; um mês atual ou futuro vale como o atual; um valor malformado também. Chips e abas mantêm o `mes`. Fora do mês atual, abaixo dos chips, a nota "Até **outubro de 2026**" (com `periodo=1`: "Mostrando **outubro de 2026**") e o link "Voltar para hoje" (44 px). Os blocos do Início e o aviso Resumo mensal abrem o relatório no mês certo.
-- **Sem registros**: Fluxo e Patrimônio, num mês (ou janela) que termina antes do primeiro registro, mostram "Sem registros em {mês de ano}" / "Seus registros começam em {mês de ano}." e o botão "Ir para {mês de ano}" (o mês do primeiro registro, mantendo o período), em vez de um saldo projetado para trás. Os pontos da janela do Patrimônio que cobrem em parte meses anteriores ao primeiro registro continuam planos.
+- **Sem registros**: Fluxo e Patrimônio, num mês (ou janela) que termina antes do primeiro registro, mostram "Sem registros em {mês de ano}" / "Seus registros começam em {mês de ano}." e o botão "Ir para {mês de ano}" (o mês do primeiro registro, mantendo o período), em vez de um saldo projetado para trás. Quando a janela do Patrimônio começa antes do primeiro registro, a série **começa nele** (com o ponto anterior, base da variação): o gráfico não mostra meses planos, o rótulo da variação conta só os meses mostrados ("em 3 meses") e abaixo do gráfico aparece "Seus registros começam em {mês de ano}." O mesmo vale para o bloco do Início.
 - Menu "⋯": regime **Competência** (data da compra, padrão) ou **Caixa** (cartão entra na data de pagamento da fatura).
 - Mês corrente sempre marcado como **parcial** (asterisco + nota) para não sugerir queda falsa.
 - KPIs que são **somas** incluem o mês parcial (com o rótulo "inclui out parcial"); KPIs que são **razões** (taxa de poupança, médias mensais) usam só meses completos — senão o mês em andamento, com o salário já recebido e as despesas ainda por vir, infla o resultado.
@@ -1108,7 +1114,7 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 
 ### 6.17 Administração (`/admin`)
 
-Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida dos acessos, dos convites e das flags, e nunca vê as finanças de outra pessoa."
+Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop; ele fica numa lista própria, acima de Ajustes, para que a chegada dele, decidida no servidor, não desloque nada). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida dos acessos, dos convites e das flags, e nunca vê as finanças de outra pessoa."
 
 **Usuários**
 
@@ -1129,6 +1135,7 @@ PESSOAS
 └──────────────────────────────────────┘
 ```
 
+- Com texto grande, e-mails e nomes quebram em qualquer ponto e os selos descem para a linha de baixo, sem cortar.
 - Status com selo e palavra, nunca só cor: **Ativo** (`primary`), **Convite pendente** (`transfer`), **Convite expirado** (`warning`), **Desativado** (`neutral`, avatar apagado). Papel: selo "Admin" com escudo.
 - Toque abre a conta numa **sheet** (sobre a lista): nome, e-mail, selos, e um quadro com conta criada, último acesso ("há 2 dias · Android · Chrome"), sessões abertas, como entra ("Senha e 2 passkeys") e o link aberto ("Vale até…" + "Invalidar").
 - **Ações** (linhas com ícone, título e uma linha explicando o efeito): Gerar novo convite / Gerar link de redefinição · Encerrar sessões · Tornar administrador / Remover administrador · Desativar acesso / Reativar acesso. Desativar e mudar o papel executam na hora com toast + "Desfazer"; uma ação que não se aplica fica apagada **com o motivo** ("Reative o acesso antes de gerar um link.").
@@ -1140,7 +1147,7 @@ PESSOAS
 **Flags**
 
 - Um card por flag do registro: rótulo (`headline`), chave em mono, selo do valor efetivo para todos (Ligado/Desligado), descrição, padrão, área e data; **Para todos**: segmented Padrão · Ligado · Desligado, com a explicação ("Segue o padrão do código: ligado."); **Exceções por pessoa**: as pessoas com valor próprio e "Ajustar", que abre uma sheet com cada pessoa e o mesmo segmented.
-- A mudança aparece na hora (otimista) com toast "Importar extrato desligado para todos." + "Desfazer"; vale na próxima tela que cada pessoa abrir.
+- A mudança aparece na hora (otimista) com toast "Importar extrato desligado para todos." + "Desfazer"; o toast concorda com o rótulo (`grammar` da flag no registro: "Notificações ligadas para Bruno.", "Importar extrato desligado para todos."); vale na próxima tela que cada pessoa abrir.
 
 **Atividade**
 
@@ -1204,7 +1211,7 @@ Todo gesto tem **alternativa visível** (botão, menu "⋯" ou ação no detalhe
 | Erro de ação | toast com o motivo e ação para tentar de novo; formulário preserva o que foi digitado |
 | Offline | faixa fina no topo "Você está offline — mostrando dados de 14/out, 09:12"; ações de escrita entram na fila (F3) com selo "Aguardando conexão" na linha |
 | Mês em andamento | rótulo "parcial" em gráficos e comparações |
-| Valores muito longos | descrições: 1 linha com reticências; **valores nunca são cortados** — abaixo de 360 px usam formato compacto ("R$ 1,2 mi") com o valor completo no `aria-label` e no detalhe |
+| Valores muito longos | descrições: 1 linha com reticências e, quando o contêiner fica abaixo de 16 rem (texto grande), **título em até 2 linhas** e o resto quebrado inteiro; **valores nunca são cortados nem abreviados**: o `Money` encolhe até 50% para caber (§5.4); o compacto ("R$ 1,2 mi") fica nos eixos e tiles |
 
 Textos de vazio:
 
@@ -1349,7 +1356,7 @@ Meta: **WCAG 2.2 AA**.
 - **Leitores de tela** (testar VoiceOver iOS e TalkBack): `lang="pt-BR"`; valores com rótulos completos ("Despesa de 64 reais e 50 centavos, Mercado, Conta principal, hoje"); mudanças de total anunciadas com `aria-live="polite"`; ícones decorativos com `aria-hidden`.
 - **Cor nunca sozinha**: sinais +/−, ícones e rótulos em todos os estados.
 - **Movimento**: `prefers-reduced-motion` respeitado (§3.8); nada pisca > 3×/s.
-- **Texto**: suporta 200% de zoom sem perda; layout em `rem`; nada de `user-scalable=no`.
+- **Texto**: suporta 200% de zoom sem perda; layout em `rem`; nada de `user-scalable=no`. Coberto por `e2e/texto-grande.spec.ts` (360 e 430 px, 100% e 200%: sem rolagem lateral, valor fora do cartão ou texto sob interruptor; axe a 200% nos dois temas).
 - **Gestos**: todo gesto tem alternativa por botão (critério 2.5.7 — arrasto tem alternativa de toque simples).
 - **Formulários**: rótulos visíveis, erros associados ao campo, sem limite de tempo.
 - **Automação**: axe no Playwright em todas as telas; Lighthouse a11y ≥ 95.
