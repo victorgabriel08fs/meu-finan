@@ -21,10 +21,10 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
 import {
+  createCategoryAction,
   setCategoryArchivedAction,
   updateCategoryAction,
 } from "@/server/actions/categories";
-import { createCategoryAction } from "@/server/actions/planning";
 
 type CategoryKind = "expense" | "income";
 type ColorChoice = (typeof COLOR_CHOICES)[number];

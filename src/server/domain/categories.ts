@@ -1,4 +1,8 @@
 import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import {
+  type ParentCandidate,
+  parentBlocker,
+} from "@/lib/categories/hierarchy";
 import { db, type Executor } from "@/server/db/client";
 import {
   type CategoryKind,
@@ -106,15 +110,81 @@ export async function requireCategory(
   return item;
 }
 
+/**
+ * The category a subcategory goes into, locked (FOR UPDATE) until the
+ * transaction ends: a concurrent move of that category under another one
+ * waits, and then sees the new child (one level only, no grandchildren).
+ * Archived ones come back too, so the caller says why they cannot be used.
+ */
+export async function requireParentCategory(
+  tx: Executor,
+  userId: string,
+  parentId: string,
+): Promise<ParentCandidate & { name: string }> {
+  const [row] = await tx
+    .select({
+      id: categories.id,
+      kind: categories.kind,
+      name: categories.name,
+      parentId: categories.parentId,
+      archivedAt: categories.archivedAt,
+    })
+    .from(categories)
+    .where(and(eq(categories.id, parentId), eq(categories.userId, userId)))
+    .limit(1)
+    .for("update");
+  if (!row) throw notFound("Categoria");
+  const { archivedAt, ...parent } = row;
+  return { ...parent, archived: archivedAt !== null };
+}
+
+/** The message for a name already taken at that level (doc 02 §10). */
+export function nameTakenMessage(parentName: string | null): string {
+  return parentName === null
+    ? "Já existe uma categoria com esse nome."
+    : `Já existe uma subcategoria com esse nome em ${parentName}.`;
+}
+
+/**
+ * A new category; with `parentId`, a subcategory of an active main category
+ * of the same type (doc 01 §6.3: one level only).
+ */
 export async function createCategory(
   userId: string,
-  input: { kind: CategoryKind; name: string; icon: string; color: ColorToken },
+  input: {
+    kind: CategoryKind;
+    name: string;
+    icon: string;
+    color: ColorToken;
+    parentId?: string | null;
+  },
 ): Promise<string> {
-  const [row] = await db
-    .insert(categories)
-    .values({ userId, ...input, name: input.name.trim(), sortOrder: 999 })
-    .onConflictDoNothing()
-    .returning({ id: categories.id });
-  if (!row) throw new DomainError("Já existe uma categoria com esse nome.");
-  return row.id;
+  const { parentId = null, ...fields } = input;
+  return db.transaction(async (tx) => {
+    let parentName: string | null = null;
+    if (parentId !== null) {
+      const parent = await requireParentCategory(tx, userId, parentId);
+      const blocker = parentBlocker({
+        categoryId: null,
+        kind: input.kind,
+        parent,
+        hasChildren: false,
+      });
+      if (blocker) throw new DomainError(blocker);
+      parentName = parent.name;
+    }
+    const [row] = await tx
+      .insert(categories)
+      .values({
+        userId,
+        ...fields,
+        parentId,
+        name: input.name.trim(),
+        sortOrder: 999,
+      })
+      .onConflictDoNothing()
+      .returning({ id: categories.id });
+    if (!row) throw new DomainError(nameTakenMessage(parentName));
+    return row.id;
+  });
 }
