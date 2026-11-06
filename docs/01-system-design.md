@@ -447,6 +447,13 @@ create table categories (
 -- ativas com o MESMO archived_at; restaurar a mãe restaura as filhas com esse
 -- archived_at (o Desfazer é simétrico); restaurar uma filha com a mãe
 -- arquivada restaura a mãe. Orçamento só em categoria principal (doc 03 §11).
+-- Mover (mesclar, ou arquivar com "Passar para"): `moveCategoryEntries` muda
+-- transactions (pagos, agendados, excluídos e cada parcela), recurrences e
+-- categorization_rules de TODAS as categorias de origem, e soma os orçamentos
+-- da origem, mês a mês, no da categoria principal do destino (ON CONFLICT DO
+-- UPDATE) antes de apagá-los. Mesclar ARQUIVA a origem (não apaga): o nome
+-- continua ocupado no nível, pela chave única acima. sort_order: dentro de
+-- cada grupo de irmãs vale a posição relativa; trocar de mãe manda para o fim (999).
 
 create table tags (
   id       uuid primary key,
@@ -862,7 +869,7 @@ export const requireUser = cache(async () => {
 | Contas | `createAccount`, `updateAccount`, `archiveAccount`, `reorderAccounts` | |
 | | `adjustBalance(accountId, newBalanceCents)` | gera lançamento `adjustment` com a diferença |
 | Cartões | `upsertCardDetails`, `payInvoice(invoiceId, fromAccountId, amountCents, date)` | pagamento parcial permitido |
-| Categorias | `createCategory`, `updateCategory`, `mergeCategories(from, into)`, `reorderCategories` | mesclar move lançamentos, orçamentos e regras |
+| Categorias | `createCategory`, `updateCategory`, `mergeCategories(from, into)`, `setCategoryArchived(id, archived, moveTo?)`, `reorderCategories(kind, orderedIds)`, `categoryDetail(range, period)` | mesclar e arquivar com `moveTo` movem lançamentos, recorrências, regras e orçamentos numa transação (as duas categorias travadas por id, `FOR UPDATE`); `reorderCategories` recusa uma lista diferente das ativas do tipo; `categoryDetail` devolve `null` para id que não é da pessoa |
 | Orçamentos | `upsertBudget`, `deleteBudget`, `copyBudgetsFromPreviousMonth(month)` | |
 | Metas | `createGoal`, `updateGoal`, `contributeToGoal(goalId, amountCents, fromAccountId?)` | aporte com conta vinculada vira transferência |
 | Simulador | `saveSimulation`, `deleteSimulation` | |

@@ -11,14 +11,13 @@ Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lis
 - **Meta atingida**: quando o saldo da meta chega ao alvo.
 - **Central de notificações no sino** (doc 02 §6.15): a lista dos avisos, com "Marcar todas como lidas". Com ela, abrir o app deixa de marcar tudo como lido e o número no ícone passa a seguir a central.
 
-## 5. Categorias — próximos passos
+## 5. Categorias — pendências pequenas
 
-Ficaram de fora das subcategorias (05/11/2026):
+Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
 
-- **Mesclar categorias** (doc 02 §6.14): mover os lançamentos de uma para outra. Ao mesclar uma mãe, as subcategorias vão para o destino se ele for uma categoria principal; senão, a mesclagem é recusada com o motivo. Orçamentos e regras aprendidas da categoria mesclada precisam de regra própria.
-- **Reordenar categorias** (`sort_order` já existe): subir e descer, na árvore, sem tirar a subcategoria de baixo da mãe.
-- **Detalhe da categoria com as subcategorias** (doc 02 §6.12): os relatórios somam as subcategorias na mãe (doc 03 §12); aqui entra a divisão por subcategoria.
-- O "Desfazer" de "Categoria X arquivada" restaura sem toast de confirmação; o texto "restaurada, com N subcategorias" só aparece pelo botão Restaurar.
+- A origem mesclada fica em "Arquivadas" sem indicação de que foi mesclada (a linha diz só "Despesa"): mostrar "Mesclada" ou "Mesclada com {destino}" exige guardar o destino ou um marcador no modelo.
+- O detalhe de uma categoria com id inválido ou que não é da pessoa responde 200 com a tela "Categoria não encontrada", não 404 (a rota é dinâmica dentro de `<Suspense>`, e o status sai antes de o servidor saber).
+- A 200% de texto em 360 px, o botão destrutivo das folhas de arquivar e de mesclar fica logo abaixo da dobra: é alcançável rolando (a folha inteira rola, `flowFooter`), mas pede um gesto.
 - O e2e "lança uma despesa pelo +" (`e2e/smoke.spec.ts`) falhou uma vez por tempo sob carga e passou ao repetir: observar se volta a falhar.
 
 ## 6. Caixinha: novo tipo de conta
@@ -42,25 +41,6 @@ Ficaram de fora das subcategorias (05/11/2026):
 - Testes: unidade da regra de conta líquida; integração (previsão, patrimônio, Fluxo de caixa e avisos com e sem caixinha; isolamento); e2e criando a caixinha e transferindo.
 - README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
 
-## 7. Arquivar categoria levando os lançamentos para outra
-
-**Pedido do dono (06/11/2026).** Ao arquivar uma categoria em Ajustes › Categorias, perguntar: "Quer passar as despesas desta categoria para outra?" (ou "as receitas", conforme o tipo).
-
-- **Sim**: a pessoa escolhe a categoria de destino (do mesmo tipo, ativa; subcategorias aparecem como "Mercado › Feira") e os lançamentos da arquivada passam para ela.
-- **Não**: os lançamentos ficam sem categoria ou vão para "Outros" (a categoria padrão que já existe) — o dono escolhe qual dos dois quando a tarefa começar; hoje eles continuam com a categoria arquivada.
-
-### O que investigar e decidir
-
-- É o mesmo movimento do **Mesclar categorias** da tarefa 5: fazer os dois juntos (um só domínio que move os lançamentos, em transação, com ownership do destino) ou deixar o mesclar para depois.
-- Quais lançamentos mudam: todos (passados, agendados, recorrências e parcelas futuras) ou só os futuros? Regras aprendidas da importação (`mapping`) e orçamentos da categoria arquivada (D1: só categorias principais têm orçamento) — o que acontece com cada um.
-- Mãe com subcategorias: a cascata de arquivar (já existe) leva as filhas; os lançamentos das filhas vão para o destino também, ou cada filha escolhe?
-- "Desfazer": hoje arquivar tem Desfazer; com lançamentos movidos, desfazer precisa devolver cada um à categoria de antes (guardar a lista) ou a ação vira confirmação sem Desfazer (doc 02 §2, princípio 6: confirmação só para o irreversível).
-- Textos (doc 02 §10), confirmação com a contagem ("32 despesas vão para Mercado"), toasts.
-
-### Pronto quando
-
-- Arquivar com e sem mover; os lançamentos, totais, orçamentos e relatórios refletem o destino; isolamento entre contas e ownership do destino testados (integração); e2e do fluxo; README, doc 02 §6.14 e doc 01 atualizados.
-
 ## Acessibilidade — depois
 
 Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 200% de texto em 360 px:
@@ -74,6 +54,18 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Categorias: mesclar, arquivar com mover, ordenar e detalhe — 06/11/2026
+
+Tarefas 5 e 7, com as decisões do dono (06/11/2026):
+
+- [x] **Mesclar categorias**: lançamentos (pagos, agendados, excluídos e parcelas), recorrências, regras de importação e orçamentos vão para o destino; a origem fica **arquivada e vazia**, não apagada. Uma mãe leva as subcategorias para dentro da principal escolhida; mãe em subcategoria e nome de subcategoria repetido são recusados com o motivo. Sem Desfazer: a folha diz a contagem.
+- [x] **Arquivar passando os lançamentos** ("Quer passar as despesas desta categoria para outra?"): "Não" mantém os lançamentos na arquivada, com Desfazer (e o toast do Desfazer agora confirma a restauração); "Sim" move tudo da categoria e das subcategorias ativas para um destino só, sem Desfazer. O orçamento da origem se soma ao da principal do destino em todos os meses.
+- [x] **Mudar a ordem** (Despesas e Receitas): "Subir" e "Descer" na árvore, a mãe com as filhas, Desfazer; vale nas listas de escolha, nos orçamentos, no extrato e na lista "Todas" da Nova transação.
+- [x] **Detalhe da categoria** em Relatórios › Categorias: divisão por subcategoria (arquivada e "Sem subcategoria"), mês a mês, o que mais pesou e atalho para o Extrato; o ranking de Categorias, a Visão geral e o bloco do Início abrem o detalhe.
+- [x] **Folha que rola por inteiro** a texto grande (`flowFooter`), "Mais ações" na folha de edição e novidade `novidade-categorias-organizar`.
+
+Testes: unidade (`order`, `hierarchy`, `messages`, `views`), integração (`category-moves.integration.test.ts`: mover, mesclar, arquivar com mover, ordem, contagens e detalhe, com isolamento entre contas) e e2e (`categorias.spec.ts`, `relatorios-categoria.spec.ts`, `texto-grande.spec.ts`).
 
 ### Acessibilidade e textos — 06/11/2026
 
