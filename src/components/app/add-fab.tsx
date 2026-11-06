@@ -19,13 +19,17 @@ export function AddFab({
       aria-label={ariaLabel}
       data-slot="add-fab"
       className={cn(
-        "inline-flex size-13 items-center justify-center rounded-[18px] bg-primary text-on-primary shadow-fab",
+        "inline-flex size-(--fab) items-center justify-center rounded-[18px] bg-primary text-on-primary shadow-fab",
         "transition-[scale,filter] duration-100 ease-standard active:scale-94 active:brightness-94",
         className,
       )}
       {...props}
     >
-      <Plus aria-hidden="true" className="size-6.5" strokeWidth={2.25} />
+      <Plus
+        aria-hidden="true"
+        className="size-[min(1.625rem,30px)]"
+        strokeWidth={2.25}
+      />
     </button>
   );
 }

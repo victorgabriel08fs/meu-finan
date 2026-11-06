@@ -22,7 +22,7 @@ type BottomNavProps = {
 
 /**
  * Phone and tablet tab bar (doc 02 §4.2): five equal slots, 24px icons with
- * always-visible labels, a --primary-soft pill that slides to the active tab,
+ * labels (icon only when large text leaves the bar under 21.5rem), a --primary-soft pill that slides to the active tab,
  * and the "+" in the centre. Translucent, never hides on scroll, hidden on lg
  * (the sidebar takes over). Reads the pathname, so render it inside
  * <Suspense> with <BottomNavView pathname={null} /> as the fallback.
@@ -54,11 +54,11 @@ export function BottomNavView({
           onClick={onClick}
           aria-current={active ? "page" : undefined}
           className={cn(
-            "flex h-16 w-full min-w-0 flex-col items-center justify-center gap-1 rounded-control text-micro transition-colors duration-150",
+            "flex h-(--tab-bar-h) w-full min-w-0 flex-col items-center justify-center gap-1 rounded-control text-micro transition-colors duration-150",
             active ? "text-primary" : "text-fg-3 hover:text-fg-2",
           )}
         >
-          <span className="relative flex h-7.5 w-14 items-center justify-center">
+          <span className="relative flex h-[min(1.875rem,36px)] w-[min(3.5rem,100%)] items-center justify-center">
             {active ? (
               <motion.span
                 layoutId="bottom-nav-pill"
@@ -68,11 +68,15 @@ export function BottomNavView({
             ) : null}
             <Icon
               aria-hidden="true"
-              className="relative size-6"
+              className="relative size-(--tab-icon)"
               strokeWidth={1.75}
             />
           </span>
-          <span className="max-w-full truncate px-0.5">{item.label}</span>
+          {/* Under 21.5rem of bar the label no longer fits beside large text: the
+              icon stays alone and the name is only read aloud (§4.2). */}
+          <span className="px-0.5 text-center text-balance @max-[21.5rem]:sr-only">
+            {item.label}
+          </span>
         </Link>
       </li>
     );
@@ -84,7 +88,7 @@ export function BottomNavView({
       data-slot="tab-bar"
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
-      <ul className="mx-auto grid h-(--tab-bar-h) max-w-lg grid-cols-5 items-center px-1">
+      <ul className="@container mx-auto grid h-(--tab-bar-h) max-w-lg grid-cols-5 items-center px-1">
         {first}
         {second}
         <li className="flex items-center justify-center">
