@@ -60,6 +60,21 @@ export function ReportTabsFallback({ className }: { className?: string }) {
   );
 }
 
+/**
+ * The tabs with no current one and plain links: what shows while the
+ * pathname is unknown (a report page whose id is only known on the request,
+ * like a category's detail), until the real tabs stream in.
+ */
+export function ReportTabsPlain({ className }: { className?: string }) {
+  return (
+    <ReportTabsView
+      active={null}
+      hrefFor={(view) => view.path}
+      className={className}
+    />
+  );
+}
+
 function ReportTabsView({
   active,
   hrefFor,

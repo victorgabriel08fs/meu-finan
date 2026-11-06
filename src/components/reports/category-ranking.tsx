@@ -17,8 +17,10 @@ export type RankedCategory = {
 
 type CategoryRankingProps = {
   items: RankedCategory[];
-  /** Month the links open in the statement (`/extrato?categoria=…&mes=…`). */
-  month: string;
+  /** Where a row opens (the category's detail, or the statement). */
+  hrefFor: (categoryId: string) => string;
+  /** What the link does, read after the name: "ver o detalhe da categoria"; read as a sentence after the share. */
+  linkHint: string;
   /** Show the first `limit` and fold the rest into "Outras N categorias". */
   limit?: number;
   className?: string;
@@ -30,7 +32,8 @@ type CategoryRankingProps = {
  */
 export function CategoryRanking({
   items,
-  month,
+  hrefFor,
+  linkHint,
   limit,
   className,
 }: CategoryRankingProps) {
@@ -44,7 +47,12 @@ export function CategoryRanking({
     <ol className={cn("flex flex-col", className)}>
       {shown.map((item) => (
         <li key={item.categoryId ?? "sem-categoria"}>
-          <RankRow item={item} max={max} month={month} />
+          <RankRow
+            item={item}
+            max={max}
+            hrefFor={hrefFor}
+            linkHint={linkHint}
+          />
         </li>
       ))}
       {rest.length > 0 ? (
@@ -59,7 +67,8 @@ export function CategoryRanking({
               share: restShare,
             }}
             max={Math.max(max, restCents)}
-            month={month}
+            hrefFor={hrefFor}
+            linkHint={linkHint}
             muted
           />
         </li>
@@ -71,12 +80,14 @@ export function CategoryRanking({
 function RankRow({
   item,
   max,
-  month,
+  hrefFor,
+  linkHint,
   muted = false,
 }: {
   item: RankedCategory;
   max: number;
-  month: string;
+  hrefFor: (categoryId: string) => string;
+  linkHint: string;
   muted?: boolean;
 }) {
   const width = max > 0 ? Math.max(1.5, (item.cents / max) * 100) : 0;
@@ -134,14 +145,18 @@ function RankRow({
   }
   return (
     <Link
-      href={`/extrato?categoria=${item.categoryId}&mes=${month}`}
+      href={hrefFor(item.categoryId)}
       className={cn(
         rowClass,
         "-mx-2 px-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2",
       )}
     >
       {body}
-      <span className="sr-only">: ver os lançamentos do mês no extrato</span>
+      <span className="sr-only">
+        {" "}
+        do total. {linkHint.charAt(0).toUpperCase()}
+        {linkHint.slice(1)}
+      </span>
     </Link>
   );
 }

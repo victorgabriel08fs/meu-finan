@@ -16,8 +16,9 @@ function toCategory({
   icon,
   color,
   parentId,
+  order,
 }: QuickAddCategory): QuickAddCategory {
-  return { id, name, icon, color, parentId };
+  return { id, name, icon, color, parentId, order };
 }
 
 /**

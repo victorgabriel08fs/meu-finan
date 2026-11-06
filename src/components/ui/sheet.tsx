@@ -167,6 +167,19 @@ type SheetContentProps = Omit<
    * height (`@max-[32rem]/sheet`); only meaningful with a definite height.
    */
   fullHeight?: boolean;
+  /**
+   * For a sheet as tall as its content: the footer stays at the bottom only
+   * while the sheet can be 32rem tall. With large text (rem grows) or a short
+   * screen the whole sheet, header and footer included, scrolls as one, so the
+   * buttons never take the screen.
+   */
+  flowFooter?: boolean;
+  /**
+   * On opening, the focus goes to the title (not the first control): for a
+   * step that replaces another inside an open sheet, where the title says what
+   * changed.
+   */
+  focusTitle?: boolean;
 };
 
 /** Phone sheets follow the finger; from md up they are dialogs. */
@@ -175,6 +188,28 @@ const DIALOG_QUERY = "(min-width: 48rem)";
 const DISMISS_RATIO = 0.25;
 const DISMISS_VELOCITY = 500;
 const SHEET_SPRING = { type: "spring", stiffness: 420, damping: 40 } as const;
+
+/**
+ * True while the sheet (at most 92dvh) is under 32rem tall: the same measure
+ * as `@max-[32rem]/sheet`, in rem of the page's own font size (a media query
+ * would use the browser's default size, not the one text is zoomed to).
+ */
+function useShortScreen(enabled: boolean): boolean {
+  const [short, setShort] = useState(false);
+  useLayoutEffect(() => {
+    if (!enabled) return;
+    const measure = () => {
+      const rem = Number.parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      setShort(window.innerHeight * 0.92 < 32 * rem);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [enabled]);
+  return short;
+}
 
 export function SheetContent({
   title,
@@ -185,18 +220,26 @@ export function SheetContent({
   bodyClassName,
   swap = false,
   fullHeight = false,
+  flowFooter = false,
+  focusTitle = false,
+  onOpenAutoFocus,
   onCloseAutoFocus,
   onPointerDownOutside,
   ...props
 }: SheetContentProps) {
   const sheet = use(SheetContext);
+  const together = fullHeight || flowFooter;
+  // Short (large text): the whole sheet scrolls, header and footer included.
+  const flow = useShortScreen(flowFooter);
   const fit = typeof title === "string" ? titleFit(title, "title-2") : null;
   const panelRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const dragControls = useDragControls();
   const y = useMotionValue(0);
 
   function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || window.matchMedia(DIALOG_QUERY).matches) return;
+    if (flow) return; // the finger scrolls the sheet
     const target = event.target as HTMLElement;
     if (target.closest("button, a, input, select, textarea")) return;
     dragControls.start(event);
@@ -225,6 +268,13 @@ export function SheetContent({
       <Dialog.Content
         data-slot="sheet-content"
         data-swap={swap || undefined}
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event);
+          if (focusTitle && titleRef.current) {
+            event.preventDefault();
+            titleRef.current.focus({ preventScroll: true });
+          }
+        }}
         onCloseAutoFocus={onCloseAutoFocus ?? sheet?.returnFocus}
         onPointerDownOutside={(event) => {
           sheet?.keepIfReopened(event);
@@ -232,7 +282,7 @@ export function SheetContent({
         }}
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none data-[state=closed]:pointer-events-none",
           "md:inset-0 md:m-auto md:h-fit md:max-h-[min(85dvh,48rem)] md:w-[calc(100%-2rem)] md:max-w-140",
           className,
         )}
@@ -252,12 +302,16 @@ export function SheetContent({
             "flex min-h-0 flex-1 flex-col rounded-t-sheet bg-surface text-fg shadow-sheet md:rounded-card md:shadow-dialog",
             fullHeight &&
               "max-md:[container-name:sheet] max-md:[container-type:size]",
+            flow && "overflow-y-auto overscroll-contain",
           )}
         >
           {/* Drag-to-close is a pointer shortcut; the close button and Esc do the same. */}
           <div
             onPointerDown={startDrag}
-            className="shrink-0 touch-none select-none md:touch-auto"
+            className={cn(
+              "shrink-0 select-none md:touch-auto",
+              flow ? "touch-auto" : "touch-none",
+            )}
           >
             <div
               aria-hidden="true"
@@ -266,7 +320,13 @@ export function SheetContent({
             <div className="flex items-start gap-2 pt-3 pr-2 pb-2 pl-5 md:pt-4">
               <div className="@container min-w-0 flex-1 pt-2">
                 <Dialog.Title
-                  className={cn("text-title-2 text-fg", fit?.className)}
+                  ref={titleRef}
+                  tabIndex={focusTitle ? -1 : undefined}
+                  className={cn(
+                    "text-title-2 text-fg",
+                    focusTitle && "outline-none",
+                    fit?.className,
+                  )}
                   style={fit?.style}
                 >
                   {title}
@@ -285,9 +345,9 @@ export function SheetContent({
             </div>
           </div>
           <div
-            data-slot={fullHeight ? "sheet-scroll" : undefined}
+            data-slot={together ? "sheet-scroll" : undefined}
             className={
-              fullHeight
+              together && !flow
                 ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
                 : "contents"
             }
@@ -296,7 +356,7 @@ export function SheetContent({
               data-slot="sheet-body"
               className={cn(
                 "@container px-5 pt-2",
-                fullHeight
+                together
                   ? "flex-1"
                   : "min-h-0 flex-1 overflow-y-auto overscroll-contain",
                 footer
@@ -312,8 +372,13 @@ export function SheetContent({
                 data-slot="sheet-footer"
                 className={cn(
                   "flex flex-col gap-2 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-5",
-                  fullHeight
-                    ? "sticky bottom-0 mt-auto bg-surface @max-[32rem]/sheet:static"
+                  together
+                    ? cn(
+                        "sticky bottom-0 mt-auto bg-surface",
+                        fullHeight
+                          ? "@max-[32rem]/sheet:static"
+                          : flow && "static",
+                      )
                     : "shrink-0",
                 )}
               >

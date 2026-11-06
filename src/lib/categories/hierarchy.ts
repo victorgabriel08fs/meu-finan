@@ -85,3 +85,101 @@ export function parentOptions<T extends ParentCandidate>(
       !category.archived,
   );
 }
+
+/**
+ * The categories as a tree for a list: each one followed by its
+ * subcategories, keeping the given order among siblings. A subcategory whose
+ * parent is not in the list goes to the end.
+ */
+export function categoryTree<T extends { id: string; parentId: string | null }>(
+  categories: readonly T[],
+): T[] {
+  const placed = new Set<string>();
+  const tree: T[] = [];
+  const place = (category: T) => {
+    if (placed.has(category.id)) return;
+    placed.add(category.id);
+    tree.push(category);
+    for (const child of categories) {
+      if (child.parentId === category.id) place(child);
+    }
+  };
+  for (const category of categories) {
+    if (category.parentId === null) place(category);
+  }
+  // Orphans (and anything caught in a cycle), with their own children.
+  for (const category of categories) place(category);
+  return tree;
+}
+
+/** What a category needs to be checked as the destination of a move. */
+export type MoveCandidate = {
+  id: string;
+  kind: Kind;
+  parentId: string | null;
+  archived: boolean;
+};
+
+/**
+ * Why `target` cannot take the entries of `source` (null when it can), in
+ * this order: the category itself, one of the categories being archived along
+ * (`excluded`: the source's active subcategories when archiving it), an
+ * archived target, a target of the other type and, when merging a category
+ * that has subcategories, a target that is itself a subcategory (they move
+ * into it, and there is only one level).
+ */
+export function moveTargetBlocker({
+  mode,
+  source,
+  target,
+  excluded,
+}: {
+  mode: "merge" | "archive";
+  source: { id: string; name: string; kind: Kind; hasChildren: boolean };
+  target: MoveCandidate;
+  excluded: readonly string[];
+}): string | null {
+  if (target.id === source.id) return "Escolha outra categoria.";
+  if (excluded.includes(target.id)) {
+    return "Escolha uma categoria que não esteja sendo arquivada.";
+  }
+  if (target.archived) return "Esta categoria está arquivada.";
+  if (target.kind !== source.kind) {
+    return source.kind === "expense"
+      ? "Escolha uma categoria de despesa."
+      : "Escolha uma categoria de receita.";
+  }
+  if (mode === "merge" && source.hasChildren && target.parentId !== null) {
+    return `${source.name} tem subcategorias: escolha uma categoria principal para mesclar.`;
+  }
+  return null;
+}
+
+/**
+ * The categories that can take the entries of a category being archived or
+ * merged ("Passar para", "Mesclar com"): active, of `kind`, outside
+ * `excluded` (the category and what goes along with it) and, with
+ * `mainOnly`, main categories only; in tree order, each with its label
+ * ("Mercado › Feira").
+ */
+export function moveTargets<T extends MoveCandidate & { name: string }>(
+  categories: readonly T[],
+  {
+    kind,
+    excluded,
+    mainOnly,
+  }: { kind: Kind; excluded: readonly string[]; mainOnly: boolean },
+): (T & { label: string })[] {
+  return categoryTree(categories)
+    .filter(
+      (category) =>
+        !category.archived &&
+        category.kind === kind &&
+        !excluded.includes(category.id) &&
+        (!mainOnly || category.parentId === null),
+    )
+    .map((category) => ({
+      ...category,
+      label: categoryLabel(category, categories),
+    }));
+}

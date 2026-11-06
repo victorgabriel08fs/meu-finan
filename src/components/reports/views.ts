@@ -1,5 +1,7 @@
+import { monthAbbrev, monthName } from "@/components/charts/format";
 import {
   DEFAULT_REPORT_PERIOD,
+  PERIOD_LABELS,
   parseReportPeriod,
   periodQuery,
   type ReportPeriod,
@@ -114,4 +116,42 @@ export function monthViewHref(
   currentMonth: string,
 ): string {
   return month === currentMonth ? path : `${path}?mes=${month}`;
+}
+
+/**
+ * Link of a category's detail (`/relatorios/categorias/{id}`) over the window
+ * of `period` months ending at `endMonth`: the same `?periodo=` and `?mes=` as
+ * {@link periodViewHref}, so the detail opens on the numbers of the ranking
+ * the person tapped.
+ */
+export function categoryDetailHref(
+  categoryId: string,
+  period: ReportPeriod,
+  endMonth: string,
+  currentMonth: string,
+): string {
+  return periodViewHref(
+    `/relatorios/categorias/${categoryId}`,
+    period,
+    endMonth,
+    currentMonth,
+  );
+}
+
+/**
+ * The line under a report card's title that says which months it covers:
+ * "outubro, parcial" · "12 meses, inclui out parcial" · "setembro de 2026".
+ * `isCurrent`: the window ends at the month still running.
+ */
+export function reportWindowCaption(
+  range: { month: string; isCurrent: boolean },
+  period: ReportPeriod,
+): string {
+  const label = PERIOD_LABELS[period].long.toLowerCase();
+  if (range.isCurrent) {
+    return period === 1
+      ? `${monthName(range.month)}, parcial`
+      : `${label}, inclui ${monthAbbrev(range.month)} parcial`;
+  }
+  return period === 1 ? monthName(range.month) : label;
 }

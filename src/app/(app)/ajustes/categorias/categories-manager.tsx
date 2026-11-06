@@ -1,6 +1,13 @@
 "use client";
 
-import { Archive, ChevronRight, Plus, RotateCcw } from "lucide-react";
+import {
+  Archive,
+  ArrowUpDown,
+  ChevronRight,
+  Merge,
+  Plus,
+  RotateCcw,
+} from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
 import { type FormEvent, useId, useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { toastWithUndo } from "@/components/ui/toast";
 import { parentOptions } from "@/lib/categories/hierarchy";
 import { cn } from "@/lib/utils";
 import {
@@ -29,25 +35,15 @@ import {
   setCategoryArchivedAction,
   updateCategoryAction,
 } from "@/server/actions/categories";
-import {
-  archiveDescription,
-  archivedMessage,
-  createdMessage,
-  restoredMessage,
-} from "./messages";
+import { ArchiveStep } from "./archive-step";
+import { MergeStep } from "./merge-step";
+import { createdMessage, restoredMessage } from "./messages";
+import { OrderSheet } from "./order-sheet";
+import type { CategoryKind, ManagedCategory } from "./types";
 
-type CategoryKind = "expense" | "income";
 type ColorChoice = (typeof COLOR_CHOICES)[number];
 
-export type ManagedCategory = {
-  id: string;
-  kind: CategoryKind;
-  name: string;
-  icon: string;
-  color: string;
-  parentId: string | null;
-  archived: boolean;
-};
+export type { ManagedCategory };
 
 type Target =
   | { mode: "new"; kind: CategoryKind }
@@ -67,6 +63,7 @@ export function CategoriesManager({
   categories: ManagedCategory[];
 }) {
   const sheet = useSheetTarget<Target>();
+  const order = useSheetTarget<{ kind: CategoryKind }>();
   const names = new Map(
     categories.map((category) => [category.id, category.name]),
   );
@@ -148,6 +145,18 @@ export function CategoriesManager({
                 ))}
               </ul>
             )}
+            {items.length > 1 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 -ml-2 min-h-11"
+                aria-haspopup="dialog"
+                onClick={() => order.show({ kind: group.kind })}
+              >
+                <ArrowUpDown aria-hidden="true" />
+                Mudar a ordem
+              </Button>
+            ) : null}
           </section>
         );
       })}
@@ -210,6 +219,16 @@ export function CategoriesManager({
           />
         ) : null}
       </Sheet>
+      <Sheet open={order.isOpen} onOpenChange={order.onOpenChange}>
+        {order.target ? (
+          <OrderSheet
+            key={order.key}
+            kind={order.target.kind}
+            categories={categories}
+            onDone={order.close}
+          />
+        ) : null}
+      </Sheet>
     </>
   );
 }
@@ -237,7 +256,7 @@ function CategorySheet({
   const [color, setColor] = useState(editing?.color ?? "cat-1");
   const [error, setError] = useState<string>();
   const [formError, setFormError] = useState<string>();
-  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [step, setStep] = useState<"form" | "archive" | "merge">("form");
 
   const names = new Map(
     categories.map((category) => [category.id, category.name]),
@@ -299,24 +318,6 @@ function CategorySheet({
     },
     onError,
   });
-  const archive = useAction(setCategoryArchivedAction, {
-    onSuccess: ({ data }) => {
-      onDone();
-      if (!editing || !data) return;
-      // Desfazer restores the subcategories that went along, no others.
-      toastWithUndo(archivedMessage(data), () => {
-        void setCategoryArchivedAction({
-          id: editing.id,
-          archived: false,
-        }).then((result) => {
-          if (result?.serverError) toast(result.serverError);
-        });
-      });
-    },
-    onError: ({ error: failure }) =>
-      setFormError(failure.serverError ?? NETWORK_ERROR),
-  });
-
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = name.trim();
@@ -365,70 +366,41 @@ function CategorySheet({
       });
   }
 
-  if (confirmArchive && editing) {
+  if (step === "archive" && editing) {
     return (
-      <SheetContent
-        title={`Arquivar ${editing.name}?`}
-        description={archiveDescription(
-          children
-            .filter((category) => !category.archived)
-            .map((category) => category.name),
-        )}
-        footer={
-          <>
-            <Button
-              variant="destructive"
-              size="lg"
-              className="w-full"
-              loading={archive.isPending}
-              onClick={() =>
-                archive.execute({ id: editing.id, archived: true })
-              }
-            >
-              Arquivar categoria
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              className="w-full"
-              onClick={() => setConfirmArchive(false)}
-            >
-              Cancelar
-            </Button>
-          </>
-        }
-      >
-        <FieldError id={`${formId}-archive-error`}>{formError}</FieldError>
-      </SheetContent>
+      <ArchiveStep
+        category={editing}
+        categories={categories}
+        onBack={() => setStep("form")}
+        onDone={onDone}
+      />
+    );
+  }
+  if (step === "merge" && editing) {
+    return (
+      <MergeStep
+        category={editing}
+        categories={categories}
+        onBack={() => setStep("form")}
+        onDone={onDone}
+      />
     );
   }
 
   return (
     <SheetContent
+      flowFooter
       title={editing ? "Editar categoria" : "Nova categoria"}
       footer={
-        <>
-          <Button
-            type="submit"
-            form={formId}
-            size="lg"
-            className="w-full"
-            loading={create.isPending || update.isPending}
-          >
-            {editing ? "Salvar categoria" : "Criar categoria"}
-          </Button>
-          {editing ? (
-            <Button
-              variant="ghost"
-              size="lg"
-              className="w-full text-danger hover:bg-danger-soft/60 active:bg-danger-soft"
-              onClick={() => setConfirmArchive(true)}
-            >
-              <Archive aria-hidden="true" />
-              Arquivar categoria
-            </Button>
-          ) : null}
-        </>
+        <Button
+          type="submit"
+          form={formId}
+          size="lg"
+          className="w-full"
+          loading={create.isPending || update.isPending}
+        >
+          {editing ? "Salvar categoria" : "Criar categoria"}
+        </Button>
       }
     >
       <form
@@ -529,6 +501,37 @@ function CategorySheet({
         </div>
         <FieldError id={`${formId}-form-error`}>{formError}</FieldError>
       </form>
+      {editing ? (
+        <section
+          aria-labelledby={`${formId}-more`}
+          className="mt-4 flex flex-col gap-1 border-t border-border pt-4 pb-2"
+        >
+          <h3
+            id={`${formId}-more`}
+            className="text-callout font-semibold text-fg"
+          >
+            Mais ações
+          </h3>
+          <Button
+            variant="ghost"
+            size="lg"
+            className="w-full justify-start"
+            onClick={() => setStep("merge")}
+          >
+            <Merge aria-hidden="true" />
+            Mesclar com outra
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            className="w-full justify-start text-danger hover:bg-danger-soft/60 active:bg-danger-soft"
+            onClick={() => setStep("archive")}
+          >
+            <Archive aria-hidden="true" />
+            Arquivar categoria
+          </Button>
+        </section>
+      ) : null}
     </SheetContent>
   );
 }

@@ -296,7 +296,6 @@ describe("Para onde foi o dinheiro", () => {
     const { type, props } = await load("category-breakdown", ana, "2026-10");
     expect(type).toBe(components.categories.CategoryBreakdownBlock);
     expect(props).toMatchObject({
-      month: "2026-10",
       monthName: "outubro",
       isCurrent: true,
       // Paid so far: the rent of the 15th is still ahead.
@@ -308,6 +307,9 @@ describe("Para onde foi o dinheiro", () => {
     });
     const names = (props.items as { name: string }[]).map((item) => item.name);
     expect(names.sort()).toEqual(["Mercado", "Transporte"]);
+    // Each row opens the category's detail over the month on screen.
+    const hrefFor = props.hrefFor as (id: string) => string;
+    expect(hrefFor("abc")).toBe("/relatorios/categorias/abc?periodo=1");
   });
 
   it("opens the report on another month, not the statement", async () => {

@@ -58,7 +58,7 @@ describe("report cards", () => {
     expect(html).toContain("Patrimônio subiu");
   });
 
-  it("links categories to the statement and folds the tail", () => {
+  it("links categories to their detail and folds the tail", () => {
     const html = renderToStaticMarkup(
       <CategoryRanking
         items={[
@@ -79,11 +79,15 @@ describe("report cards", () => {
             share: 0.4,
           },
         ]}
-        month="2026-10"
+        hrefFor={(id) => `/relatorios/categorias/${id}?periodo=3`}
+        linkHint="ver o detalhe da categoria"
         limit={1}
       />,
     );
-    expect(html).toContain("/extrato?categoria=c1&amp;mes=2026-10");
+    expect(html).toContain("/relatorios/categorias/c1?periodo=3");
+    expect(html).toContain("do total. Ver o detalhe da categoria");
+    // The row folded into "Outras" and the one without category: no link.
+    expect(html).not.toContain("/relatorios/categorias/null");
     expect(html).toContain("Outras 1 categoria");
   });
 });

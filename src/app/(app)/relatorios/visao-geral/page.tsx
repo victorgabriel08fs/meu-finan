@@ -20,6 +20,7 @@ import { NetWorthCard } from "@/components/reports/net-worth-card";
 import { ReportEndNote } from "@/components/reports/report-month";
 import { SavingsRateCard } from "@/components/reports/savings-rate-card";
 import {
+  categoryDetailHref,
   clampReportMonth,
   parseMonthParam,
   periodHref,
@@ -179,7 +180,15 @@ async function Overview({
             ) : (
               <CategoryRanking
                 items={breakdown.items}
-                month={range.month}
+                hrefFor={(categoryId) =>
+                  categoryDetailHref(
+                    categoryId,
+                    period,
+                    range.month,
+                    currentMonth,
+                  )
+                }
+                linkHint="ver o detalhe da categoria"
                 limit={5}
               />
             )}

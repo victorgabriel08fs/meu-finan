@@ -12,8 +12,8 @@ import { BlockLink } from "./block-link";
 type CategoryBreakdownBlockProps = {
   items: RankedCategory[];
   totalCents: number;
-  /** The month the Início shows, `YYYY-MM` (the rows open it in the statement). */
-  month: string;
+  /** Where a row opens: the category's detail over the month on screen. */
+  hrefFor: (categoryId: string) => string;
   /** "outubro". */
   monthName: string;
   /** The month is still running: what was paid so far. */
@@ -33,7 +33,7 @@ export const CATEGORY_BLOCK_LIMIT = 5;
 export function CategoryBreakdownBlock({
   items,
   totalCents,
-  month,
+  hrefFor,
   monthName,
   isCurrent,
   link,
@@ -64,7 +64,8 @@ export function CategoryBreakdownBlock({
         </p>
         <CategoryRanking
           items={items}
-          month={month}
+          hrefFor={hrefFor}
+          linkHint="ver o detalhe da categoria"
           limit={CATEGORY_BLOCK_LIMIT}
         />
       </section>

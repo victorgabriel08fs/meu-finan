@@ -28,7 +28,12 @@ import {
   shiftPeriod,
 } from "@/lib/finance";
 import { db } from "@/server/db/client";
-import { categories, finAccounts, transactions } from "@/server/db/schema";
+import {
+  type CategoryKind,
+  categories,
+  finAccounts,
+  transactions,
+} from "@/server/db/schema";
 import { type AccountListItem, listAccounts } from "./accounts";
 import { type PeriodRange, toRange, type UserContext } from "./context";
 import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
@@ -53,6 +58,16 @@ export function trailingPeriods(
   );
 }
 
+/**
+ * The financial month (`YYYY-MM`, the `month` of `trailingPeriods`) an entry
+ * falls in: shifting by (startDay − 1) days maps every financial month onto a
+ * calendar month. It carries a bind parameter, so GROUP BY it by position
+ * (`.groupBy(sql\`1\`)`): two parameters would not match.
+ */
+export function periodMonthBucket(ctx: UserContext) {
+  return sql<string>`to_char(date_trunc('month', ${transactions.occurredOn} - ${ctx.monthStartDay - 1}::int), 'YYYY-MM')`;
+}
+
 export async function monthlySeries(
   ctx: UserContext,
   current: PeriodRange,
@@ -62,9 +77,7 @@ export async function monthlySeries(
   const first = periods[0];
   const last = periods[periods.length - 1];
   if (!first || !last) return [];
-  // Shifting by (startDay − 1) days maps every financial month onto a calendar
-  // month. Grouped by position: two bind parameters would not match in GROUP BY.
-  const bucket = sql<string>`to_char(date_trunc('month', ${transactions.occurredOn} - ${ctx.monthStartDay - 1}::int), 'YYYY-MM')`;
+  const bucket = periodMonthBucket(ctx);
   const rows = await db
     .select({
       month: bucket,
@@ -134,6 +147,13 @@ export function savingsRateOf(
 export const rootCategory = alias(categories, "root_category");
 export const categoryRootId = sql`coalesce(${categories.parentId}, ${categories.id})`;
 
+/** Paid amounts of `kind` as positive cents: expenses are stored negative. */
+export const kindSum = (kind: CategoryKind) =>
+  (kind === "expense"
+    ? sql<number>`-sum(${transactions.amountCents})`
+    : sql<number>`sum(${transactions.amountCents})`
+  ).mapWith(Number);
+
 export type CategoryShare = {
   categoryId: string | null;
   name: string;
@@ -144,16 +164,18 @@ export type CategoryShare = {
 };
 
 /**
- * Paid expenses by category in [start, end], largest first. A subcategory
- * adds up into its main category (D2: "Mercado" includes "Feira"); the split
- * per subcategory belongs to the category's own detail.
+ * Paid expenses (or, with `kind`, income) by category in [start, end],
+ * largest first. A subcategory adds up into its main category (D2: "Mercado"
+ * includes "Feira"); the split per subcategory belongs to the category's own
+ * detail (`categoryDetail`).
  */
 export async function categoryBreakdown(
   ctx: UserContext,
   start: string,
   end: string,
+  kind: CategoryKind = "expense",
 ): Promise<{ items: CategoryShare[]; totalCents: number }> {
-  const spent = sql<number>`-sum(${transactions.amountCents})`.mapWith(Number);
+  const spent = kindSum(kind);
   const rows = await db
     .select({
       categoryId: rootCategory.id,
@@ -170,7 +192,7 @@ export async function categoryBreakdown(
         eq(transactions.userId, ctx.userId),
         isNull(transactions.deletedAt),
         eq(transactions.status, "paid"),
-        eq(transactions.kind, "expense"),
+        eq(transactions.kind, kind),
         between(transactions.occurredOn, start, end),
       ),
     )

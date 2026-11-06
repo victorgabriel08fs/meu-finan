@@ -20,6 +20,8 @@ export type QuickAddCategory = {
   icon: string;
   color: string;
   parentId: string | null;
+  /** Position in the person's own order (Ajustes › Categorias). */
+  order?: number;
 };
 
 /** Everything the "Nova transação" sheet needs, loaded once per session. */

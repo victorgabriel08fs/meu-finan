@@ -54,13 +54,14 @@ export async function listCategories(
 
 /**
  * Categories ordered by use in the last 90 days, then by their default order —
- * the quick-add chips (doc 02 §6.5).
+ * the quick-add chips (doc 02 §6.5). `order` is the position in the person's
+ * own order, which the "Todas" list follows.
  */
 export async function categoriesByUse(
   userId: string,
   kind: CategoryKind,
   sinceIso: string,
-): Promise<CategoryItem[]> {
+): Promise<(CategoryItem & { order: number })[]> {
   const uses = sql<number>`count(${transactions.id})`.mapWith(Number);
   const rows = await db
     .select({ ...columns, uses, sortOrder: categories.sortOrder })
@@ -82,7 +83,16 @@ export async function categoriesByUse(
     )
     .groupBy(categories.id)
     .orderBy(desc(uses), asc(categories.sortOrder));
-  return rows.map(({ uses: _uses, sortOrder: _sortOrder, ...item }) => item);
+  // The person's own order (Ajustes › Categorias), for the "Todas" list.
+  const rank = new Map(
+    [...rows]
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((row, index) => [row.id, index]),
+  );
+  return rows.map(({ uses: _uses, sortOrder: _sortOrder, ...item }) => ({
+    ...item,
+    order: rank.get(item.id) ?? 0,
+  }));
 }
 
 /** Ownership check for a category id received from the client. */
