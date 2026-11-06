@@ -8,6 +8,7 @@ import {
 import { daysBetween, parse, periodDays } from "@/lib/finance";
 import { monthLabel, shortMonthLabel } from "@/lib/format/date";
 import { formatPercent } from "@/lib/format/number";
+import { windowLabel } from "./net-worth-model";
 
 /**
  * Reports view model (doc 02 §6.12): the period filter, KPI sums (with the
@@ -218,7 +219,11 @@ export function netWorthChange(values: readonly number[]) {
   return { first, last, delta: last - first };
 }
 
-/** "Patrimônio subiu de R$ 16.480 para R$ 26.290 em 12 meses"; "valor oculto" in privacy mode. */
+/**
+ * "Patrimônio subiu de R$ 16.480 para R$ 26.290 em 12 meses", or "Patrimônio
+ * ficou estável em R$ 16.480 no mês" with no change; "valor oculto" in
+ * privacy mode.
+ */
 export function netWorthSummary(
   values: readonly number[],
   period: ReportPeriod,
@@ -226,7 +231,11 @@ export function netWorthSummary(
 ): string {
   if (values.length < 2) return "Patrimônio líquido no período.";
   const { first, last, delta } = netWorthChange(values);
-  const verb = delta > 0 ? "subiu" : delta < 0 ? "caiu" : "ficou estável";
+  // No change: "de X para X" says nothing, so it reads "ficou estável em X".
+  if (delta === 0) {
+    return `Patrimônio ficou estável em ${spokenMoney(last, options)} ${windowLabel(period)}.`;
+  }
+  const verb = delta > 0 ? "subiu" : "caiu";
   return `Patrimônio ${verb} de ${spokenMoney(first, options)} para ${spokenMoney(last, options)} em ${
     period === 1 ? "1 mês" : `${period} meses`
   }.`;
