@@ -41,6 +41,8 @@ Ficaram de fora das subcategorias (05/11/2026):
 - **Mesclar categorias** (doc 02 §6.14): mover os lançamentos de uma para outra. Ao mesclar uma mãe, as subcategorias vão para o destino se ele for uma categoria principal; senão, a mesclagem é recusada com o motivo. Orçamentos e regras aprendidas da categoria mesclada precisam de regra própria.
 - **Reordenar categorias** (`sort_order` já existe): subir e descer, na árvore, sem tirar a subcategoria de baixo da mãe.
 - **Detalhe da categoria com as subcategorias** (doc 02 §6.12): os relatórios somam as subcategorias na mãe (doc 03 §12); aqui entra a divisão por subcategoria.
+- O "Desfazer" de "Categoria X arquivada" restaura sem toast de confirmação; o texto "restaurada, com N subcategorias" só aparece pelo botão Restaurar.
+- O e2e "lança uma despesa pelo +" (`e2e/smoke.spec.ts`) falhou uma vez por tempo sob carga e passou ao repetir: observar se volta a falhar.
 
 ## Entregue
 
