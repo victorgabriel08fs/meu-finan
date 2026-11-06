@@ -151,6 +151,25 @@ describe("LineChart", () => {
     expect(html).toContain('aria-label="Resumo"');
     expect(html).toContain("set 30%");
   });
+
+  it("marks the labels for collision fitting, the last point label first", () => {
+    const html = renderToStaticMarkup(
+      <LineChart
+        values={[0.1, 0.2, 0.3]}
+        ticks={niceTicks(0.1, 0.3, 2)}
+        formatTick={(value) => `${value}`}
+        labels={[
+          { index: 0, text: "jul 10%" },
+          { index: 2, text: "set 30%" },
+        ]}
+        xLabels={[{ position: 0, label: "jul" }]}
+        summary="Resumo"
+      />,
+    );
+    expect(html).toMatch(/data-fit="" data-priority="1"[^>]*>jul 10%/);
+    expect(html).toMatch(/data-fit="" data-priority="2"[^>]*>set 30%/);
+    expect(html).toMatch(/data-fit="" data-priority="2"[^>]*>jul</);
+  });
 });
 
 describe("Sparkline and SplitBar", () => {

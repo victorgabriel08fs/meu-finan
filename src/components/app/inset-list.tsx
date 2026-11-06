@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +22,7 @@ export function InsetList({
       aria-labelledby={labelledBy}
       data-slot="inset-list"
       className={cn(
-        "overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border",
+        "@container overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border",
         className,
       )}
     >
@@ -56,38 +57,46 @@ export function InsetListItem({
 }: InsetListItemProps) {
   const content = (
     <>
-      {icon ? (
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-5"
-        >
-          {icon}
-        </span>
-      ) : null}
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-body font-semibold text-fg">
-          {label}
-        </span>
-        {description ? (
-          <span className="truncate text-caption text-fg-3">{description}</span>
+      <span className="flex min-w-0 flex-[1_1_10rem] items-center gap-3">
+        {icon ? (
+          <span
+            aria-hidden="true"
+            className="flex size-[min(2rem,40px)] shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-[min(1.25rem,24px)]"
+          >
+            {icon}
+          </span>
         ) : null}
-      </span>
-      {trailing ? (
-        <span className="flex shrink-0 items-center text-callout text-fg-2">
-          {trailing}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className={cn("text-body font-semibold text-fg", CLAMP_TITLE)}>
+            {label}
+          </span>
+          {description ? (
+            <span className={cn("text-caption text-fg-3", CLAMP_TEXT)}>
+              {description}
+            </span>
+          ) : null}
         </span>
-      ) : null}
-      {href ? (
-        <ChevronRight
-          aria-hidden="true"
-          className="size-5 shrink-0 text-fg-3"
-        />
+      </span>
+      {trailing || href ? (
+        <span className="ml-auto flex shrink-0 items-center gap-3">
+          {trailing ? (
+            <span className="flex items-center text-callout text-fg-2">
+              {trailing}
+            </span>
+          ) : null}
+          {href ? (
+            <ChevronRight
+              aria-hidden="true"
+              className="size-5 shrink-0 text-fg-3"
+            />
+          ) : null}
+        </span>
       ) : null}
     </>
   );
 
   const rowClass = cn(
-    "flex min-h-13 items-center gap-3 px-4 py-2",
+    "flex min-h-13 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2",
     description && "min-h-16",
     className,
   );

@@ -36,7 +36,7 @@ export function BalanceHero({
   return (
     <section
       aria-labelledby="saldo-em-contas"
-      className="rounded-card bg-surface p-5 shadow-card"
+      className="@container rounded-card bg-surface p-5 shadow-card"
     >
       <Link
         href="/contas"
@@ -57,7 +57,7 @@ export function BalanceHero({
         />
       </Link>
 
-      <div className="mt-3 flex">
+      <div className="mt-3 flex flex-wrap">
         <MonthChangeChip cents={monthChangeCents} monthName={monthName} />
       </div>
 
@@ -65,9 +65,9 @@ export function BalanceHero({
 
       <div
         data-tip="forecast"
-        className="flex items-center justify-between gap-3"
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
       >
-        <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="@container flex min-w-0 flex-[1_1_10rem] flex-col gap-0.5">
           <span className="text-caption text-fg-3">
             Previsto para {untilLabel}
           </span>
@@ -75,6 +75,8 @@ export function BalanceHero({
             cents={forecast.forecastCents}
             variant="headline"
             tone="neutral"
+            size="1.125rem"
+            fit
             className="text-title-3"
           />
           <span className="text-micro text-fg-3">
@@ -96,8 +98,8 @@ function MonthChangeChip({
 }) {
   if (cents === 0) {
     return (
-      <span className="inline-flex h-7.5 items-center gap-1.5 rounded-full bg-surface-2 px-3 text-caption font-semibold text-fg-2">
-        <Minus aria-hidden="true" className="size-4" />
+      <span className="inline-flex min-h-7.5 items-center gap-x-1.5 rounded-full @max-tight:items-start @max-tight:rounded-control bg-surface-2 px-3 py-1 text-caption font-semibold text-fg-2">
+        <Minus aria-hidden="true" className="size-4 shrink-0" />
         Sem variação em {monthName}
       </span>
     );
@@ -107,7 +109,7 @@ function MonthChangeChip({
   return (
     <span
       className={cn(
-        "inline-flex h-7.5 items-center gap-1.5 rounded-full px-3 text-caption font-semibold",
+        "inline-flex min-h-7.5 flex-wrap items-center gap-x-1.5 rounded-full px-3 py-1 text-caption font-semibold",
         up ? "bg-primary-soft text-on-primary-soft" : "bg-surface-2 text-fg-2",
       )}
     >

@@ -61,7 +61,7 @@ export function ChartLegend({
       <ul
         className={cn(
           "grid gap-2",
-          entries.length === 3 ? "grid-cols-3" : "grid-cols-2",
+          "grid-cols-[repeat(auto-fit,minmax(min(100%,5.5rem),1fr))]",
           className,
         )}
       >
@@ -69,7 +69,7 @@ export function ChartLegend({
           <li key={entry.key} className="flex min-w-0 flex-col gap-0.5">
             <span className="flex items-center gap-1.5 text-caption font-semibold text-fg-3">
               <LegendSwatch color={entry.color} shape={entry.shape} />
-              <span className="truncate">{entry.label}</span>
+              <span className="min-w-0 break-words">{entry.label}</span>
             </span>
             {entry.value !== undefined ? (
               <span className="text-headline text-fg">{entry.value}</span>

@@ -266,9 +266,9 @@ function GoalHero({
   return (
     <Card asChild className={cn("flex flex-col gap-4 p-5", className)}>
       <section aria-label="Progresso da meta">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           <Ring value={goal.progress} size={120} label={goal.name} />
-          <div className="flex min-w-0 flex-1 flex-col items-start">
+          <div className="@container flex min-w-0 flex-[1_1_9rem] flex-col items-start">
             <span className="text-caption font-semibold text-fg-3">
               Guardado
             </span>

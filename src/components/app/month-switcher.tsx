@@ -40,7 +40,7 @@ export function MonthSwitcher({
   const previous = shiftMonth(month, -1);
   const next = shiftMonth(month, 1);
   const arrowClass =
-    "inline-flex size-11 shrink-0 items-center justify-center rounded-full text-fg-2 transition-[background-color,scale] duration-100 hover:bg-surface-2 active:scale-94 active:bg-surface-3";
+    "inline-flex size-(--target) shrink-0 items-center justify-center rounded-full text-fg-2 transition-[background-color,scale] duration-100 hover:bg-surface-2 active:scale-94 active:bg-surface-3";
 
   return (
     <div
@@ -50,7 +50,7 @@ export function MonthSwitcher({
         className,
       )}
     >
-      <div className="flex items-center gap-1">
+      <div className="grid grid-cols-[auto_minmax(0,9.5rem)_auto] items-center gap-1">
         <Link
           href={hrefFor(previous)}
           aria-label={`Mês anterior: ${monthLabel(previous)}`}
@@ -60,7 +60,7 @@ export function MonthSwitcher({
         </Link>
         <p
           aria-live="polite"
-          className="min-w-38 text-center text-headline text-fg"
+          className="text-center text-headline text-balance break-words text-fg"
         >
           {monthLabel(month)}
         </p>
@@ -75,7 +75,7 @@ export function MonthSwitcher({
       {month === current ? null : (
         <Link
           href={hrefFor(current)}
-          className="relative inline-flex h-8 items-center rounded-full bg-primary-soft px-3 text-caption font-semibold text-on-primary-soft transition-transform duration-100 after:absolute after:inset-x-0 after:-inset-y-1.5 active:scale-97"
+          className="relative inline-flex min-h-8 items-center rounded-full bg-primary-soft px-3 py-1 text-center text-caption text-balance font-semibold text-on-primary-soft transition-transform duration-100 after:absolute after:inset-x-0 after:-inset-y-1.5 active:scale-97"
         >
           Voltar para hoje
         </Link>

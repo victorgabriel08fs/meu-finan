@@ -255,7 +255,7 @@ export function GoalProjectionChart({
           return (
             <span
               key={`${item.position}-${item.label}`}
-              className="absolute top-0 whitespace-nowrap text-micro text-fg-3"
+              className="absolute top-0 whitespace-nowrap text-micro text-fg-3 @max-tight:[&:not(:first-child):not(:last-child)]:hidden"
               style={{
                 left: `${percent}%`,
                 transform: `translateX(${ANCHOR_SHIFT[labelAnchor(percent)]})`,

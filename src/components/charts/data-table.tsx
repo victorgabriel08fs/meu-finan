@@ -88,7 +88,7 @@ export function DataTable({
             >
               <th
                 scope="row"
-                className="py-2 pr-2 text-left font-semibold whitespace-nowrap text-fg-2"
+                className="py-2 pr-2 text-left font-semibold break-words text-fg-2"
               >
                 {row.header}
               </th>

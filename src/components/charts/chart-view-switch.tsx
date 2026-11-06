@@ -26,15 +26,19 @@ export function ChartViewSwitch({
       {showTable ? table : chart}
       <div
         className={cn(
-          "mt-3 flex items-center gap-3 border-t border-border pt-2",
+          "mt-3 flex flex-wrap items-center gap-x-3 border-t border-border pt-2",
           note ? "justify-between" : "justify-end",
         )}
       >
-        {note ? <p className="text-caption text-fg-3">{note}</p> : null}
+        {note ? (
+          <p className="min-w-0 flex-[1_1_5rem] text-caption text-fg-3">
+            {note}
+          </p>
+        ) : null}
         <Button
           variant="ghost"
           size="sm"
-          className="-mr-2"
+          className="-mr-2 ml-auto max-w-full @max-tight:items-start @max-tight:text-left"
           onClick={() => setShowTable((value) => !value)}
         >
           {showTable ? (

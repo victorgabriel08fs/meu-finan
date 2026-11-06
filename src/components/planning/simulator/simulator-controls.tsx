@@ -416,13 +416,13 @@ function TermControl({
         }}
         className="h-11 w-full cursor-pointer accent-primary"
       />
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <span className="text-caption text-fg-3">
           {years ? "De 1 a 50 anos" : "De 1 a 600 meses"}
         </span>
         <SegmentedControl
           ariaLabel="Unidade do prazo"
-          className="w-44"
+          className="w-[min(11rem,100%)]"
           options={[
             { value: "years", label: "Anos" },
             { value: "months", label: "Meses" },

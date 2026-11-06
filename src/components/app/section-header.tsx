@@ -23,14 +23,16 @@ export function SectionHeader({
     <div
       data-slot="section-header"
       className={cn(
-        "mb-3 flex min-h-6 items-center justify-between gap-3",
+        "mb-3 flex min-h-6 flex-wrap items-center justify-between gap-x-3 gap-y-1",
         className,
       )}
     >
-      <h2 id={id} className="text-overline uppercase text-fg-3">
+      <h2 id={id} className="min-w-0 text-overline uppercase text-fg-3">
         {title}
       </h2>
-      {action}
+      {action ? (
+        <div className="ml-auto shrink-0 whitespace-nowrap">{action}</div>
+      ) : null}
     </div>
   );
 }

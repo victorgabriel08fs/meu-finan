@@ -104,7 +104,7 @@ async function Calendar({
     <>
       {switcher}
       {phase === "future" ? null : (
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4">
+        <div className="grid grid-cols-fit gap-2 md:grid-cols-3 md:gap-4">
           <KpiTile
             label="Gasto no mês"
             value={<CompactMoney cents={stats.totalCents} />}
@@ -120,7 +120,7 @@ async function Calendar({
             support={daysWithoutLabel(stats.daysWithout)}
           />
           <KpiTile
-            className="col-span-2 md:col-span-1"
+            className="col-span-full md:col-span-1"
             label="Dia mais caro"
             value={stats.top ? shortDateLabel(stats.top.date) : "—"}
             support={
@@ -160,10 +160,10 @@ function CalendarSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-4">
       <ReportMonthSwitcherSkeleton />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4">
+      <div className="grid grid-cols-fit gap-2 md:grid-cols-3 md:gap-4">
         <Skeleton className="h-24 rounded-card" />
         <Skeleton className="h-24 rounded-card" />
-        <Skeleton className="col-span-2 h-24 rounded-card md:col-span-1" />
+        <Skeleton className="col-span-full h-24 rounded-card md:col-span-1" />
       </div>
       <div className="grid grid-cols-1 items-start gap-3 md:gap-4 lg:grid-cols-2">
         <Skeleton className="h-112 rounded-card" />

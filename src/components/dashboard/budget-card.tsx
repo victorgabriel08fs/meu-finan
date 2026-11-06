@@ -10,6 +10,7 @@ import {
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { formatBRL } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
 import type { BudgetItem, BudgetOverview } from "@/server/domain/budgets";
@@ -26,7 +27,10 @@ export function StatusPill({ status }: { status: MeterStatus }) {
   return (
     <StatusLabel
       status={status}
-      className={cn("h-6.5 rounded-full px-2.5 font-bold", PILL[status])}
+      className={cn(
+        "ml-auto min-h-6.5 rounded-full px-2.5 py-0.5 font-bold",
+        PILL[status],
+      )}
     />
   );
 }
@@ -157,33 +161,40 @@ export function BudgetCard({
           {items.slice(0, 3).map((item) => (
             <li
               key={item.id}
-              className="flex min-h-13 items-center gap-3 border-t border-border py-2"
+              className="flex min-h-13 flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2"
             >
-              <CategoryIcon
-                icon={item.categoryIcon}
-                color={item.categoryColor}
-                size="sm"
-                className="size-8"
-              />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body font-semibold text-fg">
-                  {item.categoryName}
-                </span>
-                <span className="truncate text-caption text-fg-3">
-                  <Money
-                    cents={item.spentCents}
-                    variant="caption"
-                    tone="neutral"
-                    className="text-inherit"
-                  />{" "}
-                  de{" "}
-                  <Money
-                    cents={item.budgetCents}
-                    variant="caption"
-                    tone="neutral"
-                    className="text-inherit"
-                  />
-                </span>
+              <div className="flex min-w-0 flex-[1_1_6rem] items-center gap-3">
+                <CategoryIcon
+                  icon={item.categoryIcon}
+                  color={item.categoryColor}
+                  size="sm"
+                  className="size-8"
+                />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span
+                    className={cn(
+                      "text-body font-semibold text-fg",
+                      CLAMP_TITLE,
+                    )}
+                  >
+                    {item.categoryName}
+                  </span>
+                  <span className={cn("text-caption text-fg-3", CLAMP_TEXT)}>
+                    <Money
+                      cents={item.spentCents}
+                      variant="caption"
+                      tone="neutral"
+                      className="text-inherit"
+                    />{" "}
+                    de{" "}
+                    <Money
+                      cents={item.budgetCents}
+                      variant="caption"
+                      tone="neutral"
+                      className="text-inherit"
+                    />
+                  </span>
+                </div>
               </div>
               <StatusPill status={item.pace.status} />
             </li>

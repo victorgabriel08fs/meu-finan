@@ -87,7 +87,7 @@ export function SpendingCalendarBlock({
             caption={`Gastos por dia em ${monthTitle}. Escolha um dia para ver as despesas no relatório.`}
           />
           {phase === "future" ? null : (
-            <div className="grid grid-cols-2 gap-2 @min-[34rem]:grid-cols-3 @2xl:grid-cols-1">
+            <div className="grid grid-cols-fit gap-2 @min-[34rem]:grid-cols-3 @2xl:grid-cols-1">
               <KpiTile
                 className={TILE}
                 label="Gasto no mês"
@@ -105,7 +105,7 @@ export function SpendingCalendarBlock({
                 support={daysWithoutLabel(stats.daysWithout)}
               />
               <KpiTile
-                className={`col-span-2 @min-[34rem]:col-span-1 ${TILE}`}
+                className={`col-span-full @min-[34rem]:col-span-1 ${TILE}`}
                 label="Dia mais caro"
                 value={stats.top ? shortDateLabel(stats.top.date) : "—"}
                 support={

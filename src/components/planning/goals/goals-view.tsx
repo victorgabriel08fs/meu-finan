@@ -9,9 +9,11 @@ import { Ring } from "@/components/finance/ring";
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TITLE } from "@/components/ui/clamp";
 import { Sheet } from "@/components/ui/sheet";
 import type { GoalProjection, YearMonth } from "@/lib/finance";
 import { formatPercent } from "@/lib/format/number";
+import { cn } from "@/lib/utils";
 import { useSheetTarget } from "../form/use-sheet";
 import { type MarketRatesView, marketRateLabel } from "../market";
 import { type GoalAccount, type GoalFormGoal, GoalSheet } from "./goal-sheet";
@@ -82,6 +84,7 @@ export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
                   cents={saved}
                   variant="title"
                   tone="neutral"
+                  size="2rem"
                   className="text-[2rem] leading-[2.375rem]"
                 />
                 <span className="text-callout text-fg-3">
@@ -198,27 +201,34 @@ function GoalCard({
       className="relative flex flex-col gap-3 transition-colors duration-100 has-[a:active]:bg-surface-2"
     >
       <article aria-labelledby={titleId}>
-        <div className="flex items-center gap-3.5">
-          <Ring value={goal.progress} size={56} label={goal.name} />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <h3 id={titleId} className="truncate text-headline text-fg">
-              <Link
-                href={goalHref(goal.id)}
-                className="outline-0 after:absolute after:inset-0 after:rounded-card focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+          <div className="flex min-w-0 flex-[1_1_8rem] items-center gap-3.5">
+            <Ring value={goal.progress} size={56} label={goal.name} />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <h3
+                id={titleId}
+                className={cn("text-headline text-fg", CLAMP_TITLE)}
               >
-                {goal.name}
-              </Link>
-            </h3>
-            <p className="text-caption text-fg-3 tabular-nums">
-              {formatMoneyShort(goal.currentCents)} de{" "}
-              {formatMoneyShort(goal.targetCents)}
-            </p>
+                <Link
+                  href={goalHref(goal.id)}
+                  className="outline-0 after:absolute after:inset-0 after:rounded-card focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
+                >
+                  {goal.name}
+                </Link>
+              </h3>
+              <p className="text-caption text-fg-3 tabular-nums">
+                {formatMoneyShort(goal.currentCents)} de{" "}
+                {formatMoneyShort(goal.targetCents)}
+              </p>
+            </div>
           </div>
-          <GoalStatusPill status={goal.projection.status} />
-          <ChevronRight
-            aria-hidden="true"
-            className="-mr-1 size-5 shrink-0 text-fg-3"
-          />
+          <div className="ml-auto flex items-center gap-3.5">
+            <GoalStatusPill status={goal.projection.status} />
+            <ChevronRight
+              aria-hidden="true"
+              className="-mr-1 size-5 shrink-0 text-fg-3"
+            />
+          </div>
         </div>
         <p className="border-t border-border pt-3 text-callout text-fg-2">
           {sentence.map((segment, index) =>
@@ -233,8 +243,8 @@ function GoalCard({
             ),
           )}
         </p>
-        <div className="flex items-center justify-between gap-2">
-          <p className="min-w-0 text-caption font-semibold text-fg-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <p className="min-w-0 flex-[1_1_8rem] text-caption font-semibold text-fg-3">
             {planLine({
               monthlyPlanCents: goal.monthlyPlanCents,
               rateLabel: goal.rateLabel,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Money, spokenAmount } from "@/components/money/money";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import {
   relativeDayLabel,
   shortDateLabel,
@@ -101,7 +102,7 @@ export function TransactionRow({
     <div
       data-slot="transaction-row"
       className={cn(
-        "relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors duration-100",
+        "@container relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors duration-100",
         href && "has-[a:active]:bg-surface-2",
         className,
       )}
@@ -109,7 +110,7 @@ export function TransactionRow({
       <div className="flex min-w-0 flex-[1_1_9rem] items-center gap-3">
         <CategoryIcon icon={icon} color={color} size="md" dashed={pending} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <p className="truncate text-headline text-fg">
+          <p className={cn("text-headline text-fg", CLAMP_TITLE)}>
             {href ? (
               <Link
                 href={href}
@@ -123,7 +124,7 @@ export function TransactionRow({
             )}
           </p>
           <p className="flex min-w-0 items-center gap-1.5 text-caption text-fg-3">
-            <span className="truncate">{subtitle}</span>
+            <span className={cn("min-w-0", CLAMP_TEXT)}>{subtitle}</span>
             {txn.recurring ? (
               <Repeat
                 role="img"
@@ -132,7 +133,7 @@ export function TransactionRow({
               />
             ) : null}
             {txn.installment ? (
-              <Badge tone="neutral" className="h-4.5 px-1 text-micro">
+              <Badge tone="neutral" className="min-h-4.5 px-1 py-0 text-micro">
                 {txn.installment.number}/{txn.installment.count}
               </Badge>
             ) : null}
@@ -149,7 +150,7 @@ export function TransactionRow({
             className={cn(pending && "text-fg-2")}
           />
           {due ? (
-            <Badge tone={due.tone} className="h-5 text-micro">
+            <Badge tone={due.tone} className="min-h-5 py-0 text-micro">
               {due.text}
             </Badge>
           ) : null}

@@ -39,7 +39,7 @@ export function CardVisual({
   return (
     <section
       aria-label={`Limite do ${name}`}
-      className="relative isolate overflow-hidden rounded-card bg-[#0f2a20] p-5 text-white shadow-card dark:ring-1 dark:ring-white/10"
+      className="@container relative isolate overflow-hidden rounded-card bg-[#0f2a20] p-5 text-white shadow-card dark:ring-1 dark:ring-white/10"
     >
       {/* Soft light in a corner, so it reads as a physical card. */}
       <div
@@ -66,6 +66,7 @@ export function CardVisual({
             variant="title"
             tone="income"
             sign="never"
+            size="1.75rem"
             className="text-title-1 text-white"
           />
           <span className="text-callout font-semibold text-[#a7c4b8]">

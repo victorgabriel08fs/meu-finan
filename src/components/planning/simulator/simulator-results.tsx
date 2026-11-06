@@ -202,23 +202,23 @@ export function EvolutionCard({
   return (
     <Card asChild className="flex flex-col gap-3">
       <section aria-labelledby="simulador-evolucao">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <h2 id="simulador-evolucao" className="text-headline text-fg">
             Evolução
           </h2>
-          <span className="inline-flex h-6.5 items-center rounded-full bg-surface-2 px-2.5 text-caption font-bold text-fg tabular-nums">
+          <span className="inline-flex min-h-6.5 items-center rounded-full bg-surface-2 px-2.5 py-0.5 text-caption font-bold text-fg tabular-nums">
             {pointLabel(month)}
           </span>
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption font-semibold text-fg-2">
-          <li className="flex items-center gap-1.5">
+          <li className="flex flex-wrap items-center gap-x-1.5">
             <LegendSwatch color={INVESTED} />
             Investido
             <strong className="text-fg tabular-nums">
               {wholeReais(toCents(invested))}
             </strong>
           </li>
-          <li className="flex items-center gap-1.5">
+          <li className="flex flex-wrap items-center gap-x-1.5">
             <LegendSwatch color={INTEREST} />
             Juros
             <strong className="text-fg tabular-nums">

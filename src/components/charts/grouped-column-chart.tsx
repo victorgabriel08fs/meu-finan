@@ -101,7 +101,7 @@ export function GroupedColumnChart({
   }
 
   return (
-    <div className={cn("relative pt-5", className)}>
+    <div className={cn("@container relative pt-5", className)}>
       <div className={cn("relative", plotClassName)}>
         {ticks.values.map((value) => (
           <div
@@ -140,7 +140,7 @@ export function GroupedColumnChart({
                 aria-pressed={selected === index}
                 tabIndex={index === focusIndex ? 0 : -1}
                 onClick={() => onSelect(index)}
-                className="flex h-full min-w-6 flex-1 items-end justify-center gap-0.5 rounded-t-chip px-0.5 -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/50"
+                className="flex h-full min-w-6 flex-1 items-end @max-tight:min-w-[12px] justify-center gap-0.5 rounded-t-chip px-0.5 -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/50"
               >
                 {/* The name, from the content: privacy mode (CSS, like
                     <Money>) swaps it for the one without amounts, which an
@@ -191,7 +191,7 @@ export function GroupedColumnChart({
           <span
             key={group.key}
             className={cn(
-              "min-w-6 flex-1 truncate text-center text-micro",
+              "min-w-6 flex-1 truncate text-center text-micro @max-tight:min-w-[12px] @max-tight:overflow-visible @max-tight:text-clip @max-tight:[&:not(:nth-child(3n+1))]:invisible @max-tighter:[&:not(:nth-child(6n+1))]:invisible",
               selected === index ? "font-bold text-fg" : "text-fg-3",
             )}
           >

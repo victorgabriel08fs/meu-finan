@@ -65,7 +65,7 @@ export function InvoiceSummaryCard({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Badge
           tone={meta.tone}
-          className="h-6.5 gap-1.5 rounded-full px-2.5 font-bold"
+          className="min-h-6.5 gap-1.5 rounded-full px-2.5 py-0.5 font-bold"
         >
           <StatusIcon status={invoice.status} />
           {meta.label}
@@ -79,6 +79,7 @@ export function InvoiceSummaryCard({
         cents={invoice.totalCents}
         variant="title"
         tone="neutral"
+        size="1.75rem"
         className="text-title-1"
       />
       <p className="text-callout text-fg-2">
@@ -110,7 +111,7 @@ export function InvoiceSummaryCard({
       ) : null}
 
       {split ? (
-        <dl className="mt-1 grid grid-cols-2 gap-2 border-y border-border py-3">
+        <dl className="mt-1 grid grid-cols-fit gap-2 border-y border-border py-3">
           <div className="flex flex-col gap-0.5">
             <dt className="text-micro font-semibold text-fg-3">
               Compras à vista

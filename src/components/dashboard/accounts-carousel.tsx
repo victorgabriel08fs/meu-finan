@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import type { AccountListItem } from "@/server/domain/accounts";
 
 const cardClass =
-  "flex h-28 w-39 flex-col justify-between rounded-card p-3.5 transition-[scale,background-color] duration-100 ease-standard active:scale-97 focus-visible:-outline-offset-2";
+  "@container flex min-h-28 w-[min(9.75rem,calc(100vw-5rem))] flex-col justify-between gap-2 rounded-card p-3.5 transition-[scale,background-color] duration-100 ease-standard active:scale-97 focus-visible:-outline-offset-2";
 
 /**
  * Accounts carousel of the Início (doc 02 §6.3): 156×112 cards with icon,
@@ -55,7 +55,7 @@ export function AccountsCarousel({
                   className="size-8 rounded-chip"
                 />
                 {isCard ? (
-                  <span className="rounded-badge bg-surface-2 px-1.5 py-0.5 text-micro font-bold text-fg-2">
+                  <span className="max-w-full rounded-badge bg-surface-2 px-1.5 py-0.5 text-micro font-bold text-balance text-fg-2">
                     {invoiceCents === undefined ? "Em aberto" : "Fatura atual"}
                   </span>
                 ) : null}
@@ -72,6 +72,8 @@ export function AccountsCarousel({
                   }
                   variant="headline"
                   tone="neutral"
+                  size="1.0625rem"
+                  fit
                   className="text-[1.0625rem] leading-5.5 font-bold"
                 />
               </span>

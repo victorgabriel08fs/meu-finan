@@ -4,6 +4,7 @@ import { Ring } from "@/components/finance/ring";
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { cn } from "@/lib/utils";
 import type { GoalItem } from "@/server/domain/goals";
 
@@ -46,37 +47,44 @@ export function GoalsCard({
           return (
             <li
               key={goal.id}
-              className="relative -mx-4 flex min-h-18 items-center gap-3 px-4 py-2 transition-colors duration-100 has-[a:active]:bg-surface-2"
+              className="relative -mx-4 flex min-h-18 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors duration-100 has-[a:active]:bg-surface-2"
             >
-              <Ring value={goal.progress} size={44} label={goal.name} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body font-semibold text-fg">
-                  <Link
-                    href={`${href}/${goal.id}`}
-                    className="outline-0 after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
+              <div className="flex min-w-0 flex-[1_1_6rem] items-center gap-3">
+                <Ring value={goal.progress} size={44} label={goal.name} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span
+                    className={cn(
+                      "text-body font-semibold text-fg",
+                      CLAMP_TITLE,
+                    )}
                   >
-                    {goal.name}
-                  </Link>
-                </span>
-                <span className="truncate text-caption text-fg-3">
-                  <Money
-                    cents={goal.currentCents}
-                    variant="caption"
-                    tone="neutral"
-                    className="text-inherit"
-                  />{" "}
-                  de{" "}
-                  <Money
-                    cents={goal.targetCents}
-                    variant="caption"
-                    tone="neutral"
-                    className="text-inherit"
-                  />
-                </span>
+                    <Link
+                      href={`${href}/${goal.id}`}
+                      className="outline-0 after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus focus-visible:after:outline-solid"
+                    >
+                      {goal.name}
+                    </Link>
+                  </span>
+                  <span className={cn("text-caption text-fg-3", CLAMP_TEXT)}>
+                    <Money
+                      cents={goal.currentCents}
+                      variant="caption"
+                      tone="neutral"
+                      className="text-inherit"
+                    />{" "}
+                    de{" "}
+                    <Money
+                      cents={goal.targetCents}
+                      variant="caption"
+                      tone="neutral"
+                      className="text-inherit"
+                    />
+                  </span>
+                </div>
               </div>
               <span
                 className={cn(
-                  "inline-flex h-6.5 shrink-0 items-center rounded-full px-2.5 text-caption font-bold",
+                  "ml-auto inline-flex min-h-6.5 max-w-full shrink-0 items-center rounded-full px-2.5 py-0.5 text-center text-caption font-bold text-balance",
                   status.className,
                 )}
               >

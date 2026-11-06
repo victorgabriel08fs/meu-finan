@@ -46,7 +46,7 @@ export function StatTile({
             {icon}
           </span>
         ) : null}
-        <span className="truncate text-caption text-fg-2">{label}</span>
+        <span className="min-w-0 text-caption text-fg-2">{label}</span>
       </div>
       <div className="mt-3 text-title-2 text-fg">{value}</div>
       {support ? (

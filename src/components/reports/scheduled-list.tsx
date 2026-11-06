@@ -4,7 +4,9 @@ import { Money } from "@/components/money/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TITLE } from "@/components/ui/clamp";
 import { shortDateLabel } from "@/lib/format/date";
+import { cn } from "@/lib/utils";
 import type { CashFlowScheduledItem } from "@/server/domain/reports";
 
 const LIMIT = 6;
@@ -44,22 +46,31 @@ export function ScheduledList({
             {shown.map((item) => (
               <li
                 key={`${item.date}-${item.kind}-${item.label}-${item.amountCents}`}
-                className="flex min-h-12 items-center gap-3 py-2"
+                className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 py-2"
               >
                 <span className="w-12 shrink-0 text-caption font-semibold text-fg-3 tabular-nums">
                   {shortDateLabel(item.date)}
                 </span>
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="truncate text-callout font-semibold text-fg">
+                <span className="flex min-w-0 flex-[1_1_4rem] items-center gap-2">
+                  <span
+                    className={cn(
+                      "min-w-0 text-callout font-semibold text-fg",
+                      CLAMP_TITLE,
+                    )}
+                  >
                     {item.label}
                   </span>
                   {item.overdue ? (
-                    <Badge tone="danger" className="h-5 text-micro">
+                    <Badge tone="danger" className="min-h-5 py-0 text-micro">
                       Atrasado
                     </Badge>
                   ) : null}
                 </span>
-                <Money cents={item.amountCents} variant="callout" />
+                <Money
+                  cents={item.amountCents}
+                  variant="callout"
+                  className="ml-auto"
+                />
               </li>
             ))}
           </ul>

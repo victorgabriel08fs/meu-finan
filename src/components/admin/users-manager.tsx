@@ -5,6 +5,7 @@ import { SectionHeader } from "@/components/app/section-header";
 import { useSheetTarget } from "@/components/planning/form/use-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CLAMP_TITLE } from "@/components/ui/clamp";
 import { Sheet } from "@/components/ui/sheet";
 import { shortDateLabel } from "@/lib/format/date";
 import {
@@ -62,7 +63,7 @@ export function UsersManager({
         <SectionHeader id="admin-pessoas" title="Pessoas" />
         <ul
           aria-labelledby="admin-pessoas"
-          className="overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border"
+          className="@container overflow-hidden rounded-2xl bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border"
         >
           {users.map((user) => (
             <UserRow
@@ -154,12 +155,14 @@ function UserRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-19 w-full items-center gap-3 px-4 py-3 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
+        className="flex min-h-19 w-full items-center gap-3 px-4 py-3 @max-tight:gap-2 @max-tight:px-3 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
       >
         <UserAvatar name={user.name} muted={user.banned} />
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-body font-semibold text-fg">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span
+              className={`${CLAMP_TITLE} min-w-0 text-body font-semibold text-fg`}
+            >
               {user.name}
             </span>
             {user.isSelf ? (
@@ -172,7 +175,9 @@ function UserRow({
               </Badge>
             ) : null}
           </span>
-          <span className="truncate text-caption text-fg-3">{user.email}</span>
+          <span className="min-w-0 text-caption [overflow-wrap:anywhere] text-fg-3">
+            {user.email}
+          </span>
           <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <Badge tone={status.tone}>{status.label}</Badge>
             <span className="text-caption text-fg-3">{hint}</span>
@@ -181,7 +186,7 @@ function UserRow({
         <span className="sr-only">Abrir</span>
         <ChevronRight
           aria-hidden="true"
-          className="size-5 shrink-0 text-fg-3"
+          className="size-5 shrink-0 text-fg-3 @max-tight:hidden"
         />
       </button>
     </li>

@@ -119,13 +119,13 @@ async function CashFlow({
     <>
       {switcher}
       <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-3">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 lg:col-span-3">
+        <div className="grid grid-cols-fit gap-2 md:grid-cols-3 md:gap-4 lg:col-span-3">
           <CashFlowKpiTiles
             report={report}
             start={range.start}
             end={range.end}
             today={ctx.todayIso}
-            lastTileClassName="col-span-2 md:col-span-1"
+            lastTileClassName="col-span-full md:col-span-1"
           />
         </div>
 
@@ -165,7 +165,7 @@ function CashFlowSkeleton() {
     <LoadingRegion className="flex flex-col gap-4">
       <ReportMonthSwitcherSkeleton />
       <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-3">
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4 lg:col-span-3">
+        <div className="grid grid-cols-fit gap-2 md:grid-cols-3 md:gap-4 lg:col-span-3">
           <Skeleton className="h-24 rounded-card" />
           <Skeleton className="h-24 rounded-card" />
           <Skeleton className="col-span-2 h-24 rounded-card md:col-span-1" />
