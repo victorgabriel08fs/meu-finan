@@ -22,14 +22,46 @@ export type CashFlowMarker = {
   placement: "above" | "below";
 };
 
-/** "Fatura Cartão Principal" → "Fatura Cartão…": short direct labels (§9.3). */
-export function shortLabel(text: string, max = 14): string {
+/** Words that cannot end a label: "Mensalidade da…" says nothing. */
+const LINKING_WORDS = new Set([
+  "de",
+  "da",
+  "do",
+  "das",
+  "dos",
+  "e",
+  "em",
+  "no",
+  "na",
+  "nos",
+  "nas",
+  "a",
+  "o",
+  "as",
+  "os",
+  "para",
+  "com",
+  "por",
+]);
+
+/**
+ * "Fatura Cartão Principal" → "Fatura Cartão…": short direct labels (§9.3).
+ * Cuts at a word, and never leaves a linking word at the end ("Mensalidade
+ * da faculdade" → "Mensalidade…"); a first word longer than the room is cut
+ * in the middle of the word.
+ */
+export function shortLabel(text: string, max = 16): string {
   const clean = text.trim().replace(/\s+/g, " ");
   if (clean.length <= max) return clean;
   const cut = clean.slice(0, max);
   const space = cut.lastIndexOf(" ");
-  const head = space >= 6 ? cut.slice(0, space) : cut.slice(0, max - 1);
-  return `${head.trimEnd()}…`;
+  if (space < 6) return `${cut.slice(0, max - 1).trimEnd()}…`;
+  const words = cut.slice(0, space).split(" ");
+  while (words.length > 1 && LINKING_WORDS.has(words.at(-1) ?? "")) {
+    words.pop();
+  }
+  const head = words.join(" ");
+  return `${(head.length >= 6 ? head : cut.slice(0, max - 1)).trimEnd()}…`;
 }
 
 /**
