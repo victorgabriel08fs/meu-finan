@@ -100,7 +100,7 @@ export function Keypad({ onKey, className }: KeypadProps) {
               onPointerCancel={isBack ? endHold : undefined}
               onContextMenu={(event) => event.preventDefault()}
               className={cn(
-                "flex h-13 items-center justify-center rounded-control text-title-2 select-none",
+                "flex h-[clamp(44px,9cqh,3.25rem)] items-center justify-center rounded-control text-title-2 select-none",
                 "transition-[background-color,scale] duration-100 ease-standard active:scale-97",
                 isOperator
                   ? "bg-primary-soft text-on-primary-soft active:brightness-95"

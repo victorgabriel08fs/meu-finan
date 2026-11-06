@@ -535,6 +535,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
   return (
     <SheetContent
       title="Nova transação"
+      fullHeight
       className="h-[calc(100dvh-max(2rem,env(safe-area-inset-top)+0.5rem))] max-h-none md:h-fit md:max-h-[min(92dvh,54rem)] md:max-w-120"
       bodyClassName="flex flex-col gap-4"
       footer={footer}
