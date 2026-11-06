@@ -293,6 +293,20 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/ajustes/categorias", label: "Ver categorias" },
   },
+  {
+    id: "novidade-categorias-organizar",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the choices live inside sheets and the
+    // detail has no anchor of its own.
+    routes: [],
+    anchor: null,
+    title: "Categorias mais organizadas",
+    body: "Mescle categorias, mude a ordem delas e passe os lançamentos para outra ao arquivar. Em Relatórios, toque numa categoria para ver o detalhe.",
+    since: "2026-11-06",
+    order: 13,
+    icon: "sparkles",
+    link: { href: "/ajustes/categorias", label: "Ver categorias" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
