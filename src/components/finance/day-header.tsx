@@ -19,18 +19,21 @@ export function DayHeader({ label, totalCents, className }: DayHeaderProps) {
     <div
       data-slot="day-header"
       className={cn(
-        "sticky top-(--app-bar-h) z-5 -mx-gutter flex h-10 items-center justify-between gap-3 bg-bg/92 px-gutter backdrop-blur-md",
+        "sticky top-(--app-bar-h) z-5 -mx-gutter flex min-h-10 flex-wrap items-center gap-x-3 bg-bg/92 px-gutter py-1 backdrop-blur-md",
         className,
       )}
     >
-      <h2 className="truncate text-caption font-bold text-fg-2">{label}</h2>
+      <h2 className="min-w-0 flex-[1_1_8rem] truncate text-caption font-bold text-fg-2">
+        {label}
+      </h2>
+      {/* Never cut (§8): with large text the total wraps under the day. */}
       {totalCents === undefined ? null : (
         <Money
           cents={totalCents}
           variant="caption"
           sign="always"
           tone="neutral"
-          className="font-semibold text-fg-2"
+          className="ml-auto shrink-0 font-semibold text-fg-2"
         />
       )}
     </div>

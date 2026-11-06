@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { Money } from "@/components/money/money";
-import { cn } from "@/lib/utils";
 import type { StatementSummary } from "./statement-data";
 
 type StatementSummaryCardProps = {
@@ -17,8 +16,9 @@ type StatementSummaryCardProps = {
 
 /**
  * Summary of what the statement shows (doc 02 §6.4): Entradas, Saídas and
- * Saldo, following the filters exactly. Values are never cut (§8): below
- * 360px the balance moves to its own line.
+ * Saldo, following the filters exactly. Values are never cut (§8): a value
+ * that does not fit beside the others wraps to the next line, with large
+ * text (200%) as well.
  */
 export function StatementSummaryCard({
   summary,
@@ -58,7 +58,7 @@ export function StatementSummaryCard({
       }
       className="rounded-card bg-surface px-4 py-3.5 shadow-card"
     >
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-2 min-[22.5rem]:grid-cols-3">
+      <dl className="flex flex-wrap gap-x-4 gap-y-2">
         <Stat label={pending ? "A receber" : "Entradas"}>
           <Money
             cents={income}
@@ -68,7 +68,7 @@ export function StatementSummaryCard({
             className="font-bold"
           />
         </Stat>
-        <Stat label={pending ? "A pagar" : "Saídas"} className="border-l pl-3">
+        <Stat label={pending ? "A pagar" : "Saídas"}>
           <Money
             cents={expense}
             variant="callout"
@@ -77,10 +77,7 @@ export function StatementSummaryCard({
             className="font-bold"
           />
         </Stat>
-        <Stat
-          label={pending ? "Saldo previsto" : "Saldo"}
-          className="col-span-2 border-t pt-2 min-[22.5rem]:col-span-1 min-[22.5rem]:border-t-0 min-[22.5rem]:border-l min-[22.5rem]:pt-0 min-[22.5rem]:pl-3"
-        >
+        <Stat label={pending ? "Saldo previsto" : "Saldo"}>
           <Money
             cents={income - expense}
             variant="callout"
@@ -105,11 +102,12 @@ export function StatementSummaryCard({
               a receber
             </span>
           ) : null}
-          {summary.pendingIncomeCents > 0 && summary.pendingExpenseCents > 0 ? (
-            <span aria-hidden="true">·</span>
-          ) : null}
           {summary.pendingExpenseCents > 0 ? (
             <span>
+              {/* The separator travels with the next item: never alone on a line. */}
+              {summary.pendingIncomeCents > 0 ? (
+                <span aria-hidden="true">·&nbsp;</span>
+              ) : null}
               <Money
                 cents={-summary.pendingExpenseCents}
                 variant="caption"
@@ -125,19 +123,10 @@ export function StatementSummaryCard({
   );
 }
 
-function Stat({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: ReactNode;
-}) {
+/** Label over the value; grows to share the row, never shrinks below it. */
+function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div
-      className={cn("flex min-w-0 flex-col gap-0.5 border-border", className)}
-    >
+    <div className="flex flex-[1_0_auto] flex-col gap-0.5">
       <dt className="text-caption font-semibold text-fg-3">{label}</dt>
       <dd>{children}</dd>
     </div>
