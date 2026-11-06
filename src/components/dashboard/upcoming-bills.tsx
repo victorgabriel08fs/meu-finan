@@ -8,6 +8,7 @@ import { CategoryIcon } from "@/components/finance/category-icon";
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { toastWithUndo } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { setPaidAction } from "@/server/actions/transactions";
@@ -114,29 +115,42 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
               <li key={`invoice-${item.id}`}>
                 <Link
                   href={`/cartoes/${item.accountId}`}
-                  className="-mx-4 flex min-h-17 items-center gap-3 px-4 py-2 transition-colors duration-100 hover:bg-surface-2/50 active:bg-surface-2"
+                  className="-mx-4 flex min-h-17 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 transition-colors duration-100 hover:bg-surface-2/50 active:bg-surface-2"
                 >
-                  <CategoryIcon icon="credit-card" color={item.color} />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate text-body font-semibold text-fg">
-                      {item.title}
-                    </span>
-                    <span
-                      className={cn("truncate text-caption", DUE_TONE[tone])}
-                    >
-                      {subtitle}
+                  <span className="flex min-w-0 flex-[1_1_10rem] items-center gap-3">
+                    <CategoryIcon icon="credit-card" color={item.color} />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span
+                        className={cn(
+                          "text-body font-semibold text-fg",
+                          CLAMP_TITLE,
+                        )}
+                      >
+                        {item.title}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-caption",
+                          DUE_TONE[tone],
+                          CLAMP_TEXT,
+                        )}
+                      >
+                        {subtitle}
+                      </span>
                     </span>
                   </span>
-                  <Money
-                    cents={item.amountCents}
-                    variant="headline"
-                    tone="neutral"
-                    className="font-bold"
-                  />
-                  <ChevronRight
-                    aria-hidden="true"
-                    className="-mr-1 size-5 shrink-0 text-fg-3"
-                  />
+                  <span className="ml-auto flex shrink-0 items-center gap-3">
+                    <Money
+                      cents={item.amountCents}
+                      variant="headline"
+                      tone="neutral"
+                      className="font-bold"
+                    />
+                    <ChevronRight
+                      aria-hidden="true"
+                      className="-mr-1 size-5 shrink-0 text-fg-3"
+                    />
+                  </span>
                 </Link>
               </li>
             );
@@ -145,18 +159,27 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
           return (
             <li
               key={`bill-${item.id}`}
-              className="flex min-h-18 items-center gap-3 py-2"
+              className="flex min-h-18 flex-wrap items-center gap-x-3 gap-y-1 py-2"
             >
-              <CategoryIcon icon={item.icon} color={item.color} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-body font-semibold text-fg">
-                  {item.title}
-                </span>
-                <span className={cn("truncate text-caption", DUE_TONE[tone])}>
-                  {subtitle}
-                </span>
+              <div className="flex min-w-0 flex-[1_1_10rem] items-center gap-3">
+                <CategoryIcon icon={item.icon} color={item.color} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span
+                    className={cn(
+                      "text-body font-semibold text-fg",
+                      CLAMP_TITLE,
+                    )}
+                  >
+                    {item.title}
+                  </span>
+                  <span
+                    className={cn("text-caption", DUE_TONE[tone], CLAMP_TEXT)}
+                  >
+                    {subtitle}
+                  </span>
+                </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
+              <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
                 <Money
                   cents={item.amountCents}
                   variant="headline"

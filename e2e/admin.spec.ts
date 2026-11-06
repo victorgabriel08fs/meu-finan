@@ -158,6 +158,89 @@ test("desligar importar_extrato tira a entrada de Ajustes e fecha /importar", as
   expect(errors).toEqual([]);
 });
 
+test("ligar Notificações para uma pessoa concorda com o rótulo e o Desfazer tem 44 px", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const errors = collectErrors(page);
+  await page.goto("/admin/flags");
+  await page
+    .locator('[data-flag="notificacoes_push"]')
+    .getByRole("button", { name: "Ajustar" })
+    .click();
+  const sheet = page.getByRole("dialog", {
+    name: "Notificações por pessoa",
+  });
+  const bruno = sheet.getByRole("radiogroup", {
+    name: "Notificações para Bruno Lima",
+  });
+  await expect(bruno).toBeVisible({ timeout: 30_000 });
+  try {
+    await bruno.getByRole("radio", { name: "Ligado", exact: true }).click();
+    await expect(
+      page.getByText("Notificações ligadas para Bruno."),
+    ).toBeVisible();
+    // The toast's action is a touch target (doc 02 §3.5).
+    const undo = page.getByRole("button", { name: "Desfazer" });
+    await expect(undo).toBeVisible();
+    expect((await undo.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  } finally {
+    // Back to the default, so the other tests still find Bruno without it.
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.request().headers()["next-action"] !== undefined,
+    );
+    await bruno.getByRole("radio", { name: "Padrão" }).click();
+    expect((await saved).ok()).toBe(true);
+    await expect(bruno.getByRole("radio", { name: "Padrão" })).toBeChecked();
+  }
+  expect(errors).toEqual([]);
+});
+
+test("o Início a 1280 px não desloca a barra lateral ao carregar", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    const shifts: string[] = [];
+    Object.assign(window, { __sideNavShifts: shifts });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const shift = entry as PerformanceEntry & {
+          hadRecentInput: boolean;
+          sources?: { node: Node | null }[];
+        };
+        if (shift.hadRecentInput) continue;
+        for (const source of shift.sources ?? []) {
+          const element =
+            source.node instanceof Element
+              ? source.node
+              : source.node?.parentElement;
+          if (
+            element?.closest("aside, nav[aria-label='Navegação principal']")
+          ) {
+            shifts.push(element.tagName.toLowerCase());
+          }
+        }
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.goto("/inicio");
+  await expect(page.locator("h1:visible").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText("Carregando…")).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(1500);
+  const shifts = await page.evaluate(
+    () => (window as unknown as { __sideNavShifts: string[] }).__sideNavShifts,
+  );
+  expect(shifts).toEqual([]);
+});
+
 test.describe("sem ser administrador", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 

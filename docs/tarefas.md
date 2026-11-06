@@ -11,21 +11,6 @@ Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lis
 - **Meta atingida**: quando o saldo da meta chega ao alvo.
 - **Central de notificações no sino** (doc 02 §6.15): a lista dos avisos, com "Marcar todas como lidas". Com ela, abrir o app deixa de marcar tudo como lido e o número no ícone passa a seguir a central.
 
-## 4. Acessibilidade e textos
-
-Achados do `qa-ui-ux` nas Notificações (05/11/2026) que valem para o app inteiro:
-
-- **Texto a 200% em 360 px**: títulos cortados, descrições passando por baixo dos interruptores e a barra inferior truncando os rótulos. Sugestões: empilhar o interruptor abaixo do texto por container query; barra só com ícones (e `aria-label`) acima de um tamanho de texto; títulos que quebram linha em vez de cortar.
-- **Botão de ação dos toasts** ("Desfazer", "Tentar de novo") com 36 px de altura, abaixo dos 44 px de doc 02 §11.
-- **Concordância no toast das flags**: "Notificações ligado para Bruno" (`src/components/admin/flags-manager.tsx`, `onOff`); o rótulo da flag é feminino ou plural.
-- **Contraste do `Switch` desligado no tema claro**: a trilha fica fraca contra a superfície; medir e ajustar o token (doc 02 §3.1).
-- **Valores a partir de R$ 1 mi a 200% em 360 px**: o resumo e as linhas do Extrato quebram de linha, mas um valor muito longo ainda pode passar do cartão (o `Money` não quebra).
-- **Melhoria**: no resumo "Agendados" do Extrato a 200%, o "·" entre as informações pode começar a linha; mantê-lo junto da palavra anterior (`&nbsp;` antes dele).
-
-- **Patrimônio, janela em parte antes do primeiro registro**: com `periodo` de 3 a 12 meses, os pontos anteriores ao primeiro registro continuam planos (só a janela inteira antes dele vira "Sem registros").
-- **CLS no Início a 1280 px**: vem do skeleton de Próximas contas (252 px contra 122 px com poucas contas) e do item "Administração" da barra lateral, que entra por `Suspense fallback={null}` em `src/app/(app)/layout.tsx`.
-- **Texto a 200% no Início**: o valor do Saldo, as abas e o carrossel de contas passam da largura, e o botão "Ir para …" do convite "Sem registros" encosta na borda.
-
 ## 5. Categorias — próximos passos
 
 Ficaram de fora das subcategorias (05/11/2026):
@@ -57,7 +42,54 @@ Ficaram de fora das subcategorias (05/11/2026):
 - Testes: unidade da regra de conta líquida; integração (previsão, patrimônio, Fluxo de caixa e avisos com e sem caixinha; isolamento); e2e criando a caixinha e transferindo.
 - README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
 
+## 7. Arquivar categoria levando os lançamentos para outra
+
+**Pedido do dono (06/11/2026).** Ao arquivar uma categoria em Ajustes › Categorias, perguntar: "Quer passar as despesas desta categoria para outra?" (ou "as receitas", conforme o tipo).
+
+- **Sim**: a pessoa escolhe a categoria de destino (do mesmo tipo, ativa; subcategorias aparecem como "Mercado › Feira") e os lançamentos da arquivada passam para ela.
+- **Não**: os lançamentos ficam sem categoria ou vão para "Outros" (a categoria padrão que já existe) — o dono escolhe qual dos dois quando a tarefa começar; hoje eles continuam com a categoria arquivada.
+
+### O que investigar e decidir
+
+- É o mesmo movimento do **Mesclar categorias** da tarefa 5: fazer os dois juntos (um só domínio que move os lançamentos, em transação, com ownership do destino) ou deixar o mesclar para depois.
+- Quais lançamentos mudam: todos (passados, agendados, recorrências e parcelas futuras) ou só os futuros? Regras aprendidas da importação (`mapping`) e orçamentos da categoria arquivada (D1: só categorias principais têm orçamento) — o que acontece com cada um.
+- Mãe com subcategorias: a cascata de arquivar (já existe) leva as filhas; os lançamentos das filhas vão para o destino também, ou cada filha escolhe?
+- "Desfazer": hoje arquivar tem Desfazer; com lançamentos movidos, desfazer precisa devolver cada um à categoria de antes (guardar a lista) ou a ação vira confirmação sem Desfazer (doc 02 §2, princípio 6: confirmação só para o irreversível).
+- Textos (doc 02 §10), confirmação com a contagem ("32 despesas vão para Mercado"), toasts.
+
+### Pronto quando
+
+- Arquivar com e sem mover; os lançamentos, totais, orçamentos e relatórios refletem o destino; isolamento entre contas e ownership do destino testados (integração); e2e do fluxo; README, doc 02 §6.14 e doc 01 atualizados.
+
+## Acessibilidade — depois
+
+Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 200% de texto em 360 px:
+
+- **Nova transação**: com o teclado aberto, o valor e o seletor de tipo ficam abaixo da dobra (o rodapé rola junto, mas a folha ainda é alta demais). Pensar numa folha que reserva a altura do teclado.
+- **Skeletons exatos a 200%**: as alturas são as de 100%, então o conteúdo ainda empurra a tela ao chegar.
+- **Gráfico de poupança** (Relatórios › Visão geral) a 200%: ~60 px de altura, e os rótulos encostam na linha.
+- **Chip de variação do Saldo** a 200%: quebra em 4 linhas (~160 px).
+- **Termo único**: "Admin" na lista de usuários e "Administrador" na folha. Escolher um (doc 02 §10.4).
+- **Onboarding e telas de entrada** (`/entrar`, `/primeiro-acesso`, `/recuperar`, `/convite`) a 200%: só foram varridas, sem ajuste nem teste.
+- **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
+
 ## Entregue
+
+### Acessibilidade e textos — 06/11/2026
+
+Achados do `qa-ui-ux` nas Notificações (05/11/2026) e as decisões do dono:
+
+- [x] **Texto a 200% em 360 px**: nenhuma tela rola para o lado, nenhum valor sai do cartão, nada fica sob um interruptor. `Money` encolhe até 50% (valor sempre exato); linhas de lista quebram em até 2 linhas abaixo de 16 rem de contêiner; botões, selos e segmented crescem em vez de cortar; cabeçalhos, `MonthSwitcher`, grades, carrossel, simulador e gráficos se ajustam. Tetos para o que não é texto: `--target`, `--tab-bar-h`, `--tab-icon`, `--fab`, `--switch-*`, `--row-icon`, `--avatar`.
+- [x] **Barra inferior só com ícones** (rótulo `sr-only`) quando não cabe; barra até 80 px e "+" até 60 px.
+- [x] **`Switch` único** (`src/components/ui/switch.tsx`) com trilha desligada de 3:1 nos dois temas (`--switch-off`) e `SettingRow` para as linhas de ajuste.
+- [x] **Toast**: ação ("Desfazer") com 44 px.
+- [x] **Concordância do toast das flags** pelo `grammar` do registro ("Notificações ligadas para Bruno.").
+- [x] **Resumo "Agendados"** do Extrato: o "·" fica com a palavra anterior.
+- [x] **Patrimônio** começa no primeiro registro (`trimToFirstRecord`), com "Seus registros começam em {mês}."
+- [x] **CLS no Início a 1280 px**: item "Administração" em lista própria e skeleton de Próximas contas na forma do conteúdo.
+- [x] **Valores a partir de R$ 1 mi** inteiros nos cartões.
+
+Testes: unidade (`fit`, `title-fit`, `labels`, `coverage`, `switch`, `setting-row`, resumo, botão, gráficos), integração (`blocks.integration.test.tsx`) e `e2e/texto-grande.spec.ts` (telas a 360 e 430 px, 100% e 200%; barra inferior; axe a 200% nos dois temas), mais o CLS e a concordância em `e2e/admin.spec.ts`. `e2e/layout.ts` compara a rolagem com a largura pedida do viewport: com `isMobile` o `innerWidth` cresce até o conteúdo e escondia o problema. Detalhes: doc 02 §3.1, §3.4, §3.5, §3.10, §4.2, §4.3, §5.1, §5.4, §5.13, §5.14, §5.15, §6.12, §6.17, §8 e §11. O que ficou: "Acessibilidade — depois".
 
 ### Início e Relatórios: melhorias — 05/11/2026
 
@@ -74,7 +106,7 @@ Pendências da etapa 2 do Início personalizável, com as decisões do dono (05/
 
 Testes de unidade (`views`, `coverage`, `model`, `cash-flow-model`, `home-skeleton`, `chart-tokens`, gráficos), integração contra o PGlite (`request-reads.integration.test.ts`, `blocks.integration.test.tsx`, `reminders.integration.test.ts`) e e2e. Detalhes: doc 02 §3.1, §3.7, §6.3, §6.12 e §9.4.
 
-Ficou para depois, nas pendências abaixo (tarefa 4).
+Ficou para depois, em "Acessibilidade — depois" (e entregue em "Acessibilidade e textos").
 
 ### Extrato: melhorias e subcategorias — 05/11/2026
 

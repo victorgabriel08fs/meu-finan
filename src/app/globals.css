@@ -16,6 +16,7 @@
   --surface: #ffffff;
   --surface-2: #eef0f3;
   --surface-3: #e5e8ec;
+  --switch-off: #7d8491;
   --border: #e3e6ea;
   --border-strong: #8a919e;
   --text: #0e1116;
@@ -113,7 +114,19 @@
 
   /* Shell metrics (§3.5, §4.2) */
   --spacing-gutter: 1rem;
-  --tab-bar-h: 4rem;
+  /*
+   * Sizes that are not text grow with the system font size up to a ceiling
+   * (min(rem, px)), so large text does not eat the screen (doc 02 §3.10).
+   */
+  --target: min(2.75rem, 56px);
+  --tab-bar-h: min(4rem, 79px);
+  --tab-icon: min(1.5rem, 28px);
+  --fab: min(3.25rem, 60px);
+  --switch-w: min(3.1875rem, 60px);
+  --switch-h: min(1.9375rem, 36px);
+  --switch-knob: calc(var(--switch-h) - 4px);
+  --row-icon: min(2.5rem, 48px);
+  --avatar: min(2.25rem, 44px);
   --app-bar-h: calc(3.25rem + env(safe-area-inset-top));
   --toast-offset-bottom: calc(
     var(--tab-bar-h) +
@@ -129,6 +142,7 @@
   --surface: #14171c;
   --surface-2: #1c2027;
   --surface-3: #252a32;
+  --switch-off: #6b7484;
   --border: #262b33;
   --border-strong: #6b7484;
   --text: #f2f4f7;
@@ -213,6 +227,7 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
+  --color-switch-off: var(--switch-off);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-fg: var(--text);
@@ -342,10 +357,40 @@
   --text-micro--letter-spacing: 0.02em;
   --text-micro--font-weight: 600;
 
+  /* Container width (@max-tight:, @tight:) below which a row stacks. */
+  --container-tight: 16rem;
+  /* Narrower still (large text on a phone): charts keep fewer axis labels. */
+  --container-tighter: 12rem;
+
   /* §3.8 Easing (ease-standard, ease-enter, ease-exit) */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
   --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/*
+ * An amount that shrinks to fit (doc 02 §5.4): the font size is the one of its
+ * variant (--money-size, or the one of the caller) unless the nearest container is narrower than the
+ * amount (--money-em, its width in em), down to half. Needs an ancestor with
+ * `@container`; without one, 100cqi is the viewport.
+ */
+@utility money-fit {
+  /* Doubled class: beats the text-* size a caller may put in className. */
+  &.money-fit {
+    font-size: max(
+      calc(var(--money-size) * 0.5),
+      min(var(--money-size), calc(100cqi / var(--money-em)))
+    );
+  }
+}
+
+/*
+ * Two columns, or one when the text is so large that a column would be under
+ * 8rem (large system text): tiles and KPIs stay whole instead of squeezed.
+ * An item that spans every column uses `col-span-full`.
+ */
+@utility grid-cols-fit {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
 }
 
 /* Numbers in columns align (§3.4); `tabular-nums` does the same. */
@@ -395,6 +440,8 @@
     font-size: 0.9375rem;
     line-height: 1.375rem;
     font-weight: 500;
+    /* A long word wraps instead of pushing the page sideways (large text). */
+    overflow-wrap: break-word;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -611,5 +658,20 @@ input:-webkit-autofill[aria-invalid="true"]:focus-visible {
   to {
     opacity: 0;
     transform: translate3d(0, 0.5rem, 0) scale(0.98);
+  }
+}
+
+/*
+ * A title that shrinks (down to 60%) before its longest word would break
+ * mid-word: `titleFit()` sets --title-size and --title-em (the word's width in
+ * em); the nearest `@container` is the reference. At a size that fits, the
+ * title keeps its variant's size.
+ */
+@utility title-fit {
+  &.title-fit {
+    font-size: max(
+      calc(var(--title-size) * 0.6),
+      min(var(--title-size), calc(100cqi / var(--title-em)))
+    );
   }
 }

@@ -2,6 +2,7 @@
 
 import { ChevronDown, Minus, Plus, X } from "lucide-react";
 import { useId, useState } from "react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { QuickAddDraft, RepeatFrequency } from "@/stores/quick-add";
 import { ChoiceChip } from "./choice-chip";
@@ -10,7 +11,6 @@ import {
   MAX_INSTALLMENTS,
   MIN_INSTALLMENTS,
 } from "./entry";
-import { Switch } from "./switch";
 
 const REPEAT_OPTIONS: { value: RepeatFrequency; label: string }[] = [
   { value: "never", label: "Nunca" },
@@ -141,14 +141,18 @@ function InstallmentsControl({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <span id={labelId} className="text-callout font-semibold text-fg">
+      <div className="flex flex-wrap items-center gap-x-3">
+        <span
+          id={labelId}
+          className="min-w-0 flex-[1_1_11rem] text-callout font-semibold text-fg"
+        >
           Parcelar
         </span>
         <Switch
+          className="-my-1.5 ml-auto"
           checked={on}
-          aria-labelledby={labelId}
-          aria-describedby={blockedByRepeat ? hintId : undefined}
+          labelledBy={labelId}
+          describedBy={blockedByRepeat ? hintId : undefined}
           disabled={blockedByRepeat}
           onCheckedChange={(checked) => onChange(checked ? 2 : 1)}
         />

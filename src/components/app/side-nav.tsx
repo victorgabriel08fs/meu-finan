@@ -80,8 +80,10 @@ export function SideNavView({
             <SideNavLink key={item.href} item={item} pathname={pathname} />
           ))}
         </ul>
-        <ul className="mt-auto flex flex-col gap-1 border-t border-border pt-3">
-          {extraItem}
+        {/* Apart from Ajustes: when Administração arrives (it is decided on the
+            server), nothing below it moves (§4.5). */}
+        <ul className="mt-auto flex flex-col gap-1">{extraItem}</ul>
+        <ul className="flex flex-col gap-1 border-t border-border pt-3">
           <SideNavLink
             item={SETTINGS_NAV}
             pathname={pathname}

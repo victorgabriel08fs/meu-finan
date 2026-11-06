@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Money } from "@/components/money/money";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { AccountListItem } from "@/server/domain/accounts";
@@ -46,10 +47,10 @@ export function NetWorthHero({ accounts }: { accounts: AccountListItem[] }) {
         Soma das contas incluídas no patrimônio, com cartões como dívida.
       </p>
       {groups.length > 1 ? (
-        <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-border pt-4 sm:grid-cols-3">
+        <dl className="mt-4 grid grid-cols-fit gap-x-3 gap-y-3 border-t border-border pt-4 sm:grid-cols-3">
           {groups.map((group) => (
             <div key={group.value} className="flex min-w-0 flex-col gap-0.5">
-              <dt className="truncate text-caption text-fg-3">{group.label}</dt>
+              <dt className="text-caption text-fg-3">{group.label}</dt>
               <dd>
                 <Money
                   cents={sum(group.accounts)}
@@ -78,7 +79,7 @@ export function AccountGroupList({ group, accounts }: AccountGroupListProps) {
   const id = `grupo-${group}`;
   return (
     <section aria-labelledby={id}>
-      <div className="mb-3 flex min-h-6 items-center justify-between gap-3">
+      <div className="mb-3 flex min-h-6 flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h2 id={id} className="text-overline uppercase text-fg-3">
           {label}
         </h2>
@@ -124,7 +125,7 @@ function AccountRows({
   muted?: boolean;
 }) {
   return (
-    <ul className="overflow-hidden rounded-card bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border">
+    <ul className="@container overflow-hidden rounded-card bg-surface shadow-card [&>li+li]:border-t [&>li+li]:border-border">
       {accounts.map((account) => (
         <li key={account.id}>
           <AccountRow account={account} muted={muted} />
@@ -147,77 +148,82 @@ function AccountRow({
   return (
     <Link
       href={accountHref(account)}
-      className="flex min-h-16 items-center gap-3 px-4 py-3 -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
+      className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
     >
-      <CategoryIcon
-        icon={account.icon}
-        color={account.color}
-        shape="square"
-        className={cn(muted && "opacity-60")}
-      />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span
-          className={cn(
-            "truncate text-headline",
-            muted ? "text-fg-2" : "text-fg",
-          )}
-        >
-          {account.name}
-        </span>
-        <span className="truncate text-caption text-fg-3">
-          {usage && account.card ? (
-            <>
-              Disponível{" "}
-              <Money
-                cents={usage.availableCents}
-                variant="caption"
-                tone="neutral"
-                className="text-inherit"
-              />{" "}
-              de{" "}
-              <Money
-                cents={usage.limitCents}
-                variant="caption"
-                tone="neutral"
-                className="text-inherit"
-              />
-            </>
-          ) : (
-            <>
-              {accountTypeLabel(account.type)}
-              {account.includeInNetWorth ? "" : " · fora do patrimônio"}
-            </>
-          )}
-        </span>
-      </span>
-      <span className="flex shrink-0 flex-col items-end gap-0.5">
-        <Money
-          cents={account.balanceCents}
-          variant="headline"
-          tone="neutral"
-          className={cn(muted && "text-fg-2")}
+      <span className="flex min-w-0 flex-[1_1_4rem] items-center gap-3">
+        <CategoryIcon
+          icon={account.icon}
+          color={account.color}
+          shape="square"
+          className={cn(muted && "opacity-60")}
         />
-        {isCard ? (
-          <span className="text-micro text-fg-3">
-            {account.balanceCents < 0 ? "em aberto" : "sem dívida"}
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span
+            className={cn(
+              "text-headline",
+              CLAMP_TITLE,
+              muted ? "text-fg-2" : "text-fg",
+            )}
+          >
+            {account.name}
           </span>
-        ) : account.pendingCents !== 0 ? (
-          <span className="text-micro text-fg-3">
-            <Money
-              cents={account.pendingCents}
-              variant="caption"
-              sign="always"
-              tone="neutral"
-              className="text-micro text-inherit"
-            />{" "}
-            agendado
+          <span className={cn("text-caption text-fg-3", CLAMP_TEXT)}>
+            {usage && account.card ? (
+              <>
+                Disponível{" "}
+                <Money
+                  cents={usage.availableCents}
+                  variant="caption"
+                  tone="neutral"
+                  className="text-inherit"
+                />{" "}
+                de{" "}
+                <Money
+                  cents={usage.limitCents}
+                  variant="caption"
+                  tone="neutral"
+                  className="text-inherit"
+                />
+              </>
+            ) : (
+              <>
+                {accountTypeLabel(account.type)}
+                {account.includeInNetWorth ? "" : " · fora do patrimônio"}
+              </>
+            )}
           </span>
-        ) : null}
+        </span>
       </span>
-      <ChevronRight
-        aria-hidden="true"
-        className="-mr-1 size-5 shrink-0 text-fg-3"
-      />
+      <span className="ml-auto flex shrink-0 items-center gap-3">
+        <span className="flex flex-col items-end gap-0.5">
+          <Money
+            cents={account.balanceCents}
+            variant="headline"
+            tone="neutral"
+            className={cn(muted && "text-fg-2")}
+          />
+          {isCard ? (
+            <span className="text-micro text-fg-3">
+              {account.balanceCents < 0 ? "em aberto" : "sem dívida"}
+            </span>
+          ) : account.pendingCents !== 0 ? (
+            <span className="text-micro text-fg-3">
+              <Money
+                cents={account.pendingCents}
+                variant="caption"
+                sign="always"
+                tone="neutral"
+                className="text-micro text-inherit"
+              />{" "}
+              agendado
+            </span>
+          ) : null}
+        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className="-mr-1 size-5 shrink-0 text-fg-3"
+        />
+      </span>
     </Link>
   );
 }

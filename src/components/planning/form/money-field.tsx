@@ -74,7 +74,9 @@ export function MoneyField({
     <div className={cn("flex flex-col gap-2", className)}>
       <div
         className={cn(
-          inline ? "flex items-center justify-between gap-3" : "contents",
+          inline
+            ? "flex flex-wrap items-center justify-between gap-x-3 gap-y-2"
+            : "contents",
         )}
       >
         <Label
@@ -83,7 +85,9 @@ export function MoneyField({
         >
           {label}
         </Label>
-        <div className={cn("relative", inline && "w-40 shrink-0")}>
+        <div
+          className={cn("relative", inline && "w-[min(10rem,100%)] shrink-0")}
+        >
           <span
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-callout font-semibold text-fg-2"

@@ -17,6 +17,7 @@ import {
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
 import { Sheet } from "@/components/ui/sheet";
 import type { BudgetPace } from "@/lib/finance/budget";
 import { cn } from "@/lib/utils";
@@ -389,7 +390,7 @@ function BudgetRowButton({
   // drawing on top ignores the pointer and is hidden from screen readers,
   // since the button's name already says everything it shows.
   return (
-    <div className="relative">
+    <div className="@container relative">
       <button
         type="button"
         onClick={onOpen}
@@ -400,12 +401,19 @@ function BudgetRowButton({
         aria-hidden="true"
         className="pointer-events-none relative flex flex-col gap-2.5 px-4 py-3.5"
       >
-        <div className="flex items-center gap-3">
-          <CategoryIcon icon={item.categoryIcon} color={item.categoryColor} />
-          <span className="min-w-0 flex-1 truncate text-headline text-fg">
-            {item.categoryName}
-          </span>
-          <span className="shrink-0 text-callout font-bold text-fg tabular-nums">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex min-w-0 flex-[1_1_8rem] items-center gap-3">
+            <CategoryIcon icon={item.categoryIcon} color={item.categoryColor} />
+            <span
+              className={cn(
+                "min-w-0 flex-1 text-headline text-fg",
+                CLAMP_TITLE,
+              )}
+            >
+              {item.categoryName}
+            </span>
+          </div>
+          <span className="ml-auto shrink-0 text-callout font-bold text-fg tabular-nums">
             {formatMoneyShort(item.spentCents)}
             <span className="font-medium text-fg-3">
               {" "}
@@ -425,7 +433,8 @@ function BudgetRowButton({
           <StatusLabel status={status} />
           <span
             className={cn(
-              "truncate text-caption font-semibold tabular-nums",
+              "min-w-0 text-right text-caption font-semibold tabular-nums",
+              CLAMP_TEXT,
               note.tone === "danger" ? "text-danger" : "text-fg-3",
             )}
           >

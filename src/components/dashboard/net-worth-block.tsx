@@ -30,7 +30,7 @@ export function NetWorthBlock({
       // Another series starts its table view closed.
       key={points.at(-1)?.month}
       points={points}
-      period={6}
+      period={points.length - 1}
       headingId="inicio-patrimonio"
       title="Patrimônio"
       caption={caption}

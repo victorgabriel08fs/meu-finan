@@ -83,7 +83,7 @@ export function CashFlowLegend({
   return (
     <ul
       className={cn(
-        "flex items-center gap-4 text-caption font-semibold text-fg-2",
+        "flex flex-wrap items-center gap-x-4 gap-y-1 text-caption font-semibold text-fg-2",
         className,
       )}
     >

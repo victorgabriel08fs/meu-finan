@@ -23,6 +23,7 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { IconButton } from "./icon-button";
+import { titleFit } from "./title-fit";
 import { useBackToClose } from "./use-back-to-close";
 
 /**
@@ -158,6 +159,14 @@ type SheetContentProps = Omit<
    * fading in again.
    */
   swap?: boolean;
+  /**
+   * The sheet fills the screen (its `className` sets the height) and body and
+   * footer scroll together: the footer stays at the bottom while the sheet is
+   * tall enough (32rem) and, with large text, goes along with the content so
+   * it never hides it. The panel becomes a `sheet` container, measured by its
+   * height (`@max-[32rem]/sheet`); only meaningful with a definite height.
+   */
+  fullHeight?: boolean;
 };
 
 /** Phone sheets follow the finger; from md up they are dialogs. */
@@ -175,11 +184,13 @@ export function SheetContent({
   className,
   bodyClassName,
   swap = false,
+  fullHeight = false,
   onCloseAutoFocus,
   onPointerDownOutside,
   ...props
 }: SheetContentProps) {
   const sheet = use(SheetContext);
+  const fit = typeof title === "string" ? titleFit(title, "title-2") : null;
   const panelRef = useRef<HTMLDivElement>(null);
   const dragControls = useDragControls();
   const y = useMotionValue(0);
@@ -237,7 +248,11 @@ export function SheetContent({
           dragMomentum={false}
           onDragEnd={endDrag}
           style={{ y }}
-          className="flex min-h-0 flex-1 flex-col rounded-t-sheet bg-surface text-fg shadow-sheet md:rounded-card md:shadow-dialog"
+          className={cn(
+            "flex min-h-0 flex-1 flex-col rounded-t-sheet bg-surface text-fg shadow-sheet md:rounded-card md:shadow-dialog",
+            fullHeight &&
+              "max-md:[container-name:sheet] max-md:[container-type:size]",
+          )}
         >
           {/* Drag-to-close is a pointer shortcut; the close button and Esc do the same. */}
           <div
@@ -249,12 +264,15 @@ export function SheetContent({
               className="mx-auto mt-2 h-1 w-9 rounded-full bg-border-strong/50 md:hidden"
             />
             <div className="flex items-start gap-2 pt-3 pr-2 pb-2 pl-5 md:pt-4">
-              <div className="min-w-0 flex-1 pt-2">
-                <Dialog.Title className="text-title-2 text-fg">
+              <div className="@container min-w-0 flex-1 pt-2">
+                <Dialog.Title
+                  className={cn("text-title-2 text-fg", fit?.className)}
+                  style={fit?.style}
+                >
                   {title}
                 </Dialog.Title>
                 {description ? (
-                  <Dialog.Description className="mt-1 text-callout text-fg-2">
+                  <Dialog.Description className="mt-1 text-callout [overflow-wrap:anywhere] text-fg-2">
                     {description}
                   </Dialog.Description>
                 ) : null}
@@ -267,23 +285,42 @@ export function SheetContent({
             </div>
           </div>
           <div
-            data-slot="sheet-body"
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2",
-              footer ? "pb-4" : "pb-[max(1.5rem,env(safe-area-inset-bottom))]",
-              bodyClassName,
-            )}
+            data-slot={fullHeight ? "sheet-scroll" : undefined}
+            className={
+              fullHeight
+                ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+                : "contents"
+            }
           >
-            {children}
-          </div>
-          {footer ? (
             <div
-              data-slot="sheet-footer"
-              className="flex shrink-0 flex-col gap-2 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-5"
+              data-slot="sheet-body"
+              className={cn(
+                "@container px-5 pt-2",
+                fullHeight
+                  ? "flex-1"
+                  : "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+                footer
+                  ? "pb-4"
+                  : "pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+                bodyClassName,
+              )}
             >
-              {footer}
+              {children}
             </div>
-          ) : null}
+            {footer ? (
+              <div
+                data-slot="sheet-footer"
+                className={cn(
+                  "flex flex-col gap-2 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-5",
+                  fullHeight
+                    ? "sticky bottom-0 mt-auto bg-surface @max-[32rem]/sheet:static"
+                    : "shrink-0",
+                )}
+              >
+                {footer}
+              </div>
+            ) : null}
+          </div>
         </motion.div>
       </Dialog.Content>
     </Dialog.Portal>

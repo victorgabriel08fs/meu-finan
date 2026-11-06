@@ -3,6 +3,7 @@
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { titleFit } from "@/components/ui/title-fit";
 import { cn } from "@/lib/utils";
 
 type BackTarget = { href: string; label: string };
@@ -28,6 +29,7 @@ export function PageHeader({
   back,
   className,
 }: PageHeaderProps) {
+  const fit = titleFit(title, "title-1");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -47,19 +49,25 @@ export function PageHeader({
   return (
     <header
       data-slot="page-header"
-      className={cn("pt-[env(safe-area-inset-top)]", className)}
+      className={cn("@container pt-[env(safe-area-inset-top)]", className)}
     >
       {back || actions ? (
-        <div className="flex h-13 items-center justify-between gap-2">
+        <div className="flex min-h-13 flex-wrap items-center justify-between gap-x-2">
           {back ? <BackLink target={back} /> : <span />}
           {actions ? (
-            <div className="-mr-2 flex items-center gap-1">{actions}</div>
+            <div className="-mr-2 ml-auto flex flex-wrap items-center justify-end gap-1">
+              {actions}
+            </div>
           ) : null}
         </div>
       ) : (
         <div aria-hidden="true" className="h-5 lg:h-10" />
       )}
-      <h1 ref={titleRef} className="text-title-1 text-fg">
+      <h1
+        ref={titleRef}
+        className={cn("text-title-1 text-balance text-fg", fit.className)}
+        style={fit.style}
+      >
         {title}
       </h1>
 

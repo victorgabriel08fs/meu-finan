@@ -220,20 +220,21 @@ export function StatementList({
     <div className="flex flex-col">
       {scheduled.length > 0 ? (
         <section aria-labelledby={`${scheduledId}-title`} className="mb-2">
-          <div className="flex h-10 items-center justify-between gap-3">
+          <div className="flex min-h-10 flex-wrap items-center gap-x-3">
             <h2
               id={`${scheduledId}-title`}
-              className="flex items-center gap-1.5 text-caption font-bold text-fg-2"
+              className="flex min-w-0 items-center gap-1.5 text-caption font-bold text-fg-2"
             >
-              <Clock aria-hidden="true" className="size-4" />
-              Agendados · {scheduled.length}
+              <Clock aria-hidden="true" className="size-4 shrink-0" />
+              {/* No-break spaces: the count never wraps away from the word. */}
+              Agendados&nbsp;·&nbsp;{scheduled.length}
             </h2>
             <button
               type="button"
               aria-expanded={scheduledOpen}
               aria-controls={`${scheduledId}-list`}
               onClick={() => setScheduledOpen((value) => !value)}
-              className="relative -mr-1 h-10 rounded-control px-1 text-caption font-bold text-primary after:absolute after:inset-x-0 after:-inset-y-0.5"
+              className="relative ml-auto min-h-10 shrink-0 rounded-control px-1 text-caption font-bold whitespace-nowrap text-primary after:absolute after:inset-x-0 after:-inset-y-0.5"
             >
               {scheduledOpen ? "Recolher" : "Mostrar"}
             </button>

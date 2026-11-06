@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 export const buttonVariants = cva(
   [
-    "relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control",
+    "relative inline-flex shrink-0 items-center justify-center gap-2 rounded-control text-center text-balance",
     "text-headline transition-[scale,background-color,color,filter,opacity] duration-100 ease-standard",
     "active:scale-97 active:brightness-94 disabled:pointer-events-none disabled:opacity-40",
     "aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:size-5 [&_svg]:shrink-0",
@@ -28,9 +28,9 @@ export const buttonVariants = cva(
         destructive: "bg-destructive text-white",
       },
       size: {
-        lg: "h-13 px-6",
-        md: "h-11 px-5",
-        sm: "h-9 px-3.5 text-callout font-semibold after:absolute after:inset-x-0 after:-inset-y-1",
+        lg: "min-h-13 px-6 py-2",
+        md: "min-h-11 px-5 py-1.5",
+        sm: "min-h-9 px-3.5 py-1 text-callout font-semibold after:absolute after:inset-x-0 after:-inset-y-1",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

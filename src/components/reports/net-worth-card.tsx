@@ -10,12 +10,14 @@ import { Card } from "@/components/ui/card";
 import { shortMonthLabel } from "@/lib/format/date";
 import { formatBRL } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
-import { netWorthChange, netWorthSummary, type ReportPeriod } from "./model";
+import { netWorthChange, netWorthSummary } from "./model";
+import { windowLabel } from "./net-worth-model";
 
 type NetWorthCardProps = {
   /** End-of-month net worth, from the month before the window to now. */
   points: { month: string; cents: number }[];
-  period: ReportPeriod;
+  /** Months the series spans (its length minus the base point). */
+  period: number;
   /** The heading: "Patrimônio líquido" in the report, "Patrimônio" on the Início. */
   title?: string;
   /** Id of the heading, unique on the page. */
@@ -43,7 +45,7 @@ export function NetWorthCard({
   const values = points.map((point) => point.cents);
   const { last, delta } = netWorthChange(values);
   const direction = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
-  const window = period === 1 ? "no mês" : `em ${period} meses`;
+  const window = windowLabel(period);
 
   return (
     <Card asChild className={cn("flex flex-col gap-1", className)}>
@@ -61,8 +63,8 @@ export function NetWorthCard({
         </div>
         <ChartViewSwitch
           chart={
-            <div className="flex items-center gap-4">
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-center gap-4 @max-tight:flex-col @max-tight:items-stretch @max-tight:gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-1 @max-tight:flex-none">
                 <Money cents={last} variant="title" tone="neutral" />
                 {values.length > 1 ? (
                   <StatDelta
@@ -90,6 +92,7 @@ export function NetWorthCard({
               {values.length > 1 ? (
                 <Sparkline
                   values={values}
+                  className="@max-tight:w-full"
                   summary={netWorthSummary(values, period)}
                   hiddenSummary={netWorthSummary(values, period, {
                     hideValues: true,

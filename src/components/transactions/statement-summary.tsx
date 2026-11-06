@@ -100,14 +100,14 @@ export function StatementSummaryCard({
                 className="font-semibold text-fg-2"
               />{" "}
               a receber
+              {/* The separator closes the first item: never alone at the start of a line. */}
+              {summary.pendingExpenseCents > 0 ? (
+                <span aria-hidden="true">&nbsp;·</span>
+              ) : null}
             </span>
           ) : null}
           {summary.pendingExpenseCents > 0 ? (
             <span>
-              {/* The separator travels with the next item: never alone on a line. */}
-              {summary.pendingIncomeCents > 0 ? (
-                <span aria-hidden="true">·&nbsp;</span>
-              ) : null}
               <Money
                 cents={-summary.pendingExpenseCents}
                 variant="caption"

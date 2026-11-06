@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
-import { Switch } from "@/components/planning/form/switch";
+import { SettingRow, SettingRowButton } from "@/components/app/setting-row";
 import {
   actionErrorMessage,
   NETWORK_ERROR,
 } from "@/components/transactions/action-result";
+import { Switch } from "@/components/ui/switch";
 import type { PushSubscriptionInput } from "@/lib/push/subscription";
 import { previewRemindersAction } from "@/server/actions/notifications";
 import {
@@ -25,11 +26,6 @@ import {
   setAppBadge,
   subscribeDevice,
 } from "./device";
-
-const iconClass =
-  "flex size-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-5";
-const actionRowClass =
-  "flex min-h-16 w-full items-center gap-3 border-t border-border px-4 py-2 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2 disabled:cursor-progress";
 
 /** Why the switch cannot be used here, in the person's words. */
 const BLOCKED: Record<Exclude<PushSupport, "ready">, string> = {
@@ -202,95 +198,71 @@ export function PushSettings({
     <section aria-labelledby="notificacoes-aparelho">
       <SectionHeader id="notificacoes-aparelho" title="Neste aparelho" />
       <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-        <div className="flex min-h-16 items-center gap-3 py-2 pr-2 pl-4">
-          <span aria-hidden="true" className={iconClass}>
-            <Bell />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span
-              id={`${ids}-label`}
-              className="text-body font-semibold text-fg"
-            >
-              Receber notificações
-            </span>
-            <span id={`${ids}-hint`} className="text-caption text-fg-3">
-              Avisos no aparelho e o número dos não lidos no ícone do app.
-            </span>
-          </span>
-          {busy === "toggle" ||
-          support === null ||
-          (support === "ready" && state === "checking") ? (
-            <span className="flex h-11 w-13 items-center justify-center">
-              <LoaderCircle
-                aria-label="Carregando"
-                className="size-5 animate-spin text-fg-3"
+        <SettingRow
+          id={ids}
+          icon={Bell}
+          label="Receber notificações"
+          description="Avisos no aparelho e o número dos não lidos no ícone do app."
+          control={
+            busy === "toggle" ||
+            support === null ||
+            (support === "ready" && state === "checking") ? (
+              <span className="flex min-h-11 min-w-11 items-center justify-center">
+                <LoaderCircle
+                  aria-label="Carregando"
+                  className="size-5 animate-spin text-fg-3"
+                />
+              </span>
+            ) : (
+              <Switch
+                checked={on}
+                onCheckedChange={(next) => void toggle(next)}
+                labelledBy={`${ids}-label`}
+                describedBy={`${ids}-hint`}
+                disabled={
+                  support !== "ready" || busy !== null || (!on && !publicKey)
+                }
               />
-            </span>
-          ) : (
-            <Switch
-              checked={on}
-              onCheckedChange={(next) => void toggle(next)}
-              labelledBy={`${ids}-label`}
-              describedBy={`${ids}-hint`}
-              disabled={
-                support !== "ready" || busy !== null || (!on && !publicKey)
-              }
-            />
-          )}
-        </div>
+            )
+          }
+        />
         {on && support === "ready" ? (
-          <button
-            type="button"
+          <SettingRowButton
+            id={`${ids}-test`}
+            icon={Send}
+            label="Enviar notificação de teste"
+            description="Confira se ela chega e se o número aparece no ícone."
             aria-busy={busy === "test" || undefined}
             disabled={busy !== null}
             onClick={() => void sendTest()}
-            className={actionRowClass}
-          >
-            <span aria-hidden="true" className={iconClass}>
-              <Send />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold text-fg">
-                Enviar notificação de teste
-              </span>
-              <span className="text-caption text-fg-3">
-                Confira se ela chega e se o número aparece no ícone.
-              </span>
-            </span>
-            {busy === "test" ? (
-              <LoaderCircle
-                aria-hidden="true"
-                className="size-5 shrink-0 animate-spin text-fg-3"
-              />
-            ) : null}
-          </button>
+            control={
+              busy === "test" ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-5 animate-spin text-fg-3"
+                />
+              ) : null
+            }
+          />
         ) : null}
         {on && support === "ready" && isAdmin ? (
-          <button
-            type="button"
+          <SettingRowButton
+            id={`${ids}-preview`}
+            icon={BellRing}
+            label="Enviar prévia dos avisos"
+            description="Os avisos ligados, com os dados de hoje, só neste aparelho."
             aria-busy={busy === "preview" || undefined}
             disabled={busy !== null}
             onClick={() => void sendPreview()}
-            className={actionRowClass}
-          >
-            <span aria-hidden="true" className={iconClass}>
-              <BellRing />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-body font-semibold text-fg">
-                Enviar prévia dos avisos
-              </span>
-              <span className="text-caption text-fg-3">
-                Os avisos ligados, com os dados de hoje, só neste aparelho.
-              </span>
-            </span>
-            {busy === "preview" ? (
-              <LoaderCircle
-                aria-hidden="true"
-                className="size-5 shrink-0 animate-spin text-fg-3"
-              />
-            ) : null}
-          </button>
+            control={
+              busy === "preview" ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-5 animate-spin text-fg-3"
+                />
+              ) : null
+            }
+          />
         ) : null}
       </div>
       <p className="mt-3 px-4 text-caption text-fg-3" aria-live="polite">

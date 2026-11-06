@@ -40,4 +40,17 @@ describe("MonthSwitcher", () => {
     );
     expect(html).toMatch(/href="\/extrato\?mes=2026-10"[^>]*>Voltar para hoje/);
   });
+
+  it("keeps the month in a column that wraps its name instead of pushing the arrows", () => {
+    const html = renderToStaticMarkup(
+      <MonthSwitcher
+        month="2026-10"
+        currentMonth="2026-10"
+        hrefFor={hrefFor}
+      />,
+    );
+    expect(html).toContain("grid-cols-[auto_minmax(0,9.5rem)_auto]");
+    expect(html).toContain("size-(--target)");
+    expect(html).not.toContain("min-w-38");
+  });
 });

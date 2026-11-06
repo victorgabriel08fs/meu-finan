@@ -7,13 +7,21 @@ type CardProps = ComponentProps<"div"> & {
   asChild?: boolean;
 };
 
-/** Card (doc 02 §5.3): --surface, 20px radius, 16px padding, elevation 1. */
+/**
+ * Card (doc 02 §5.3): --surface, 20px radius, 16px padding, elevation 1. It is
+ * a container (`@container`), so an amount inside shrinks to the card's
+ * width instead of overflowing it: give a card a width of its own (never
+ * "as wide as its content").
+ */
 export function Card({ className, asChild = false, ...props }: CardProps) {
   const Comp = asChild ? Slot.Root : "div";
   return (
     <Comp
       data-slot="card"
-      className={cn("block rounded-card bg-surface p-4 shadow-card", className)}
+      className={cn(
+        "@container block rounded-card bg-surface p-4 shadow-card",
+        className,
+      )}
       {...props}
     />
   );
@@ -25,7 +33,7 @@ export function CardHeader({ className, ...props }: ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "mb-3 flex min-h-6 items-center justify-between gap-3",
+        "mb-3 flex min-h-6 flex-wrap items-center justify-between gap-x-3 gap-y-1",
         className,
       )}
       {...props}

@@ -73,7 +73,7 @@ function InvoiceEntryRow({ entry }: { entry: InvoiceEntryView }) {
             {entry.description}
           </span>
           {entry.installment ? (
-            <Badge className="h-4.5 shrink-0 px-1 text-micro">
+            <Badge className="min-h-4.5 shrink-0 px-1 py-0 text-micro">
               {entry.installment.count
                 ? `${entry.installment.number}/${entry.installment.count}`
                 : `${entry.installment.number}ª parcela`}

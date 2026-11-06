@@ -25,3 +25,18 @@ export function isBeforeFirstRecord(
 ): boolean {
   return firstRecordOn !== null && periodEnd < firstRecordOn;
 }
+
+/**
+ * A monthly series (oldest first) without the months before the first record:
+ * it keeps the month of the first record and the point just before it, which
+ * is the base of the change. `firstMonth` is `YYYY-MM`; without one, or when
+ * the series starts inside the records, nothing is cut.
+ */
+export function trimToFirstRecord<T extends { month: string }>(
+  points: readonly T[],
+  firstMonth: string | null,
+): T[] {
+  if (firstMonth === null) return [...points];
+  const index = points.findIndex((point) => point.month >= firstMonth);
+  return index <= 0 ? [...points] : points.slice(index - 1);
+}

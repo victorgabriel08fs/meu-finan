@@ -107,7 +107,7 @@ async function Overview({
     <>
       {note}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-        <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
+        <div className="grid grid-cols-fit gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
           <KpiTile
             label="Receitas"
             value={<CompactMoney cents={totals.incomeCents} />}
@@ -119,7 +119,7 @@ async function Overview({
             support={totals.partialCaption}
           />
           <KpiTile
-            className="col-span-2 md:col-span-1"
+            className="col-span-full md:col-span-1"
             label="Taxa de poupança"
             value={
               savings.rate === null ? (
@@ -161,7 +161,7 @@ async function Overview({
 
         <Card asChild className="flex flex-col gap-1 md:col-span-2">
           <section aria-labelledby="relatorio-categorias">
-            <div className="mb-1 flex items-center justify-between gap-3">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <h2 id="relatorio-categorias" className="text-headline text-fg">
                 Para onde foi o dinheiro
               </h2>
@@ -205,7 +205,7 @@ async function Overview({
 function OverviewSkeleton() {
   return (
     <LoadingRegion className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-      <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
+      <div className="grid grid-cols-fit gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
         <Skeleton className="h-24 rounded-card" />
         <Skeleton className="h-24 rounded-card" />
         <Skeleton className="col-span-2 h-24 rounded-card md:col-span-1" />

@@ -3,12 +3,12 @@
 import { type ReactNode, useId, useMemo, useState } from "react";
 import { Money } from "@/components/money/money";
 import { NativeSelect } from "@/components/planning/form/native-select";
-import { Switch } from "@/components/planning/form/switch";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-error";
 import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Switch } from "@/components/ui/switch";
 import { shortDateLabel } from "@/lib/format/date";
 import { detectDecimalSeparator } from "@/lib/import/amount";
 import type { CsvRecord } from "@/lib/import/csv";
@@ -386,8 +386,8 @@ export function MappingStep({
                 }
               />
             </div>
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="flex flex-wrap items-start gap-x-4">
+              <div className="flex min-w-0 flex-[1_1_11rem] flex-col gap-0.5">
                 <p
                   id={`${id}-invert`}
                   className="text-callout font-semibold text-fg"
@@ -400,6 +400,7 @@ export function MappingStep({
                 </p>
               </div>
               <Switch
+                className="ml-auto"
                 checked={invert}
                 onCheckedChange={setInvert}
                 labelledBy={`${id}-invert`}

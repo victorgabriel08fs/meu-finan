@@ -13,7 +13,6 @@ import { useRouter } from "next/navigation";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
-import { Switch } from "@/components/planning/form/switch";
 import {
   actionErrorMessage,
   NETWORK_ERROR,
@@ -21,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { toastWithUndo } from "@/components/ui/toast";
 import {
   HOME_BLOCKS,
@@ -225,7 +225,7 @@ export function HomeBlockList({
               transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
               data-block={entry.id}
               className={cn(
-                "relative flex items-center gap-2 bg-surface",
+                "relative flex flex-wrap items-center gap-x-2 bg-surface",
                 entry.id === lastMoved && "z-10",
                 index > 0 && "border-t border-border",
                 block.pinned ? "min-h-16 py-2 pr-4 pl-4" : "min-h-22 pr-2 pl-1",
@@ -270,7 +270,7 @@ export function HomeBlockList({
                   })}
                 </span>
               )}
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5 py-2">
+              <span className="flex min-w-0 flex-[1_1_9rem] flex-col gap-0.5 py-2">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span id={name} className="text-body font-semibold text-fg">
                     {block.label}
@@ -290,6 +290,7 @@ export function HomeBlockList({
               </span>
               {block.pinned ? null : (
                 <Switch
+                  className="ml-auto"
                   checked={entry.visible}
                   onCheckedChange={(visible) =>
                     onChange(setHomeBlockVisible(entries, entry.id, visible))
@@ -316,6 +317,7 @@ export function HomeCustomizeButton(props: HomeLayoutProps) {
     <>
       <Button
         variant="secondary"
+        className="max-w-full"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
       >

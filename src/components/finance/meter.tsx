@@ -130,7 +130,7 @@ export function StatusLabel({
     <span
       data-slot="status-label"
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap text-caption font-semibold",
+        "inline-flex max-w-full items-center gap-1 text-caption font-semibold text-balance",
         tone,
         className,
       )}

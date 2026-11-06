@@ -163,7 +163,11 @@ const DASHED: Record<CategoryColor, string> = {
 
 const SIZES = {
   sm: { box: "size-7", glyph: "size-4", stroke: 2 },
-  md: { box: "size-10", glyph: "size-5", stroke: 1.75 },
+  md: {
+    box: "size-(--row-icon)",
+    glyph: "size-[min(1.25rem,24px)]",
+    stroke: 1.75,
+  },
   lg: { box: "size-14", glyph: "size-7", stroke: 1.75 },
 } as const;
 

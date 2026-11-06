@@ -7,6 +7,7 @@ import { hasAdminRole } from "@/lib/admin/roles";
 import {
   FLAG_KEYS,
   FLAGS,
+  type FlagGrammar,
   type FlagKey,
   isFlagKey,
 } from "@/lib/flags/registry";
@@ -25,6 +26,7 @@ export type FlagOverrideItem = {
 export type FlagAdminItem = {
   key: FlagKey;
   label: string;
+  grammar: FlagGrammar;
   description: string;
   owner: string;
   since: string;

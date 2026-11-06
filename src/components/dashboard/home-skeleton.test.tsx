@@ -34,8 +34,15 @@ describe("HomeBlockSkeleton", () => {
         '<div class="mb-3 flex h-6 items-center"><div',
       );
     }
-    // 36 + 216 = 252px, the block's measured height.
-    expect(render("upcoming-bills")).toContain("h-54 rounded-card");
+    // 36 + 86 = 122px: the block with one bill (the usual case).
+    expect(render("upcoming-bills")).toContain("h-21.5 rounded-card");
+    // Another month: 10px less under the header, plus the caption line, 142px.
+    for (const phase of ["past", "future"] as const) {
+      const html = of("upcoming-bills", phase);
+      expect(html).toContain('<div class="mb-0.5 flex h-6 items-center">');
+      expect(html).toContain('<div class="mb-3 flex h-4.5 items-center">');
+    }
+    expect(render("upcoming-bills")).not.toContain("h-4.5");
   });
 
   it("measures the tiles and the budget by the block's width, not the screen's", () => {
@@ -116,6 +123,7 @@ describe("HomeBlockSkeleton", () => {
       "budget",
       "category-breakdown",
       "income-expense",
+      "upcoming-bills",
     ];
     for (const id of HOME_BLOCK_IDS.filter((id) => !changing.includes(id))) {
       const html = render(id);

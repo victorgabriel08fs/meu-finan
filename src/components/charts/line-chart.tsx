@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { FitLabels } from "./fit-labels";
 import {
   labelAnchor,
   linePath,
@@ -79,7 +80,7 @@ export function LineChart({
           </div>
         ))}
         {/* The data stops short of the tick labels on the right. */}
-        <div className="absolute inset-y-0 right-11 left-0">
+        <FitLabels className="absolute inset-y-0 right-11 left-0">
           <svg
             aria-hidden="true"
             viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}
@@ -96,7 +97,7 @@ export function LineChart({
               vectorEffect="non-scaling-stroke"
             />
           </svg>
-          {labels.map(({ index, text }) => {
+          {labels.map(({ index, text }, position) => {
             const value = values[index];
             if (value === null || value === undefined) return null;
             const x = xPercent(index);
@@ -109,6 +110,8 @@ export function LineChart({
                   style={{ left: `${x}%`, top: `${y}%` }}
                 />
                 <span
+                  data-fit=""
+                  data-priority={position === labels.length - 1 ? 2 : 1}
                   className="absolute whitespace-nowrap rounded-badge bg-surface/85 px-1 text-micro font-bold text-fg tabular-nums"
                   style={{
                     left: `${x}%`,
@@ -121,14 +124,18 @@ export function LineChart({
               </span>
             );
           })}
-        </div>
+        </FitLabels>
       </div>
-      <div aria-hidden="true" className="relative mt-1.5 mr-11 h-4">
-        {xLabels.map((item) => {
+      <FitLabels className="relative mt-1.5 mr-11 h-4" ariaHidden>
+        {xLabels.map((item, position) => {
           const percent = single ? 50 : item.position * 100;
           return (
             <span
               key={`${item.position}-${item.label}`}
+              data-fit=""
+              data-priority={
+                position === 0 || position === xLabels.length - 1 ? 2 : 1
+              }
               className="absolute top-0 whitespace-nowrap text-micro text-fg-3"
               style={{
                 left: `${percent}%`,
@@ -139,7 +146,7 @@ export function LineChart({
             </span>
           );
         })}
-      </div>
+      </FitLabels>
     </div>
   );
 }

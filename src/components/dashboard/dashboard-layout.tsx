@@ -32,22 +32,22 @@ type HomeHeaderProps = {
  */
 export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
   return (
-    <header className="flex min-h-14 items-center gap-3 pt-2">
+    <header className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 pt-2">
       <Link
         href="/ajustes"
-        className="relative flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-on-primary-soft transition-transform duration-100 after:absolute after:-inset-1 active:scale-94"
+        className="relative flex size-(--avatar) shrink-0 items-center justify-center rounded-full bg-primary-soft text-caption font-bold text-on-primary-soft transition-transform duration-100 after:absolute after:-inset-1 active:scale-94"
       >
         <span aria-hidden="true">{initials(name)}</span>
         <span className="sr-only">Perfil e ajustes</span>
         <NewsDot className="-top-0.5 -right-0.5" />
       </Link>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-title-3 text-fg">
+      <div className="min-w-0 flex-[1_1_10rem]">
+        <h1 className="text-title-3 text-fg">
           {greeting}, {firstName(name)}
         </h1>
-        <p className="truncate text-caption text-fg-3">{dateLabel}</p>
+        <p className="text-caption text-fg-3">{dateLabel}</p>
       </div>
-      <div className="-mr-2 flex items-center">
+      <div className="-mr-2 ml-auto flex items-center">
         <ThemeToggle className="lg:hidden" />
         <PrivacyToggle />
       </div>
@@ -57,10 +57,10 @@ export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
 
 export function HomeHeaderSkeleton() {
   return (
-    <div className="flex min-h-14 items-center gap-3 pt-2">
+    <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 pt-2">
       <h1 className="sr-only">Início</h1>
-      <Skeleton className="size-9 rounded-full" />
-      <div className="flex flex-1 flex-col gap-1.5">
+      <Skeleton className="size-(--avatar) rounded-full" />
+      <div className="flex flex-[1_1_10rem] flex-col gap-1.5">
         <Skeleton className="h-5 w-44 rounded-chip" />
         <Skeleton className="h-3.5 w-32 rounded-chip" />
       </div>
@@ -270,11 +270,24 @@ const CASH_FLOW_SKELETON: Record<ReportPhase, string> = {
     "h-146.25 rounded-card @sm:h-141.75 @min-[27.5rem]:h-137.25 @2xl:h-110.25",
 };
 
-/** A SectionHeader (36px: a 24px line and 12px under it) over the content. */
-function SectionSkeleton({ children }: { children: ReactNode }) {
+/**
+ * A SectionHeader (36px: a 24px line and 12px under it) over the content;
+ * `tight` is the one with 2px under it, for a caption that follows.
+ */
+function SectionSkeleton({
+  children,
+  tight = false,
+}: {
+  children: ReactNode;
+  tight?: boolean;
+}) {
   return (
     <div className="flex flex-col">
-      <div className="mb-3 flex h-6 items-center">
+      <div
+        className={
+          tight ? "mb-0.5 flex h-6 items-center" : "mb-3 flex h-6 items-center"
+        }
+      >
         <Skeleton className="h-4 w-28 rounded-chip" />
       </div>
       {children}
@@ -301,7 +314,7 @@ export function HomeBlockSkeleton({
     case "month-totals":
       return (
         <div className="@container">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-fit gap-3">
             <Skeleton className={TILE_SKELETON[phase]} />
             <Skeleton className={TILE_SKELETON[phase]} />
           </div>
@@ -313,19 +326,27 @@ export function HomeBlockSkeleton({
           <Skeleton className={BUDGET_SKELETON[phase]} />
         </div>
       );
+    // One bill (86px: the most common case; a month other than today's adds
+    // the "A partir de hoje" caption, 18px and 12px under it, and 10px less
+    // under the header).
     case "upcoming-bills":
       return (
-        <SectionSkeleton>
-          <Skeleton className="h-54 rounded-card" />
+        <SectionSkeleton tight={phase !== "current"}>
+          {phase === "current" ? null : (
+            <div className="mb-3 flex h-4.5 items-center">
+              <Skeleton className="h-3.5 w-24 rounded-chip" />
+            </div>
+          )}
+          <Skeleton className="h-21.5 rounded-card" />
         </SectionSkeleton>
       );
     case "accounts":
       return (
         <SectionSkeleton>
           <div className="flex gap-2.5 overflow-hidden py-1">
-            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
-            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
-            <Skeleton className="h-28 w-39 shrink-0 rounded-card" />
+            <Skeleton className="h-28 w-[min(9.75rem,calc(100vw-5rem))] shrink-0 rounded-card" />
+            <Skeleton className="h-28 w-[min(9.75rem,calc(100vw-5rem))] shrink-0 rounded-card" />
+            <Skeleton className="h-28 w-[min(9.75rem,calc(100vw-5rem))] shrink-0 rounded-card" />
           </div>
         </SectionSkeleton>
       );

@@ -238,9 +238,9 @@ function DetailsContent({
       {/* A plain block inside the scrolling body: as flex items of the body
           itself, the cards would shrink and clip instead of scrolling. */}
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <UserAvatar name={user.name} size="lg" muted={user.banned} />
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-1.5">
             <Badge tone={status.tone}>{status.label}</Badge>
             <Badge tone={user.role === "admin" ? "transfer" : "neutral"}>
               {user.role === "admin" ? (
@@ -429,18 +429,20 @@ function Detail({
   return (
     <div
       className={cn(
-        "flex min-h-13 gap-3 px-4 py-2.5",
+        "flex min-h-13 flex-wrap gap-x-3 gap-y-0.5 px-4 py-2.5",
         action ? "items-start" : "items-center",
       )}
     >
-      <dt className="w-32 shrink-0 text-callout text-fg-2">{term}</dt>
+      <dt className="w-32 max-w-full shrink-0 text-callout text-fg-2">
+        {term}
+      </dt>
       {action ? (
-        <dd className="flex min-w-0 flex-1 flex-col items-start gap-1 text-callout font-semibold text-fg">
+        <dd className="flex min-w-0 flex-[1_1_8rem] flex-col items-start gap-1 text-callout font-semibold text-fg">
           <span>{children}</span>
           {action}
         </dd>
       ) : (
-        <dd className="min-w-0 flex-1 text-callout font-semibold text-fg">
+        <dd className="min-w-0 flex-[1_1_8rem] text-callout font-semibold text-fg">
           {children}
         </dd>
       )}

@@ -375,10 +375,12 @@ describe("Receitas × despesas por mês", () => {
 describe("Patrimônio", () => {
   const points = (props: Props) => props.points as { month: string }[];
 
-  it("shows 7 points up to today, the report a click away", async () => {
+  it("starts at the first record: its month and the one before, up to today", async () => {
+    // Ana's records begin in September: the 7 points shrink to 3.
     const { type, props } = await load("net-worth", ana, "2026-10");
     expect(type).toBe(components.netWorth.NetWorthBlock);
-    expect(points(props)).toHaveLength(7);
+    expect(points(props)).toHaveLength(3);
+    expect(points(props).at(0)?.month).toBe("2026-08");
     expect(points(props).at(-1)?.month).toBe("2026-10");
     expect(props).toMatchObject({
       caption: "hoje",

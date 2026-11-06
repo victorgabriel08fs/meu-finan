@@ -2,6 +2,7 @@ import { Ellipsis } from "lucide-react";
 import Link from "next/link";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Money } from "@/components/money/money";
+import { CLAMP_TITLE } from "@/components/ui/clamp";
 import { formatPercent } from "@/lib/format/number";
 import { cn } from "@/lib/utils";
 
@@ -81,26 +82,33 @@ function RankRow({
   const width = max > 0 ? Math.max(1.5, (item.cents / max) * 100) : 0;
   const body = (
     <>
-      <span className="flex items-center gap-2.5">
-        {muted ? (
+      <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className="flex min-w-0 flex-[1_1_6rem] items-center gap-2.5">
+          {muted ? (
+            <span
+              aria-hidden="true"
+              className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg-2"
+            >
+              <Ellipsis className="size-4" />
+            </span>
+          ) : (
+            <CategoryIcon icon={item.icon} color={item.color} size="sm" />
+          )}
           <span
-            aria-hidden="true"
-            className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-fg-2"
+            className={cn(
+              "min-w-0 flex-1 text-callout font-semibold text-fg",
+              CLAMP_TITLE,
+            )}
           >
-            <Ellipsis className="size-4" />
+            {item.name}
           </span>
-        ) : (
-          <CategoryIcon icon={item.icon} color={item.color} size="sm" />
-        )}
-        <span className="min-w-0 flex-1 truncate text-callout font-semibold text-fg">
-          {item.name}
         </span>
         <Money
           cents={item.cents}
           variant="callout"
           tone="neutral"
           sign="never"
-          className="font-bold"
+          className="ml-auto font-bold"
         />
       </span>
       <span className="flex items-center gap-2.5 pl-9.5">

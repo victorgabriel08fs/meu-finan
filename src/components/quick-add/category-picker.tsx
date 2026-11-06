@@ -175,7 +175,7 @@ function CategorySheet({
                         </span>
                       </span>
                     ) : (
-                      <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word hyphens-auto">
+                      <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word">
                         {category.name}
                       </span>
                     )}

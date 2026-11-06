@@ -15,7 +15,7 @@ import {
 } from "@/components/reports/views";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
-import { isBeforeFirstRecord } from "@/lib/reports/coverage";
+import { isBeforeFirstRecord, trimToFirstRecord } from "@/lib/reports/coverage";
 import { requireUser } from "@/server/dal";
 import {
   getUserContext,
@@ -90,7 +90,12 @@ async function NetWorth({
   }
 
   // One month more: the change is measured from the end of the month before.
-  const points = await netWorthBreakdown(ctx, range, period + 1);
+  // A window that began before the first record starts at it (the months
+  // before it would be a flat line of zeros), keeping the base month.
+  const series = await netWorthBreakdown(ctx, range, period + 1);
+  const firstMonth = first ? periodMonthOf(ctx, first) : null;
+  const points = trimToFirstRecord(series, firstMonth);
+  const startsAt = points.length < series.length ? firstMonth : null;
 
   if (
     points.every(
@@ -115,7 +120,7 @@ async function NetWorth({
   return (
     <>
       {note}
-      <NetWorthReport key={period} points={points} period={period} />
+      <NetWorthReport key={period} points={points} startsAt={startsAt} />
     </>
   );
 }

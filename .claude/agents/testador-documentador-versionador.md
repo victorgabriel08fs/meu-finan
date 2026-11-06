@@ -50,9 +50,11 @@ Versioning:
   opens the pull request, and merges or deploys only with the owner. Bump
   `package.json` `version` only when the owner asks for a release.
 
-Never remove a git worktree that links `node_modules` (a junction or
-symlink) with `git worktree remove --force`: on Windows it deletes the real
-`node_modules`. Unlink it first, then remove the worktree.
+Do not create git worktrees: removing one that links `node_modules` deleted
+the real `node_modules` twice on this Windows machine. To check a commit in
+isolation, use `git stash push --keep-index --include-untracked`, run the
+check, then `git stash pop`; to compare with another branch, ask the main
+session.
 
 Report in Portuguese (pt-BR), short (up to ~300 words): the commits created
 (hash and message), the results of check/build/e2e in one line each, bugs
