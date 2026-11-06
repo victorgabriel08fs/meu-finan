@@ -2,6 +2,8 @@
 // against a real (in-memory) Postgres, on 14/out/2026 like the mockups: which
 // element each month gets (the block or its invite), with what data and
 // links, each account seeing only its own money.
+
+import { eq } from "drizzle-orm";
 import type { ReactElement } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -75,6 +77,7 @@ const components = {} as {
   categories: typeof import("@/components/dashboard/category-breakdown-block");
   incomeExpense: typeof import("@/components/dashboard/income-expense-block");
   netWorth: typeof import("@/components/dashboard/net-worth-block");
+  noRecords: typeof import("@/components/dashboard/block-no-records");
 };
 
 // 14/out/2026, 12:00 in São Paulo.
@@ -121,6 +124,9 @@ beforeAll(async () => {
     "@/components/dashboard/income-expense-block"
   );
   components.netWorth = await import("@/components/dashboard/net-worth-block");
+  components.noRecords = await import(
+    "@/components/dashboard/block-no-records"
+  );
   const { listCategories } = await import("@/server/domain/categories");
 
   ana = await context.getUserContext("ana", { now: NOW });
@@ -139,11 +145,17 @@ beforeAll(async () => {
     card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
   });
   // Bia has an account, empty: every block invites her. Caio has none.
-  await accounts.createAccount("bia", {
+  const biaAccount = await accounts.createAccount("bia", {
     name: "Conta da Bia",
     type: "checking",
     initialBalanceCents: 0,
   });
+  // Created long before the month under test, so her empty months are
+  // after her first record (not "Sem registros").
+  await db
+    .update(schema.finAccounts)
+    .set({ createdAt: new Date("2026-01-10T12:00:00Z") })
+    .where(eq(schema.finAccounts.id, biaAccount));
 
   const all = await listCategories("ana");
   const category = (name: string) => {
@@ -242,6 +254,40 @@ describe("Fluxo de caixa", () => {
     await blocks.HOME_BLOCK_LOADERS["cash-flow"]({ ctx: ana, range });
     expect(accounts.listAccounts).toHaveBeenCalledTimes(1);
     expect(transactions.pendingEntries).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Sem registros", () => {
+  it("replaces the charted blocks before the first record", async () => {
+    // Ana's first entry is on 5/set/2026.
+    for (const id of [
+      "cash-flow",
+      "net-worth",
+      "category-breakdown",
+      "income-expense",
+    ] as const) {
+      const { type, props } = await load(id, ana, "2026-08");
+      expect(type).toBe(components.noRecords.BlockNoRecords);
+      expect(props).toEqual({
+        month: "2026-08",
+        firstMonth: "2026-09",
+        href: "/inicio?mes=2026-09",
+      });
+    }
+  });
+
+  it("is never the answer for the first month, the present or the future", async () => {
+    for (const month of ["2026-09", "2026-10", "2026-12"]) {
+      for (const id of [
+        "cash-flow",
+        "net-worth",
+        "category-breakdown",
+        "income-expense",
+      ] as const) {
+        const { type } = await load(id, ana, month);
+        expect(type).not.toBe(components.noRecords.BlockNoRecords);
+      }
+    }
   });
 });
 

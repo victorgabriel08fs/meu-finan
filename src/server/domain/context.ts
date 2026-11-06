@@ -7,6 +7,7 @@ import {
   type LocalDate,
   localDateIn,
   type Period,
+  parse,
   parseMonth,
   periodContaining,
   periodForMonth,
@@ -86,6 +87,14 @@ export function resolvePeriod(
     period = periodForMonth(parseMonth(month), ctx.monthStartDay);
   }
   return toRange(period, current);
+}
+
+/** The ?mes= of the screens for the financial month containing `date`. */
+export function periodMonthOf(ctx: UserContext, date: string): string {
+  return toRange(
+    periodContaining(parse(date), ctx.monthStartDay),
+    periodContaining(ctx.today, ctx.monthStartDay),
+  ).month;
 }
 
 export function toRange(period: Period, current: Period): PeriodRange {

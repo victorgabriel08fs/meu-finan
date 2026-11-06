@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/app/section-header";
 import { StatTile } from "@/components/app/stat-tile";
 import { AccountsCarousel } from "@/components/dashboard/accounts-carousel";
 import { BalanceHero } from "@/components/dashboard/balance-hero";
+import { BlockNoRecords } from "@/components/dashboard/block-no-records";
 import { BudgetCard, BudgetInvite } from "@/components/dashboard/budget-card";
 import {
   CashFlowBlock,
@@ -42,9 +43,11 @@ import { partialProgress } from "@/components/reports/model";
 import { monthViewHref, periodViewHref } from "@/components/reports/views";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
+import { isBeforeFirstRecord } from "@/lib/reports/coverage";
 import { getBudgets } from "@/server/domain/budgets";
 import {
   type PeriodRange,
+  periodMonthOf,
   resolvePeriod,
   type UserContext,
 } from "@/server/domain/context";
@@ -63,6 +66,7 @@ import {
   netWorthSeries,
   reportPhase,
 } from "@/server/domain/reports";
+import { firstRecordOn } from "@/server/domain/request-reads";
 import { periodTotals } from "@/server/domain/transactions";
 
 type HomeBlockProps = {
@@ -289,6 +293,8 @@ async function SpendingCalendarBlockLoader({ ctx, range }: HomeBlockProps) {
 
 /** Fluxo de caixa: the report's daily balance for the month on screen. */
 async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
+  const before = await noRecordsBefore(ctx, range);
+  if (before) return before;
   const report = await cashFlowReport(ctx, range);
   if (!report.hasAccounts) return <CashFlowNoAccountsInvite />;
   if (isCashFlowEmpty(report)) {
@@ -314,6 +320,8 @@ async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
  * opens on that same month (`?periodo=1&mes=`).
  */
 async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
+  const before = await noRecordsBefore(ctx, range);
+  if (before) return before;
   const { items, totalCents } = await categoryBreakdown(
     ctx,
     range.start,
@@ -346,6 +354,8 @@ async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
 /** Receitas × despesas: the 6 months up to the one on screen. */
 async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
   const end = seriesEnd(ctx, range);
+  const before = await noRecordsBefore(ctx, end);
+  if (before) return before;
   const months = await monthlySeries(ctx, end, INCOME_EXPENSE_BLOCK_MONTHS);
   if (
     months.every((month) => month.incomeCents === 0 && month.expenseCents === 0)
@@ -373,6 +383,8 @@ async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
 
 /** Patrimônio: the end of each of the last months, up to the one on screen. */
 async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
+  const before = await noRecordsBefore(ctx, seriesEnd(ctx, range));
+  if (before) return before;
   const points = await netWorthSeries(
     ctx,
     seriesEnd(ctx, range),
@@ -393,6 +405,27 @@ async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
         seriesEnd(ctx, range).month,
         resolvePeriod(ctx, null).month,
       )}
+    />
+  );
+}
+
+/**
+ * The invite of a month that ends before the person's first record (balances
+ * would project back as a flat line), or null when it has records. Only the
+ * blocks that chart a stretch of time or project balances ask.
+ */
+async function noRecordsBefore(
+  ctx: UserContext,
+  range: PeriodRange,
+): Promise<ReactNode> {
+  const first = await firstRecordOn(ctx);
+  if (!isBeforeFirstRecord(range.end, first) || !first) return null;
+  const firstMonth = periodMonthOf(ctx, first);
+  return (
+    <BlockNoRecords
+      month={range.month}
+      firstMonth={firstMonth}
+      href={`/inicio?mes=${firstMonth}`}
     />
   );
 }

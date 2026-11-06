@@ -1,7 +1,9 @@
-import { ChartLine } from "lucide-react";
+import { CalendarOff, ChartLine } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
+import { noRecordsCopy } from "@/components/dashboard/block-no-records";
 import { QuickAddButton } from "@/components/quick-add/quick-add-trigger";
 import { CashFlowCard } from "@/components/reports/cash-flow-card";
 import {
@@ -14,14 +16,21 @@ import {
   ReportMonthSwitcherSkeleton,
 } from "@/components/reports/report-month";
 import { ScheduledList } from "@/components/reports/scheduled-list";
-import { parseMonthParam } from "@/components/reports/views";
+import { monthViewHref, parseMonthParam } from "@/components/reports/views";
 import { statementHref } from "@/components/transactions/statement-params";
+import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { shortDateLabel } from "@/lib/format/date";
+import { isBeforeFirstRecord } from "@/lib/reports/coverage";
 import { cn } from "@/lib/utils";
 import { requireUser } from "@/server/dal";
-import { getUserContext, resolvePeriod } from "@/server/domain/context";
+import {
+  getUserContext,
+  periodMonthOf,
+  resolvePeriod,
+} from "@/server/domain/context";
 import { cashFlowReport } from "@/server/domain/reports";
+import { firstRecordOn } from "@/server/domain/request-reads";
 
 export const metadata: Metadata = { title: "Relatórios · Fluxo de caixa" };
 
@@ -44,8 +53,6 @@ async function CashFlow({
   const ctx = await getUserContext(user.id);
   const range = resolvePeriod(ctx, parseMonthParam((await searchParams).mes));
   const currentMonth = resolvePeriod(ctx, null).month;
-  const report = await cashFlowReport(ctx, range);
-
   const switcher = (
     <ReportMonthSwitcher
       path="/relatorios/fluxo"
@@ -56,6 +63,38 @@ async function CashFlow({
       showRange={ctx.monthStartDay !== 1}
     />
   );
+
+  // A month that ended before the first record would project a flat balance.
+  const first = await firstRecordOn(ctx);
+  if (first && isBeforeFirstRecord(range.end, first)) {
+    const firstMonth = periodMonthOf(ctx, first);
+    const copy = noRecordsCopy(range.month, firstMonth);
+    return (
+      <>
+        {switcher}
+        <EmptyState
+          icon={<CalendarOff />}
+          title={copy.title}
+          description={copy.description}
+          action={
+            <Button asChild variant="tonal">
+              <Link
+                href={monthViewHref(
+                  "/relatorios/fluxo",
+                  firstMonth,
+                  currentMonth,
+                )}
+              >
+                {copy.actionLabel}
+              </Link>
+            </Button>
+          }
+        />
+      </>
+    );
+  }
+
+  const report = await cashFlowReport(ctx, range);
 
   if (!report.hasAccounts || isCashFlowEmpty(report)) {
     return (
