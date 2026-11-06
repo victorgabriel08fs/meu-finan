@@ -53,7 +53,13 @@ describe("shortLabel", () => {
     expect(shortLabel("Aluguel")).toBe("Aluguel");
     expect(shortLabel("Fatura Cartão Principal")).toBe("Fatura Cartão…");
     expect(shortLabel("  Conta   de luz ")).toBe("Conta de luz");
-    expect(shortLabel("Supercalifragilístico")).toBe("Supercalifrag…");
+    expect(shortLabel("Supercalifragilístico")).toBe("Supercalifragil…");
+    // Up to 16 characters goes whole; the label never ends in a linking word.
+    expect(shortLabel("Curso de inglês")).toBe("Curso de inglês");
+    expect(shortLabel("Aluguel do escritório")).toBe("Aluguel…");
+    expect(shortLabel("Mensalidade da faculdade")).toBe("Mensalidade…");
+    expect(shortLabel("Conta de luz da casa")).toBe("Conta de luz…");
+    expect(shortLabel("Fatura Cartão Principal")).toBe("Fatura Cartão…");
   });
 });
 

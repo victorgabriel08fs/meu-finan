@@ -11,7 +11,7 @@ import type { TransactionListItem } from "@/server/domain/transactions";
 import { CashFlowCard } from "./cash-flow-card";
 import { DayExpenses, DayExpensesHint } from "./day-expenses";
 import { NetWorthReport } from "./net-worth-report";
-import { ReportMonthSwitcher } from "./report-month";
+import { ReportEndNote, ReportMonthSwitcher } from "./report-month";
 import {
   ReportPeriodFilter,
   ReportTabs,
@@ -46,7 +46,18 @@ describe("report tabs", () => {
     expect(hrefOf(html, "Calendário")).toBe(
       "/relatorios/calendario?mes=2026-09",
     );
-    expect(hrefOf(html, "Visão geral")).toBe("/relatorios/visao-geral");
+    expect(hrefOf(html, "Visão geral")).toBe(
+      "/relatorios/visao-geral?mes=2026-09",
+    );
+  });
+
+  it("keep ?periodo= and ?mes= together between the period views", () => {
+    at("/relatorios/patrimonio", "periodo=3&mes=2026-06");
+    const html = renderToStaticMarkup(<ReportTabs />);
+    expect(hrefOf(html, "Categorias")).toBe(
+      "/relatorios/categorias?periodo=3&amp;mes=2026-06",
+    );
+    expect(hrefOf(html, "Fluxo")).toBe("/relatorios/fluxo?mes=2026-06");
   });
 
   it("keep ?periodo= between the period views", () => {
@@ -357,5 +368,37 @@ describe("DayExpenses", () => {
     expect(renderToStaticMarkup(<DayExpensesHint />)).toContain(
       "Toque num dia",
     );
+  });
+});
+
+describe("period chips and the end note", () => {
+  it("keep the month the window ends at", () => {
+    at("/relatorios/categorias", "periodo=3&mes=2026-06");
+    const html = renderToStaticMarkup(<ReportPeriodFilter />);
+    expect(html).toContain(
+      'href="/relatorios/categorias?periodo=3&amp;mes=2026-06"',
+    );
+    expect(html).toContain('href="/relatorios/categorias?mes=2026-06"');
+  });
+
+  it("say where the window ends, away from today only", () => {
+    const props = { path: "/relatorios/visao-geral", currentMonth: "2026-11" };
+    const past = renderToStaticMarkup(
+      <ReportEndNote {...props} period={6} month="2026-10" />,
+    );
+    expect(past).toContain("Até ");
+    expect(past).toContain("outubro de 2026");
+    expect(past).toContain('href="/relatorios/visao-geral?periodo=6"');
+    expect(past).toContain("Voltar para hoje");
+    const single = renderToStaticMarkup(
+      <ReportEndNote {...props} period={1} month="2026-10" />,
+    );
+    expect(single).toContain("Mostrando ");
+    expect(single).toContain('href="/relatorios/visao-geral?periodo=1"');
+    expect(
+      renderToStaticMarkup(
+        <ReportEndNote {...props} period={6} month="2026-11" />,
+      ),
+    ).toBe("");
   });
 });

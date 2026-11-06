@@ -88,6 +88,8 @@ Todos os pares texto/fundo abaixo foram medidos (WCAG 2.x): texto ≥ 4,5:1, com
 | `--scrim` | `rgb(14 17 22 / .45)` | `rgb(0 0 0 / .60)` | atrás de sheets e diálogos |
 | `--thumb` | `= --surface` | `#323946` | polegar do segmented control: no escuro, mais claro que o trilho (`--surface-2`), para o item selecionado parecer elevado |
 | `--switch-thumb` | `#FFFFFF` | `#F2F4F7` | polegar do switch, quase branco nos dois temas |
+| `--chart-3-rest` | `#408D79` | `#187858` | coluna de receitas no mês não selecionado: mais fosca que `--chart-3`, mas ≥ 3:1 contra `--surface` (3,96:1 / 3,31:1) |
+| `--chart-2-rest` | `#A86A56` | `#AA4924` | coluna de despesas no mês não selecionado (4,32:1 / 3,15:1) |
 | `--autofill` | `--primary` 7% sobre `--surface` | `--primary` 9% sobre `--surface` | fundo de campo preenchido pelo navegador (no lugar do azul do Chrome) |
 
 O app abre **escuro por padrão** (§3.11): os valores da coluna "Escuro" são os da primeira visita em qualquer aparelho.
@@ -154,6 +156,7 @@ Pares em uso, medidos: Receitas × Despesas (água × laranja) ΔE 9,2 claro / 9
 | Eixo/base | `#C9CED6` | `#3A404A` |
 | Rótulos de eixo | `--text-3` | `--text-3` |
 | Status ok / atenção / estourado | `--primary` / `--warning-fill` / `--danger-fill` | idem |
+| Série em repouso (colunas não selecionadas) | `--chart-3-rest` / `--chart-2-rest` (§3.1) | idem |
 
 ### 3.4 Tipografia
 
@@ -235,8 +238,11 @@ Base de **4 px**.
 | 0 · página | `--bg` | `--bg` |
 | 1 · card | `--surface` + `0 1px 2px rgb(14 17 22 / .04), 0 2px 8px rgb(14 17 22 / .04)` | `--surface` + borda `1px rgb(255 255 255 / .06)` (sem sombra) |
 | 2 · barras fixas | `--surface` a 88% + `backdrop-filter: blur(16px)` + hairline `--border` | idem com `--surface` a 85% |
+
 | 3 · sheet / diálogo | `0 -12px 40px rgb(14 17 22 / .18)` + `--scrim` | borda superior `rgb(255 255 255 / .08)` + `--scrim` |
 | Botão "+" | `0 6px 16px rgb(10 127 88 / .35)` | `0 6px 16px rgb(61 220 151 / .25)` |
+
+**Exceção, a barra inferior** (05/11/2026): usa `--surface` opaco e hairline `--border`, sem translucidez nem desfoque. Com o fundo translúcido, o contraste do item ativo (`--primary`) variava com o que passava por baixo da barra e o axe o reprovava; opaco, o par é fixo e medido (§3.1). É um desvio do nível 2 da tabela.
 
 ### 3.8 Movimento
 
@@ -753,14 +759,14 @@ Atrás da flag `inicio_personalizavel` (desligada por padrão; doc 01 §11.10). 
 
 **Calendário de gastos** (bloco largo): card "Calendário de gastos", legenda "Despesas pagas por dia; no cartão, na data da compra" e o link "Ver relatório". O mapa de calor do relatório (§6.12, com "Ver como tabela") mostra o mês do Início (`?mes=`); ao lado, ou embaixo quando falta largura, ficam "Gasto no mês", "Média por dia" e "Dia mais caro" (somem num mês que ainda não começou). Tocar num dia abre Relatórios › Calendário nesse dia (`dia=`, com o `mes=` do Início). Mês sem despesas → convite compacto: "Nenhuma despesa em {mês}", "Quando houver, o calendário mostra os dias de mais gasto." e "Adicionar despesa".
 
-**Blocos dos relatórios** (05/11/2026). Os quatro reaproveitam as consultas e os gráficos dos Relatórios (§6.12), com o mês do Início (`?mes=`), e entram fora do padrão, com "Novo" por 30 dias. Cada um tem título, legenda e um link `ghost` de 44 px à direita. Quando não há o que mostrar, um convite compacto toma o lugar do gráfico (ícone, título, uma linha e o próximo passo). No modo discreto, além dos valores, a fala dos gráficos diz "valor oculto".
+**Blocos dos relatórios** (05/11/2026). Os quatro reaproveitam as consultas e os gráficos dos Relatórios (§6.12), com o mês do Início (`?mes=`), e entram fora do padrão, com "Novo" por 30 dias. Cada um tem título, legenda e um link `ghost` de 44 px à direita. Quando não há o que mostrar, um convite compacto toma o lugar do gráfico (ícone, título, uma linha e o próximo passo). O link "Ver relatório" leva o mês do Início: em outro mês, o relatório abre naquele mês (`?mes=`, §6.12); no mês atual e num mês futuro, o link é o de hoje. **Mês anterior ao primeiro registro** (o primeiro lançamento não excluído ou a criação da conta mais antiga, o que vier antes): os quatro blocos viram "Sem registros em {mês de ano}" / "Seus registros começam em {mês de ano}." e o botão `tonal sm` "Ir para {mês de ano}" volta ao Início naquele mês, sem o botão de lançar (ícone de calendário riscado). Nunca vale para o primeiro mês, o atual nem um futuro. No modo discreto, além dos valores, a fala dos gráficos diz "valor oculto".
 
 - **Fluxo de caixa** (largo): legenda "Saldo dia a dia, sem os cartões", link "Ver relatório" para Relatórios › Fluxo no mesmo mês. Mostra a legenda Realizado/Previsto, o gráfico do saldo com o dia escolhido e "Ver como tabela", e só o indicador "Menor saldo previsto" ("Menor saldo" num mês passado): o saldo de hoje e o previsto para o fim do mês já estão no Saldo. O indicador fica embaixo do gráfico e ao lado dele quando o bloco tem uma linha inteira do desktop (container query). Num mês futuro, a nota "Só entra o que já está agendado…". Sem conta fora dos cartões → "Nenhuma conta fora dos cartões" / "O fluxo de caixa acompanha o saldo das suas contas, sem os cartões." e "Ver contas"; mês sem nada → "Nenhum lançamento em {mês}" / "Quando houver, o gráfico mostra o saldo dia a dia." e "Adicionar lançamento".
-- **Para onde foi o dinheiro** (estreito): legenda "Despesas pagas em {mês}, até hoje" (no mês atual) ou "Despesas pagas em {mês}", o total do mês e o ranking do relatório com as 5 maiores categorias e "Outras N categorias". No mês atual, "Ver relatório" leva a Relatórios › Categorias do mês (`?periodo=1`); em outro mês, "Ver no extrato" abre as despesas pagas daquele mês. Sem despesa paga (um mês futuro também) → "Nenhuma despesa paga em {mês}" / "Quando houver, o ranking mostra para onde foi o dinheiro." e "Adicionar despesa".
-- **Receitas × despesas por mês** (estreito): legenda "Últimos 6 meses, até {mês}", legenda de cores e as colunas do relatório, com o mês escolhido em cima e a nota do mês parcial ("* outubro parcial (até o dia 14 de 31)"). Num mês futuro, a série termina no mês atual. Link "Ver relatório" para a Visão geral em 6 meses. Seis meses sem nada → "Nenhuma receita ou despesa em 6 meses" / "Com seus lançamentos, o gráfico compara o que entrou e saiu a cada mês." e "Adicionar lançamento".
-- **Patrimônio** (estreito): o card da Visão geral (valor, variação em 6 meses e sparkline), com a legenda "no fim de {mês}" num mês passado ou "hoje". Num mês futuro, termina hoje. Link "Ver relatório" para Relatórios › Patrimônio em 6 meses. Tudo zerado → "Seu patrimônio está zerado" / "Com saldo nas contas, a evolução dos últimos meses aparece aqui." e "Ver contas".
+- **Para onde foi o dinheiro** (estreito): legenda "Despesas pagas em {mês}, até hoje" (no mês atual) ou "Despesas pagas em {mês}", o total do mês e o ranking do relatório com as 5 maiores categorias e "Outras N categorias". "Ver relatório" leva a Relatórios › Categorias do mês (`?periodo=1`, com `&mes=` fora do mês atual); o "Ver no extrato" saiu. Sem despesa paga (um mês futuro também) → "Nenhuma despesa paga em {mês}" / "Quando houver, o ranking mostra para onde foi o dinheiro." e "Adicionar despesa".
+- **Receitas × despesas por mês** (estreito): legenda "Últimos 6 meses, até {mês}", legenda de cores e as colunas do relatório, com o mês escolhido em cima e a nota do mês parcial ("* outubro parcial (até o dia 14 de 31)"). Num mês futuro, a série termina no mês atual. Link "Ver relatório" para a Visão geral em 6 meses, até o mês do Início (`&mes=`). Seis meses sem nada → "Nenhuma receita ou despesa em 6 meses" / "Com seus lançamentos, o gráfico compara o que entrou e saiu a cada mês." e "Adicionar lançamento".
+- **Patrimônio** (estreito): o card da Visão geral (valor, variação em 6 meses e sparkline), com a legenda "no fim de {mês}" num mês passado ou "hoje". Num mês futuro, termina hoje. Link "Ver relatório" para Relatórios › Patrimônio em 6 meses, até o mês do Início (`&mes=`). Tudo zerado → "Seu patrimônio está zerado" / "Com saldo nas contas, a evolução dos últimos meses aparece aqui." e "Ver contas".
 
-No desktop, só o Fluxo de caixa ocupa uma linha inteira (e divide a linha com o Saldo a partir de `xl` quando vem logo depois dele); os estreitos entram nas colunas como os outros. O skeleton de cada um segue a largura do bloco (§5.17) e, no Fluxo, a fase do mês. O de "Para onde foi o dinheiro" tem a altura do ranking cheio (5 categorias e "Outras"): no começo do mês, com menos categorias, o bloco carregado fica mais baixo que o skeleton, o que foi aceito.
+No desktop, só o Fluxo de caixa ocupa uma linha inteira (e divide a linha com o Saldo a partir de `xl` quando vem logo depois dele); os estreitos entram nas colunas como os outros. O skeleton de cada um segue a largura do bloco (§5.17) e a fase do mês (passado, atual, futuro) nos blocos cujo texto muda com ela: Fluxo, os dois cards de Receitas e Despesas, Orçamento (some "N% do mês decorrido"), Para onde foi o dinheiro e Receitas × despesas por mês (some a nota do mês parcial). O de "Para onde foi o dinheiro" tem a altura do ranking cheio (5 categorias e "Outras"): no começo do mês, com menos categorias, o bloco carregado fica mais baixo que o skeleton, o que foi aceito.
 
 **Flag desligada**: o Início é o padrão do app (a página nem lê a escolha), sem botão e sem a seção em Preferências; o servidor recusa salvar. A escolha salva fica guardada para quando a flag voltar.
 
@@ -1028,6 +1034,8 @@ Recalcula a cada mudança **sem rede** (motor do doc 03 roda no cliente). Valore
 | **Calendário** | gasto por dia em mapa de calor (escala sequencial de um tom); toque no dia → lançamentos | heatmap mensal |
 
 - Filtro de período **um só**, acima de tudo, vale para todas as visões.
+- **`?mes=AAAA-MM`** nas visões por período (Visão geral, Categorias, Patrimônio): o mês onde a janela termina; `?periodo=` é o tamanho (padrão 12). Sem `mes`, vale o mês atual; um mês atual ou futuro vale como o atual; um valor malformado também. Chips e abas mantêm o `mes`. Fora do mês atual, abaixo dos chips, a nota "Até **outubro de 2026**" (com `periodo=1`: "Mostrando **outubro de 2026**") e o link "Voltar para hoje" (44 px). Os blocos do Início e o aviso Resumo mensal abrem o relatório no mês certo.
+- **Sem registros**: Fluxo e Patrimônio, num mês (ou janela) que termina antes do primeiro registro, mostram "Sem registros em {mês de ano}" / "Seus registros começam em {mês de ano}." e o botão "Ir para {mês de ano}" (o mês do primeiro registro, mantendo o período), em vez de um saldo projetado para trás. Os pontos da janela do Patrimônio que cobrem em parte meses anteriores ao primeiro registro continuam planos.
 - Menu "⋯": regime **Competência** (data da compra, padrão) ou **Caixa** (cartão entra na data de pagamento da fatura).
 - Mês corrente sempre marcado como **parcial** (asterisco + nota) para não sugerir queda falsa.
 - KPIs que são **somas** incluem o mês parcial (com o rótulo "inclui out parcial"); KPIs que são **razões** (taxa de poupança, médias mensais) usam só meses completos — senão o mês em andamento, com o salário já recebido e as despesas ainda por vir, infla o resultado.
@@ -1243,7 +1251,7 @@ Textos de vazio:
 ### 9.4 Interação no toque
 
 - **Scrub**: arrastar o dedo sobre o gráfico move uma linha vertical e um tooltip fixo **acima** do gráfico (não sob o dedo). Soltar mantém a seleção até tocar fora.
-- Colunas: toque seleciona o mês (coluna em opacidade cheia, demais a 40%) e mostra os valores no topo do card.
+- Colunas: toque seleciona o mês (coluna na cor da série, demais na cor de repouso `--chart-3-rest` / `--chart-2-rest`, §3.1, com contraste ≥ 3:1 nos dois temas; sem token de repouso, a opacidade cai a 40%) e mostra os valores no topo do card. A seleção também vai além da cor: o rótulo do mês fica em negrito e ganha um traço de 2 px (`--text`) embaixo.
 - Áreas de toque ≥ 24 px de largura, mesmo para colunas finas.
 - Teclado: setas percorrem os pontos; o tooltip acompanha o foco.
 - Implementação recomendada do scrub: um `<input type="range">` transparente sobre a área do gráfico (`min=0`, `max=pontos−1`), com `aria-valuetext` descrevendo o ponto ("Ano 7: total R$ 149.697, investido R$ 94.000"). Ganha arrasto, toque, teclado e leitor de tela sem código extra — é o que o mockup do Simulador usa.

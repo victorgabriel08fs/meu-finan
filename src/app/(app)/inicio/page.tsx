@@ -100,7 +100,7 @@ async function Summary({
           </p>
           <Link
             href="/inicio"
-            className="inline-flex h-11 items-center rounded-control px-3 text-callout font-semibold text-primary active:bg-surface-3"
+            className="inline-flex h-11 items-center rounded-control px-3 text-callout font-semibold text-on-primary-soft active:bg-surface-3"
           >
             Voltar para hoje
           </Link>

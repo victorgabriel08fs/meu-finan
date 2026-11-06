@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { MonthSwitcher } from "@/components/app/month-switcher";
 import { Skeleton } from "@/components/ui/skeleton";
-import { periodLabel } from "@/lib/format/date";
-import { monthViewHref } from "./views";
+import { monthLabel, periodLabel } from "@/lib/format/date";
+import type { ReportPeriod } from "./model";
+import { monthViewHref, periodHref } from "./views";
 
 type ReportMonthSwitcherProps = {
   /** The view, e.g. `/relatorios/fluxo`. */
@@ -44,4 +46,37 @@ export function ReportMonthSwitcher({
 
 export function ReportMonthSwitcherSkeleton() {
   return <Skeleton className="mx-auto h-11 w-64 rounded-full" />;
+}
+
+/**
+ * Where a window of months ends, when it is not the current month ("Até
+ * outubro de 2026", or "Mostrando outubro de 2026" for a single month), with
+ * the way back to today. Under the period chips; renders nothing for today.
+ */
+export function ReportEndNote({
+  path,
+  period,
+  month,
+  currentMonth,
+}: {
+  path: string;
+  period: ReportPeriod;
+  month: string;
+  currentMonth: string;
+}) {
+  if (month === currentMonth) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <p className="text-callout text-fg-2">
+        {period === 1 ? "Mostrando " : "Até "}
+        <strong className="font-semibold text-fg">{monthLabel(month)}</strong>
+      </p>
+      <Link
+        href={periodHref(path, period, null)}
+        className="inline-flex h-11 items-center rounded-control px-2 text-callout font-semibold text-primary transition-colors duration-100 hover:bg-primary-soft/60 active:bg-primary-soft"
+      >
+        Voltar para hoje
+      </Link>
+    </div>
+  );
 }

@@ -15,6 +15,11 @@ vi.mock("@/server/actions/tips", () => ({
 const render = (id: (typeof HOME_BLOCK_IDS)[number]) =>
   renderToStaticMarkup(<HomeBlockSkeleton id={id} />);
 
+const of = (
+  id: (typeof HOME_BLOCK_IDS)[number],
+  phase?: "past" | "current" | "future",
+) => renderToStaticMarkup(<HomeBlockSkeleton id={id} phase={phase} />);
+
 describe("HomeBlockSkeleton", () => {
   it("has a skeleton for every block but the highlight", () => {
     for (const id of HOME_BLOCK_IDS) {
@@ -66,14 +71,56 @@ describe("HomeBlockSkeleton", () => {
     );
   });
 
+  it("sizes the tiles, the budget and the reports by the month on screen", () => {
+    // Where a phase measures like the current month it is the same markup.
+    expect(of("month-totals", "future")).toBe(of("month-totals"));
+    expect(of("income-expense", "future")).toBe(of("income-expense"));
+    // A past month has no "até hoje" note: the tiles never wrap.
+    expect(of("month-totals", "past")).not.toContain("@min-[23rem]");
+    expect(
+      of("month-totals", "past").split("h-32.5 rounded-card"),
+    ).toHaveLength(3);
+    // The budget's pace line breaks later without "N% do mês decorrido".
+    expect(of("budget", "past")).toContain(
+      "h-99.75 rounded-card @min-[24.5625rem]:h-94.75",
+    );
+    expect(of("budget", "future")).toContain(
+      "h-99.75 rounded-card @min-[26.1875rem]:h-94.75",
+    );
+    // The ranking of a past month wraps its title later; a month ahead has
+    // nothing paid, so it is the invite's size.
+    expect(of("category-breakdown", "past")).toContain(
+      "h-146.25 rounded-card @min-[19.5rem]:h-136.25",
+    );
+    expect(of("category-breakdown", "future")).toContain("h-40 rounded-card");
+    expect(of("category-breakdown", "future")).toContain(
+      "@min-[37.25rem]:h-18",
+    );
+    // No chart footnote in a past month.
+    expect(of("income-expense", "past")).toContain("h-127.75 rounded-card");
+    expect(of("income-expense", "past")).toContain("@min-[33.75rem]:h-106.75");
+    for (const id of [
+      "budget",
+      "category-breakdown",
+      "income-expense",
+    ] as const) {
+      expect(of(id, "past"), id).toMatch(/^<div class="@container">/);
+      expect(of(id, "future"), id).toMatch(/^<div class="@container">/);
+    }
+  });
+
   it("leaves the other blocks alike in every phase", () => {
-    for (const id of HOME_BLOCK_IDS.filter((id) => id !== "cash-flow")) {
+    const changing = [
+      "cash-flow",
+      "month-totals",
+      "budget",
+      "category-breakdown",
+      "income-expense",
+    ];
+    for (const id of HOME_BLOCK_IDS.filter((id) => !changing.includes(id))) {
       const html = render(id);
       for (const phase of ["past", "future"] as const) {
-        expect(
-          renderToStaticMarkup(<HomeBlockSkeleton id={id} phase={phase} />),
-          `${id} ${phase}`,
-        ).toBe(html);
+        expect(of(id, phase), `${id} ${phase}`).toBe(html);
       }
     }
   });
@@ -83,7 +130,7 @@ describe("HomeBlockSkeleton", () => {
       ["category-breakdown", "h-146.25 rounded-card @xs:h-136.25"],
       [
         "income-expense",
-        "h-131.25 rounded-card @xs:h-116.75 @min-[22.25rem]:h-111.25 @lg:h-105.75",
+        "h-132.25 rounded-card @xs:h-117.75 @min-[22.25rem]:h-112.25 @min-[33.75rem]:h-106.75",
       ],
       ["net-worth", "h-51.25 rounded-card @min-[21.75rem]:h-46.75"],
     ] as const) {

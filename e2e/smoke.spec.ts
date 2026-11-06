@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD } from "./demo";
+import { chooseTheme } from "./theme";
 
 // Every test runs with the session saved by auth.setup.ts, except those in
 // "sem sessão".
@@ -47,33 +48,6 @@ async function expectLoaded(page: Page, label: string) {
     timeout: 30_000,
   });
   await expect(page.locator("h1:visible").first(), label).toBeVisible();
-}
-
-const THEME_NAMES = { dark: "Escuro", light: "Claro" } as const;
-type Theme = keyof typeof THEME_NAMES;
-
-/**
- * Picks the theme in Ajustes › Preferências and waits until it is saved on
- * the account (the Server Action's response), like a user would.
- */
-async function chooseTheme(page: Page, theme: Theme) {
-  await page.goto("/ajustes/preferencias");
-  await expectLoaded(page, "/ajustes/preferencias");
-  // The desktop sidebar has its own switch: use the one on the page.
-  const option = page
-    .locator("#conteudo")
-    .getByRole("radio", { name: THEME_NAMES[theme] });
-  if ((await option.getAttribute("aria-checked")) !== "true") {
-    const saved = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.request().headers()["next-action"] !== undefined,
-    );
-    await option.click();
-    expect((await saved).ok()).toBe(true);
-  }
-  await expect(option).toHaveAttribute("aria-checked", "true");
-  await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
 }
 
 test.describe("sem sessão", () => {
@@ -125,7 +99,7 @@ test("abre todas as telas sem erros, nos dois temas", async ({ page }) => {
   const errors = collectErrors(page);
   // Light first, so the account ends on the default (dark) for what follows.
   for (const theme of ["light", "dark"] as const) {
-    await chooseTheme(page, theme);
+    await chooseTheme(page, theme === "light" ? "Claro" : "Escuro");
     for (const path of SCREENS) {
       const response = await page.goto(path);
       expect(response?.status(), path).toBeLessThan(400);
@@ -153,7 +127,7 @@ test("o tema escolhido fica na conta: vale depois de recarregar e em outro apare
 }) => {
   test.setTimeout(120_000);
   const errors = collectErrors(page);
-  await chooseTheme(page, "light");
+  await chooseTheme(page, "Claro");
   await page.reload();
   await expectLoaded(page, "/ajustes/preferencias");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

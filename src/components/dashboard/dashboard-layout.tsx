@@ -203,11 +203,63 @@ export function HomeBlockFrame({
   );
 }
 
+/*
+ * The blocks that change shape with the month on screen (doc 02 §5.17), by
+ * phase: heights measured in the app (Ana of the demo, a sweep of the slot's
+ * width from 264 to 1136px, past = the month before today's, future = two
+ * ahead). Where a phase measures like the current month it reuses its classes.
+ * The wraps depend on the texts (dates, amounts), so they move a few px with
+ * the data: measure again when a block's copy changes.
+ */
+
 /**
  * In an @container around the tiles: their support text wraps a line more
- * when the block is under 23rem (measured: 357px wraps, 368px does not).
+ * when the block is under 23rem (measured: 357px wraps, 368px does not). A
+ * past month has no "até hoje" note: it no longer wraps from 272px.
  */
-const TILE_SKELETON = "h-37 rounded-card @min-[23rem]:h-32.5";
+const TILE_CURRENT = "h-37 rounded-card @min-[23rem]:h-32.5";
+const TILE_SKELETON: Record<ReportPhase, string> = {
+  past: "h-32.5 rounded-card",
+  current: TILE_CURRENT,
+  future: TILE_CURRENT,
+};
+
+/**
+ * Orçamento: 399px under the width where the pace line fits, 379px above it.
+ * Without "N% do mês decorrido" the line breaks later in a past month (394px)
+ * and in a month ahead (422px), against 336px in the current one.
+ */
+const BUDGET_SKELETON: Record<ReportPhase, string> = {
+  past: "h-99.75 rounded-card @min-[24.5625rem]:h-94.75",
+  current: "h-99.75 rounded-card @min-[21rem]:h-94.75",
+  future: "h-99.75 rounded-card @min-[26.1875rem]:h-94.75",
+};
+
+/**
+ * Para onde foi o dinheiro: the ranking with its five categories and
+ * "Outras" in the current and past months (the ", até hoje" of the current
+ * one wraps the title from 320px, a past month's from 312px). A month ahead
+ * has nothing paid: the invite, which wraps its line as the slot narrows.
+ */
+const CATEGORY_SKELETON: Record<ReportPhase, string> = {
+  past: "h-146.25 rounded-card @min-[19.5rem]:h-136.25",
+  current: "h-146.25 rounded-card @xs:h-136.25",
+  future:
+    "h-40 rounded-card @min-[23.25rem]:h-34.5 @min-[27.25rem]:h-28 @min-[33.25rem]:h-22.5 @min-[37.25rem]:h-18",
+};
+
+/**
+ * Receitas × despesas: the chart's footnote ("* novembro parcial, até o dia
+ * 5 de 30") is only in the current month, and a month ahead ends at today's:
+ * a past month wraps a line less in the narrow slots.
+ */
+const INCOME_EXPENSE_CURRENT =
+  "h-132.25 rounded-card @xs:h-117.75 @min-[22.25rem]:h-112.25 @min-[33.75rem]:h-106.75";
+const INCOME_EXPENSE_SKELETON: Record<ReportPhase, string> = {
+  past: "h-127.75 rounded-card @min-[19.625rem]:h-123.25 @min-[20.4375rem]:h-117.75 @min-[22.0625rem]:h-112.25 @min-[33.75rem]:h-106.75",
+  current: INCOME_EXPENSE_CURRENT,
+  future: INCOME_EXPENSE_CURRENT,
+};
 
 /** Fluxo de caixa by the phase of the month (heights measured in the app). */
 const CASH_FLOW_SKELETON: Record<ReportPhase, string> = {
@@ -250,15 +302,15 @@ export function HomeBlockSkeleton({
       return (
         <div className="@container">
           <div className="grid grid-cols-2 gap-3">
-            <Skeleton className={TILE_SKELETON} />
-            <Skeleton className={TILE_SKELETON} />
+            <Skeleton className={TILE_SKELETON[phase]} />
+            <Skeleton className={TILE_SKELETON[phase]} />
           </div>
         </div>
       );
     case "budget":
       return (
         <div className="@container">
-          <Skeleton className="h-99.75 rounded-card @min-[21rem]:h-94.75" />
+          <Skeleton className={BUDGET_SKELETON[phase]} />
         </div>
       );
     case "upcoming-bills":
@@ -299,18 +351,18 @@ export function HomeBlockSkeleton({
       return <Skeleton className={CASH_FLOW_SKELETON[phase]} />;
     // The narrow blocks of the reports wrap a line more in the xl columns
     // under 20rem; Receitas × despesas its title too under 22.25rem, and the
-    // Patrimônio its change under 21.75rem. The ranking with its five
-    // categories and "Outras", a month's usual shape.
+    // Patrimônio its change under 21.75rem (the same in every phase). The
+    // others by phase, above.
     case "category-breakdown":
       return (
         <div className="@container">
-          <Skeleton className="h-146.25 rounded-card @xs:h-136.25" />
+          <Skeleton className={CATEGORY_SKELETON[phase]} />
         </div>
       );
     case "income-expense":
       return (
         <div className="@container">
-          <Skeleton className="h-131.25 rounded-card @xs:h-116.75 @min-[22.25rem]:h-111.25 @lg:h-105.75" />
+          <Skeleton className={INCOME_EXPENSE_SKELETON[phase]} />
         </div>
       );
     case "net-worth":

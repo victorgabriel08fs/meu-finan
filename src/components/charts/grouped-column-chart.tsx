@@ -14,6 +14,12 @@ export type ColumnSeries = {
   label: string;
   /** CSS color of the series, e.g. `var(--chart-3)`. */
   color: string;
+  /**
+   * Color of the series' columns in the groups not selected, e.g.
+   * `var(--chart-3-rest)`: duller, but 3:1 against the surface. Without it
+   * they fade to 40% opacity.
+   */
+  restColor?: string;
 };
 
 export type ColumnGroup = {
@@ -29,7 +35,7 @@ export type ColumnGroup = {
 type GroupedColumnChartProps = {
   series: readonly ColumnSeries[];
   groups: readonly ColumnGroup[];
-  /** Selected group; the others drop to 40% (doc 02 §9.4). */
+  /** Selected group; the others take their series' rest color (doc 02 §9.4). */
   selected: number | null;
   onSelect: (index: number) => void;
   ticks: Ticks;
@@ -146,7 +152,9 @@ export function GroupedColumnChart({
                   {describeGroup(index, true)}
                 </span>
                 {group.values.map((value, seriesIndex) => {
-                  const color = series[seriesIndex]?.color ?? "var(--primary)";
+                  const spec = series[seriesIndex];
+                  const color = spec?.color ?? "var(--primary)";
+                  const bar = active ? color : (spec?.restColor ?? color);
                   const height =
                     value > 0
                       ? Math.max(
@@ -159,14 +167,14 @@ export function GroupedColumnChart({
                       key={series[seriesIndex]?.key ?? seriesIndex}
                       aria-hidden="true"
                       className={cn(
-                        "block w-full max-w-6 rounded-t-[4px] bg-(--bar) transition-opacity duration-150",
+                        "block w-full max-w-6 rounded-t-[4px] bg-(--bar) transition-[background-color,opacity] duration-150",
                         value > 0 && "min-h-0.5",
-                        active ? "opacity-100" : "opacity-40",
+                        !active && !spec?.restColor && "opacity-40",
                       )}
                       style={
                         {
                           height: `${height}%`,
-                          "--bar": color,
+                          "--bar": bar,
                         } as CSSProperties
                       }
                     />
@@ -189,6 +197,13 @@ export function GroupedColumnChart({
           >
             {group.label}
             {group.partial ? "*" : ""}
+            {/* Selected by more than the weight and the colors. */}
+            <span
+              className={cn(
+                "mx-auto mt-0.5 block h-0.5 w-4 rounded-full bg-fg transition-opacity duration-150",
+                selected === index ? "opacity-100" : "opacity-0",
+              )}
+            />
           </span>
         ))}
       </div>

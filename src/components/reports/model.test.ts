@@ -174,4 +174,17 @@ describe("net worth", () => {
       netWorthSummary([1_648_000, 2_628_973], 6, { hideValues: true }),
     ).toBe("Patrimônio subiu de valor oculto para valor oculto em 6 meses.");
   });
+
+  it("says it held steady, once, when nothing changed", () => {
+    expect(plain(netWorthSummary([500_000, 500_000], 1))).toBe(
+      "Patrimônio ficou estável em R$ 5.000 no mês.",
+    );
+    expect(plain(netWorthSummary([500_000, 500_000], 6))).toBe(
+      "Patrimônio ficou estável em R$ 5.000 em 6 meses.",
+    );
+    expect(netWorthSummary([500_000, 500_000], 3, { hideValues: true })).toBe(
+      "Patrimônio ficou estável em valor oculto em 3 meses.",
+    );
+    expect(plain(netWorthSummary([500_000, 500_001], 6))).toContain("subiu de");
+  });
 });

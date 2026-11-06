@@ -41,10 +41,14 @@ import type { AccountListItem } from "./accounts";
 import { getBudgets } from "./budgets";
 import {
   type PeriodRange,
+  periodMonthOf,
   resolvePeriod,
   toRange,
   type UserContext,
 } from "./context";
+
+export { periodMonthOf };
+
 import { forecastUntil, getUpcoming, type UpcomingItem } from "./dashboard";
 import { categoryBreakdown } from "./reports";
 import { accountsOf, pendingUntil } from "./request-reads";
@@ -235,11 +239,6 @@ export async function loadWeeklySummary(
 
 function rangeOf(ctx: UserContext, period: Period): PeriodRange {
   return toRange(period, periodContaining(ctx.today, ctx.monthStartDay));
-}
-
-/** The ?mes= of the screens for the financial month containing `date`. */
-export function periodMonthOf(ctx: UserContext, date: string): string {
-  return rangeOf(ctx, periodContaining(parse(date), ctx.monthStartDay)).month;
 }
 
 /**
