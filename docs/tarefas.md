@@ -44,6 +44,27 @@ Ficaram de fora das subcategorias (05/11/2026):
 - O "Desfazer" de "Categoria X arquivada" restaura sem toast de confirmação; o texto "restaurada, com N subcategorias" só aparece pelo botão Restaurar.
 - O e2e "lança uma despesa pelo +" (`e2e/smoke.spec.ts`) falhou uma vez por tempo sob carga e passou ao repetir: observar se volta a falhar.
 
+## 6. Caixinha: novo tipo de conta
+
+**Pedido do dono (05/11/2026).** Um tipo de conta novo, **Caixinha**, para dinheiro guardado à parte (como as caixinhas dos bancos):
+
+- **Conta no patrimônio** (Relatórios › Patrimônio, bloco Patrimônio do Início).
+- **Transferências** de uma caixinha para outra conta e de outra conta para a caixinha, como entre contas comuns (as duas pernas balanceadas, doc 01 ADR-04).
+- **Não conta no valor que pode ser gasto**: fica fora da previsão do mês, do "pode gastar por dia" e de tudo que deriva deles (Saldo em contas e previsto no Início, Fluxo de caixa, avisos Resumo do dia e Próxima receita). Guardar dinheiro na caixinha reduz o que dá para gastar; resgatar aumenta.
+
+### O que investigar e decidir
+
+- Hoje os tipos são `checking`, `savings`, `cash`, `investment`, `credit_card` e `other` (`src/server/db/schema/enums.ts`), e a regra de "conta líquida" é `isLiquid` em `src/server/domain/dashboard.ts` (tudo menos cartão, com "incluir no patrimônio", não arquivada), repetida em `reports.ts` e `reminders.ts`: centralizar numa função só e tirar dela a caixinha.
+- Valor novo no enum `fin_account_type` (migração com `npm run db:generate`; nunca editar `drizzle/`), rótulo e ícone (doc 02), formulário de conta, filtros e listas que agrupam por tipo, importação de extrato.
+- **Para o dono decidir** (o arquiteto traz com recomendação): o card "Saldo em contas" mostra o total guardado nas caixinhas à parte (ex.: "Guardado em caixinhas R$ X")? Poupança e investimento continuam contando como dinheiro para gastar, ou passam a se comportar como caixinha? Caixinha pode ter meta ligada (Planejar › Metas)?
+- Transferência para a caixinha não é despesa nem receita (não entra em orçamento nem em Receitas × despesas), como as transferências de hoje.
+
+### Pronto quando
+
+- Criar uma caixinha, transferir para ela e de volta; o patrimônio não muda com a transferência, o Saldo em contas, o previsto e o "pode gastar por dia" mudam.
+- Testes: unidade da regra de conta líquida; integração (previsão, patrimônio, Fluxo de caixa e avisos com e sem caixinha; isolamento); e2e criando a caixinha e transferindo.
+- README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
+
 ## Entregue
 
 ### Extrato: melhorias e subcategorias — 05/11/2026
