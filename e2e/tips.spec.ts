@@ -21,6 +21,15 @@ async function expectLoaded(page: Page) {
 /** "Rever dicas" in Preferências: back on, and off to the Início. */
 async function reviewTips(page: Page) {
   await page.goto("/ajustes/preferencias");
+  await expectLoaded(page);
+  // With the tips on, the balloon of this screen ("Seu Início, do seu jeito")
+  // may come up over the button, and under load it can land after the click
+  // started: let it settle, and dismiss it, before clicking.
+  await page.waitForTimeout(BALLOON_DELAY_MS);
+  if ((await page.getByRole("dialog").count()) > 0) {
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
   await page.getByRole("button", { name: /^Rever dicas/ }).click();
   await expect(page).toHaveURL(/\/inicio$/, { timeout: 30_000 });
 }

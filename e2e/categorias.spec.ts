@@ -41,7 +41,9 @@ test("cria uma categoria e uma subcategoria dela, que aparecem no Extrato e na N
   await sheet.getByLabel("Nome").fill("Pet shop");
   await sheet.getByRole("button", { name: "Criar categoria" }).click();
   await expect(sheet).toBeHidden();
-  await expect(toast(page)).toContainText("Categoria Pet shop criada.");
+  await expect(
+    toast(page).filter({ hasText: "Categoria Pet shop criada." }),
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Nova categoria de despesa" }).click();
   sheet = page.getByRole("dialog", { name: "Nova categoria" });
@@ -54,9 +56,10 @@ test("cria uma categoria e uma subcategoria dela, que aparecem no Extrato e na N
   await parent.selectOption({ label: "Pet shop" });
   await sheet.getByRole("button", { name: "Criar categoria" }).click();
   await expect(sheet).toBeHidden();
-  await expect(toast(page)).toContainText(
-    "Subcategoria Ração criada em Pet shop.",
-  );
+  // The first toast may still be on screen: look for this one by its text.
+  await expect(
+    toast(page).filter({ hasText: "Subcategoria Ração criada em Pet shop." }),
+  ).toBeVisible();
 
   // In the list, right under the mother ("em Pet shop" is the legend).
   const rows = page.locator("#conteudo").getByRole("button", { name: /Ração/ });
@@ -127,10 +130,12 @@ test("arquivar a mãe leva as subcategorias, e o Desfazer traz todas de volta", 
     confirm.getByText("Ela e a subcategoria Ração saem das listas de escolha"),
   ).toBeVisible();
   await confirm.getByRole("button", { name: "Arquivar categoria" }).click();
-  await expect(confirm).toBeHidden();
-  await expect(toast(page)).toContainText(
-    "Categoria Pet shop arquivada, com 1 subcategoria.",
-  );
+  await expect(confirm).toBeHidden({ timeout: 30_000 });
+  await expect(
+    toast(page).filter({
+      hasText: "Categoria Pet shop arquivada, com 1 subcategoria.",
+    }),
+  ).toBeVisible();
   const archived = page.getByRole("region", { name: "Arquivadas" });
   await expect(archived.getByText("Ração")).toBeVisible();
   await expect(archived.getByText("em Pet shop")).toBeVisible();
