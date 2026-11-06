@@ -327,13 +327,14 @@ describe("novidades feed", () => {
     expect(unreadNewsIds({ ...old, context: CONTEXT })).not.toContain(
       "novidade-importar-extrato",
     );
+    // Of the ones without a flag, only the subcategories (5/nov) are newer.
     expect(
       unreadNewsIds({
         seen: new Set(),
         createdOn: "2026-10-17",
         context: withImport,
       }),
-    ).toEqual([]);
+    ).toEqual(["novidade-subcategorias"]);
 
     // Notifications: only for accounts in use before 30/out, and only while
     // notificacoes_push is on (the link leads to its settings page).
