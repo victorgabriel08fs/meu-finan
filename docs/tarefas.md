@@ -57,6 +57,25 @@ Ficaram de fora das subcategorias (05/11/2026):
 - Testes: unidade da regra de conta líquida; integração (previsão, patrimônio, Fluxo de caixa e avisos com e sem caixinha; isolamento); e2e criando a caixinha e transferindo.
 - README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
 
+## 7. Arquivar categoria levando os lançamentos para outra
+
+**Pedido do dono (06/11/2026).** Ao arquivar uma categoria em Ajustes › Categorias, perguntar: "Quer passar as despesas desta categoria para outra?" (ou "as receitas", conforme o tipo).
+
+- **Sim**: a pessoa escolhe a categoria de destino (do mesmo tipo, ativa; subcategorias aparecem como "Mercado › Feira") e os lançamentos da arquivada passam para ela.
+- **Não**: os lançamentos ficam sem categoria ou vão para "Outros" (a categoria padrão que já existe) — o dono escolhe qual dos dois quando a tarefa começar; hoje eles continuam com a categoria arquivada.
+
+### O que investigar e decidir
+
+- É o mesmo movimento do **Mesclar categorias** da tarefa 5: fazer os dois juntos (um só domínio que move os lançamentos, em transação, com ownership do destino) ou deixar o mesclar para depois.
+- Quais lançamentos mudam: todos (passados, agendados, recorrências e parcelas futuras) ou só os futuros? Regras aprendidas da importação (`mapping`) e orçamentos da categoria arquivada (D1: só categorias principais têm orçamento) — o que acontece com cada um.
+- Mãe com subcategorias: a cascata de arquivar (já existe) leva as filhas; os lançamentos das filhas vão para o destino também, ou cada filha escolhe?
+- "Desfazer": hoje arquivar tem Desfazer; com lançamentos movidos, desfazer precisa devolver cada um à categoria de antes (guardar a lista) ou a ação vira confirmação sem Desfazer (doc 02 §2, princípio 6: confirmação só para o irreversível).
+- Textos (doc 02 §10), confirmação com a contagem ("32 despesas vão para Mercado"), toasts.
+
+### Pronto quando
+
+- Arquivar com e sem mover; os lançamentos, totais, orçamentos e relatórios refletem o destino; isolamento entre contas e ownership do destino testados (integração); e2e do fluxo; README, doc 02 §6.14 e doc 01 atualizados.
+
 ## Entregue
 
 ### Início e Relatórios: melhorias — 05/11/2026
