@@ -122,6 +122,7 @@ async function BalanceBlock({ ctx, range }: HomeBlockProps) {
       monthChangeCents={summary.monthChangeCents}
       monthName={monthName(range.month)}
       forecast={summary.forecast}
+      savingsBoxCents={summary.savingsBoxCents}
       untilLabel={shortDateLabel(range.end)}
     />
   );

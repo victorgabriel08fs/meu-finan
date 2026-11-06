@@ -47,7 +47,7 @@ export function NetWorthHero({ accounts }: { accounts: AccountListItem[] }) {
         Soma das contas incluídas no patrimônio, com cartões como dívida.
       </p>
       {groups.length > 1 ? (
-        <dl className="mt-4 grid grid-cols-fit gap-x-3 gap-y-3 border-t border-border pt-4 sm:grid-cols-3">
+        <dl className="mt-4 grid grid-cols-fit gap-x-3 gap-y-3 border-t border-border pt-4 sm:grid-cols-[repeat(auto-fit,minmax(10rem,1fr))]">
           {groups.map((group) => (
             <div key={group.value} className="flex min-w-0 flex-col gap-0.5">
               <dt className="text-caption text-fg-3">{group.label}</dt>

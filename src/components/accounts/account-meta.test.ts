@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { finAccountType } from "@/server/db/schema";
 import {
+  ACCOUNT_TYPE_OPTIONS,
   accountGroupOf,
   accountHref,
   accountTypeFromParam,
+  allowsNegativeBalance,
   cardCycleError,
   cardCycleSummary,
   cardUsage,
+  defaultColorFor,
   MONTH_DAYS,
+  netWorthDescription,
 } from "./account-meta";
 
 describe("accountGroupOf", () => {
@@ -17,12 +22,14 @@ describe("accountGroupOf", () => {
     expect(accountGroupOf("savings")).toBe("investments");
     expect(accountGroupOf("investment")).toBe("investments");
     expect(accountGroupOf("credit_card")).toBe("cards");
+    expect(accountGroupOf("savings_box")).toBe("savings_boxes");
   });
 });
 
 describe("accountTypeFromParam", () => {
   it("reads pt-BR slugs and enum values, defaulting to Conta corrente", () => {
     expect(accountTypeFromParam("cartao")).toBe("credit_card");
+    expect(accountTypeFromParam("caixinha")).toBe("savings_box");
     expect(accountTypeFromParam("poupanca")).toBe("savings");
     expect(accountTypeFromParam("investment")).toBe("investment");
     expect(accountTypeFromParam(undefined)).toBe("checking");
@@ -95,6 +102,32 @@ describe("cardCycleSummary", () => {
     );
     expect(cardCycleSummary(28, 5)).toBe(
       "Fecha dia 28 e vence dia 5 do mês seguinte.",
+    );
+  });
+});
+
+describe("the caixinha type", () => {
+  it("is offered, with the vault icon, and every enum type has a chip", () => {
+    expect(
+      ACCOUNT_TYPE_OPTIONS.find((option) => option.value === "savings_box"),
+    ).toMatchObject({ label: "Caixinha", icon: "vault" });
+    expect(ACCOUNT_TYPE_OPTIONS.map((option) => option.value).sort()).toEqual(
+      [...finAccountType.enumValues].sort(),
+    );
+  });
+
+  it("is green, never negative, and says it stays out of the Saldo", () => {
+    expect(defaultColorFor("savings_box")).toBe("cat-6");
+    expect(allowsNegativeBalance("savings_box")).toBe(false);
+    expect(netWorthDescription("savings_box")).toContain(
+      "não no Saldo em contas",
+    );
+    expect(netWorthDescription("checking")).toContain("patrimônio");
+    expect(netWorthDescription("savings_box", false)).toBe(
+      "O saldo não entra no patrimônio nem no Saldo em contas.",
+    );
+    expect(netWorthDescription("checking", false)).toBe(
+      "O saldo fica fora do total das contas e do patrimônio.",
     );
   });
 });

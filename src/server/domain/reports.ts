@@ -19,6 +19,7 @@ import {
   type CashMovement,
   dailyCashFlow,
   type InvoiceObligation,
+  isCountedSavingsBox,
   iso,
   type PendingEntry,
   parse,
@@ -34,9 +35,14 @@ import {
   finAccounts,
   transactions,
 } from "@/server/db/schema";
-import { type AccountListItem, listAccounts } from "./accounts";
+import { listAccounts } from "./accounts";
 import { type PeriodRange, toRange, type UserContext } from "./context";
-import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
+import {
+  accountsOf,
+  cardInvoicesOf,
+  pendingUntil,
+  spendableAccountsOf,
+} from "./request-reads";
 
 export type MonthPoint = {
   month: string;
@@ -411,8 +417,10 @@ export type CashFlowDayPoint = {
 
 export type CashFlowReport = {
   phase: ReportPhase;
-  /** The user has liquid accounts (outside cards, in the net worth, active). */
+  /** The user has spendable accounts (no cards or caixinhas, in the net worth, active). */
   hasAccounts: boolean;
+  /** A caixinha counts in the net worth, so the texts say it is left out. */
+  excludesSavingsBoxes: boolean;
   days: CashFlowDayPoint[];
   /** Balance before the first day (projected when the month is ahead). */
   startCents: number;
@@ -425,12 +433,6 @@ export type CashFlowReport = {
   /** Paid entries of those accounts dated inside the month. */
   paidCount: number;
 };
-
-/** "Saldo em contas" of Início: outside cards, in the net worth, active. */
-const isLiquid = (account: AccountListItem) =>
-  account.type !== "credit_card" &&
-  account.includeInNetWorth &&
-  !account.archived;
 
 /** What `liquidPendingFlows` needs of a pending entry (see `pendingEntries`). */
 export type PendingRow = {
@@ -493,11 +495,16 @@ export async function cashFlowReport(
 ): Promise<CashFlowReport> {
   const phase = reportPhase(ctx, range);
   // Shared with the Saldo of the Início, read once per request.
-  const liquid = (await accountsOf(ctx)).filter(isLiquid);
+  const [accounts, liquid] = await Promise.all([
+    accountsOf(ctx),
+    spendableAccountsOf(ctx),
+  ]);
+  const excludesSavingsBoxes = accounts.some(isCountedSavingsBox);
   if (liquid.length === 0) {
     return {
       phase,
       hasAccounts: false,
+      excludesSavingsBoxes,
       days: [],
       startCents: 0,
       endCents: 0,
@@ -581,6 +588,7 @@ export async function cashFlowReport(
   return {
     phase,
     hasAccounts: true,
+    excludesSavingsBoxes,
     days: flow.days.map((day) => ({
       date: iso(day.date),
       realizedCents: day.realizedCents,

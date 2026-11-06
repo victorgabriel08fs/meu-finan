@@ -75,6 +75,46 @@ describe("NetWorthHero and AccountGroupList", () => {
     expect(visible).toContain("Cartões de crédito");
   });
 
+  it("lists caixinhas in their own group", () => {
+    const box = account({
+      id: "k1",
+      name: "Viagem",
+      type: "savings_box",
+      icon: "vault",
+      balanceCents: 300_000,
+    });
+    const hero = text(
+      renderToStaticMarkup(
+        <NetWorthHero accounts={[account({}), box, card]} />,
+      ),
+    );
+    expect(hero).toContain("Caixinhas");
+    // 8.920,15 + 3.000,00 − 1.380,42
+    expect(hero).toContain("R$10.539,73");
+    const list = renderToStaticMarkup(
+      <AccountGroupList group="savings_boxes" accounts={[box]} />,
+    );
+    expect(text(list)).toContain("Caixinhas");
+    expect(text(list)).toContain("Caixinha");
+    expect(list).toContain('href="/contas/k1"');
+  });
+
+  it("marks a caixinha outside the net worth", () => {
+    const list = renderToStaticMarkup(
+      <AccountGroupList
+        group="savings_boxes"
+        accounts={[
+          account({
+            id: "k1",
+            type: "savings_box",
+            includeInNetWorth: false,
+          }),
+        ]}
+      />,
+    );
+    expect(text(list)).toContain("Caixinha · fora do patrimônio");
+  });
+
   it("shows the available limit of a card and links it to its invoice", () => {
     const html = renderToStaticMarkup(
       <AccountGroupList group="cards" accounts={[card]} />,
@@ -346,6 +386,20 @@ describe("AccountForm", () => {
     expect(visible).toContain("Não precisa ser exato");
     expect(visible).toContain("Criar conta");
     expect(visible).not.toContain("Fechamento");
+  });
+
+  it("explains the caixinha and offers to create one", () => {
+    const html = renderToStaticMarkup(
+      <AccountForm initialType="savings_box" />,
+    );
+    const visible = text(html);
+    expect(visible).toContain("Para guardar dinheiro à parte.");
+    expect(visible).toContain(
+      "O saldo entra no patrimônio, mas não no Saldo em contas.",
+    );
+    expect(visible).toContain("Criar caixinha");
+    expect(visible).not.toContain("Fechamento");
+    expect(html).toMatch(/<fieldset[^>]*aria-describedby="[^"]+-type-note"/);
   });
 
   it("asks a card for the limit, the cycle and what is owed", () => {

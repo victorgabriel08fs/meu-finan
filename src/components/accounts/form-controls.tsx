@@ -32,6 +32,10 @@ type TypePickerProps = {
   value: AccountType;
   onChange: (type: AccountType) => void;
   legend?: string;
+  /** Id of a note below the chips that describes the chosen type. */
+  describedBy?: string;
+  /** Leaves the credit card out (an existing account cannot become one). */
+  withoutCard?: boolean;
 };
 
 /** Account type as choice chips with the type icon (§3.9). */
@@ -40,14 +44,18 @@ export function TypePicker({
   value,
   onChange,
   legend = "Tipo",
+  describedBy,
+  withoutCard = false,
 }: TypePickerProps) {
   return (
-    <fieldset className="min-w-0">
+    <fieldset className="min-w-0" aria-describedby={describedBy}>
       <legend className="mb-2 text-callout font-semibold text-fg">
         {legend}
       </legend>
       <div className="flex flex-wrap gap-2">
-        {ACCOUNT_TYPE_OPTIONS.map((option) => {
+        {ACCOUNT_TYPE_OPTIONS.filter(
+          (option) => !withoutCard || option.value !== "credit_card",
+        ).map((option) => {
           const Icon = isCategoryIconName(option.icon)
             ? CATEGORY_ICONS[option.icon]
             : null;

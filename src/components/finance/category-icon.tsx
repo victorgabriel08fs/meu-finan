@@ -47,6 +47,7 @@ import {
   TrendingUp,
   Tv,
   Utensils,
+  Vault,
   Wallet,
   Wifi,
   Wrench,
@@ -89,6 +90,7 @@ export const CATEGORY_ICONS = {
   scale: Scale,
   // Account types
   "piggy-bank": PiggyBank,
+  vault: Vault,
   wallet: Wallet,
   "credit-card": CreditCard,
   // Extras for custom categories

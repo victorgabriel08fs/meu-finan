@@ -15,6 +15,8 @@ type ForecastSheetProps = {
   /** Magnitude (positive). */
   invoicesDueCents: number;
   forecastCents: number;
+  /** Caixinhas in the net worth; null without any. */
+  savingsBoxCents?: number | null;
   /** "31/out": the last day of the period. */
   untilLabel: string;
 };
@@ -29,6 +31,7 @@ export function ForecastSheet({
   pendingExpenseCents,
   invoicesDueCents,
   forecastCents,
+  savingsBoxCents = null,
   untilLabel,
 }: ForecastSheetProps) {
   return (
@@ -80,9 +83,22 @@ export function ForecastSheet({
           </Row>
         </dl>
         <p className="mt-4 text-caption text-fg-3">
-          Entram as contas incluídas no patrimônio; cartões de crédito ficam de
-          fora do saldo. Compras no cartão pesam pela fatura, até a data de
-          vencimento.
+          Entram as contas do dia a dia incluídas no patrimônio; cartões de
+          crédito e caixinhas ficam de fora do saldo. Compras no cartão pesam
+          pela fatura, até a data de vencimento.
+          {savingsBoxCents === null ? null : (
+            <>
+              {" "}
+              Não inclui{" "}
+              <Money
+                cents={savingsBoxCents}
+                variant="caption"
+                tone="neutral"
+                className="text-inherit"
+              />{" "}
+              guardados em caixinhas.
+            </>
+          )}
         </p>
       </SheetContent>
     </Sheet>

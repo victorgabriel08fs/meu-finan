@@ -9,6 +9,7 @@ export const finAccountType = pgEnum("fin_account_type", [
   "investment",
   "credit_card",
   "other",
+  "savings_box",
 ]);
 export const txnKind = pgEnum("txn_kind", [
   "income",

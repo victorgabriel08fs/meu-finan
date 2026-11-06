@@ -85,8 +85,12 @@ type QuickAddState = {
   keepAdding: boolean;
   /** Element focused before opening, to return focus to on close. */
   returnFocus: HTMLElement | null;
-  /** Opens the sheet; `kind` presets the type (an empty draft starts as Despesa). */
-  openQuickAdd: (kind?: EntryKind) => void;
+  /**
+   * Opens the sheet; `kind` presets the type (an empty draft starts as
+   * Despesa) and `preset` fills fields over the draft (Guardar and Resgatar of
+   * a caixinha set the accounts).
+   */
+  openQuickAdd: (kind?: EntryKind, preset?: Partial<QuickAddDraft>) => void;
   /**
    * Closes the sheet. The draft stays on screen during the exit animation;
    * with `discard` (after a save) the next opening starts a fresh one.
@@ -142,10 +146,19 @@ export const useQuickAddStore = create<QuickAddState>()((set) => ({
   keepAdding: false,
   returnFocus: null,
 
-  openQuickAdd: (kind) =>
+  openQuickAdd: (kind, preset) =>
     set((state) => {
       if (state.open) {
-        return kind ? { draft: { ...state.draft, kind } } : {};
+        return kind || preset
+          ? {
+              draft: {
+                ...state.draft,
+                ...(kind ? { kind } : {}),
+                ...preset,
+                requestId: null,
+              },
+            }
+          : {};
       }
       const now = Date.now();
       const expired =
@@ -158,7 +171,10 @@ export const useQuickAddStore = create<QuickAddState>()((set) => ({
         closedAt: null,
         restored: keep,
         returnFocus: focusedElement(),
-        draft: kind ? { ...base, kind } : base,
+        draft:
+          kind || preset
+            ? { ...base, ...(kind ? { kind } : {}), ...preset, requestId: null }
+            : base,
       };
     }),
 

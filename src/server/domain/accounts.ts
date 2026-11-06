@@ -20,6 +20,7 @@ export const ACCOUNT_TYPE_LABELS: Record<FinAccountType, string> = {
   investment: "Investimento",
   credit_card: "Cartão de crédito",
   other: "Outra",
+  savings_box: "Caixinha",
 };
 
 export const ACCOUNT_TYPE_ICONS: Record<FinAccountType, string> = {
@@ -29,7 +30,14 @@ export const ACCOUNT_TYPE_ICONS: Record<FinAccountType, string> = {
   investment: "trending-up",
   credit_card: "credit-card",
   other: "wallet",
+  savings_box: "vault",
 };
+
+/** Default color by type: cards violet, caixinhas green, the rest blue. */
+function defaultAccountColor(type: FinAccountType): ColorToken {
+  if (type === "credit_card") return "cat-7";
+  return type === "savings_box" ? "cat-6" : "cat-1";
+}
 
 export type AccountListItem = {
   id: string;
@@ -137,6 +145,7 @@ export async function requireAccount(
       id: finAccounts.id,
       name: finAccounts.name,
       type: finAccounts.type,
+      icon: finAccounts.icon,
       archivedAt: finAccounts.archivedAt,
       closingDay: creditCardDetails.closingDay,
       dueDay: creditCardDetails.dueDay,
@@ -154,7 +163,13 @@ export async function requireAccount(
     row.type === "credit_card" && row.closingDay !== null && row.dueDay !== null
       ? { closingDay: row.closingDay, dueDay: row.dueDay }
       : null;
-  return { id: row.id, name: row.name, type: row.type, cycle };
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    icon: row.icon,
+    cycle,
+  };
 }
 
 export type AccountInput = {
@@ -189,7 +204,7 @@ export async function createAccount(
       userId,
       name: input.name.trim(),
       type: input.type,
-      color: input.color ?? (isCard ? "cat-7" : "cat-1"),
+      color: input.color ?? defaultAccountColor(input.type),
       icon: input.icon ?? ACCOUNT_TYPE_ICONS[input.type],
       // A card balance is what is owed, stored with the ledger sign (negative).
       initialBalanceCents: isCard
@@ -214,17 +229,39 @@ export async function updateAccount(
   userId: string,
   accountId: string,
   input: Partial<
-    Pick<AccountInput, "name" | "color" | "icon" | "includeInNetWorth" | "card">
+    Pick<
+      AccountInput,
+      "name" | "type" | "color" | "icon" | "includeInNetWorth" | "card"
+    >
   >,
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const account = await requireAccount(tx, userId, accountId);
+    // The type changes only between accounts that are not cards: a card has
+    // its own details row, invoices and a balance with the opposite sign.
+    const newType =
+      input.type !== undefined && input.type !== account.type
+        ? input.type
+        : null;
+    if (
+      newType &&
+      (account.type === "credit_card" || newType === "credit_card")
+    ) {
+      throw new DomainError("O tipo de um cartão de crédito não muda.");
+    }
+    // The icon follows the type unless the person chose another one.
+    const icon =
+      input.icon ??
+      (newType && account.icon === ACCOUNT_TYPE_ICONS[account.type]
+        ? ACCOUNT_TYPE_ICONS[newType]
+        : undefined);
     await tx
       .update(finAccounts)
       .set({
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(newType ? { type: newType } : {}),
         ...(input.color !== undefined ? { color: input.color } : {}),
-        ...(input.icon !== undefined ? { icon: input.icon } : {}),
+        ...(icon !== undefined ? { icon } : {}),
         ...(input.includeInNetWorth !== undefined
           ? { includeInNetWorth: input.includeInNetWorth }
           : {}),

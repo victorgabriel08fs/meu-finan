@@ -127,6 +127,7 @@ function octoberDays(today: number | null): CashFlowDayPoint[] {
 const currentReport: CashFlowReport = {
   phase: "current",
   hasAccounts: true,
+  excludesSavingsBoxes: false,
   days: octoberDays(14),
   startCents: 2_000_000,
   endCents: 1_790_000,

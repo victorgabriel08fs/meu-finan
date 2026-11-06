@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { db } from "@/server/db/client";
-import { userSettings } from "@/server/db/schema";
+import { finAccountType, userSettings } from "@/server/db/schema";
 import {
   adjustBalance,
   archiveAccount,
@@ -55,14 +55,7 @@ export const createAccountAction = authAction
   .inputSchema(
     z.object({
       name,
-      type: z.enum([
-        "checking",
-        "savings",
-        "cash",
-        "investment",
-        "credit_card",
-        "other",
-      ]),
+      type: z.enum(finAccountType.enumValues),
       color: colorToken.optional(),
       icon: iconName.optional(),
       initialBalanceCents: signedCents,
@@ -81,6 +74,7 @@ export const updateAccountAction = authAction
     z.object({
       id: idSchema,
       name: name.optional(),
+      type: z.enum(finAccountType.enumValues).optional(),
       color: colorToken.optional(),
       icon: iconName.optional(),
       includeInNetWorth: z.boolean().optional(),

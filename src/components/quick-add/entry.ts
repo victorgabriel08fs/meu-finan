@@ -4,6 +4,7 @@ import {
   invoiceFor,
   iso,
   isoMonth,
+  isSpendableType,
   localDateIn,
   parse,
   splitInstallments,
@@ -12,6 +13,7 @@ import { monthLabel } from "@/lib/format/date";
 import { formatBRL } from "@/lib/format/money";
 import type { EntryKind, QuickAddDraft } from "@/stores/quick-add";
 import { type CalcError, evaluate, validateAmount } from "./calculator";
+import type { QuickAddAccount } from "./types";
 
 /**
  * Pure rules of the "Nova transação" form (doc 02 §6.5): dates and status,
@@ -264,4 +266,26 @@ export function buildEntry(
       recurrence,
     },
   };
+}
+
+/**
+ * The account a new entry starts on. An expense or income never defaults to a
+ * caixinha (money set aside); a transfer leaves a spendable account, not a
+ * card or a caixinha. Falls back to the first spendable one, then the first.
+ */
+export function defaultAccountFor(
+  kind: EntryKind,
+  accounts: QuickAddAccount[],
+  lastAccountId: string | null,
+): string | null {
+  const last = accounts.find((account) => account.id === lastAccountId);
+  const firstSpendable = accounts.find((account) =>
+    isSpendableType(account.type),
+  );
+  if (kind !== "transfer") {
+    if (last && last.type !== "savings_box") return last.id;
+    return firstSpendable?.id ?? accounts[0]?.id ?? null;
+  }
+  if (last && isSpendableType(last.type)) return last.id;
+  return firstSpendable?.id ?? accounts[0]?.id ?? null;
 }

@@ -63,7 +63,11 @@ export function CashFlowKpiTiles({
           className={tileClassName}
           label="Saldo hoje"
           value={<CompactMoney cents={todayPoint?.realizedCents ?? 0} />}
-          support="em contas, sem cartões"
+          support={
+            report.excludesSavingsBoxes
+              ? "em contas, sem cartões e caixinhas"
+              : "em contas, sem cartões"
+          }
         />
       ) : report.phase === "past" ? (
         <KpiTile

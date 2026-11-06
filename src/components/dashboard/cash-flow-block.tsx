@@ -51,7 +51,9 @@ export function CashFlowBlock({
               Fluxo de caixa
             </h2>
             <p className="text-caption text-fg-3">
-              Saldo dia a dia, sem os cartões
+              {report.excludesSavingsBoxes
+                ? "Saldo dia a dia, sem cartões e caixinhas"
+                : "Saldo dia a dia, sem os cartões"}
             </p>
           </div>
           <BlockLink href={reportHref}>Ver relatório</BlockLink>
@@ -81,13 +83,13 @@ export function CashFlowBlock({
   );
 }
 
-/** No account off the cards: nothing to follow day by day. */
+/** No account off the cards and caixinhas: nothing to follow day by day. */
 export function CashFlowNoAccountsInvite() {
   return (
     <BlockInvite
       icon={<Landmark />}
-      title="Nenhuma conta fora dos cartões"
-      description="O fluxo de caixa acompanha o saldo das suas contas, sem os cartões."
+      title="Nenhuma conta para o dia a dia"
+      description="O fluxo de caixa acompanha o saldo das suas contas, sem cartões e caixinhas."
       action={
         <Button asChild variant="secondary" size="sm">
           <Link href="/contas">Ver contas</Link>

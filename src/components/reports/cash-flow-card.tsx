@@ -58,7 +58,9 @@ export function CashFlowCard({ report, today, note }: CashFlowCardProps) {
               Saldo dia a dia
             </h2>
             <p className="text-caption text-fg-3">
-              Saldo em contas, sem os cartões
+              {report.excludesSavingsBoxes
+                ? "Saldo em contas, sem cartões e caixinhas"
+                : "Saldo em contas, sem os cartões"}
             </p>
           </div>
           <CashFlowLegend report={report} />

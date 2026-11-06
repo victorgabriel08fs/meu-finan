@@ -6,7 +6,7 @@
 // the other's loaders: reports is a dependency of the dashboard).
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { cache } from "react";
-import { iso, localDateIn } from "@/lib/finance";
+import { iso, isSpendableAccount, localDateIn } from "@/lib/finance";
 import { earliestDate } from "@/lib/reports/coverage";
 import { db } from "@/server/db/client";
 import { finAccounts, transactions } from "@/server/db/schema";
@@ -18,6 +18,14 @@ import { pendingEntries } from "./transactions";
 /** The person's accounts: the Saldo, the Contas, the first run and the Fluxo. */
 export const accountsOf = cache(
   (ctx: UserContext): Promise<AccountListItem[]> => listAccounts(ctx.userId),
+);
+
+/**
+ * The accounts the Saldo, the forecast, the Fluxo and the daily notices count:
+ * outside cards and caixinhas, in the net worth, active (`isSpendableAccount`).
+ */
+export const spendableAccountsOf = cache(async (ctx: UserContext) =>
+  (await accountsOf(ctx)).filter(isSpendableAccount),
 );
 
 /** The credit cards and, in the same order, each one's invoices. */

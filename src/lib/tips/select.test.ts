@@ -335,7 +335,11 @@ describe("novidades feed", () => {
         createdOn: "2026-10-17",
         context: withImport,
       }),
-    ).toEqual(["novidade-categorias-organizar", "novidade-subcategorias"]);
+    ).toEqual([
+      "novidade-categorias-organizar",
+      "novidade-caixinhas",
+      "novidade-subcategorias",
+    ]);
 
     // Notifications: only for accounts in use before 30/out, and only while
     // notificacoes_push is on (the link leads to its settings page).

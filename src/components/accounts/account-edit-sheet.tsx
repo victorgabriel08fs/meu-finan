@@ -11,13 +11,21 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { updateAccountAction } from "@/server/actions/planning";
 import {
+  ACCOUNT_TYPE_OPTIONS,
   type AccountColor,
   type AccountSnapshot,
+  type AccountType,
   cardCycleError,
   defaultColorFor,
   isAccountColor,
+  netWorthDescription,
 } from "./account-meta";
-import { CardCycleFields, CheckboxRow, ColorPicker } from "./form-controls";
+import {
+  CardCycleFields,
+  CheckboxRow,
+  ColorPicker,
+  TypePicker,
+} from "./form-controls";
 import { MoneyField } from "./money-field";
 
 type AccountEditSheetProps = {
@@ -29,8 +37,12 @@ type Errors = Partial<
   Record<"name" | "limit" | "closingDay" | "dueDay" | "form", string>
 >;
 
+const optionIcon = (type: AccountType): string =>
+  ACCOUNT_TYPE_OPTIONS.find((option) => option.value === type)?.icon ??
+  "wallet";
+
 /**
- * "Editar" (doc 02 §6.7): name, color and whether the account counts in the
+ * "Editar" (doc 02 §6.7): name, type (never a card), color and whether the account counts in the
  * net worth; cards also edit the limit and the closing/due days.
  */
 export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
@@ -41,6 +53,7 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
     : defaultColorFor(account.type);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(account.name);
+  const [type, setType] = useState<AccountType>(account.type);
   const [color, setColor] = useState<AccountColor>(initialColor);
   const [includeInNetWorth, setIncludeInNetWorth] = useState(
     account.includeInNetWorth,
@@ -54,12 +67,17 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
   const [dueDay, setDueDay] = useState<number | null>(
     account.card?.dueDay ?? null,
   );
+  const previewIcon =
+    type !== account.type && account.icon === optionIcon(account.type)
+      ? optionIcon(type)
+      : account.icon;
   const [errors, setErrors] = useState<Errors>({});
   const { executeAsync, isPending } = useAction(updateAccountAction);
 
   function changeOpen(next: boolean) {
     if (next) {
       setName(account.name);
+      setType(account.type);
       setColor(initialColor);
       setIncludeInNetWorth(account.includeInNetWorth);
       setLimit(account.card?.limitCents ?? null);
@@ -88,6 +106,7 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
     const result = await executeAsync({
       id: account.id,
       name: trimmed,
+      type: type === account.type ? undefined : type,
       color,
       includeInNetWorth,
       card:
@@ -157,6 +176,15 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
             <FieldError id={`${id}-name-error`}>{errors.name}</FieldError>
           </div>
 
+          {isCard ? null : (
+            <TypePicker
+              name={`${id}-type`}
+              value={type}
+              onChange={setType}
+              withoutCard
+            />
+          )}
+
           {isCard ? (
             <>
               <MoneyField
@@ -202,7 +230,7 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
             onChange={setColor}
             preview={
               <CategoryIcon
-                icon={account.icon}
+                icon={previewIcon}
                 color={color}
                 size="sm"
                 shape="square"
@@ -219,7 +247,7 @@ export function AccountEditSheet({ account, trigger }: AccountEditSheetProps) {
             description={
               isCard
                 ? "A fatura entra como dívida no patrimônio líquido."
-                : "O saldo entra no total das contas e no patrimônio."
+                : netWorthDescription(type, includeInNetWorth)
             }
           />
         </form>

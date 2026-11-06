@@ -11,6 +11,7 @@ import type { ImportCategoryOption } from "@/components/imports/types";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { categoryLabel } from "@/lib/categories/hierarchy";
+import { isSpendableType } from "@/lib/finance";
 import { requireUser } from "@/server/dal";
 import { listAccounts } from "@/server/domain/accounts";
 import { listCategories } from "@/server/domain/categories";
@@ -74,7 +75,7 @@ async function ImportScreen({
   const requested = typeof params.conta === "string" ? params.conta : null;
   const defaultAccount =
     accounts.find((account) => account.id === requested) ??
-    accounts.find((account) => account.type !== "credit_card") ??
+    accounts.find((account) => isSpendableType(account.type)) ??
     accounts[0];
   const categoryOptions: ImportCategoryOption[] = categories.map(
     (category) => ({

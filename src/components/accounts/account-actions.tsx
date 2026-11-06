@@ -1,9 +1,16 @@
 "use client";
 
-import { Archive, Pencil, Scale } from "lucide-react";
+import {
+  Archive,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Pencil,
+  Scale,
+} from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
+import { useQuickAddStore } from "@/stores/quick-add";
 import { AccountEditSheet } from "./account-edit-sheet";
 import type { AccountSnapshot } from "./account-meta";
 import { AdjustBalanceSheet } from "./adjust-balance-sheet";
@@ -24,6 +31,45 @@ export function AccountActions({ account }: { account: AccountSnapshot }) {
       <ArchiveAccountSheet
         account={account}
         trigger={<ActionTile icon={<Archive />} label="Arquivar" />}
+      />
+    </div>
+  );
+}
+
+/**
+ * Guardar and Resgatar of a caixinha (doc 02 §6.7): open "Nova transação" as a
+ * transfer into the caixinha or out of it, to or from `spendableId` (the first
+ * account for spending; null leaves the choice to the sheet).
+ */
+export function SavingsBoxActions({
+  boxId,
+  spendableId,
+}: {
+  boxId: string;
+  spendableId: string | null;
+}) {
+  const openQuickAdd = useQuickAddStore((state) => state.openQuickAdd);
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <ActionTile
+        icon={<ArrowDownToLine />}
+        label="Guardar"
+        onClick={() =>
+          openQuickAdd("transfer", {
+            accountId: spendableId,
+            toAccountId: boxId,
+          })
+        }
+      />
+      <ActionTile
+        icon={<ArrowUpFromLine />}
+        label="Resgatar"
+        onClick={() =>
+          openQuickAdd("transfer", {
+            accountId: boxId,
+            toAccountId: spendableId,
+          })
+        }
       />
     </div>
   );
