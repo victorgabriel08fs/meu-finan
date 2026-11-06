@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
+import { switchedLabel } from "@/lib/flags/labels";
 import type { FlagKey } from "@/lib/flags/registry";
 import {
   type FlagSetting,
@@ -118,7 +119,7 @@ function FlagCard({
           setGlobalFlagAction({ key: flag.key, value: fromFlagSetting(value) }),
         value === "default"
           ? `${flag.label} voltou ao padrão (${onOff(flag.defaultValue)}).`
-          : `${flag.label} ${onOff(value === "on")} para todos.`,
+          : `${flag.label} ${switchedLabel(flag.grammar, value === "on")} para todos.`,
         () =>
           setGlobalFlagAction({
             key: flag.key,
@@ -130,10 +131,10 @@ function FlagCard({
 
   return (
     <Card className="flex flex-col gap-4 p-5" data-flag={flag.key}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <h2 className="text-headline text-fg">{flag.label}</h2>
-          <p className="mt-0.5 truncate font-mono text-caption text-fg-3">
+          <p className="mt-0.5 font-mono break-all text-caption text-fg-3">
             {flag.key}
           </p>
         </div>
@@ -177,7 +178,7 @@ function FlagCard({
       </div>
 
       <div className="flex flex-col gap-2 border-t border-border pt-4">
-        <div className="flex min-h-9 items-center justify-between gap-3">
+        <div className="flex min-h-9 flex-wrap items-center justify-between gap-x-3">
           <span className="text-callout font-semibold text-fg">
             Exceções por pessoa
           </span>
@@ -202,13 +203,13 @@ function FlagCard({
                 <button
                   type="button"
                   onClick={onPeople}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-control px-2 text-left transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
+                  className="flex min-h-12 w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-control px-2 py-1 text-left transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
                 >
                   <UserAvatar
                     name={person.name}
                     className="size-8 text-caption"
                   />
-                  <span className="min-w-0 flex-1 truncate text-callout font-semibold text-fg">
+                  <span className="min-w-0 flex-[1_1_6rem] text-callout font-semibold break-words text-fg">
                     {person.name}
                   </span>
                   <Badge tone={person.enabled ? "primary" : "neutral"}>
@@ -290,7 +291,7 @@ function PersonRow({
           }),
         value === "default"
           ? `${firstName} volta a seguir o valor para todos (${onOff(globalEnabled)}).`
-          : `${flag.label} ${onOff(value === "on")} para ${firstName}.`,
+          : `${flag.label} ${switchedLabel(flag.grammar, value === "on")} para ${firstName}.`,
         () =>
           setUserFlagAction({
             userId: person.id,
@@ -306,10 +307,10 @@ function PersonRow({
       <div className="flex min-w-0 items-center gap-3">
         <UserAvatar name={person.name} className="size-8 text-caption" />
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-callout font-semibold text-fg">
+          <span className="min-w-0 [overflow-wrap:anywhere] text-callout font-semibold text-fg">
             {person.name}
           </span>
-          <span className="truncate text-caption text-fg-3">
+          <span className="min-w-0 text-caption [overflow-wrap:anywhere] text-fg-3">
             {person.email}
           </span>
         </div>

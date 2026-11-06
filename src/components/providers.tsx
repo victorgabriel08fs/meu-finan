@@ -68,13 +68,17 @@ function AppToaster() {
       }
       toastOptions={{
         classNames: {
-          toast: "font-sans! shadow-dialog! gap-3! px-4! py-3!",
+          // With large text the action drops under the message (which would
+          // break letter by letter beside it), keeping its 44px target.
+          toast:
+            "font-sans! shadow-dialog! flex-wrap! gap-x-3! gap-y-0! px-4! py-3!",
+          content: "min-w-40!",
           title: "text-callout! font-semibold!",
           description: "text-caption! text-(--toast-fg)! opacity-80",
           actionButton:
-            "h-9! rounded-chip! bg-transparent! px-2! text-callout! font-bold! text-(--toast-action)!",
+            "-my-1! min-h-11! min-w-11! rounded-chip! bg-transparent! px-3! text-callout! font-bold! text-(--toast-action)!",
           cancelButton:
-            "h-9! rounded-chip! bg-transparent! px-2! text-callout! font-semibold! text-(--toast-fg)!",
+            "-my-1! min-h-11! min-w-11! rounded-chip! bg-transparent! px-3! text-callout! font-semibold! text-(--toast-fg)!",
         },
       }}
     />
