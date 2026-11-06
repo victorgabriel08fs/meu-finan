@@ -37,7 +37,10 @@ export async function expectNoA11yViolations(
   const report = violations.map(
     (violation) =>
       `${violation.id} (${violation.impact ?? "?"}): ${violation.help}\n${violation.nodes
-        .map((node) => `  ${node.target.join(" ")}`)
+        .map(
+          (node) =>
+            `  ${node.target.join(" ")}\n    ${(node.failureSummary ?? "").replaceAll("\n", "\n    ")}`,
+        )
         .join("\n")}`,
   );
   expect(report, report.join("\n\n")).toEqual([]);

@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./axe";
 import { actionSaved } from "./demo";
+import { chooseTheme } from "./theme";
 
 // Ajustes › Notificações (doc 02 §6.14), behind the notificacoes_push flag,
 // which the demo turns on for Ana only. Runs as Ana, with the session saved by
@@ -285,23 +286,6 @@ test("com o aparelho pronto: a nota do aparelho, 1 aparelho nos Avisos e a prév
     page.getByRole("button", { name: /^Enviar prévia dos avisos/ }),
   ).toHaveCount(0);
 });
-
-/** Picks the theme in Ajustes › Preferências, waiting until it is saved. */
-async function chooseTheme(page: Page, name: "Claro" | "Escuro") {
-  await page.goto("/ajustes/preferencias");
-  const option = page.locator("#conteudo").getByRole("radio", { name });
-  await expect(option).toBeVisible({ timeout: 30_000 });
-  if ((await option.getAttribute("aria-checked")) !== "true") {
-    const saved = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.request().headers()["next-action"] !== undefined,
-    );
-    await option.click();
-    expect((await saved).ok()).toBe(true);
-  }
-  await expect(option).toHaveAttribute("aria-checked", "true");
-}
 
 test("Notificações sem problemas de acessibilidade, no escuro e no claro", async ({
   page,

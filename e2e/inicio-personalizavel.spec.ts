@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./axe";
 import { OWNER_STATE } from "./demo";
+import { chooseTheme } from "./theme";
 
 // Início personalizável (doc 02 §6.3), as Ana: the demo turns the
 // inicio_personalizavel flag on for her only. One serial flow that ends with
@@ -308,21 +309,93 @@ test("liga os blocos dos relatórios, cada um com o nome da folha e o caminho do
   }
 });
 
-test("em outro mês, o Fluxo leva o mês e as categorias abrem no extrato", async ({
+test("em outro mês, os blocos dos relatórios levam o mês aos relatórios", async ({
   page,
 }) => {
   test.setTimeout(120_000);
   const month = previousMonth();
   await page.goto(`/inicio?mes=${month}`);
   await expectBlocks(page, WITH_REPORTS);
-  await expect(
-    blockOf(page, "inicio-fluxo").getByRole("link", { name: "Ver relatório" }),
-  ).toHaveAttribute("href", `/relatorios/fluxo?mes=${month}`);
+  for (const [id, href] of [
+    ["inicio-fluxo", `/relatorios/fluxo?mes=${month}`],
+    // "Para onde foi o dinheiro" no longer goes to the statement.
+    ["inicio-categorias", `/relatorios/categorias?periodo=1&mes=${month}`],
+    [
+      "inicio-receitas-despesas",
+      `/relatorios/visao-geral?periodo=6&mes=${month}`,
+    ],
+    ["inicio-patrimonio", `/relatorios/patrimonio?periodo=6&mes=${month}`],
+  ] as const) {
+    await expect(
+      blockOf(page, id).getByRole("link", { name: "Ver relatório" }),
+    ).toHaveAttribute("href", href);
+  }
   await expect(
     blockOf(page, "inicio-categorias").getByRole("link", {
       name: "Ver no extrato",
     }),
-  ).toHaveAttribute("href", `/extrato?mes=${month}&tipo=despesa&status=pago`);
+  ).toHaveCount(0);
+});
+
+test("antes do primeiro registro, os quatro blocos e os relatórios dizem 'Sem registros'", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio?mes=2000-01");
+  await expectBlocks(page, WITH_REPORTS);
+  // The invites are blocks without a section of their own: one heading, one
+  // line and one button for each of the four.
+  await expect(
+    page.getByRole("heading", { name: "Sem registros em janeiro de 2000" }),
+  ).toHaveCount(4);
+  await expect(page.getByText(/^Seus registros começam em /)).toHaveCount(4);
+  const goTo = page.getByRole("link", { name: /^Ir para / });
+  await expect(goTo).toHaveCount(4);
+  for (const link of await goTo.all()) {
+    await expect(link).toHaveAttribute("href", /^\/inicio\?mes=\d{4}-\d{2}$/);
+  }
+
+  // The Fluxo and the Patrimônio say the same, with the button that goes to
+  // where the records begin.
+  for (const [path, label] of [
+    ["/relatorios/fluxo?mes=2000-01", "Fluxo"],
+    ["/relatorios/patrimonio?periodo=6&mes=2000-01", "Patrimônio"],
+  ] as const) {
+    await page.goto(path);
+    await expect(
+      page.getByRole("heading", { name: "Sem registros em janeiro de 2000" }),
+      label,
+    ).toBeVisible({ timeout: 30_000 });
+    const go = page.getByRole("link", { name: /^Ir para / });
+    await expect(go, label).toBeVisible();
+    const box = await go.boundingBox();
+    expect(box?.height ?? 0, label).toBeGreaterThanOrEqual(44 - 1);
+    await go.click();
+    await expect(page, label).toHaveURL(/mes=\d{4}-\d{2}/);
+    await expect(
+      page.getByRole("heading", { name: /^Sem registros em / }),
+      label,
+    ).toHaveCount(0);
+  }
+});
+
+test("os relatórios por período mantêm o mês e dizem até onde vão", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const month = previousMonth();
+  await page.goto(`/relatorios/visao-geral?periodo=6&mes=${month}`);
+  await expect(page.getByText(/^Até /).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page.getByRole("link", { name: "Voltar para hoje" }),
+  ).toHaveAttribute("href", "/relatorios/visao-geral?periodo=6");
+  await expect(
+    page.getByRole("link", { name: "Categorias", exact: true }),
+  ).toHaveAttribute("href", `/relatorios/categorias?periodo=6&mes=${month}`);
+  await page.getByRole("link", { name: "Voltar para hoje" }).click();
+  await expect(page).not.toHaveURL(/mes=/);
 });
 
 test("no modo discreto, os gráficos dos blocos não falam valores", async ({
@@ -355,6 +428,53 @@ test("no modo discreto, os gráficos dos blocos não falam valores", async ({
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect(scrub).toHaveAttribute("aria-valuetext", /R\$/);
+});
+
+test("sem violações do axe no tema claro: Início, relatórios e meses sem dados", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  try {
+    await chooseTheme(page, "Claro");
+
+    await page.goto("/inicio");
+    await expectBlocks(page, WITH_REPORTS);
+    await expect(
+      blockOf(page, "inicio-patrimonio").getByRole("heading"),
+    ).toBeVisible();
+    await expectNoA11yViolations(page);
+
+    const fluxo = blockOf(page, "inicio-fluxo");
+    await fluxo.getByRole("button", { name: "Ver como tabela" }).click();
+    await expect(
+      fluxo.getByRole("region", { name: "Tabela do saldo dia a dia" }),
+    ).toBeVisible();
+    await expectNoA11yViolations(page);
+
+    for (const path of [
+      "/relatorios/visao-geral",
+      "/relatorios/fluxo",
+      "/relatorios/patrimonio",
+    ]) {
+      await page.goto(path);
+      await expect(page.locator("h1:visible").first(), path).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText("Carregando…"), path).toHaveCount(0, {
+        timeout: 30_000,
+      });
+      await expectNoA11yViolations(page);
+    }
+
+    // A month with no records ("Sem registros") and a month ahead.
+    for (const path of ["/inicio?mes=2024-01", "/inicio?mes=2026-09"]) {
+      await page.goto(path);
+      await expectBlocks(page, WITH_REPORTS);
+      await expectNoA11yViolations(page);
+    }
+  } finally {
+    await chooseTheme(page, "Escuro");
+  }
 });
 
 test("sem violações do axe no Início com os blocos dos relatórios e em Preferências", async ({

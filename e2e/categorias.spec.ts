@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./axe";
+import { chooseTheme } from "./theme";
 
 // Ajustes › Categorias com subcategorias (doc 02 §6.14, §6.4, §6.5). Runs as
 // Ana, whose Mercado already has Feira and Padaria (archived), so it is the
@@ -146,23 +147,6 @@ test("arquivar a mãe leva as subcategorias, e o Desfazer traz todas de volta", 
     page.locator("#conteudo").getByRole("button", { name: /Ração/ }),
   ).toBeVisible();
 });
-
-/** Picks the theme in Ajustes › Preferências, waiting until it is saved. */
-async function chooseTheme(page: Page, name: "Claro" | "Escuro") {
-  await page.goto("/ajustes/preferencias");
-  const option = page.locator("#conteudo").getByRole("radio", { name });
-  await expect(option).toBeVisible({ timeout: 30_000 });
-  if ((await option.getAttribute("aria-checked")) !== "true") {
-    const saved = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.request().headers()["next-action"] !== undefined,
-    );
-    await option.click();
-    expect((await saved).ok()).toBe(true);
-  }
-  await expect(option).toHaveAttribute("aria-checked", "true");
-}
 
 test("Categorias, com a folha aberta, sem problemas de acessibilidade no escuro e no claro", async ({
   page,
