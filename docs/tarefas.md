@@ -2,18 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 2. Início e Relatórios — melhorias
-
-Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
-
-- **Mês anterior a qualquer lançamento** (`?mes=2024-01`): o Fluxo de caixa e o Patrimônio mostram o saldo projetado para trás, como se já houvesse dinheiro. Mostrar "Sem registros em {mês}" nos dois lugares, no bloco do Início e no relatório.
-- Receitas × despesas: no tema claro, as colunas dos meses não selecionados ficam com contraste baixo.
-- Resumo falado com variação zero diz "ficou estável de R$ 5.150 para R$ 5.150": dizer "ficou estável em R$ 5.150".
-- Rótulos dos marcadores truncados no gráfico do Fluxo de caixa ("Curso de…").
-- Skeleton por fase do mês também em Receitas/Despesas, Orçamento e Receitas × despesas por mês (hoje só o Fluxo de caixa muda com a fase).
-- axe no tema claro (o e2e roda o axe só no escuro).
-- `?mes=` nos relatórios por período (Visão geral, Categorias, Patrimônio): o link "Ver relatório" dos blocos não leva o mês do Início, e o toque no aviso Resumo mensal abre a Visão geral no período atual, não no mês que fechou. Quando ela aceitar `?mes=`, o link do aviso passa a levar o mês (`src/server/reminders.ts`).
-
 ## 3. Notificações — próximos avisos
 
 Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lista "Em breve" de Ajustes › Notificações). Cada um entra como mais um interruptor em Avisos, no mesmo passo `sendReminders` (doc 01 §9), com a mesma regra de uma vez por pessoa e por dia e sem valores quando "Mostrar valores nas notificações" estiver desligado:
@@ -33,6 +21,10 @@ Achados do `qa-ui-ux` nas Notificações (05/11/2026) que valem para o app intei
 - **Contraste do `Switch` desligado no tema claro**: a trilha fica fraca contra a superfície; medir e ajustar o token (doc 02 §3.1).
 - **Valores a partir de R$ 1 mi a 200% em 360 px**: o resumo e as linhas do Extrato quebram de linha, mas um valor muito longo ainda pode passar do cartão (o `Money` não quebra).
 - **Melhoria**: no resumo "Agendados" do Extrato a 200%, o "·" entre as informações pode começar a linha; mantê-lo junto da palavra anterior (`&nbsp;` antes dele).
+
+- **Patrimônio, janela em parte antes do primeiro registro**: com `periodo` de 3 a 12 meses, os pontos anteriores ao primeiro registro continuam planos (só a janela inteira antes dele vira "Sem registros").
+- **CLS no Início a 1280 px**: vem do skeleton de Próximas contas (252 px contra 122 px com poucas contas) e do item "Administração" da barra lateral, que entra por `Suspense fallback={null}` em `src/app/(app)/layout.tsx`.
+- **Texto a 200% no Início**: o valor do Saldo, as abas e o carrossel de contas passam da largura, e o botão "Ir para …" do convite "Sem registros" encosta na borda.
 
 ## 5. Categorias — próximos passos
 
@@ -66,6 +58,23 @@ Ficaram de fora das subcategorias (05/11/2026):
 - README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
 
 ## Entregue
+
+### Início e Relatórios: melhorias — 05/11/2026
+
+Pendências da etapa 2 do Início personalizável, com as decisões do dono (05/11/2026):
+
+- [x] **`?mes=` nos relatórios por período** (Visão geral, Categorias, Patrimônio): chips e abas mantêm o mês; nota "Até {mês}" com "Voltar para hoje"; os blocos do Início e o aviso Resumo mensal abrem o relatório no mês certo. "Para onde foi o dinheiro" em outro mês leva a "Ver relatório" (`/relatorios/categorias?periodo=1&mes=…`), não mais ao extrato.
+- [x] **"Sem registros em {mês}"** nos quatro blocos dos relatórios e nas telas de Fluxo e Patrimônio, para um mês que termina antes do primeiro lançamento não excluído ou da conta mais antiga, com "Ir para {mês}" (`firstRecordOn` em `src/server/domain/request-reads.ts`, regra pura em `src/lib/reports/coverage.ts`).
+- [x] **Contraste das colunas em repouso** de Receitas × despesas (≥ 3:1 nos dois temas): tokens `--chart-3-rest` e `--chart-2-rest`; a seleção também aparece num traço sob o mês.
+- [x] **Resumo do Patrimônio** sem variação: "ficou estável em R$ …".
+- [x] **Rótulos do Fluxo** não terminam mais em preposição ("Mensalidade…").
+- [x] **Skeleton por fase** em Receitas e Despesas, Orçamento, Para onde foi o dinheiro e Receitas × despesas por mês.
+- [x] **axe no tema claro** (`e2e/inicio-personalizavel.spec.ts`): Início com os blocos dos relatórios, Fluxo em tabela, os relatórios e meses sem registros e futuro; o tema volta ao escuro no fim. `chooseTheme` agora é um só, em `e2e/theme.ts`.
+- [x] **Barra inferior opaca** (`bg-surface`, sem desfoque) para o item ativo manter o contraste: desvio do doc 02 §3.7, documentado lá.
+
+Testes de unidade (`views`, `coverage`, `model`, `cash-flow-model`, `home-skeleton`, `chart-tokens`, gráficos), integração contra o PGlite (`request-reads.integration.test.ts`, `blocks.integration.test.tsx`, `reminders.integration.test.ts`) e e2e. Detalhes: doc 02 §3.1, §3.7, §6.3, §6.12 e §9.4.
+
+Ficou para depois, nas pendências abaixo (tarefa 4).
 
 ### Extrato: melhorias e subcategorias — 05/11/2026
 
