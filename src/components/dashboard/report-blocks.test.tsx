@@ -38,6 +38,7 @@ function octoberDays(today: number | null): CashFlowDayPoint[] {
 const current: CashFlowReport = {
   phase: "current",
   hasAccounts: true,
+  excludesSavingsBoxes: false,
   days: octoberDays(14),
   startCents: 2_000_000,
   endCents: 1_790_000,
@@ -138,11 +139,20 @@ describe("CashFlowBlock", () => {
     expect(html).toContain("Só entra o que já está agendado");
   });
 
-  it("invites to the accounts without any off the cards", () => {
+  it("says the caixinhas are left out when there is one", () => {
+    const html = render(
+      { ...current, excludesSavingsBoxes: true },
+      "2026-10-14",
+    );
+    expect(html).toContain("Saldo dia a dia, sem cartões e caixinhas");
+    expect(html).not.toContain("sem os cartões");
+  });
+
+  it("invites to the accounts without any off the cards and caixinhas", () => {
     const html = renderToStaticMarkup(<CashFlowNoAccountsInvite />);
-    expect(html).toContain("Nenhuma conta fora dos cartões");
+    expect(html).toContain("Nenhuma conta para o dia a dia");
     expect(html).toContain(
-      "O fluxo de caixa acompanha o saldo das suas contas, sem os cartões.",
+      "O fluxo de caixa acompanha o saldo das suas contas, sem cartões e caixinhas.",
     );
     expect(html).toContain('href="/contas"');
     expect(html).toContain("Ver contas");

@@ -73,6 +73,7 @@ let ana: UserContext;
 let bia: UserContext;
 let caio: UserContext;
 const components = {} as {
+  balance: typeof import("@/components/dashboard/balance-hero");
   cashFlow: typeof import("@/components/dashboard/cash-flow-block");
   categories: typeof import("@/components/dashboard/category-breakdown-block");
   incomeExpense: typeof import("@/components/dashboard/income-expense-block");
@@ -87,7 +88,12 @@ type Props = Record<string, unknown>;
 
 /** What a block's loader renders for a month (`YYYY-MM`). */
 async function load(
-  id: "cash-flow" | "category-breakdown" | "income-expense" | "net-worth",
+  id:
+    | "balance"
+    | "cash-flow"
+    | "category-breakdown"
+    | "income-expense"
+    | "net-worth",
   ctx: UserContext,
   month: string,
 ) {
@@ -116,6 +122,7 @@ beforeAll(async () => {
   accounts = await import("@/server/domain/accounts");
   transactions = await import("@/server/domain/transactions");
   blocks = await import("./blocks");
+  components.balance = await import("@/components/dashboard/balance-hero");
   components.cashFlow = await import("@/components/dashboard/cash-flow-block");
   components.categories = await import(
     "@/components/dashboard/category-breakdown-block"
@@ -407,5 +414,58 @@ describe("Patrimônio", () => {
   it("invites while everything is at zero", async () => {
     const { type } = await load("net-worth", bia, "2026-10");
     expect(type).toBe(components.netWorth.NetWorthInvite);
+  });
+});
+
+describe("Saldo e caixinhas", () => {
+  it("shows what is set aside only for whoever has a caixinha", async () => {
+    // Ana has none: the Saldo is the same as before the caixinha existed.
+    const without = await load("balance", ana, "2026-10");
+    expect(without.props.savingsBoxCents).toBeNull();
+
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "dora", name: "Dora", email: "dora@exemplo.com" });
+    const checking = await accounts.createAccount("dora", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 100_000,
+    });
+    const box = await accounts.createAccount("dora", {
+      name: "Caixinha",
+      type: "savings_box",
+      initialBalanceCents: 0,
+    });
+    const dora = await context.getUserContext("dora", { now: NOW });
+    await transactions.createTransfer(dora, {
+      fromAccountId: checking,
+      toAccountId: box,
+      amountCents: 10_000,
+      occurredOn: "2026-10-14",
+    });
+
+    const { type, props } = await load("balance", dora, "2026-10");
+    expect(type).toBe(components.balance.BalanceHero);
+    expect(props).toMatchObject({
+      balanceCents: 90_000,
+      monthChangeCents: -10_000,
+      savingsBoxCents: 10_000,
+    });
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const html = renderToStaticMarkup(
+      (await blocks.HOME_BLOCK_LOADERS.balance({
+        ctx: dora,
+        range: context.resolvePeriod(dora, "2026-10"),
+      })) as ReactElement,
+    ).replaceAll(" ", " ");
+    expect(html).toContain("Guardado em caixinhas");
+    expect(html).toContain("100,00");
+  });
+
+  it("keeps the caixinha of another person out", async () => {
+    const { props } = await load("balance", bia, "2026-10");
+    expect(props.savingsBoxCents).toBeNull();
   });
 });

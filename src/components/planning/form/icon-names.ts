@@ -25,6 +25,7 @@ export const ICON_NAMES: Readonly<Record<string, string>> = {
   "rotate-ccw": "Devolução",
   plus: "Mais",
   "piggy-bank": "Cofrinho",
+  vault: "Cofre",
   wallet: "Carteira",
   "credit-card": "Cartão",
   baby: "Bebê",

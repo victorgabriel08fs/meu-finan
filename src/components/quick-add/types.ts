@@ -4,7 +4,7 @@ import type { CardCycle } from "@/lib/finance";
 export type QuickAddAccount = {
   id: string;
   name: string;
-  /** `checking`, `savings`, `cash`, `investment`, `credit_card` or `other`. */
+  /** `checking`, `savings`, `cash`, `investment`, `credit_card`, `savings_box` or `other`. */
   type: string;
   /** pt-BR label of the type ("Conta corrente", "Cartão de crédito"…). */
   typeLabel: string;

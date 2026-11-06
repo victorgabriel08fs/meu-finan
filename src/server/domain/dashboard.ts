@@ -1,23 +1,29 @@
 // Início (doc 02 §6.3): "quanto tenho?", "como está o mês?", "o que vence logo?".
 // The other blocks read straight from their domains: periodTotals,
 // getBudgets, listGoals.
-import { and, between, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, between, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   addDays,
   type Forecast,
   forecastBalance,
   invoiceFor,
+  isCountedSavingsBox,
   iso,
   isoMonth,
   parse,
   shiftPeriod,
 } from "@/lib/finance";
 import { db } from "@/server/db/client";
-import { categories, finAccounts, transactions } from "@/server/db/schema";
+import { categories, transactions } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
 import type { PeriodRange, UserContext } from "./context";
 import { categoryRootId, liquidPendingFlows, rootCategory } from "./reports";
-import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
+import {
+  accountsOf,
+  cardInvoicesOf,
+  pendingUntil,
+  spendableAccountsOf,
+} from "./request-reads";
 
 export type UpcomingItem = {
   id: string;
@@ -42,11 +48,6 @@ export type Insight = {
   text: string;
 };
 
-const isLiquid = (account: AccountListItem) =>
-  account.type !== "credit_card" &&
-  account.includeInNetWorth &&
-  !account.archived;
-
 // One loader per block of the Início, so each block streams on its own and
 // only the visible ones read anything. What several blocks share is read once
 // per request (./request-reads).
@@ -55,25 +56,38 @@ export type BalanceSummary = {
   balanceCents: number;
   monthChangeCents: number;
   forecast: Forecast;
+  /** Sum of the caixinhas in the net worth; null when there is none. */
+  savingsBoxCents: number | null;
 };
 
-/** Saldo em contas: liquid balance, its change in the period, the forecast. */
+/** Saldo em contas: spendable balance, its change in the period, the forecast. */
 export async function getBalanceSummary(
   ctx: UserContext,
   range: PeriodRange,
 ): Promise<BalanceSummary> {
-  const liquidIds = (await accountsOf(ctx))
-    .filter(isLiquid)
-    .map((account) => account.id);
+  const [accounts, spendable] = await Promise.all([
+    accountsOf(ctx),
+    spendableAccountsOf(ctx),
+  ]);
+  const spendableIds = spendable.map((account) => account.id);
+  const boxes = accounts.filter(isCountedSavingsBox);
   const [{ balanceCents, forecast }, monthChange] = await Promise.all([
     forecastUntil(ctx, range.end),
-    monthChangeCents(ctx, range, liquidIds),
+    monthChangeCents(ctx, range, spendableIds),
   ]);
-  return { balanceCents, monthChangeCents: monthChange, forecast };
+  return {
+    balanceCents,
+    monthChangeCents: monthChange,
+    forecast,
+    savingsBoxCents:
+      boxes.length === 0
+        ? null
+        : boxes.reduce((sum, account) => sum + account.balanceCents, 0),
+  };
 }
 
 export type LiquidForecast = {
-  /** Saldo em contas: paid balances of the liquid accounts. */
+  /** Saldo em contas: paid balances of the spendable accounts. */
   balanceCents: number;
   forecast: Forecast;
 };
@@ -87,7 +101,7 @@ export async function forecastUntil(
   ctx: UserContext,
   until: string,
 ): Promise<LiquidForecast> {
-  const liquid = (await accountsOf(ctx)).filter(isLiquid);
+  const liquid = await spendableAccountsOf(ctx);
   const liquidIds = new Set(liquid.map((account) => account.id));
   const balanceCents = liquid.reduce(
     (sum, account) => sum + account.balanceCents,
@@ -192,7 +206,7 @@ export async function getAccountsStrip(
   return { accounts, currentInvoiceCents };
 }
 
-/** Net change of the liquid accounts since the period started, up to today. */
+/** Net change of the spendable accounts (no cards or caixinhas) since the period started, up to today. */
 async function monthChangeCents(
   ctx: UserContext,
   range: PeriodRange,
@@ -208,15 +222,12 @@ async function monthChangeCents(
       ),
     })
     .from(transactions)
-    .innerJoin(finAccounts, eq(finAccounts.id, transactions.accountId))
     .where(
       and(
         eq(transactions.userId, ctx.userId),
         isNull(transactions.deletedAt),
         eq(transactions.status, "paid"),
-        ne(finAccounts.type, "credit_card"),
-        eq(finAccounts.includeInNetWorth, true),
-        isNull(finAccounts.archivedAt),
+        inArray(transactions.accountId, accountIds),
         between(transactions.occurredOn, range.start, until),
       ),
     );

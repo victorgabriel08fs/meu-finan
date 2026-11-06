@@ -35,6 +35,7 @@ export function ArchiveAccountSheet({
   const { executeAsync, isPending } = useAction(archiveAccountAction);
   const isCard = account.type === "credit_card";
   const noun = isCard ? "cartão" : "conta";
+  const article = isCard ? "o" : "a";
   const owes = isCard && account.balanceCents < 0;
 
   async function archive() {
@@ -48,7 +49,8 @@ export function ArchiveAccountSheet({
       return;
     }
     toast.error(
-      result?.serverError ?? `Não deu para arquivar o ${noun}. Tente de novo.`,
+      result?.serverError ??
+        `Não deu para arquivar ${article} ${noun}. Tente de novo.`,
     );
   }
 
@@ -57,7 +59,7 @@ export function ArchiveAccountSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         title={`Arquivar ${account.name}?`}
-        description={`O ${noun} sai das listas e dos totais. O histórico de lançamentos continua guardado.`}
+        description={`${article === "o" ? "O" : "A"} ${noun} sai das listas e dos totais. O histórico de lançamentos continua guardado.`}
         footer={
           <>
             <Button

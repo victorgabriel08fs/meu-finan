@@ -18,6 +18,7 @@ import {
   allowsNegativeBalance,
   cardCycleError,
   defaultColorFor,
+  netWorthDescription,
 } from "./account-meta";
 import {
   CardCycleFields,
@@ -58,6 +59,7 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
   const { executeAsync, isPending } = useAction(createAccountAction);
 
   const isCard = type === "credit_card";
+  const isSavingsBox = type === "savings_box";
   const option = optionOf(type);
 
   function changeType(next: AccountType) {
@@ -131,7 +133,13 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
     });
 
     if (result?.data) {
-      toast(isCard ? "Cartão criado" : "Conta criada");
+      toast(
+        isCard
+          ? "Cartão criado"
+          : isSavingsBox
+            ? "Caixinha criada"
+            : "Conta criada",
+      );
       router.replace(accountHref({ id: result.data.id, type }));
       return;
     }
@@ -156,7 +164,20 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
       className="flex flex-col gap-6"
       aria-describedby={errors.form ? `${id}-form-error` : undefined}
     >
-      <TypePicker name={`${id}-type`} value={type} onChange={changeType} />
+      <div className="flex flex-col gap-2">
+        <TypePicker
+          name={`${id}-type`}
+          value={type}
+          onChange={changeType}
+          describedBy={isSavingsBox ? `${id}-type-note` : undefined}
+        />
+        {isSavingsBox ? (
+          <p id={`${id}-type-note`} className="text-caption text-fg-3">
+            Para guardar dinheiro à parte. Conta no patrimônio, mas fica fora do
+            Saldo em contas e do que dá para gastar.
+          </p>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${id}-name`}>Nome</Label>
@@ -258,14 +279,18 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
         description={
           isCard
             ? "A fatura entra como dívida no patrimônio líquido."
-            : "O saldo entra no total das contas e no patrimônio."
+            : netWorthDescription(type, includeInNetWorth)
         }
       />
 
       <div className="flex flex-col gap-3 pt-2">
         <FieldError id={`${id}-form-error`}>{errors.form}</FieldError>
         <Button type="submit" size="lg" className="w-full" loading={isPending}>
-          {isCard ? "Criar cartão" : "Criar conta"}
+          {isCard
+            ? "Criar cartão"
+            : isSavingsBox
+              ? "Criar caixinha"
+              : "Criar conta"}
         </Button>
       </div>
     </form>

@@ -34,6 +34,7 @@ export function AccountsCarousel({
     >
       {accounts.map((account) => {
         const isCard = account.type === "credit_card";
+        const isSavingsBox = account.type === "savings_box";
         const invoiceCents = isCard
           ? currentInvoiceCents[account.id]
           : undefined;
@@ -57,6 +58,10 @@ export function AccountsCarousel({
                 {isCard ? (
                   <span className="max-w-full rounded-badge bg-surface-2 px-1.5 py-0.5 text-micro font-bold text-balance text-fg-2">
                     {invoiceCents === undefined ? "Em aberto" : "Fatura atual"}
+                  </span>
+                ) : isSavingsBox ? (
+                  <span className="max-w-full rounded-badge bg-surface-2 px-1.5 py-0.5 text-micro font-bold text-balance text-fg-2">
+                    Caixinha
                   </span>
                 ) : null}
               </span>

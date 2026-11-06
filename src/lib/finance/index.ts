@@ -17,4 +17,5 @@ export * from "./period";
 export * from "./rates";
 export * from "./recurrence";
 export * from "./solve";
+export * from "./spendable";
 export * from "./tax";

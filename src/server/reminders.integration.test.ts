@@ -246,6 +246,22 @@ beforeAll(async () => {
       occurredOn: "2026-11-14",
     },
   ]);
+  // Ana also has a caixinha with R$ 3.000,00 and an income scheduled into it:
+  // neither the Saldo, the countdown nor the daily pace may see them.
+  const box = await createAccount("ana", {
+    name: "Caixinha",
+    type: "savings_box",
+    initialBalanceCents: 300_000,
+  });
+  await createTransaction(ana.ctx, {
+    kind: "income",
+    amountCents: 100_000,
+    accountId: box,
+    categoryId: ana.categoryId("Freelance"),
+    description: "Rendimento",
+    occurredOn: "2026-11-11",
+    paid: false,
+  });
   await upsertBudget(ana.ctx, {
     categoryId: ana.categoryId("Mercado"),
     month: resolvePeriod(ana.ctx).month,

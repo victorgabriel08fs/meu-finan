@@ -9,6 +9,7 @@ import {
   compareToAverage,
   daysBetween,
   iso,
+  isSpendableAccount,
   type Period,
   parse,
   periodContaining,
@@ -37,7 +38,6 @@ import {
   user,
   userSettings,
 } from "@/server/db/schema";
-import type { AccountListItem } from "./accounts";
 import { getBudgets } from "./budgets";
 import {
   type PeriodRange,
@@ -51,13 +51,8 @@ export { periodMonthOf };
 
 import { forecastUntil, getUpcoming, type UpcomingItem } from "./dashboard";
 import { categoryBreakdown } from "./reports";
-import { accountsOf, pendingUntil } from "./request-reads";
+import { accountsOf, pendingUntil, spendableAccountsOf } from "./request-reads";
 import { periodTotals } from "./transactions";
-
-const isLiquid = (account: AccountListItem) =>
-  account.type !== "credit_card" &&
-  account.includeInNetWorth &&
-  !account.archived;
 
 export type ReminderRecipient = {
   userId: string;
@@ -90,7 +85,7 @@ export async function listReminderRecipients(): Promise<ReminderRecipient[]> {
 export async function loadDailySummary(
   ctx: UserContext,
 ): Promise<DailySummaryInput> {
-  const liquid = (await accountsOf(ctx)).filter(isLiquid);
+  const liquid = await spendableAccountsOf(ctx);
   const balanceCents = liquid.reduce(
     (sum, account) => sum + account.balanceCents,
     0,
@@ -144,7 +139,7 @@ export async function loadIncomeCountdown(
     pendingUntil(ctx, iso(addDays(ctx.today, horizonDays))),
   ]);
   const liquidIds = new Set(
-    accounts.filter(isLiquid).map((account) => account.id),
+    accounts.filter(isSpendableAccount).map((account) => account.id),
   );
   const next = pickNextIncome(
     pending.filter(

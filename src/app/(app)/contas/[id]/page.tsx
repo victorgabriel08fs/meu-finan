@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { AccountActions } from "@/components/accounts/account-actions";
+import {
+  AccountActions,
+  SavingsBoxActions,
+} from "@/components/accounts/account-actions";
 import {
   type AccountSnapshot,
   accountTypeLabel,
@@ -20,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
+import { isCountedSavingsBox, isSpendableAccount } from "@/lib/finance";
 import { periodLabel } from "@/lib/format/date";
 import { requireUser } from "@/server/dal";
 import { type AccountListItem, listAccounts } from "@/server/domain/accounts";
@@ -118,7 +122,17 @@ async function AccountDetail({
           Conta arquivada: ela não entra nos totais e não recebe lançamentos.
         </p>
       ) : (
-        <AccountActions account={snapshot} />
+        <>
+          {account.type === "savings_box" ? (
+            <SavingsBoxActions
+              boxId={account.id}
+              spendableId={
+                accounts.find((item) => isSpendableAccount(item))?.id ?? null
+              }
+            />
+          ) : null}
+          <AccountActions account={snapshot} />
+        </>
       )}
 
       <section aria-labelledby="lancamentos-da-conta" className="mt-1">
@@ -205,6 +219,11 @@ function AccountHero({ account }: { account: AccountListItem }) {
         tone="neutral"
         className="mt-3 block"
       />
+      {isCountedSavingsBox(account) ? (
+        <p className="mt-2 text-caption text-fg-3">
+          Não entra no Saldo em contas do Início.
+        </p>
+      ) : null}
       {account.pendingCents !== 0 ? (
         <p className="mt-2 text-caption text-fg-3">
           Com os agendados:{" "}

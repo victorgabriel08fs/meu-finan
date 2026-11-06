@@ -17,6 +17,8 @@ type BalanceHeroProps = {
     invoicesDueCents: number;
     forecastCents: number;
   };
+  /** Caixinhas in the net worth (outside the Saldo); null without any. */
+  savingsBoxCents?: number | null;
   /** "31/out": end of the period. */
   untilLabel: string;
 };
@@ -31,6 +33,7 @@ export function BalanceHero({
   monthChangeCents,
   monthName,
   forecast,
+  savingsBoxCents = null,
   untilLabel,
 }: BalanceHeroProps) {
   return (
@@ -61,6 +64,18 @@ export function BalanceHero({
         <MonthChangeChip cents={monthChangeCents} monthName={monthName} />
       </div>
 
+      {savingsBoxCents === null ? null : (
+        <p className="mt-2 text-caption text-fg-3">
+          Guardado em caixinhas:{" "}
+          <Money
+            cents={savingsBoxCents}
+            variant="caption"
+            tone="neutral"
+            className="font-semibold text-fg-2"
+          />
+        </p>
+      )}
+
       <div aria-hidden="true" className="mt-4 mb-3 h-px bg-border" />
 
       <div
@@ -83,7 +98,11 @@ export function BalanceHero({
             considera contas agendadas e faturas
           </span>
         </div>
-        <ForecastSheet {...forecast} untilLabel={untilLabel} />
+        <ForecastSheet
+          {...forecast}
+          savingsBoxCents={savingsBoxCents}
+          untilLabel={untilLabel}
+        />
       </div>
     </section>
   );

@@ -50,6 +50,7 @@ import {
   AMOUNT_MESSAGES,
   type BuildResult,
   buildEntry,
+  defaultAccountFor,
   effectivePaid,
   invoiceHint,
   localDays,
@@ -66,7 +67,7 @@ import {
 import { HAPTIC, vibrate } from "./haptics";
 import { Keypad } from "./keypad";
 import { MoreOptions } from "./more-options";
-import type { QuickAddAccount, QuickAddSheetData } from "./types";
+import type { QuickAddSheetData } from "./types";
 
 const KIND_OPTIONS = [
   { value: "expense", label: "Despesa" },
@@ -198,22 +199,6 @@ export function QuickAddUnavailable() {
     useQuickAddStore.getState().closeQuickAdd();
   }, [open]);
   return null;
-}
-
-function defaultAccountFor(
-  kind: EntryKind,
-  accounts: QuickAddAccount[],
-  lastAccountId: string | null,
-): string | null {
-  const last = accounts.find((account) => account.id === lastAccountId);
-  if (kind !== "transfer") return last?.id ?? accounts[0]?.id ?? null;
-  // A transfer usually leaves a bank account, not a card.
-  if (last && last.type !== "credit_card") return last.id;
-  return (
-    accounts.find((account) => account.type !== "credit_card")?.id ??
-    accounts[0]?.id ??
-    null
-  );
 }
 
 type PickerTarget = "account" | "from" | "to";

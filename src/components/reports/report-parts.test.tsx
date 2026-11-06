@@ -36,6 +36,7 @@ function octoberDays(today: number | null): CashFlowDayPoint[] {
 const current: CashFlowReport = {
   phase: "current",
   hasAccounts: true,
+  excludesSavingsBoxes: false,
   days: octoberDays(14),
   startCents: 2_000_000,
   endCents: 1_790_000,
@@ -120,6 +121,16 @@ describe("CashFlowChart and CashFlowLegend", () => {
     expect(html.match(/<h2/g)).toHaveLength(1);
     expect(html.indexOf("Realizado")).toBeLessThan(html.indexOf("qua, 14/out"));
   });
+
+  it("says the caixinhas are left out when there is one", () => {
+    const html = renderToStaticMarkup(
+      <CashFlowCard
+        report={{ ...current, excludesSavingsBoxes: true }}
+        today="2026-10-14"
+      />,
+    );
+    expect(html).toContain("Saldo em contas, sem cartões e caixinhas");
+  });
 });
 
 describe("CashFlowKpiTiles", () => {
@@ -136,10 +147,19 @@ describe("CashFlowKpiTiles", () => {
       ),
     );
 
+  it("names the caixinhas under today's balance when there is one", () => {
+    const html = render(
+      { ...current, excludesSavingsBoxes: true },
+      "2026-10-14",
+    );
+    expect(html).toContain("em contas, sem cartões e caixinhas");
+  });
+
   it("shows today, the end of the month and the lowest projected balance", () => {
     const html = render(current, "2026-10-14");
     expect(html).toContain("Saldo hoje");
     expect(html).toContain("em contas, sem cartões");
+    expect(html).not.toContain("caixinhas");
     expect(html).toContain("Previsto para 31/out");
     expect(html).toContain("Menor saldo previsto");
     expect(html).toContain("em 15/out");

@@ -43,9 +43,11 @@ function FormSkeleton() {
       <div className="flex flex-col gap-2">
         <Skeleton className="h-5 w-12 rounded-chip" />
         <div className="flex flex-wrap gap-2">
-          {["w-38", "w-28", "w-27", "w-34", "w-42", "w-22"].map((width) => (
-            <Skeleton key={width} className={`h-11 rounded-full ${width}`} />
-          ))}
+          {["w-38", "w-28", "w-27", "w-34", "w-30", "w-42", "w-22"].map(
+            (width) => (
+              <Skeleton key={width} className={`h-11 rounded-full ${width}`} />
+            ),
+          )}
         </div>
       </div>
       {[0, 1].map((field) => (

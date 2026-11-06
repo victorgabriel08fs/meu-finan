@@ -48,6 +48,12 @@ export const ACCOUNT_TYPE_OPTIONS: readonly {
     defaultName: "Reserva",
   },
   {
+    value: "savings_box",
+    label: "Caixinha",
+    icon: "vault",
+    defaultName: "Caixinha",
+  },
+  {
     value: "credit_card",
     label: "Cartão de crédito",
     icon: "credit-card",
@@ -78,6 +84,7 @@ const TYPE_SLUGS: Record<string, AccountType> = {
   poupanca: "savings",
   dinheiro: "cash",
   investimento: "investment",
+  caixinha: "savings_box",
   cartao: "credit_card",
   outra: "other",
 };
@@ -96,20 +103,26 @@ export function allowsNegativeBalance(type: AccountType): boolean {
   return type === "checking" || type === "other";
 }
 
-export type AccountGroup = "available" | "investments" | "cards";
+export type AccountGroup =
+  | "available"
+  | "savings_boxes"
+  | "investments"
+  | "cards";
 
-/** Groups of the Contas screen: Disponível · Investimentos · Cartões de crédito. */
+/** Groups of the Contas screen: Disponível · Caixinhas · Investimentos · Cartões de crédito. */
 export const ACCOUNT_GROUPS: readonly {
   value: AccountGroup;
   label: string;
 }[] = [
   { value: "available", label: "Disponível" },
+  { value: "savings_boxes", label: "Caixinhas" },
   { value: "investments", label: "Investimentos" },
   { value: "cards", label: "Cartões de crédito" },
 ];
 
 export function accountGroupOf(type: AccountType): AccountGroup {
   if (type === "credit_card") return "cards";
+  if (type === "savings_box") return "savings_boxes";
   if (type === "investment" || type === "savings") return "investments";
   return "available";
 }
@@ -142,9 +155,25 @@ export function isAccountColor(value: unknown): value is AccountColor {
   return ACCOUNT_COLOR_OPTIONS.some((option) => option.value === value);
 }
 
-/** Default color by type, as the server picks it (cards violet, the rest blue). */
+/** Default color by type, as the server picks it (cards violet, caixinhas green, the rest blue). */
 export function defaultColorFor(type: AccountType): AccountColor {
-  return type === "credit_card" ? "cat-7" : "cat-1";
+  if (type === "credit_card") return "cat-7";
+  return type === "savings_box" ? "cat-6" : "cat-1";
+}
+
+/** What "Incluir no patrimônio" does, by type (form and Editar sheet). */
+export function netWorthDescription(
+  type: AccountType,
+  included = true,
+): string {
+  if (!included) {
+    return type === "savings_box"
+      ? "O saldo não entra no patrimônio nem no Saldo em contas."
+      : "O saldo fica fora do total das contas e do patrimônio.";
+  }
+  return type === "savings_box"
+    ? "O saldo entra no patrimônio, mas não no Saldo em contas."
+    : "O saldo entra no total das contas e no patrimônio.";
 }
 
 /**

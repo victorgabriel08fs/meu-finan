@@ -64,6 +64,34 @@ describe("BalanceHero", () => {
     expect(html).toContain('aria-label="Como calculamos o previsto"');
   });
 
+  it("shows what is saved in caixinhas, only when there is one", () => {
+    const props = {
+      balanceCents: 100_000,
+      monthChangeCents: 0,
+      monthName: "outubro",
+      forecast: {
+        balanceCents: 100_000,
+        pendingIncomeCents: 0,
+        pendingExpenseCents: 0,
+        invoicesDueCents: 0,
+        forecastCents: 100_000,
+      },
+      untilLabel: "31/out",
+    };
+    const without = text(renderToStaticMarkup(<BalanceHero {...props} />));
+    expect(without).not.toContain("caixinhas");
+
+    const zero = text(
+      renderToStaticMarkup(<BalanceHero {...props} savingsBoxCents={0} />),
+    );
+    expect(zero).toContain("Guardado em caixinhas: R$ 0,00");
+
+    const html = renderToStaticMarkup(
+      <BalanceHero {...props} savingsBoxCents={250_000} />,
+    );
+    expect(text(html)).toContain("Guardado em caixinhas: R$ 2.500,00");
+  });
+
   it("stays calm when nothing moved", () => {
     const html = renderToStaticMarkup(
       <BalanceHero
@@ -251,6 +279,25 @@ describe("AccountsCarousel", () => {
     expect(visible).toContain("Em aberto");
     expect(visible).toContain("R$ 1.380,42");
     expect(visible).toContain("Adicionar conta");
+  });
+
+  it("marks a caixinha with a badge and links it to its screen", () => {
+    const html = renderToStaticMarkup(
+      <AccountsCarousel
+        accounts={[
+          account({
+            id: "k1",
+            name: "Viagem",
+            type: "savings_box",
+            icon: "vault",
+            balanceCents: 50_000,
+          }),
+        ]}
+      />,
+    );
+    expect(html).toContain('href="/contas/k1"');
+    expect(text(html)).toContain("Caixinha");
+    expect(text(html)).toContain("R$ 500,00");
   });
 
   it("shows the current invoice of a card when it is known", () => {

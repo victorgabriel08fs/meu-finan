@@ -57,6 +57,13 @@
       "when": 1793887097395,
       "tag": "0007_avisos_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793986125282,
+      "tag": "0008_caixinha",
+      "breakpoints": true
     }
   ]
 }
