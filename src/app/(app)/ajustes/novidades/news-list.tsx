@@ -10,6 +10,7 @@ import {
   Sparkles,
   SunMoon,
   Target,
+  Vault,
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useRef } from "react";
@@ -40,6 +41,7 @@ const ICONS: Record<TipIcon, ReactNode> = {
   smartphone: <Smartphone />,
   sparkles: <Sparkles />,
   "sun-moon": <SunMoon />,
+  vault: <Vault />,
 };
 
 /** Entries grouped by day, newest day first (the feed comes sorted). */

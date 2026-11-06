@@ -307,6 +307,19 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/ajustes/categorias", label: "Ver categorias" },
   },
+  {
+    id: "novidade-caixinhas",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the type is chosen inside the new-account form.
+    routes: [],
+    anchor: null,
+    title: "Caixinhas",
+    body: "Guarde dinheiro à parte numa caixinha: ela conta no patrimônio, mas fica fora do Saldo em contas e do que dá para gastar.",
+    since: "2026-11-06",
+    order: 14,
+    icon: "vault",
+    link: { href: "/contas/nova?tipo=caixinha", label: "Criar caixinha" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

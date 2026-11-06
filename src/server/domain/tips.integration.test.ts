@@ -199,7 +199,11 @@ describe("tips per user", () => {
         createdOn: state.createdOn,
         context: state.context,
       }),
-    ).toEqual(["novidade-categorias-organizar", "novidade-subcategorias"]);
+    ).toEqual([
+      "novidade-categorias-organizar",
+      "novidade-caixinhas",
+      "novidade-subcategorias",
+    ]);
   });
 
   it("has no creation day for an unknown user", async () => {
