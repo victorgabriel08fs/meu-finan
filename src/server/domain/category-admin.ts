@@ -1,6 +1,7 @@
 // Category administration (doc 02 §6.14 "Organização"): list with archived
 // ones, rename, recolor, change the icon, move into a main category or back
-// (one level of subcategories), archive and restore. Every id comes
+// (one level of subcategories), archive (optionally passing the entries to
+// another category) and restore, and the order of the lists. Every id comes
 // from the client, so every query is scoped by the session user's id.
 import {
   and,
@@ -12,16 +13,20 @@ import {
   isNull,
   ne,
   type SQL,
+  sql,
 } from "drizzle-orm";
-import { parentBlocker } from "@/lib/categories/hierarchy";
+import { moveTargetBlocker, parentBlocker } from "@/lib/categories/hierarchy";
+import { siblingSortOrders } from "@/lib/categories/order";
 import { db } from "@/server/db/client";
 import {
   budgets,
   type CategoryKind,
   type ColorToken,
   categories,
+  transactions,
 } from "@/server/db/schema";
 import { nameTakenMessage } from "./categories";
+import { moveCategoryEntries, targetLabel } from "./category-moves";
 import { resolvePeriod, type UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 
@@ -59,6 +64,55 @@ export async function listCategoriesForAdmin(
   return rows.map(({ archivedAt, ...row }) => ({
     ...row,
     archived: archivedAt !== null,
+  }));
+}
+
+export type CategoryWithUsage = AdminCategory & {
+  /** Entries (not deleted, any status) of the category itself. */
+  entries: number;
+  /** It has a budget this financial month or a later one. */
+  upcomingBudget: boolean;
+};
+
+/**
+ * The categories for Ajustes › Categorias, with what archiving or merging
+ * one would move: its entries and whether it has a budget ahead. Two grouped
+ * reads next to the list, no correlated subquery.
+ */
+export async function listCategoriesWithUsage(
+  ctx: UserContext,
+): Promise<CategoryWithUsage[]> {
+  const { userId } = ctx;
+  const count = sql<number>`count(*)`.mapWith(Number);
+  const [list, counts, budgeted] = await Promise.all([
+    listCategoriesForAdmin(userId),
+    db
+      .select({ categoryId: transactions.categoryId, count })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.userId, userId),
+          isNull(transactions.deletedAt),
+          isNotNull(transactions.categoryId),
+        ),
+      )
+      .groupBy(transactions.categoryId),
+    db
+      .selectDistinct({ categoryId: budgets.categoryId })
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.userId, userId),
+          gte(budgets.month, `${resolvePeriod(ctx).month}-01`),
+        ),
+      ),
+  ]);
+  const entries = new Map(counts.map((row) => [row.categoryId, row.count]));
+  const withBudget = new Set(budgeted.map((row) => row.categoryId));
+  return list.map((category) => ({
+    ...category,
+    entries: entries.get(category.id) ?? 0,
+    upcomingBudget: withBudget.has(category.id),
   }));
 }
 
@@ -192,7 +246,8 @@ export async function updateCategory(
       ...(name !== undefined ? { name } : {}),
       ...(patch.icon !== undefined ? { icon: patch.icon } : {}),
       ...(patch.color !== undefined ? { color: patch.color } : {}),
-      ...(parentId !== row.parentId ? { parentId } : {}),
+      // A new parent (or none): to the end of the new list of siblings.
+      ...(parentId !== row.parentId ? { parentId, sortOrder: 999 } : {}),
     };
     if (Object.keys(changes).length === 0) return;
     await tx
@@ -209,6 +264,8 @@ export type ArchiveResult = {
   children: number;
   /** The archived parent that restoring a subcategory brought back. */
   restoredParent: string | null;
+  /** Where the entries went ("Passar para"); null when they stayed. */
+  moved: { entries: number; to: string } | null;
 };
 
 /**
@@ -218,28 +275,45 @@ export type ArchiveResult = {
  * moment, and restoring it brings back those (and only those): Desfazer
  * undoes exactly what was done. Restoring a subcategory of an archived parent
  * restores the parent too, or it would have nowhere to show.
+ *
+ * With `moveTo`, archiving also passes everything of the category and of the
+ * subcategories archived with it (entries, recurrences, rules, budgets) to
+ * that category, which cannot be undone: restoring brings them back empty.
+ * Both are locked in id order, so two of these never deadlock.
  */
 export async function setCategoryArchived(
   userId: string,
   categoryId: string,
   archived: boolean,
+  moveTo?: string | null,
 ): Promise<ArchiveResult> {
+  const targetId = archived ? (moveTo ?? null) : null;
   return db.transaction(async (tx) => {
-    const [row] = await tx
+    const ids =
+      targetId !== null && targetId !== categoryId
+        ? [categoryId, targetId]
+        : [categoryId];
+    const locked = await tx
       .select({
+        id: categories.id,
+        kind: categories.kind,
         name: categories.name,
         parentId: categories.parentId,
         archivedAt: categories.archivedAt,
       })
       .from(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
-      .limit(1)
+      .where(and(eq(categories.userId, userId), inArray(categories.id, ids)))
+      .orderBy(asc(categories.id))
       .for("update");
-    if (!row) throw notFound("Categoria");
+    const row = locked.find((item) => item.id === categoryId);
+    const target =
+      targetId === null ? null : locked.find((item) => item.id === targetId);
+    if (!row || target === undefined) throw notFound("Categoria");
     const result: ArchiveResult = {
       name: row.name,
       children: 0,
       restoredParent: null,
+      moved: null,
     };
     // Already as asked (a repeated tap, a stale screen): nothing changes.
     if ((row.archivedAt !== null) === archived) return result;
@@ -265,6 +339,21 @@ export async function setCategoryArchived(
         .where(children(isNull(categories.archivedAt)))
         .returning({ id: categories.id });
       result.children = along.length;
+      if (target) {
+        const archivedNow = [categoryId, ...along.map((child) => child.id)];
+        const blocker = moveTargetBlocker({
+          mode: "archive",
+          source: { ...row, hasChildren: along.length > 0 },
+          target: { ...target, archived: target.archivedAt !== null },
+          excluded: archivedNow,
+        });
+        // Thrown inside the transaction: the archive above is undone too.
+        if (blocker) throw new DomainError(blocker);
+        result.moved = {
+          entries: await moveCategoryEntries(tx, userId, archivedNow, target),
+          to: await targetLabel(tx, userId, target),
+        };
+      }
       return result;
     }
 
@@ -289,5 +378,58 @@ export async function setCategoryArchived(
       result.restoredParent = parent?.name ?? null;
     }
     return result;
+  });
+}
+
+/**
+ * Saves the order of the active categories of one type ("Mudar a ordem"):
+ * `orderedIds` must be exactly those categories, or the list changed while
+ * the person was ordering (a category created, archived or moved elsewhere)
+ * and nothing is saved. Only the relative order among siblings counts, and
+ * only the `sort_order` values that change are written; archived categories
+ * keep theirs. The categories are locked in id order while it is saved.
+ */
+export async function reorderCategories(
+  userId: string,
+  kind: CategoryKind,
+  orderedIds: readonly string[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .select({
+        id: categories.id,
+        parentId: categories.parentId,
+        sortOrder: categories.sortOrder,
+      })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.userId, userId),
+          eq(categories.kind, kind),
+          isNull(categories.archivedAt),
+        ),
+      )
+      .orderBy(asc(categories.id))
+      .for("update");
+    const known = new Set(rows.map((row) => row.id));
+    const unique = new Set(orderedIds);
+    if (
+      unique.size !== orderedIds.length ||
+      unique.size !== known.size ||
+      orderedIds.some((id) => !known.has(id))
+    ) {
+      throw new DomainError(
+        "As categorias mudaram enquanto você ordenava. Atualize a página e tente de novo.",
+      );
+    }
+    const orders = siblingSortOrders(rows, orderedIds);
+    for (const row of rows) {
+      const sortOrder = orders.get(row.id);
+      if (sortOrder === undefined || sortOrder === row.sortOrder) continue;
+      await tx
+        .update(categories)
+        .set({ sortOrder })
+        .where(and(eq(categories.id, row.id), eq(categories.userId, userId)));
+    }
   });
 }

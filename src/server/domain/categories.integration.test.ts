@@ -320,6 +320,7 @@ describe("archiving and restoring", () => {
       name: "Casa",
       children: 2,
       restoredParent: null,
+      moved: null,
     });
     for (const id of [home, cleaning, garden, repairs]) {
       expect((await byId(id)).archived).toBe(true);
@@ -331,6 +332,7 @@ describe("archiving and restoring", () => {
       name: "Casa",
       children: 2,
       restoredParent: null,
+      moved: null,
     });
     expect((await byId(home)).archived).toBe(false);
     expect((await byId(cleaning)).archived).toBe(false);
@@ -347,6 +349,7 @@ describe("archiving and restoring", () => {
       name: "Jardim",
       children: 0,
       restoredParent: "Casa",
+      moved: null,
     });
     expect((await byId(casa.id)).archived).toBe(false);
     // Limpeza went with Casa and stays archived: only the asked child came.
@@ -359,6 +362,7 @@ describe("archiving and restoring", () => {
       name: "Mercado",
       children: 0,
       restoredParent: null,
+      moved: null,
     });
     await expect(
       admin.setCategoryArchived("ana", ids.brunoMarket, true),
