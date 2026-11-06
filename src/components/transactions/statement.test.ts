@@ -15,8 +15,10 @@ import {
 import {
   categoryTree,
   categoryWithDescendants,
+  filterOptionGroups,
   hasActiveFilters,
   parseStatementParams,
+  statementCategoryIds,
   statementHref,
 } from "./statement-params";
 
@@ -229,6 +231,85 @@ describe("categoryWithDescendants", () => {
       { id: "b", parentId: "a" },
     ];
     expect(categoryWithDescendants(cycle, "a")).toEqual(["a", "b"]);
+  });
+});
+
+describe("statementCategoryIds", () => {
+  // Everything the page reads: Mercado (active) with Feira (active) and
+  // Padaria (archived); Viagem archived with no children.
+  const categories = [
+    { id: "market", parentId: null, archived: false },
+    { id: "fair", parentId: "market", archived: false },
+    { id: "bakery", parentId: "market", archived: true },
+    { id: "trip", parentId: null, archived: true },
+    { id: "salary", parentId: null, archived: false },
+  ];
+
+  it("brings every subcategory of the parent, archived ones included", () => {
+    expect(statementCategoryIds(categories, "market")).toEqual([
+      "market",
+      "fair",
+      "bakery",
+    ]);
+  });
+
+  it("filters by an archived category, alone or as a subcategory", () => {
+    expect(statementCategoryIds(categories, "trip")).toEqual(["trip"]);
+    expect(statementCategoryIds(categories, "bakery")).toEqual(["bakery"]);
+  });
+
+  it("is empty for someone else's id or no id at all", () => {
+    expect(statementCategoryIds(categories, "someone-else")).toEqual([]);
+    expect(statementCategoryIds(categories, null)).toEqual([]);
+  });
+});
+
+describe("filterOptionGroups", () => {
+  const groups = [
+    {
+      title: "Despesas",
+      options: [
+        { id: "market", label: "Mercado" },
+        { id: "fair", label: "Mercado › Feira" },
+        { id: "health", label: "Saúde" },
+        { id: "education", label: "Educação" },
+      ],
+    },
+    {
+      title: "Receitas",
+      options: [{ id: "salary", label: "Salário" }],
+    },
+    {
+      title: "Arquivadas",
+      options: [{ id: "bakery", label: "Mercado › Padaria" }],
+    },
+  ];
+  const ids = (list: { options: { id: string }[] }[]) =>
+    list.map((group) => group.options.map((option) => option.id));
+
+  it("keeps everything, in order, for an empty or blank search", () => {
+    expect(filterOptionGroups(groups, "")).toEqual(groups);
+    expect(filterOptionGroups(groups, "  ")).toEqual(groups);
+  });
+
+  it("matches the whole label: a parent brings its subcategories, in tree order", () => {
+    expect(ids(filterOptionGroups(groups, "mercado"))).toEqual([
+      ["market", "fair"],
+      ["bakery"],
+    ]);
+    expect(
+      filterOptionGroups(groups, "mercado").map((group) => group.title),
+    ).toEqual(["Despesas", "Arquivadas"]);
+  });
+
+  it("ignores accents, ç and case", () => {
+    expect(ids(filterOptionGroups(groups, "saude"))).toEqual([["health"]]);
+    expect(ids(filterOptionGroups(groups, "EDUCAC"))).toEqual([["education"]]);
+    expect(ids(filterOptionGroups(groups, "salario"))).toEqual([["salary"]]);
+  });
+
+  it("drops every group when nothing matches", () => {
+    expect(filterOptionGroups(groups, "farmácia")).toEqual([]);
   });
 });
 

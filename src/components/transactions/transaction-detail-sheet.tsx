@@ -14,6 +14,7 @@ import { Money } from "@/components/money/money";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { categoryLabel } from "@/lib/categories/hierarchy";
 import { fullDateLabel, relativeDayLabel } from "@/lib/format/date";
 import {
   type EditScope,
@@ -251,6 +252,13 @@ export function TransactionDetailSheet({
   }
 
   const ends = transfer ? transferEnds(item) : null;
+  // "Mercado › Padaria", with "(arquivada)" as the edit select shows it.
+  const itemCategory = item.categoryId
+    ? categories.find((category) => category.id === item.categoryId)
+    : undefined;
+  const categoryText = itemCategory
+    ? `${categoryLabel(itemCategory, categories)}${itemCategory.archived ? " (arquivada)" : ""}`
+    : item.categoryName;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -324,7 +332,7 @@ export function TransactionDetailSheet({
               ) : (
                 <>
                   <Fact label="Categoria">
-                    {item.categoryName ??
+                    {categoryText ??
                       (adjustment ? "Ajuste de saldo" : "Sem categoria")}
                   </Fact>
                   <Fact label="Conta">{item.accountName}</Fact>

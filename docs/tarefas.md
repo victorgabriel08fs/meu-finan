@@ -2,17 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 1. Extrato — melhorias
-
-Pendências pequenas achadas na correção dos filtros (04/11/2026), que já existiam antes dela:
-
-- Com dois ou mais chips ativos, a 360 e 430 px o "Limpar" fica fora da tela, no fim da linha rolável.
-- A folha de categorias tem mais de 20 opções e não tem busca (doc 02 §4.4 pede busca acima de 8).
-- Com zoom de 200%, os valores do resumo e das linhas são cortados (doc 02 §3.4 e §11).
-- Subcategoria arquivada não entra no filtro da categoria mãe (a página só conhece as categorias ativas).
-- **Criar subcategorias pelo app** (decidido pelo dono em 05/11/2026): em Ajustes › Categorias, escolher a categoria mãe ao criar ou editar. O filtro do Extrato já trata mãe e filhas.
-- Procurar outras telas que usem uma só `<Sheet>` para conteúdos diferentes: teriam o mesmo defeito do toque rápido corrigido no Extrato (o toque fora da folha que sai fecha a que acabou de abrir).
-
 ## 2. Início e Relatórios — melhorias
 
 Pendências achadas na etapa 2 do Início personalizável (05/11/2026):
@@ -42,8 +31,35 @@ Achados do `qa-ui-ux` nas Notificações (05/11/2026) que valem para o app intei
 - **Botão de ação dos toasts** ("Desfazer", "Tentar de novo") com 36 px de altura, abaixo dos 44 px de doc 02 §11.
 - **Concordância no toast das flags**: "Notificações ligado para Bruno" (`src/components/admin/flags-manager.tsx`, `onOff`); o rótulo da flag é feminino ou plural.
 - **Contraste do `Switch` desligado no tema claro**: a trilha fica fraca contra a superfície; medir e ajustar o token (doc 02 §3.1).
+- **Valores a partir de R$ 1 mi a 200% em 360 px**: o resumo e as linhas do Extrato quebram de linha, mas um valor muito longo ainda pode passar do cartão (o `Money` não quebra).
+- **Melhoria**: no resumo "Agendados" do Extrato a 200%, o "·" entre as informações pode começar a linha; mantê-lo junto da palavra anterior (`&nbsp;` antes dele).
+
+## 5. Categorias — próximos passos
+
+Ficaram de fora das subcategorias (05/11/2026):
+
+- **Mesclar categorias** (doc 02 §6.14): mover os lançamentos de uma para outra. Ao mesclar uma mãe, as subcategorias vão para o destino se ele for uma categoria principal; senão, a mesclagem é recusada com o motivo. Orçamentos e regras aprendidas da categoria mesclada precisam de regra própria.
+- **Reordenar categorias** (`sort_order` já existe): subir e descer, na árvore, sem tirar a subcategoria de baixo da mãe.
+- **Detalhe da categoria com as subcategorias** (doc 02 §6.12): os relatórios somam as subcategorias na mãe (doc 03 §12); aqui entra a divisão por subcategoria.
+- O "Desfazer" de "Categoria X arquivada" restaura sem toast de confirmação; o texto "restaurada, com N subcategorias" só aparece pelo botão Restaurar.
+- O e2e "lança uma despesa pelo +" (`e2e/smoke.spec.ts`) falhou uma vez por tempo sob carga e passou ao repetir: observar se volta a falhar.
 
 ## Entregue
+
+### Extrato: melhorias e subcategorias — 05/11/2026
+
+Pendências do Extrato (04/11/2026) e o pedido do dono de criar subcategorias pelo app:
+
+- [x] **"Limpar" à vista**: fora da linha rolável, no fim da linha de chips, a 360 e 430 px com os quatro filtros, a 100% e a 200%.
+- [x] **Busca nas folhas de conta e de categoria** (mais de 8 opções, doc 02 §4.4), sem acento e pelo nome inteiro; o código da busca é compartilhado com a folha de categorias da Nova transação (`src/lib/format/search.ts`, `SheetSearch`).
+- [x] **Valores inteiros a 200%**: resumo (nos três modos), linhas e total do dia quebram de linha em vez de cortar.
+- [x] **Subcategoria arquivada** entra no filtro da mãe; categoria arquivada filtra pela URL (o link do ranking e o do insight, que caíam no Extrato sem filtro) e a folha tem o grupo "Arquivadas". O detalhe e o select de edição mostram "Mercado › Padaria (arquivada)", em vez de "Sem categoria".
+- [x] **Subcategorias** (decisões do dono, 05/11/2026): um nível só, mesma pessoa e mesmo tipo da mãe; criar e mover em Ajustes › Categorias ("Subcategoria de"); arquivar a mãe arquiva as filhas, e o Desfazer restaura em par; categoria com orçamento neste mês ou nos próximos não vira subcategoria. **D1**: o orçamento fica só em categoria principal e soma as subcategorias. **D2**: relatórios, resumos e insights somam as subcategorias na mãe. Novidade "Subcategorias" (`novidade-subcategorias`, sem flag). Demo: Mercado › Feira e Mercado › Padaria (arquivada) para a Ana.
+- [x] **Toque rápido numa folha reaberta enquanto a anterior sai**: o toque que começou antes da reabertura não fecha mais a folha nova (`src/components/ui/sheet.tsx`, para todas as folhas). O defeito real estava só no **detalhe do lançamento do Extrato** e na **Nova transação**; as telas que usam `useSheetTarget` (Categorias, Orçamentos, Metas, Flags, Usuários) não tinham, porque remontam o conteúdo com `key`.
+
+Testes de unidade (`search`, `hierarchy`, `statementCategoryIds`, `filterOptionGroups`, mensagens de Categorias), integração contra o PGlite (`categories.integration.test.ts`: regras da mãe, concorrência, arquivar e restaurar em par, isolamento entre contas; `category-rollup.integration.test.ts`: orçamento e relatórios; filtro da mãe em `domain.integration.test.ts`) e e2e (`e2e/extrato-filtros.spec.ts`, `e2e/categorias.spec.ts` com axe no escuro e no claro, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 (modelo de categorias), doc 02 §5.7, §5.8, §6.4, §6.5, §6.6, §6.14 e §6.16, doc 03 §11 e §12.
+
+Ficou para depois, nas pendências abaixo: mesclar e reordenar categorias, o detalhe da categoria com subcategorias, valores a partir de R$ 1 mi a 200% e o "·" do resumo "Agendados".
 
 ### Notificações: avisos pelo cron diário — 05/11/2026
 

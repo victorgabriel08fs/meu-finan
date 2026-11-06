@@ -28,6 +28,10 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   await expect(
     page.getByRole("heading", { name: "Três relatórios novos" }),
   ).toBeVisible({ timeout: 30_000 });
+  // No flag behind it: the subcategories reach him too.
+  await expect(
+    page.getByRole("heading", { name: "Subcategorias" }),
+  ).toBeVisible();
   await expect(page.getByText("Importe o extrato do banco")).toHaveCount(0);
   await expect(page.locator('a[href="/importar"]')).toHaveCount(0);
   await expect(page.getByText("Notificações no aparelho")).toHaveCount(0);

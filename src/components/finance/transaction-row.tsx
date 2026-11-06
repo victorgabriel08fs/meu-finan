@@ -54,7 +54,9 @@ const KIND_LABEL: Record<TransactionRowData["kind"], string> = {
  * Statement row (doc 02 §5.7): 64px, category icon, title and "Categoria ·
  * Conta", amount right-aligned with tabular figures. Pending entries get a
  * dashed icon, the amount in --text-2 and a due badge (amber within 3 days);
- * transfers show the arrows icon and an unsigned amount.
+ * transfers show the arrows icon and an unsigned amount. The amount is never
+ * cut (§8): when it does not fit beside the title (large text), it moves to
+ * a line of its own, still on the right.
  */
 export function TransactionRow({
   txn,
@@ -99,59 +101,63 @@ export function TransactionRow({
     <div
       data-slot="transaction-row"
       className={cn(
-        "relative flex min-h-16 items-center gap-3 px-4 py-2.5 transition-colors duration-100",
+        "relative flex min-h-16 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors duration-100",
         href && "has-[a:active]:bg-surface-2",
         className,
       )}
     >
-      <CategoryIcon icon={icon} color={color} size="md" dashed={pending} />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="truncate text-headline text-fg">
-          {href ? (
-            <Link
-              href={href}
-              aria-label={label}
-              className="outline-0 after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-solid focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
-            >
-              {txn.description}
-            </Link>
-          ) : (
-            txn.description
-          )}
-        </p>
-        <p className="flex min-w-0 items-center gap-1.5 text-caption text-fg-3">
-          <span className="truncate">{subtitle}</span>
-          {txn.recurring ? (
-            <Repeat
-              role="img"
-              aria-label="recorrente"
-              className="size-3.5 shrink-0"
-            />
-          ) : null}
-          {txn.installment ? (
-            <Badge tone="neutral" className="h-4.5 px-1 text-micro">
-              {txn.installment.number}/{txn.installment.count}
+      <div className="flex min-w-0 flex-[1_1_9rem] items-center gap-3">
+        <CategoryIcon icon={icon} color={color} size="md" dashed={pending} />
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="truncate text-headline text-fg">
+            {href ? (
+              <Link
+                href={href}
+                aria-label={label}
+                className="outline-0 after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-solid focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+              >
+                {txn.description}
+              </Link>
+            ) : (
+              txn.description
+            )}
+          </p>
+          <p className="flex min-w-0 items-center gap-1.5 text-caption text-fg-3">
+            <span className="truncate">{subtitle}</span>
+            {txn.recurring ? (
+              <Repeat
+                role="img"
+                aria-label="recorrente"
+                className="size-3.5 shrink-0"
+              />
+            ) : null}
+            {txn.installment ? (
+              <Badge tone="neutral" className="h-4.5 px-1 text-micro">
+                {txn.installment.number}/{txn.installment.count}
+              </Badge>
+            ) : null}
+          </p>
+        </div>
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="flex flex-col items-end gap-0.5">
+          <Money
+            cents={txn.amountCents}
+            variant="headline"
+            tone={transfer ? "transfer" : adjustment ? "neutral" : "auto"}
+            sign={adjustment ? "always" : "auto"}
+            className={cn(pending && "text-fg-2")}
+          />
+          {due ? (
+            <Badge tone={due.tone} className="h-5 text-micro">
+              {due.text}
             </Badge>
           ) : null}
-        </p>
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-0.5">
-        <Money
-          cents={txn.amountCents}
-          variant="headline"
-          tone={transfer ? "transfer" : adjustment ? "neutral" : "auto"}
-          sign={adjustment ? "always" : "auto"}
-          className={cn(pending && "text-fg-2")}
-        />
-        {due ? (
-          <Badge tone={due.tone} className="h-5 text-micro">
-            {due.text}
-          </Badge>
+        </div>
+        {trailing ? (
+          <div className="relative z-10 shrink-0">{trailing}</div>
         ) : null}
       </div>
-      {trailing ? (
-        <div className="relative z-10 shrink-0">{trailing}</div>
-      ) : null}
     </div>
   );
 }

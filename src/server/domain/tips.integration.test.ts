@@ -191,14 +191,15 @@ describe("tips per user", () => {
     ]);
     const state = await snapshot("invited");
     expect(state.createdOn).toBe("2026-10-20");
-    // Every novidade of the registry came before: none is new to this person.
+    // Only the novidades shipped after the invite was accepted are new to
+    // this person (the flagged ones need their flag on).
     expect(
       unreadNewsIds({
         seen: new Set(),
         createdOn: state.createdOn,
         context: state.context,
       }),
-    ).toEqual([]);
+    ).toEqual(["novidade-subcategorias"]);
   });
 
   it("has no creation day for an unknown user", async () => {

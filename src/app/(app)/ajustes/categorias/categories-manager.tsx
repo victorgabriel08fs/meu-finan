@@ -11,8 +11,10 @@ import {
   COLOR_CHOICES,
   ICON_NAMES,
 } from "@/components/planning/form/icon-names";
+import { NativeSelect } from "@/components/planning/form/native-select";
 import { ColorPicker, IconPicker } from "@/components/planning/form/pickers";
 import { useSheetTarget } from "@/components/planning/form/use-sheet";
+import { categoryTree } from "@/components/transactions/statement-params";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
@@ -20,11 +22,19 @@ import { Label } from "@/components/ui/label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
+import { parentOptions } from "@/lib/categories/hierarchy";
+import { cn } from "@/lib/utils";
 import {
+  createCategoryAction,
   setCategoryArchivedAction,
   updateCategoryAction,
 } from "@/server/actions/categories";
-import { createCategoryAction } from "@/server/actions/planning";
+import {
+  archiveDescription,
+  archivedMessage,
+  createdMessage,
+  restoredMessage,
+} from "./messages";
 
 type CategoryKind = "expense" | "income";
 type ColorChoice = (typeof COLOR_CHOICES)[number];
@@ -60,17 +70,20 @@ export function CategoriesManager({
   const names = new Map(
     categories.map((category) => [category.id, category.name]),
   );
-  const archived = categories.filter((category) => category.archived);
+  // Each subcategory right after its parent, in both lists.
+  const tree = categoryTree(categories);
+  const archived = tree.filter((category) => category.archived);
   const restore = useAction(setCategoryArchivedAction, {
-    onSuccess: ({ input }) =>
-      toast(`Categoria ${names.get(input.id) ?? ""} restaurada.`),
+    onSuccess: ({ data }) => {
+      if (data) toast(restoredMessage(data));
+    },
     onError: ({ error }) => toast(error.serverError ?? NETWORK_ERROR),
   });
 
   return (
     <>
       {GROUPS.map((group) => {
-        const items = categories.filter(
+        const items = tree.filter(
           (category) => category.kind === group.kind && !category.archived,
         );
         return (
@@ -105,7 +118,10 @@ export function CategoriesManager({
                     <button
                       type="button"
                       onClick={() => sheet.show({ mode: "edit", category })}
-                      className="flex min-h-15 w-full items-center gap-3 px-4 py-2 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2"
+                      className={cn(
+                        "flex min-h-15 w-full items-center gap-3 py-2 pr-4 text-left -outline-offset-2 transition-colors duration-100 hover:bg-surface-2/60 active:bg-surface-2",
+                        category.parentId ? "pl-10" : "pl-4",
+                      )}
                     >
                       <CategoryIcon
                         icon={category.icon}
@@ -159,6 +175,9 @@ export function CategoriesManager({
                   </span>
                   <span className="text-caption text-fg-3">
                     {category.kind === "expense" ? "Despesa" : "Receita"}
+                    {category.parentId
+                      ? ` · em ${names.get(category.parentId) ?? "outra categoria"}`
+                      : null}
                   </span>
                 </span>
                 <Button
@@ -212,11 +231,38 @@ function CategorySheet({
     editing?.kind ?? (target.mode === "new" ? target.kind : "expense"),
   );
   const [name, setName] = useState(editing?.name ?? "");
+  /** "" = a main category. */
+  const [parentId, setParentId] = useState(editing?.parentId ?? "");
   const [icon, setIcon] = useState(editing?.icon ?? "shopping-bag");
   const [color, setColor] = useState(editing?.color ?? "cat-1");
   const [error, setError] = useState<string>();
   const [formError, setFormError] = useState<string>();
   const [confirmArchive, setConfirmArchive] = useState(false);
+
+  const names = new Map(
+    categories.map((category) => [category.id, category.name]),
+  );
+  // One level only: a category with subcategories (archived ones too) stays
+  // a main category. The options are the active main categories of the type;
+  // a current parent that is no longer one stays listed, so it shows.
+  const children = editing
+    ? categories.filter((category) => category.parentId === editing.id)
+    : [];
+  const hasChildren = children.length > 0;
+  const options = parentOptions(categories, {
+    id: editing?.id ?? null,
+    kind,
+  }).map((category) => ({ id: category.id, label: category.name }));
+  const current = categories.find(
+    (category) => category.id === editing?.parentId,
+  );
+  if (current && !options.some((option) => option.id === current.id)) {
+    options.push({
+      id: current.id,
+      label: current.archived ? `${current.name} (arquivada)` : current.name,
+    });
+  }
+  const parentName = parentId ? (names.get(parentId) ?? null) : null;
 
   const icons = CATEGORY_ICON_CHOICES.includes(
     icon as (typeof CATEGORY_ICON_CHOICES)[number],
@@ -241,7 +287,7 @@ function CategorySheet({
   };
   const create = useAction(createCategoryAction, {
     onSuccess: () => {
-      toast(`Categoria ${name.trim()} criada.`);
+      toast(createdMessage(name.trim(), parentName));
       onDone();
     },
     onError,
@@ -254,10 +300,11 @@ function CategorySheet({
     onError,
   });
   const archive = useAction(setCategoryArchivedAction, {
-    onSuccess: () => {
+    onSuccess: ({ data }) => {
       onDone();
-      if (!editing) return;
-      toastWithUndo(`Categoria ${editing.name} arquivada.`, () => {
+      if (!editing || !data) return;
+      // Desfazer restores the subcategories that went along, no others.
+      toastWithUndo(archivedMessage(data), () => {
         void setCategoryArchivedAction({
           id: editing.id,
           archived: false,
@@ -277,18 +324,21 @@ function CategorySheet({
       setError("Dê um nome para a categoria.");
       return;
     }
-    const parentId = editing?.parentId ?? null;
+    // Names are unique per level: checked against the chosen parent.
+    const chosenParent = parentId || null;
     const clash = categories.find(
       (category) =>
         category.id !== editing?.id &&
-        category.parentId === parentId &&
+        category.parentId === chosenParent &&
         category.name === trimmed,
     );
     if (clash) {
       setError(
         clash.archived
           ? "Já existe uma categoria arquivada com esse nome. Restaure-a na lista de arquivadas."
-          : "Já existe uma categoria com esse nome.",
+          : parentName
+            ? `Já existe uma subcategoria com esse nome em ${parentName}.`
+            : "Já existe uma categoria com esse nome.",
       );
       return;
     }
@@ -301,15 +351,29 @@ function CategorySheet({
         name: trimmed,
         icon,
         color: colorToken,
+        ...(chosenParent !== editing.parentId
+          ? { parentId: chosenParent }
+          : {}),
       });
-    else create.execute({ kind, name: trimmed, icon, color: colorToken });
+    else
+      create.execute({
+        kind,
+        name: trimmed,
+        icon,
+        color: colorToken,
+        parentId: chosenParent,
+      });
   }
 
   if (confirmArchive && editing) {
     return (
       <SheetContent
         title={`Arquivar ${editing.name}?`}
-        description="Ela sai das listas de escolha e dos orçamentos. Os lançamentos antigos continuam com ela, e dá para restaurar quando quiser."
+        description={archiveDescription(
+          children
+            .filter((category) => !category.archived)
+            .map((category) => category.name),
+        )}
         footer={
           <>
             <Button
@@ -381,7 +445,11 @@ function CategorySheet({
               { value: "income", label: "Receita" },
             ]}
             value={kind}
-            onValueChange={(value) => setKind(value as CategoryKind)}
+            onValueChange={(value) => {
+              setKind(value as CategoryKind);
+              // A parent of the other type would not do.
+              setParentId("");
+            }}
           />
         )}
         <div className="flex items-end gap-3">
@@ -407,6 +475,31 @@ function CategorySheet({
         <FieldError id={`${formId}-name-error`} className="-mt-4">
           {error}
         </FieldError>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={`${formId}-parent`}>Subcategoria de</Label>
+          <NativeSelect
+            id={`${formId}-parent`}
+            value={parentId}
+            onChange={(event) => {
+              setParentId(event.target.value);
+              setError(undefined);
+            }}
+            disabled={hasChildren}
+            aria-describedby={hasChildren ? `${formId}-parent-hint` : undefined}
+          >
+            <option value="">Nenhuma (categoria principal)</option>
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+          {hasChildren ? (
+            <p id={`${formId}-parent-hint`} className="text-caption text-fg-3">
+              Tem subcategorias, por isso fica como categoria principal.
+            </p>
+          ) : null}
+        </div>
         <div className="flex flex-col gap-2">
           <span id={iconLabelId} className="text-callout font-semibold text-fg">
             Ícone

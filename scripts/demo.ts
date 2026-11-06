@@ -53,6 +53,8 @@ import { ensureOwnerDefaults } from "../src/server/db/seed-defaults";
 import { createAccount } from "../src/server/domain/accounts";
 import { upsertBudget } from "../src/server/domain/budgets";
 import { listInvoices, payInvoice } from "../src/server/domain/cards";
+import { createCategory } from "../src/server/domain/categories";
+import { setCategoryArchived } from "../src/server/domain/category-admin";
 import { getUserContext } from "../src/server/domain/context";
 import { setTipsOff } from "../src/server/domain/tips";
 import {
@@ -161,6 +163,24 @@ async function main(): Promise<void> {
     if (!id) throw new Error(`Categoria padrão ausente: ${name}`);
     return id;
   };
+  // Subcategories of Mercado: Feira (the Hortifruti entries) and Padaria
+  // (archived once the history is in, so the statement shows how an
+  // archived subcategory still counts under its parent).
+  for (const [name, icon] of [
+    ["Feira", "sprout"],
+    ["Padaria", "store"],
+  ] as const) {
+    categoryIds.set(
+      name,
+      await createCategory(userId, {
+        kind: "expense",
+        name,
+        icon,
+        color: "cat-2",
+        parentId: cat("Mercado"),
+      }),
+    );
+  }
 
   // Accounts -------------------------------------------------------------------
   const today = ctx.today;
@@ -357,7 +377,7 @@ async function main(): Promise<void> {
       expense("Supermercado", "Mercado", between(26_000, 32_000), day(2)),
     );
     await add(day(9), () =>
-      expense("Hortifruti", "Mercado", between(7_000, 11_000), day(9)),
+      expense("Hortifruti", "Feira", between(7_000, 11_000), day(9)),
     );
     await add(day(16), () =>
       expense("Supermercado", "Mercado", between(18_000, 26_000), day(16)),
@@ -412,7 +432,7 @@ async function main(): Promise<void> {
       expense("Cinema", "Lazer", between(6_000, 12_000), day(10)),
     );
     await add(day(21), () =>
-      expense("Padaria", "Mercado", between(1_500, 4_000), day(21), wallet),
+      expense("Padaria", "Padaria", between(1_500, 4_000), day(21), wallet),
     );
     if (month.month === 7) {
       await add(day(14), () =>
@@ -464,6 +484,8 @@ async function main(): Promise<void> {
   if (compare(freelanceDay, endOfMonth) <= 0) {
     await income("Freelance", "Freelance", 65_000, freelanceDay);
   }
+
+  await setCategoryArchived(userId, cat("Padaria"), true);
 
   // Budgets for this month and the previous one ---------------------------------
   const budgets: [string, number][] = [

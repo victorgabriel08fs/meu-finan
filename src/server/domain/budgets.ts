@@ -1,5 +1,5 @@
 // Monthly budgets with pace (doc 03 §11).
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, between, eq, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import {
   addMonths,
@@ -38,41 +38,81 @@ export type BudgetOverview = {
 
 const STATUS_ORDER = { over: 0, ahead: 1, on_track: 2, scheduled: 3 } as const;
 
+/**
+ * Expenses of the period per category (paid and pending), with each
+ * category's parent: one aggregate over a JOIN, no correlated subquery.
+ */
+async function expensesByCategory(ctx: UserContext, range: PeriodRange) {
+  const sumOf = (status: "paid" | "pending") =>
+    sql<number>`coalesce(-sum(${transactions.amountCents}) filter (where ${transactions.status} = ${status}), 0)`.mapWith(
+      Number,
+    );
+  return db
+    .select({
+      categoryId: transactions.categoryId,
+      parentId: categories.parentId,
+      paid: sumOf("paid"),
+      pending: sumOf("pending"),
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(
+      and(
+        eq(transactions.userId, ctx.userId),
+        eq(transactions.kind, "expense"),
+        isNull(transactions.deletedAt),
+        between(transactions.occurredOn, range.start, range.end),
+      ),
+    )
+    .groupBy(transactions.categoryId, categories.parentId);
+}
+
+/**
+ * The budgets of the period with what was spent and scheduled. The budget of
+ * a main category counts its subcategories too, archived ones included (doc
+ * 03 §11, "gasto da categoria e subcategorias"); an old budget on a
+ * subcategory counts that subcategory only.
+ */
 export async function getBudgets(
   ctx: UserContext,
   range: PeriodRange,
 ): Promise<BudgetOverview> {
-  const spentIn = (status: "paid" | "pending") =>
-    sql<number>`coalesce((
-      select -sum(${transactions.amountCents}) from ${transactions}
-      where ${transactions.userId} = ${ctx.userId}
-        and ${transactions.categoryId} = ${budgets.categoryId}
-        and ${transactions.kind} = 'expense'
-        and ${transactions.status} = ${status}
-        and ${transactions.deletedAt} is null
-        and ${transactions.occurredOn} between ${range.start} and ${range.end}
-    ), 0)`.mapWith(Number);
-
-  const rows = await db
-    .select({
-      id: budgets.id,
-      categoryId: budgets.categoryId,
-      categoryName: categories.name,
-      categoryIcon: categories.icon,
-      categoryColor: categories.color,
-      budgetCents: budgets.amountCents,
-      spent: spentIn("paid"),
-      scheduled: spentIn("pending"),
-    })
-    .from(budgets)
-    .innerJoin(categories, eq(categories.id, budgets.categoryId))
-    .where(
-      and(
-        eq(budgets.userId, ctx.userId),
-        eq(budgets.month, `${range.month}-01`),
-        isNull(categories.archivedAt),
+  const [budgetRows, spending] = await Promise.all([
+    db
+      .select({
+        id: budgets.id,
+        categoryId: budgets.categoryId,
+        categoryName: categories.name,
+        categoryIcon: categories.icon,
+        categoryColor: categories.color,
+        budgetCents: budgets.amountCents,
+      })
+      .from(budgets)
+      .innerJoin(categories, eq(categories.id, budgets.categoryId))
+      .where(
+        and(
+          eq(budgets.userId, ctx.userId),
+          eq(budgets.month, `${range.month}-01`),
+          isNull(categories.archivedAt),
+        ),
       ),
-    );
+    expensesByCategory(ctx, range),
+  ]);
+  // Each entry counts once per budget: its own category's, or its parent's.
+  const rows = budgetRows.map((row) => {
+    let spent = 0;
+    let scheduled = 0;
+    for (const line of spending) {
+      if (
+        line.categoryId === row.categoryId ||
+        line.parentId === row.categoryId
+      ) {
+        spent += line.paid;
+        scheduled += line.pending;
+      }
+    }
+    return { ...row, spent, scheduled };
+  });
 
   const pace = (
     budgetCents: number,
@@ -136,7 +176,32 @@ export async function upsertBudget(
     throw new DomainError("O orçamento precisa ser maior que zero.");
   }
   const month = `${isoMonth(parseMonth(input.month))}-01`;
-  await requireCategory(executor, ctx.userId, input.categoryId, "expense");
+  const category = await requireCategory(
+    executor,
+    ctx.userId,
+    input.categoryId,
+    "expense",
+  );
+  // New budgets go on main categories only (their subcategories count in);
+  // an old budget on a subcategory can still change its amount.
+  if (category.parentId !== null) {
+    const [existing] = await executor
+      .select({ id: budgets.id })
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.userId, ctx.userId),
+          eq(budgets.categoryId, input.categoryId),
+          eq(budgets.month, month),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new DomainError(
+        "Escolha uma categoria principal para o orçamento.",
+      );
+    }
+  }
   await executor
     .insert(budgets)
     .values({
@@ -177,7 +242,11 @@ export async function deleteBudget(
   if (deleted.length === 0) throw notFound("Orçamento");
 }
 
-/** "Copiar do mês anterior": copies the budgets the month does not have yet. */
+/**
+ * "Copiar do mês anterior": copies the budgets the month does not have yet,
+ * of active main categories only (a main category's budget already counts its
+ * subcategories, so copying an old subcategory budget would count it twice).
+ */
 export async function copyBudgetsFromPreviousMonth(
   ctx: UserContext,
   month: string,
@@ -190,7 +259,16 @@ export async function copyBudgetsFromPreviousMonth(
       amountCents: budgets.amountCents,
     })
     .from(budgets)
-    .where(and(eq(budgets.userId, ctx.userId), eq(budgets.month, previous)));
+    .innerJoin(categories, eq(categories.id, budgets.categoryId))
+    .where(
+      and(
+        eq(budgets.userId, ctx.userId),
+        eq(budgets.month, previous),
+        eq(categories.userId, ctx.userId),
+        isNull(categories.parentId),
+        isNull(categories.archivedAt),
+      ),
+    );
   if (rows.length === 0) return 0;
   const inserted = await db
     .insert(budgets)

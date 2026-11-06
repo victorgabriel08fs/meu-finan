@@ -12,8 +12,8 @@ import { Dialog } from "radix-ui";
 import {
   type ComponentProps,
   createContext,
-  type PointerEvent,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   use,
   useCallback,
   useLayoutEffect,
@@ -39,7 +39,14 @@ type SheetContextValue = {
   setOpen: (open: boolean) => void;
   /** onCloseAutoFocus for the content: the focus back to the opener. */
   returnFocus: (event: Event) => void;
+  /**
+   * onPointerDownOutside for the content: ignores a tap that started before
+   * the sheet (re)opened.
+   */
+  keepIfReopened: (event: PointerDownOutsideEvent) => void;
 };
+
+type PointerDownOutsideEvent = CustomEvent<{ originalEvent: PointerEvent }>;
 
 const SheetContext = createContext<SheetContextValue | null>(null);
 
@@ -75,9 +82,11 @@ export function Sheet({
   // shortcut. Read in a layout effect: the sheet moves the focus in later.
   const opener = useRef<HTMLElement | null>(null);
   const isOpen = useRef(open);
+  const openedAt = useRef(Number.NEGATIVE_INFINITY);
   useLayoutEffect(() => {
     isOpen.current = open;
     if (!open) return;
+    openedAt.current = performance.now();
     const active = document.activeElement;
     opener.current =
       active instanceof HTMLElement && active !== document.body ? active : null;
@@ -94,9 +103,22 @@ export function Sheet({
     event.preventDefault();
     target.focus({ preventScroll: true });
   }, []);
+  // A tap on the next row while this sheet still slides out lands outside it
+  // (the scrim fades out first), and Radix acts on it only at the click that
+  // follows. By then the row has opened this same sheet again, and that late
+  // "tap outside" would close it at once. So a tap outside counts only when
+  // it started while the sheet was open.
+  const keepIfReopened = useCallback((event: PointerDownOutsideEvent) => {
+    if (
+      !isOpen.current ||
+      event.detail.originalEvent.timeStamp < openedAt.current
+    ) {
+      event.preventDefault();
+    }
+  }, []);
   const context = useMemo(
-    () => ({ setOpen, returnFocus }),
-    [setOpen, returnFocus],
+    () => ({ setOpen, returnFocus, keepIfReopened }),
+    [setOpen, returnFocus, keepIfReopened],
   );
   useBackToClose(open, () => setOpen(false));
 
@@ -154,6 +176,7 @@ export function SheetContent({
   bodyClassName,
   swap = false,
   onCloseAutoFocus,
+  onPointerDownOutside,
   ...props
 }: SheetContentProps) {
   const sheet = use(SheetContext);
@@ -161,7 +184,7 @@ export function SheetContent({
   const dragControls = useDragControls();
   const y = useMotionValue(0);
 
-  function startDrag(event: PointerEvent<HTMLDivElement>) {
+  function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || window.matchMedia(DIALOG_QUERY).matches) return;
     const target = event.target as HTMLElement;
     if (target.closest("button, a, input, select, textarea")) return;
@@ -192,6 +215,10 @@ export function SheetContent({
         data-slot="sheet-content"
         data-swap={swap || undefined}
         onCloseAutoFocus={onCloseAutoFocus ?? sheet?.returnFocus}
+        onPointerDownOutside={(event) => {
+          sheet?.keepIfReopened(event);
+          onPointerDownOutside?.(event);
+        }}
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none",

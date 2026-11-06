@@ -118,7 +118,8 @@ async function expectTotalsOfRows(page: Page) {
 
 const inReserva = (label: string) =>
   /, Reserva, |para Reserva, |de Reserva para /.test(label);
-const inMercado = (label: string) => label.includes(", Mercado, ");
+// Mercado brings its subcategories: Feira, and Padaria (archived).
+const inMercado = (label: string) => /, (Mercado|Feira|Padaria), /.test(label);
 const isIncome = (label: string) => amountOf(label).kind === "receita";
 
 test("conta escolhida pela folha filtra, fica no recarregar e Voltar desfaz", async ({
@@ -400,4 +401,245 @@ test("tocar no próximo chip enquanto a folha anterior fecha abre a folha nova",
   await page.goBack();
   await expect(page).toHaveURL(/tipo=receita/);
   await expect(page).not.toHaveURL(/conta=/);
+});
+
+/** Picks `option` in the sheet of a filter chip and waits for it to close. */
+async function choose(
+  page: Page,
+  chip: string,
+  sheetName: string,
+  option: string | RegExp,
+) {
+  await filterChip(page, chip).click();
+  const sheet = sheetOf(page, sheetName);
+  await expect(sheet).toBeVisible();
+  await sheet
+    .getByRole("button", {
+      name: option,
+      exact: typeof option === "string",
+    })
+    .click();
+  await expect(sheet).toBeHidden();
+}
+
+/** Text at 200% (the browser's own setting), as a person with low vision. */
+const BIG_TEXT = "html { font-size: 200% }";
+
+/** The rows of the statement on screen (buttons that open the detail). */
+const statementRows = (page: Page) =>
+  page
+    .locator('li:has(> div > [data-slot="transaction-row"]) > button')
+    .and(page.locator(":visible"));
+
+test("o Limpar fica na tela com quatro filtros, a 360 e 430 px, a 100% e a 200%", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await openStatement(page);
+  await choose(page, "Conta", "conta", /^Reserva/);
+  await expect(page).toHaveURL(/conta=/);
+  await choose(page, "Categoria", "categoria", "Mercado");
+  await expect(page).toHaveURL(/categoria=/);
+  await choose(page, "Tipo", "tipo", "Despesas");
+  await expect(page).toHaveURL(/tipo=despesa/);
+  await page.getByRole("button", { name: "Pendentes" }).click();
+  await expect(page).toHaveURL(/status=pendente/);
+  const filtered = page.url();
+
+  for (const width of [360, 430]) {
+    for (const bigText of [false, true]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(filtered);
+      if (bigText) await page.addStyleTag({ content: BIG_TEXT });
+      await expect(filterChip(page, "Categoria", "Mercado")).toBeVisible({
+        timeout: 30_000,
+      });
+      const clear = page
+        .getByRole("button", { name: "Limpar", exact: true })
+        .and(page.locator(":visible"));
+      await expect(
+        clear,
+        `Limpar a ${width} px, texto ${bigText ? "200%" : "100%"}`,
+      ).toBeInViewport({ ratio: 1 });
+      // The chips scroll under the fade; the page itself never does.
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+    }
+  }
+});
+
+test("a 200% nenhum valor do Extrato sai do cartão nem da tela, nos três modos do resumo", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 360, height: 800 });
+
+  const outside = () =>
+    page.evaluate(() => {
+      const bad: string[] = [];
+      for (const money of document.querySelectorAll('[data-slot="money"]')) {
+        if (!money.checkVisibility()) continue;
+        const rect = money.getBoundingClientRect();
+        const card = money.closest("ul, section")?.getBoundingClientRect();
+        const left = Math.max(0, card?.left ?? 0);
+        const right = Math.min(window.innerWidth, card?.right ?? Infinity);
+        if (rect.left < left - 0.5 || rect.right > right + 0.5) {
+          bad.push(`${money.textContent} (${rect.left}–${rect.right})`);
+        }
+      }
+      return {
+        bad,
+        scrolls: document.documentElement.scrollWidth > window.innerWidth,
+      };
+    });
+  const expectWhole = async () => {
+    await page.waitForTimeout(300);
+    expect(await outside()).toEqual({ bad: [], scrolls: false });
+  };
+
+  // Fluxo: the month, with its day totals and rows.
+  await openStatement(page);
+  await page.addStyleTag({ content: BIG_TEXT });
+  await expectSomeRow(page, () => true);
+  await expectWhole();
+
+  // Agendados: the pending ones, with the summary of what is still to come.
+  await page.goto(`/extrato?mes=${MONTH}&status=pendente`);
+  await page.addStyleTag({ content: BIG_TEXT });
+  await expect(filterChip(page, "Conta")).toBeVisible({ timeout: 30_000 });
+  await expectWhole();
+
+  // Transferências: only the moves between accounts.
+  await page.goto(`/extrato?mes=${MONTH}&tipo=transferencia`);
+  await page.addStyleTag({ content: BIG_TEXT });
+  await expect(filterChip(page, "Tipo", "Transferências")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expectSomeRow(page, () => true);
+  await expectWhole();
+});
+
+test("Mercado traz Feira e Padaria (arquivada) e a busca da folha acha a subcategoria", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openStatement(page);
+
+  await choose(page, "Categoria", "categoria", "Mercado");
+  await expect(page).toHaveURL(/categoria=/);
+  await expectRows(page, inMercado);
+  await expectSomeRow(page, (label) => label.includes(", Feira, "));
+  await expectSomeRow(page, (label) => label.includes(", Padaria, "));
+  await expectTotalsOfRows(page);
+
+  // More than 8 categories: the sheet has a search field, without accents.
+  await filterChip(page, "Categoria").click();
+  const sheet = sheetOf(page, "categoria");
+  const search = sheet.getByRole("searchbox", { name: "Buscar categoria" });
+  await search.fill("mercado");
+  await expect(
+    sheet.getByRole("button", { name: "Mercado › Feira", exact: true }),
+  ).toBeVisible();
+  await expect(
+    sheet.getByRole("button", { name: "Todas as categorias" }),
+  ).toBeVisible();
+  await search.fill("zzzz");
+  await expect(sheet.getByRole("status")).toHaveText(
+    "Nenhuma categoria com “zzzz”.",
+  );
+  await search.fill("");
+  // The archived ones sit in a group of their own, at the end.
+  await expect(
+    sheet.getByRole("heading", { name: "Arquivadas" }),
+  ).toBeVisible();
+  await expect(
+    sheet.getByRole("button", { name: "Mercado › Padaria", exact: true }),
+  ).toBeVisible();
+});
+
+test("a Padaria arquivada filtra pela folha e pela URL, com o nome inteiro no chip e no detalhe", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openStatement(page);
+  await choose(page, "Categoria", "categoria", "Mercado › Padaria");
+  await expect(page).toHaveURL(/categoria=/);
+  const url = page.url();
+
+  // By the URL alone (a link of the reports does just that).
+  await page.goto(url);
+  const chip = page.getByRole("button", {
+    name: "Categoria: Mercado › Padaria (arquivada)",
+    exact: true,
+  });
+  await expect(chip).toBeVisible({ timeout: 30_000 });
+  await expectRows(page, (label) => label.includes(", Padaria, "));
+
+  // The detail names the category in full; the edit select keeps it listed.
+  await statementRows(page).first().click();
+  const detail = page.getByRole("dialog", { name: "Padaria" });
+  await expect(detail.getByText("Mercado › Padaria (arquivada)")).toBeVisible();
+  await detail.getByRole("button", { name: "Editar" }).click();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Editar lançamento" })
+      .getByLabel("Categoria")
+      .locator("option:checked"),
+  ).toHaveText("Mercado › Padaria (arquivada)");
+});
+
+test("tocar em outra linha enquanto o detalhe anterior fecha abre o novo, e Voltar o fecha", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openStatement(page);
+  const rows = statementRows(page);
+  await expect(rows.nth(1)).toBeVisible();
+  // The two rows go to the top of the screen, above where a sheet reaches:
+  // the tap must land on the row, not on the sheet that is still leaving.
+  const top = await rows.nth(0).boundingBox();
+  if (top) await page.evaluate((y) => window.scrollBy(0, y - 150), top.y);
+  const second = await rows.nth(1).boundingBox();
+  if (!second) throw new Error("segunda linha");
+  const label = await rows.nth(1).getAttribute("aria-label");
+
+  // The slide out takes 1.5 s: the tap lands on the row while the first
+  // detail is still leaving.
+  await page.addStyleTag({ content: ":root { --dur-3: 1500ms }" });
+  await rows.nth(0).tap();
+  const first = page.getByRole("dialog");
+  await expect(first).toBeVisible();
+  await page.waitForTimeout(400);
+  await first.getByRole("button", { name: "Fechar" }).tap();
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('[data-slot="sheet-overlay"]') &&
+      document.querySelector(
+        '[data-slot="sheet-content"][data-state="closed"]',
+      ),
+  );
+  await page.touchscreen.tap(
+    second.x + second.width / 2,
+    second.y + second.height / 2,
+  );
+  await expect(
+    page.locator('[data-slot="sheet-content"][data-state="closed"]'),
+  ).toHaveCount(0, { timeout: 10_000 });
+
+  // The new detail stays open (the late "tap outside" used to close it).
+  const detail = page.getByRole("dialog");
+  await expect(detail).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(detail).toBeVisible();
+  const description = label?.split(", ")[0] ?? "";
+  await expect(page.getByRole("dialog", { name: description })).toBeVisible();
+
+  // Back closes it and stays on the statement.
+  await page.waitForTimeout(400);
+  await page.goBack();
+  await expect(detail).toBeHidden({ timeout: 10_000 });
+  await expect(page).toHaveURL(UNFILTERED);
 });

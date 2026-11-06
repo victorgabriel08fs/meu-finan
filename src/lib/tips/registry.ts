@@ -279,6 +279,20 @@ export const TIPS: readonly Tip[] = [
     icon: "bell",
     link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },
   },
+  {
+    id: "novidade-subcategorias",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the choice lives inside a category's
+    // sheet, which has no anchor of its own.
+    routes: [],
+    anchor: null,
+    title: "Subcategorias",
+    body: "Agora dá para criar subcategorias, como Mercado › Feira, em Ajustes › Categorias. No Extrato, filtrar a categoria traz as subcategorias junto.",
+    since: "2026-11-05",
+    order: 12,
+    icon: "sparkles",
+    link: { href: "/ajustes/categorias", label: "Ver categorias" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

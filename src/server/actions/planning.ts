@@ -18,7 +18,6 @@ import {
   upsertBudgets,
 } from "@/server/domain/budgets";
 import { payInvoice } from "@/server/domain/cards";
-import { createCategory } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import {
   archiveGoal,
@@ -127,23 +126,6 @@ export const payInvoiceAction = authAction
   .action(async ({ parsedInput, ctx: { user } }) => {
     await payInvoice(await getUserContext(user.id), parsedInput);
     refresh();
-  });
-
-// Categorias -----------------------------------------------------------------
-
-export const createCategoryAction = authAction
-  .inputSchema(
-    z.object({
-      kind: z.enum(["income", "expense"]),
-      name: name.max(40, { error: "Use até 40 caracteres." }),
-      icon: iconName,
-      color: colorToken,
-    }),
-  )
-  .action(async ({ parsedInput, ctx: { user } }) => {
-    const id = await createCategory(user.id, parsedInput);
-    refresh();
-    return { id };
   });
 
 // Orçamentos -----------------------------------------------------------------
