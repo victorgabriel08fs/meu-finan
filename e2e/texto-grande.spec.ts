@@ -194,3 +194,34 @@ test("telas a 200% sem problemas de acessibilidade, no escuro e no claro", async
     await chooseTheme(page, "Escuro");
   }
 });
+
+test("o detalhe da categoria e a folha de ordem a 200% não rolam para o lado nem cortam valores", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/relatorios/categorias?periodo=12");
+  const mercado = page.getByRole("link", { name: /^Mercado.*Ver o detalhe/ });
+  const href = await mercado.getAttribute("href", { timeout: 30_000 });
+  expect(href).toMatch(/^\/relatorios\/categorias\/[0-9a-f-]+/);
+  await page.goto(href ?? "");
+  await applyScale(page, true);
+  await expect(
+    page.getByRole("heading", { name: "Mercado", level: 2 }),
+  ).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(400);
+  await expectNoHorizontalScroll(page, "Detalhe da categoria a 200%");
+  expect(await clippedValues(page)).toEqual([]);
+
+  await page.goto("/ajustes/categorias");
+  await applyScale(page, true);
+  await settle(page);
+  await page.getByRole("button", { name: "Mudar a ordem" }).first().click();
+  const order = page.getByRole("dialog", { name: "Ordem das despesas" });
+  await expect(order).toBeVisible();
+  await page.waitForTimeout(500);
+  await expectNoHorizontalScroll(page, "Ordem das despesas a 200%");
+  const save = order.getByRole("button", { name: "Salvar ordem" });
+  await save.scrollIntoViewIfNeeded();
+  await save.click({ trial: true });
+});
