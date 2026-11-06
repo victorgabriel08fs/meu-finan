@@ -118,7 +118,8 @@ async function expectTotalsOfRows(page: Page) {
 
 const inReserva = (label: string) =>
   /, Reserva, |para Reserva, |de Reserva para /.test(label);
-const inMercado = (label: string) => label.includes(", Mercado, ");
+// Mercado brings its subcategories: Feira, and Padaria (archived).
+const inMercado = (label: string) => /, (Mercado|Feira|Padaria), /.test(label);
 const isIncome = (label: string) => amountOf(label).kind === "receita";
 
 test("conta escolhida pela folha filtra, fica no recarregar e Voltar desfaz", async ({
