@@ -231,6 +231,18 @@ describe("NetWorthReport", () => {
       liabilitiesCents: 100_000,
     },
     {
+      month: "2026-08",
+      netCents: 1_100_000,
+      assetsCents: 1_180_000,
+      liabilitiesCents: 80_000,
+    },
+    {
+      month: "2026-09",
+      netCents: 1_150_000,
+      assetsCents: 1_200_000,
+      liabilitiesCents: 50_000,
+    },
+    {
       month: "2026-10",
       netCents: 1_200_000,
       assetsCents: 1_250_000,
@@ -239,10 +251,9 @@ describe("NetWorthReport", () => {
   ];
 
   it("shows net worth with a scrub, then assets and liabilities apart", () => {
-    const html = renderToStaticMarkup(
-      <NetWorthReport points={points} period={3} />,
-    );
+    const html = renderToStaticMarkup(<NetWorthReport points={points} />);
     expect(html).toContain("Patrimônio líquido");
+    expect(html).not.toContain("Seus registros começam");
     expect(html).toContain(">Ativos<");
     expect(html).toContain(">Passivos<");
     expect(html).toContain("em 3 meses");
@@ -258,6 +269,15 @@ describe("NetWorthReport", () => {
     );
     expect(html).toContain('href="/contas"');
     expect(html.match(/Ver como tabela/g)).toHaveLength(3);
+  });
+
+  it("names the window by the months it has and says where the records begin", () => {
+    const html = renderToStaticMarkup(
+      <NetWorthReport points={points.slice(-2)} startsAt="2026-10" />,
+    );
+    expect(html).toContain("no mês");
+    expect(html).not.toContain("em 3 meses");
+    expect(html).toContain("Seus registros começam em outubro de 2026.");
   });
 });
 

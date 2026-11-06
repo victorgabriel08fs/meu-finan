@@ -43,7 +43,7 @@ import { partialProgress } from "@/components/reports/model";
 import { monthViewHref, periodViewHref } from "@/components/reports/views";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
-import { isBeforeFirstRecord } from "@/lib/reports/coverage";
+import { isBeforeFirstRecord, trimToFirstRecord } from "@/lib/reports/coverage";
 import { getBudgets } from "@/server/domain/budgets";
 import {
   type PeriodRange,
@@ -126,7 +126,7 @@ async function BalanceBlock({ ctx, range }: HomeBlockProps) {
 async function MonthTotalsBlock({ ctx, range }: HomeBlockProps) {
   const totals = await periodTotals(ctx, range.start, range.end);
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-fit gap-3">
       <StatTile
         icon={<ArrowDownLeft />}
         iconClassName="bg-cat-3-bg text-cat-3-fg"
@@ -391,9 +391,15 @@ async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
     NET_WORTH_BLOCK_POINTS,
   );
   if (points.every((point) => point.cents === 0)) return <NetWorthInvite />;
+  // Starts at the first record, like the report (months before it are zeros).
+  const first = await firstRecordOn(ctx);
+  const shown = trimToFirstRecord(
+    points,
+    first ? periodMonthOf(ctx, first) : null,
+  );
   return (
     <NetWorthBlock
-      points={points}
+      points={shown}
       caption={
         reportPhase(ctx, range) === "past"
           ? `no fim de ${monthName(range.month)}`

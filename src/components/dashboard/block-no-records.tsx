@@ -9,10 +9,15 @@ import { BlockInvite } from "./block-invite";
  * §6.12): the report and the block say the same thing. `month` and
  * `firstMonth` are `YYYY-MM`.
  */
+/** "Seus registros começam em novembro de 2025." */
+export function recordsBeginCopy(firstMonth: string) {
+  return `Seus registros começam em ${monthLabel(firstMonth)}.`;
+}
+
 export function noRecordsCopy(month: string, firstMonth: string) {
   return {
     title: `Sem registros em ${monthLabel(month)}`,
-    description: `Seus registros começam em ${monthLabel(firstMonth)}.`,
+    description: recordsBeginCopy(firstMonth),
     actionLabel: `Ir para ${monthLabel(firstMonth)}`,
   };
 }

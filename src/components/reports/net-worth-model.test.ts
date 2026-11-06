@@ -38,6 +38,7 @@ describe("net worth view model", () => {
   it("names the window", () => {
     expect(windowLabel(1)).toBe("no mês");
     expect(windowLabel(12)).toBe("em 12 meses");
+    expect(windowLabel(9)).toBe("em 9 meses");
   });
 
   it("grows areas from zero, below it when the net worth is negative", () => {

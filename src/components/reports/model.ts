@@ -226,7 +226,7 @@ export function netWorthChange(values: readonly number[]) {
  */
 export function netWorthSummary(
   values: readonly number[],
-  period: ReportPeriod,
+  period: number,
   options: SpokenOptions = {},
 ): string {
   if (values.length < 2) return "Patrimônio líquido no período.";

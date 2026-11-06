@@ -2,7 +2,6 @@ import { type SpokenOptions, spokenMoney } from "@/components/charts/format";
 import { niceTicks, type Ticks } from "@/components/charts/scale";
 import { monthLabel, shortMonthLabel } from "@/lib/format/date";
 import type { NetWorthBreakdownPoint } from "@/server/domain/reports";
-import type { ReportPeriod } from "./model";
 
 /**
  * View model of Patrimônio (doc 02 §6.12): net worth month by month, assets
@@ -26,9 +25,9 @@ export const BREAKDOWN_LABELS: Record<
   liabilitiesCents: { title: "Passivos", subject: "Passivos", plural: true },
 };
 
-/** "em 12 meses", "no mês". */
-export function windowLabel(period: ReportPeriod): string {
-  return period === 1 ? "no mês" : `em ${period} meses`;
+/** "em 12 meses", "no mês"; `months` is how many months the series spans. */
+export function windowLabel(months: number): string {
+  return months === 1 ? "no mês" : `em ${months} meses`;
 }
 
 /** Areas grow from zero (doc 02 §9.2). */
@@ -76,7 +75,7 @@ export function deltaTone(
 export function breakdownSummary(
   key: BreakdownKey,
   values: readonly number[],
-  period: ReportPeriod,
+  period: number,
   options: SpokenOptions = {},
 ): string {
   const money = (cents: number) => spokenMoney(cents, options);

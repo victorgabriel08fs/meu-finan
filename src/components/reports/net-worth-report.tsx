@@ -9,13 +9,14 @@ import { DataTable } from "@/components/charts/data-table";
 import { axisMoneyLabel } from "@/components/charts/format";
 import { Masked } from "@/components/charts/masked";
 import { SeriesChart } from "@/components/charts/series-chart";
+import { recordsBeginCopy } from "@/components/dashboard/block-no-records";
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { shortMonthLabel } from "@/lib/format/date";
 import { formatBRL } from "@/lib/format/money";
 import type { NetWorthBreakdownPoint } from "@/server/domain/reports";
-import { netWorthChange, type ReportPeriod } from "./model";
+import { netWorthChange } from "./model";
 import {
   BREAKDOWN_LABELS,
   type BreakdownKey,
@@ -31,7 +32,11 @@ import {
 type NetWorthReportProps = {
   /** End of each month, from the month before the window to today. */
   points: NetWorthBreakdownPoint[];
-  period: ReportPeriod;
+  /**
+   * `YYYY-MM` of the first record, when the window started before it and the
+   * series was cut there: says where the records begin.
+   */
+  startsAt?: string | null;
 };
 
 const formatTick = (value: number) => <Masked>{axisMoneyLabel(value)}</Masked>;
@@ -40,14 +45,15 @@ const formatTick = (value: number) => <Masked>{axisMoneyLabel(value)}</Masked>;
 function Change({
   name,
   values,
-  period,
+  months,
 }: {
   name: BreakdownKey;
   values: readonly number[];
-  period: ReportPeriod;
+  /** Months the series spans. */
+  months: number;
 }) {
   const { delta } = netWorthChange(values);
-  const window = windowLabel(period);
+  const window = windowLabel(months);
   return (
     <StatDelta
       direction={delta > 0 ? "up" : delta < 0 ? "down" : "flat"}
@@ -79,12 +85,15 @@ const monthHeader = (
  * charts with their own axes, never a second axis — following the month
  * picked above, and the way to the per-account balances in Contas.
  */
-export function NetWorthReport({ points, period }: NetWorthReportProps) {
+export function NetWorthReport({ points, startsAt }: NetWorthReportProps) {
   const [chosen, setChosen] = useState<number | null>(null);
   const last = points.length - 1;
   const selected = chosen !== null && chosen <= last ? chosen : last;
   const point = points[selected];
   const net = points.map((item) => item.netCents);
+  // The series has one point more than the window (the base of the change),
+  // and fewer when the records begin inside the window.
+  const months = last;
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
@@ -99,7 +108,7 @@ export function NetWorthReport({ points, period }: NetWorthReportProps) {
             </h2>
             <Money cents={net.at(-1) ?? 0} variant="title" tone="neutral" />
             {net.length > 1 ? (
-              <Change name="netCents" values={net} period={period} />
+              <Change name="netCents" values={net} months={months} />
             ) : null}
           </div>
 
@@ -150,8 +159,8 @@ export function NetWorthReport({ points, period }: NetWorthReportProps) {
                 ticks={breakdownTicks(net)}
                 formatTick={formatTick}
                 xLabels={breakdownXLabels(points)}
-                summary={breakdownSummary("netCents", net, period)}
-                hiddenSummary={breakdownSummary("netCents", net, period, {
+                summary={breakdownSummary("netCents", net, months)}
+                hiddenSummary={breakdownSummary("netCents", net, months, {
                   hideValues: true,
                 })}
                 scrub={{
@@ -201,19 +210,24 @@ export function NetWorthReport({ points, period }: NetWorthReportProps) {
               />
             }
           />
+          {startsAt ? (
+            <p className="text-caption text-fg-3">
+              {recordsBeginCopy(startsAt)}
+            </p>
+          ) : null}
         </section>
       </Card>
 
       <BreakdownCard
         name="assetsCents"
         points={points}
-        period={period}
+        months={months}
         selected={selected}
       />
       <BreakdownCard
         name="liabilitiesCents"
         points={points}
-        period={period}
+        months={months}
         selected={selected}
       />
 
@@ -233,12 +247,12 @@ export function NetWorthReport({ points, period }: NetWorthReportProps) {
 function BreakdownCard({
   name,
   points,
-  period,
+  months,
   selected,
 }: {
   name: "assetsCents" | "liabilitiesCents";
   points: readonly NetWorthBreakdownPoint[];
-  period: ReportPeriod;
+  months: number;
   selected: number;
 }) {
   const { title } = BREAKDOWN_LABELS[name];
@@ -252,7 +266,7 @@ function BreakdownCard({
         </h2>
         <Money cents={values.at(-1) ?? 0} variant="title" tone="neutral" />
         {values.length > 1 ? (
-          <Change name={name} values={values} period={period} />
+          <Change name={name} values={values} months={months} />
         ) : null}
         <ChartViewSwitch
           chart={
@@ -261,8 +275,8 @@ function BreakdownCard({
               ticks={breakdownTicks(values, 2)}
               formatTick={formatTick}
               xLabels={breakdownXLabels(points)}
-              summary={breakdownSummary(name, values, period)}
-              hiddenSummary={breakdownSummary(name, values, period, {
+              summary={breakdownSummary(name, values, months)}
+              hiddenSummary={breakdownSummary(name, values, months, {
                 hideValues: true,
               })}
               highlight={selected}

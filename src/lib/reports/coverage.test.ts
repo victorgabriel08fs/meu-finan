@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { earliestDate, isBeforeFirstRecord } from "./coverage";
+import {
+  earliestDate,
+  isBeforeFirstRecord,
+  trimToFirstRecord,
+} from "./coverage";
 
 describe("earliestDate", () => {
   it("picks the earliest date and ignores the missing ones", () => {
@@ -20,5 +24,33 @@ describe("isBeforeFirstRecord", () => {
 
   it("is never true when there is no record at all", () => {
     expect(isBeforeFirstRecord("2000-01-31", null)).toBe(false);
+  });
+});
+
+describe("trimToFirstRecord", () => {
+  const months = ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09"].map(
+    (month) => ({ month }),
+  );
+
+  it("keeps the month of the first record and the one before it", () => {
+    expect(trimToFirstRecord(months, "2026-07").map((p) => p.month)).toEqual([
+      "2026-06",
+      "2026-07",
+      "2026-08",
+      "2026-09",
+    ]);
+  });
+
+  it("cuts nothing when the records start before the series or are unknown", () => {
+    expect(trimToFirstRecord(months, "2026-01")).toEqual(months);
+    expect(trimToFirstRecord(months, "2026-05")).toEqual(months);
+    expect(trimToFirstRecord(months, null)).toEqual(months);
+  });
+
+  it("keeps only the base and the month when the first record is the last month", () => {
+    expect(trimToFirstRecord(months, "2026-09").map((p) => p.month)).toEqual([
+      "2026-08",
+      "2026-09",
+    ]);
   });
 });
