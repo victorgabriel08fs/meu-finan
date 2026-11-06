@@ -5,6 +5,7 @@ import {
   weekdayDateLabel,
 } from "./day-labels";
 import {
+  categoryDetailHref,
   clampReportMonth,
   monthViewHref,
   parseMonthParam,
@@ -13,6 +14,7 @@ import {
   REPORT_VIEWS,
   reportViewAt,
   reportViewHref,
+  reportWindowCaption,
 } from "./views";
 
 const view = (label: string) => {
@@ -112,6 +114,26 @@ describe("report views", () => {
     expect(parseMonthParam("2026-00")).toBeNull();
     expect(parseMonthParam(undefined)).toBeNull();
     expect(parseMonthParam(null)).toBeNull();
+  });
+});
+
+describe("category detail", () => {
+  it("links the detail over the window of the ranking", () => {
+    expect(categoryDetailHref("c1", 12, "2026-10", "2026-10")).toBe(
+      "/relatorios/categorias/c1?periodo=12",
+    );
+    expect(categoryDetailHref("c1", 1, "2026-09", "2026-10")).toBe(
+      "/relatorios/categorias/c1?periodo=1&mes=2026-09",
+    );
+  });
+
+  it("captions the window: parcial for the running month", () => {
+    const now = { month: "2026-10", isCurrent: true };
+    const past = { month: "2026-09", isCurrent: false };
+    expect(reportWindowCaption(now, 1)).toBe("outubro, parcial");
+    expect(reportWindowCaption(now, 12)).toBe("12 meses, inclui out parcial");
+    expect(reportWindowCaption(past, 1)).toBe("setembro");
+    expect(reportWindowCaption(past, 3)).toBe("3 meses");
   });
 });
 

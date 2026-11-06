@@ -173,7 +173,7 @@ describe("CategoryBreakdownBlock", () => {
         <CategoryBreakdownBlock
           items={items}
           totalCents={280_000}
-          month="2026-10"
+          hrefFor={(id) => `/relatorios/categorias/${id}?periodo=1`}
           monthName="outubro"
           isCurrent={isCurrent}
           link={link}
@@ -195,7 +195,8 @@ describe("CategoryBreakdownBlock", () => {
     for (const k of [1, 2, 3, 4, 5]) expect(html).toContain(`Categoria ${k}<`);
     expect(html).not.toContain("Categoria 6<");
     expect(html).toContain("Outras 2 categorias");
-    expect(html).toContain("/extrato?categoria=c1&amp;mes=2026-10");
+    expect(html).toContain("/relatorios/categorias/c1?periodo=1");
+    expect(html).toContain("do total. Ver o detalhe da categoria");
     // The total hides like <Money>; the shares stay visible.
     expect(html).toContain('<span data-privacy-value="">R$ 2.800,00</span>');
     expect(html).toContain(

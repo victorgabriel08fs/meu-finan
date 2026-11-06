@@ -167,31 +167,8 @@ export function statementCategoryIds(
   return id ? categoryWithDescendants(categories, id) : [];
 }
 
-/**
- * The categories as a tree for a list: each one followed by its
- * subcategories, keeping the given order among siblings. A subcategory whose
- * parent is not in the list goes to the end.
- */
-export function categoryTree<T extends { id: string; parentId: string | null }>(
-  categories: readonly T[],
-): T[] {
-  const placed = new Set<string>();
-  const tree: T[] = [];
-  const place = (category: T) => {
-    if (placed.has(category.id)) return;
-    placed.add(category.id);
-    tree.push(category);
-    for (const child of categories) {
-      if (child.parentId === category.id) place(child);
-    }
-  };
-  for (const category of categories) {
-    if (category.parentId === null) place(category);
-  }
-  // Orphans (and anything caught in a cycle), with their own children.
-  for (const category of categories) place(category);
-  return tree;
-}
+/** The tree order lives with the hierarchy; re-exported for the lists here. */
+export { categoryTree } from "@/lib/categories/hierarchy";
 
 export type OptionGroup<T> = { title: string | null; options: T[] };
 

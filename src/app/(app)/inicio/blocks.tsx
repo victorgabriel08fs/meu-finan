@@ -40,7 +40,11 @@ import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
 import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
 import { partialProgress } from "@/components/reports/model";
-import { monthViewHref, periodViewHref } from "@/components/reports/views";
+import {
+  categoryDetailHref,
+  monthViewHref,
+  periodViewHref,
+} from "@/components/reports/views";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { isBeforeFirstRecord, trimToFirstRecord } from "@/lib/reports/coverage";
@@ -335,7 +339,9 @@ async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
     <CategoryBreakdownBlock
       items={items}
       totalCents={totalCents}
-      month={range.month}
+      hrefFor={(categoryId) =>
+        categoryDetailHref(categoryId, 1, range.month, currentMonth)
+      }
       monthName={monthName(range.month)}
       isCurrent={range.isCurrent}
       link={{

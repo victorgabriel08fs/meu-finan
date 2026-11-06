@@ -2,11 +2,15 @@ import { ChartBar } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/app/empty-state";
-import { monthAbbrev, monthName } from "@/components/charts/format";
 import { CategoryRanking } from "@/components/reports/category-ranking";
-import { PERIOD_LABELS, parseReportPeriod } from "@/components/reports/model";
+import { parseReportPeriod } from "@/components/reports/model";
 import { ReportEndNote } from "@/components/reports/report-month";
-import { clampReportMonth, parseMonthParam } from "@/components/reports/views";
+import {
+  categoryDetailHref,
+  clampReportMonth,
+  parseMonthParam,
+  reportWindowCaption,
+} from "@/components/reports/views";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { formatBRL } from "@/lib/format/money";
@@ -62,7 +66,6 @@ async function Categories({
     );
   }
 
-  const label = PERIOD_LABELS[period].long.toLowerCase();
   return (
     <>
       {note}
@@ -74,13 +77,7 @@ async function Categories({
                 Para onde foi o dinheiro
               </h2>
               <p className="text-caption text-fg-3">
-                {range.isCurrent
-                  ? period === 1
-                    ? `${monthName(range.month)}, parcial`
-                    : `${label}, inclui ${monthAbbrev(range.month)} parcial`
-                  : period === 1
-                    ? monthName(range.month)
-                    : label}
+                {reportWindowCaption(range, period)}
               </p>
             </div>
             <span className="shrink-0 text-callout font-bold text-fg tabular-nums">
@@ -92,12 +89,14 @@ async function Categories({
           </div>
           <CategoryRanking
             items={breakdown.items}
-            month={range.month}
+            hrefFor={(categoryId) =>
+              categoryDetailHref(categoryId, period, range.month, currentMonth)
+            }
+            linkHint="ver o detalhe da categoria"
             className="mt-2"
           />
           <p className="mt-2 border-t border-border pt-2.5 text-caption text-fg-3">
-            Toque numa categoria para ver os lançamentos de{" "}
-            {monthName(range.month)} no extrato.
+            Toque numa categoria para ver o detalhe e as subcategorias.
           </p>
         </section>
       </Card>
