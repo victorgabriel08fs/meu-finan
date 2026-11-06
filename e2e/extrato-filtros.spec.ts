@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { expectNoHorizontalScroll } from "./layout";
 
 // Filtros do Extrato (doc 02 §5.12, §6.4), as Ana, on the month before the
 // current one: every day of it already happened, so the demo has Reserva,
@@ -462,11 +463,10 @@ test("o Limpar fica na tela com quatro filtros, a 360 e 430 px, a 100% e a 200%"
         `Limpar a ${width} px, texto ${bigText ? "200%" : "100%"}`,
       ).toBeInViewport({ ratio: 1 });
       // The chips scroll under the fade; the page itself never does.
-      expect(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= window.innerWidth,
-        ),
-      ).toBe(true);
+      await expectNoHorizontalScroll(
+        page,
+        `Extrato a ${width} px, texto ${bigText ? "200%" : "100%"}`,
+      );
     }
   }
 });
@@ -478,23 +478,23 @@ test("a 200% nenhum valor do Extrato sai do cartão nem da tela, nos três modos
   await page.setViewportSize({ width: 360, height: 800 });
 
   const outside = () =>
-    page.evaluate(() => {
+    page.evaluate((viewportWidth) => {
       const bad: string[] = [];
       for (const money of document.querySelectorAll('[data-slot="money"]')) {
         if (!money.checkVisibility()) continue;
         const rect = money.getBoundingClientRect();
         const card = money.closest("ul, section")?.getBoundingClientRect();
         const left = Math.max(0, card?.left ?? 0);
-        const right = Math.min(window.innerWidth, card?.right ?? Infinity);
+        const right = Math.min(viewportWidth, card?.right ?? Infinity);
         if (rect.left < left - 0.5 || rect.right > right + 0.5) {
           bad.push(`${money.textContent} (${rect.left}–${rect.right})`);
         }
       }
       return {
         bad,
-        scrolls: document.documentElement.scrollWidth > window.innerWidth,
+        scrolls: document.documentElement.scrollWidth > viewportWidth,
       };
-    });
+    }, page.viewportSize()?.width ?? 360);
   const expectWhole = async () => {
     await page.waitForTimeout(300);
     expect(await outside()).toEqual({ bad: [], scrolls: false });
