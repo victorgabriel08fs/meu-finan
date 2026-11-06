@@ -82,7 +82,7 @@ export function BottomNavView({
     <nav
       aria-label="Navegação principal"
       data-slot="tab-bar"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] backdrop-blur-lg lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <ul className="mx-auto grid h-(--tab-bar-h) max-w-lg grid-cols-5 items-center px-1">
         {first}
