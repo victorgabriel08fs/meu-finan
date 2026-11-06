@@ -93,48 +93,58 @@ export function StatementFilterBar({
     afterSheetsClose(() => void setFilters(patch));
   }, [sheet, setFilters]);
 
+  // The chips scroll sideways; "Limpar" stays outside the scroller, at the
+  // end of the row, so it is always on screen (the fade before it says that
+  // more chips are hidden).
   return (
     <fieldset
       data-pending={isPending ? "" : undefined}
-      className="relative -mx-gutter flex min-w-0 snap-x gap-2 overflow-x-auto scroll-px-gutter px-gutter py-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] [&::-webkit-scrollbar]:hidden [&>:not(legend)]:snap-start"
+      className="-mx-gutter flex min-w-0 items-center"
     >
       <legend className="sr-only">Filtros</legend>
-      <FilterChip
-        label="Conta"
-        value={account?.name ?? null}
-        placeholder="Contas"
-        onOpen={() => setSheet("conta")}
-        onClear={() => void setFilters({ conta: null })}
-      />
-      <FilterChip
-        label="Categoria"
-        value={category?.name ?? null}
-        placeholder="Categorias"
-        onOpen={() => setSheet("categoria")}
-        onClear={() => void setFilters({ categoria: null })}
-      />
-      <FilterChip
-        label="Tipo"
-        value={kind?.label ?? null}
-        placeholder="Tipo"
-        onOpen={() => setSheet("tipo")}
-        onClear={() => void setFilters({ tipo: null })}
-      />
-      <ToggleChip
-        pressed={filters.status === "pendente"}
-        onClick={() =>
-          void setFilters({
-            status: filters.status === "pendente" ? null : "pendente",
-          })
-        }
+      <div
+        className={cn(
+          "relative flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto scroll-px-gutter py-1 pl-gutter scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden",
+          anyActive ? "pr-4" : "pr-gutter",
+        )}
       >
-        Pendentes
-      </ToggleChip>
-      {filters.status === "pago" ? (
-        <ToggleChip pressed onClick={() => void setFilters({ status: null })}>
-          Pagos
+        <FilterChip
+          label="Conta"
+          value={account?.name ?? null}
+          placeholder="Contas"
+          onOpen={() => setSheet("conta")}
+          onClear={() => void setFilters({ conta: null })}
+        />
+        <FilterChip
+          label="Categoria"
+          value={category?.name ?? null}
+          placeholder="Categorias"
+          onOpen={() => setSheet("categoria")}
+          onClear={() => void setFilters({ categoria: null })}
+        />
+        <FilterChip
+          label="Tipo"
+          value={kind?.label ?? null}
+          placeholder="Tipo"
+          onOpen={() => setSheet("tipo")}
+          onClear={() => void setFilters({ tipo: null })}
+        />
+        <ToggleChip
+          pressed={filters.status === "pendente"}
+          onClick={() =>
+            void setFilters({
+              status: filters.status === "pendente" ? null : "pendente",
+            })
+          }
+        >
+          Pendentes
         </ToggleChip>
-      ) : null}
+        {filters.status === "pago" ? (
+          <ToggleChip pressed onClick={() => void setFilters({ status: null })}>
+            Pagos
+          </ToggleChip>
+        ) : null}
+      </div>
       {anyActive ? (
         <button
           type="button"
@@ -147,7 +157,7 @@ export function StatementFilterBar({
             });
             focusFirstFilterChip();
           }}
-          className="inline-flex h-9 shrink-0 items-center rounded-full px-3 text-callout font-bold text-primary hover:bg-primary-soft/60"
+          className="mr-[calc(var(--spacing-gutter)-0.75rem)] inline-flex h-9 shrink-0 items-center rounded-full px-3 text-callout font-bold text-primary hover:bg-primary-soft/60"
         >
           Limpar
         </button>
