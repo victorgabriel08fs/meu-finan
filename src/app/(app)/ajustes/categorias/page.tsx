@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
-import { listCategoriesForAdmin } from "@/server/domain/category-admin";
+import { listCategoriesWithUsage } from "@/server/domain/category-admin";
+import { getUserContext } from "@/server/domain/context";
 import { CategoriesManager } from "./categories-manager";
 
 export const metadata: Metadata = { title: "Categorias" };
@@ -24,7 +25,9 @@ export default function CategoriasPage() {
 
 async function Categories() {
   const user = await requireUser();
-  const categories = await listCategoriesForAdmin(user.id);
+  const categories = await listCategoriesWithUsage(
+    await getUserContext(user.id),
+  );
   return <CategoriesManager categories={categories} />;
 }
 

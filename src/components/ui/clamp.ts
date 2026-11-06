@@ -8,6 +8,6 @@
  * ancestor must be an `@container`.
  */
 export const CLAMP_TITLE =
-  "truncate @max-tight:line-clamp-2 @max-tight:break-words @max-tight:whitespace-normal";
+  "truncate @max-tight:line-clamp-2 @max-tight:wrap-anywhere @max-tight:whitespace-normal";
 export const CLAMP_TEXT =
-  "truncate @max-tight:break-words @max-tight:whitespace-normal";
+  "truncate @max-tight:wrap-anywhere @max-tight:whitespace-normal";

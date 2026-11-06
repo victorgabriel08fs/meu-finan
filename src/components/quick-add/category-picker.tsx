@@ -8,7 +8,7 @@ import {
   SHEET_SEARCH_THRESHOLD,
   SheetSearch,
 } from "@/components/ui/sheet-search";
-import { categoryLabel } from "@/lib/categories/hierarchy";
+import { categoryLabel, categoryTree } from "@/lib/categories/hierarchy";
 import { matchesSearch } from "@/lib/format/search";
 import { cn } from "@/lib/utils";
 import { ChoiceChip } from "./choice-chip";
@@ -91,8 +91,6 @@ export function CategoryChips({
   );
 }
 
-const collator = new Intl.Collator("pt-BR", { sensitivity: "base" });
-
 function CategorySheet({
   open,
   onOpenChange,
@@ -109,8 +107,9 @@ function CategorySheet({
   const [query, setQuery] = useState("");
   const label = (category: QuickAddCategory) =>
     categoryLabel(category, categories);
-  const sorted = [...categories].sort((a, b) =>
-    collator.compare(label(a), label(b)),
+  // The person's own order: each subcategory right after its parent.
+  const sorted = categoryTree(
+    [...categories].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
   );
   const visible = sorted.filter((category) =>
     matchesSearch(label(category), query),
