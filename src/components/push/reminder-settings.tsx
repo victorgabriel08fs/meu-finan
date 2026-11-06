@@ -12,22 +12,19 @@ import {
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SectionHeader } from "@/components/app/section-header";
-import { Switch } from "@/components/planning/form/switch";
+import { SettingRow } from "@/components/app/setting-row";
 import {
   actionErrorMessage,
   NETWORK_ERROR,
 } from "@/components/transactions/action-result";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Switch } from "@/components/ui/switch";
 import type { ReminderEvent } from "@/lib/notifications/events";
 import type {
   BillsLeadDays,
   NotificationPreferences,
 } from "@/lib/notifications/preferences";
 import { saveNotificationPreferencesAction } from "@/server/actions/notifications";
-
-const iconClass =
-  "flex size-8 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2 [&_svg]:size-5";
-const rowClass = "flex min-h-16 items-center gap-3 py-2 pr-2 pl-4";
 
 type ReminderRow = {
   event: ReminderEvent;
@@ -158,28 +155,20 @@ export function ReminderList({
                 data-event={event}
                 className="border-border not-first:border-t"
               >
-                <div className={rowClass}>
-                  <span aria-hidden="true" className={iconClass}>
-                    <Icon />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span
-                      id={`${id}-label`}
-                      className="text-body font-semibold text-fg"
-                    >
-                      {label}
-                    </span>
-                    <span id={`${id}-hint`} className="text-caption text-fg-3">
-                      {description(monthStartDay)}
-                    </span>
-                  </span>
-                  <Switch
-                    checked={on}
-                    onCheckedChange={(next) => setEvent(event, next)}
-                    labelledBy={`${id}-label`}
-                    describedBy={`${id}-hint`}
-                  />
-                </div>
+                <SettingRow
+                  id={id}
+                  icon={Icon}
+                  label={label}
+                  description={description(monthStartDay)}
+                  control={
+                    <Switch
+                      checked={on}
+                      onCheckedChange={(next) => setEvent(event, next)}
+                      labelledBy={`${id}-label`}
+                      describedBy={`${id}-hint`}
+                    />
+                  }
+                />
                 {event === "bills_due" && on ? (
                   <div className="flex flex-col gap-2 px-4 pb-3 sm:max-w-md sm:pl-15">
                     <span className="text-caption text-fg-2">
@@ -187,7 +176,6 @@ export function ReminderList({
                     </span>
                     <SegmentedControl
                       ariaLabel="Avisar com antecedência"
-                      wrap
                       options={LEAD_OPTIONS}
                       value={String(preferences.billsLeadDays)}
                       onValueChange={(value) =>
@@ -211,34 +199,22 @@ export function ReminderList({
       <section aria-labelledby="notificacoes-privacidade">
         <SectionHeader id="notificacoes-privacidade" title="Privacidade" />
         <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
-          <div className={rowClass}>
-            <span aria-hidden="true" className={iconClass}>
-              <Eye />
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span
-                id={`${ids}-amounts-label`}
-                className="text-body font-semibold text-fg"
-              >
-                Mostrar valores nas notificações
-              </span>
-              <span
-                id={`${ids}-amounts-hint`}
-                className="text-caption text-fg-3"
-              >
-                Ligado, saldos e valores aparecem na tela bloqueada. Desligado,
-                só o essencial: “Aluguel vence amanhã”.
-              </span>
-            </span>
-            <Switch
-              checked={preferences.showAmounts}
-              onCheckedChange={(showAmounts) =>
-                onChange({ ...preferences, showAmounts })
-              }
-              labelledBy={`${ids}-amounts-label`}
-              describedBy={`${ids}-amounts-hint`}
-            />
-          </div>
+          <SettingRow
+            id={`${ids}-amounts`}
+            icon={Eye}
+            label="Mostrar valores nas notificações"
+            description="Ligado, saldos e valores aparecem na tela bloqueada. Desligado, só o essencial: “Aluguel vence amanhã”."
+            control={
+              <Switch
+                checked={preferences.showAmounts}
+                onCheckedChange={(showAmounts) =>
+                  onChange({ ...preferences, showAmounts })
+                }
+                labelledBy={`${ids}-amounts-label`}
+                describedBy={`${ids}-amounts-hint`}
+              />
+            }
+          />
         </div>
       </section>
     </>

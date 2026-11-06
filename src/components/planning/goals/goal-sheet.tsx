@@ -11,6 +11,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SheetContent } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { addMonths, projectGoal, type YearMonth } from "@/lib/finance";
 import { formatRate } from "@/lib/format/number";
 import {
@@ -27,7 +28,6 @@ import {
 import { MoneyField } from "../form/money-field";
 import { NativeSelect } from "../form/native-select";
 import { ChoiceChips, ColorPicker, IconPicker } from "../form/pickers";
-import { Switch } from "../form/switch";
 import { type MarketRatesView, marketRateLabel } from "../market";
 import {
   deadlineDate,
@@ -431,14 +431,15 @@ export function GoalSheet({
         />
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-3">
             <span
               id={deadlineLabelId}
-              className="text-callout font-semibold text-fg"
+              className="min-w-0 flex-[1_1_11rem] text-callout font-semibold text-fg"
             >
               Definir prazo
             </span>
             <Switch
+              className="ml-auto"
               checked={hasDeadline}
               onCheckedChange={(checked) => {
                 setHasDeadline(checked);

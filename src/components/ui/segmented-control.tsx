@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
  * Segmented control (doc 02 §5.13): 40px track in --surface-2; the thumb
  * (--thumb + shadow-thumb: --surface in light, lighter than the track in dark)
  * slides between options (selection spring, motion `layoutId`).
- * 2–4 options; labels in callout 600.
+ * 2–4 options; labels in callout 600. A label that does not fit wraps onto
+ * another line and the track grows (§11): nothing is cut.
  */
 
 const SELECTION_SPRING = {
@@ -18,9 +19,12 @@ const SELECTION_SPRING = {
   damping: 38,
 } as const;
 
-const trackClass = "flex h-10 w-full rounded-xl bg-surface-2 p-1";
+// With large text (a container under 16rem) the options keep their words whole
+// and the track wraps them onto a second line.
+const trackClass =
+  "flex min-h-10 w-full rounded-xl bg-surface-2 p-1 @max-tight:flex-wrap";
 const segmentClass =
-  "relative flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip px-3 text-callout font-semibold transition-colors duration-150 ease-standard [&_svg]:size-4 [&_svg]:shrink-0";
+  "relative flex min-h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-chip px-2 py-1 text-callout font-semibold @max-tight:flex-[1_1_max-content] transition-colors duration-150 ease-standard [&_svg]:size-4 [&_svg]:shrink-0";
 const thumbClass = "absolute inset-0 rounded-chip bg-thumb shadow-thumb";
 
 export type SegmentedOption = {
@@ -40,11 +44,6 @@ type SegmentedControlProps = {
    * sidebar. The label stays the accessible name and the tooltip.
    */
   iconOnly?: boolean;
-  /**
-   * Long labels wrap onto more lines (and the track grows) instead of being
-   * cut, for larger text sizes (doc 02 §11).
-   */
-  wrap?: boolean;
   className?: string;
 };
 
@@ -55,7 +54,6 @@ export function SegmentedControl({
   onValueChange,
   ariaLabel,
   iconOnly = false,
-  wrap = false,
   className,
 }: SegmentedControlProps) {
   const layoutId = `segmented-thumb-${useId()}`;
@@ -98,12 +96,7 @@ export function SegmentedControl({
       role="radiogroup"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={cn(
-        trackClass,
-        iconOnly && "h-9 w-auto",
-        wrap && "h-auto min-h-10",
-        className,
-      )}
+      className={cn(trackClass, iconOnly && "h-9 min-h-9 w-auto", className)}
     >
       {options.map((option, index) => {
         const selected = index === selectedIndex;
@@ -123,7 +116,6 @@ export function SegmentedControl({
             className={cn(
               segmentClass,
               iconOnly && "w-9 flex-none px-0",
-              wrap && "h-auto min-h-8 px-2 py-1",
               selected ? "text-fg" : "text-fg-2 hover:text-fg",
             )}
           >
@@ -137,13 +129,7 @@ export function SegmentedControl({
             <span className="relative flex min-w-0 items-center gap-1.5">
               {option.icon}
               <span
-                className={
-                  iconOnly
-                    ? "sr-only"
-                    : wrap
-                      ? "text-center break-words"
-                      : "truncate"
-                }
+                className={iconOnly ? "sr-only" : "text-center break-words"}
               >
                 {option.label}
               </span>
@@ -199,7 +185,9 @@ export function SegmentedLinks({
                     className={thumbClass}
                   />
                 ) : null}
-                <span className="relative truncate">{item.label}</span>
+                <span className="relative text-center break-words">
+                  {item.label}
+                </span>
               </Link>
             </li>
           );
