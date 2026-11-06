@@ -12,6 +12,7 @@ import {
   lt,
   sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import {
   addDays,
   addMonths,
@@ -125,6 +126,14 @@ export function savingsRateOf(
   });
 }
 
+/**
+ * The main category an entry's category adds up into (D2): its parent, or
+ * itself when it is a main one. Joined as `root_category`, never as a
+ * correlated subquery.
+ */
+export const rootCategory = alias(categories, "root_category");
+export const categoryRootId = sql`coalesce(${categories.parentId}, ${categories.id})`;
+
 export type CategoryShare = {
   categoryId: string | null;
   name: string;
@@ -134,7 +143,11 @@ export type CategoryShare = {
   share: number;
 };
 
-/** Paid expenses by category in [start, end], largest first. */
+/**
+ * Paid expenses by category in [start, end], largest first. A subcategory
+ * adds up into its main category (D2: "Mercado" includes "Feira"); the split
+ * per subcategory belongs to the category's own detail.
+ */
 export async function categoryBreakdown(
   ctx: UserContext,
   start: string,
@@ -143,14 +156,15 @@ export async function categoryBreakdown(
   const spent = sql<number>`-sum(${transactions.amountCents})`.mapWith(Number);
   const rows = await db
     .select({
-      categoryId: transactions.categoryId,
-      name: categories.name,
-      icon: categories.icon,
-      color: categories.color,
+      categoryId: rootCategory.id,
+      name: rootCategory.name,
+      icon: rootCategory.icon,
+      color: rootCategory.color,
       cents: spent,
     })
     .from(transactions)
     .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .leftJoin(rootCategory, eq(rootCategory.id, categoryRootId))
     .where(
       and(
         eq(transactions.userId, ctx.userId),
@@ -161,10 +175,10 @@ export async function categoryBreakdown(
       ),
     )
     .groupBy(
-      transactions.categoryId,
-      categories.name,
-      categories.icon,
-      categories.color,
+      rootCategory.id,
+      rootCategory.name,
+      rootCategory.icon,
+      rootCategory.color,
     )
     .orderBy(desc(spent));
   const positive = rows.filter((row) => row.cents > 0);

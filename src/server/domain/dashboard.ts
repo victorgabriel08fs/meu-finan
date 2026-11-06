@@ -16,7 +16,7 @@ import { db } from "@/server/db/client";
 import { categories, finAccounts, transactions } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
 import type { PeriodRange, UserContext } from "./context";
-import { liquidPendingFlows } from "./reports";
+import { categoryRootId, liquidPendingFlows, rootCategory } from "./reports";
 import { accountsOf, cardInvoicesOf, pendingUntil } from "./request-reads";
 
 export type UpcomingItem = {
@@ -246,15 +246,17 @@ export async function categoryInsight(
     };
   });
 
+  // By main category: a subcategory adds up into its parent (D2).
   const spentBy = async (start: string, end: string) =>
     db
       .select({
-        categoryId: transactions.categoryId,
-        name: categories.name,
+        categoryId: rootCategory.id,
+        name: rootCategory.name,
         cents: sql<number>`-sum(${transactions.amountCents})`.mapWith(Number),
       })
       .from(transactions)
       .innerJoin(categories, eq(categories.id, transactions.categoryId))
+      .innerJoin(rootCategory, eq(rootCategory.id, categoryRootId))
       .where(
         and(
           eq(transactions.userId, ctx.userId),
@@ -264,7 +266,7 @@ export async function categoryInsight(
           between(transactions.occurredOn, start, end),
         ),
       )
-      .groupBy(transactions.categoryId, categories.name);
+      .groupBy(rootCategory.id, rootCategory.name);
 
   const [current, ...previous] = await Promise.all(
     windows.map((window) => spentBy(window.start, window.end)),

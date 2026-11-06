@@ -59,6 +59,9 @@ async function Budgets({
   ]);
 
   const active = new Map(categories.map((category) => [category.id, category]));
+  // Budgets go on main categories, which count their subcategories in (the
+  // averages already add them up under the parent).
+  const mains = categories.filter((category) => category.parentId === null);
   const budgeted = new Set(overview.items.map((item) => item.categoryId));
   const averages: Record<string, number> = {};
   for (const item of history.items) {
@@ -78,7 +81,7 @@ async function Budgets({
     timing,
     items: overview.items,
     total: overview.total,
-    unbudgeted: categories
+    unbudgeted: mains
       .filter((category) => !budgeted.has(category.id))
       .map(({ id, name, icon, color }) => ({ id, name, icon, color }))
       .sort(
@@ -91,7 +94,7 @@ async function Budgets({
       (item) => !budgeted.has(item.categoryId) && active.has(item.categoryId),
     ).length,
     suggestions: suggestBudgets(
-      categories.map((category) => ({
+      mains.map((category) => ({
         categoryId: category.id,
         name: category.name,
         icon: category.icon,
