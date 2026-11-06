@@ -302,6 +302,7 @@ Regras de dependência: `app → features → server/lib`; `lib/finance` não im
 | Sinal | **Ledger com sinal por conta**: entrada na conta `> 0`, saída `< 0`. Saldo = saldo inicial + Σ lançamentos efetivados |
 | Transferência | Duas linhas (`kind = 'transfer'`) ligadas por `transfer_id`: saída na origem, entrada no destino. Não entram em relatórios de receitas/despesas |
 | Cartão de crédito | É uma conta (`type = 'credit_card'`). Compras são despesas negativas na conta-cartão com `invoice_id`. Pagar a fatura = transferência da conta corrente para o cartão |
+| Caixinha | É uma conta (`type = 'savings_box'`, ícone `vault`): entra no patrimônio, mas **não é dinheiro para gastar**. A regra é uma só, `isSpendableAccount` (`src/lib/finance/spendable.ts`): tipo fora de `NON_SPENDABLE_ACCOUNT_TYPES` (cartão e caixinha), `include_in_net_worth` e não arquivada. Saldo em contas, variação do mês, previsto, Fluxo de caixa e os avisos Resumo do dia e Próxima receita leem essa regra (`spendableAccountsOf`, uma leitura por requisição); nenhuma consulta repete a lista de tipos em SQL. Guardar e resgatar são transferências (ADR-04) |
 | Estorno | Despesa com valor positivo (reduz o total da categoria); `kind` continua `expense` |
 | Datas | `occurred_on date` (data local do usuário, sem hora); `created_at/updated_at timestamptz` |
 | Exclusão | Soft delete (`deleted_at`) para permitir "Desfazer"; expurgo definitivo após 30 dias pelo cron |
@@ -352,7 +353,9 @@ create or replace function f_unaccent(text) returns text
   language sql immutable parallel safe strict
   as $$ select public.unaccent('public.unaccent'::regdictionary, $1) $$;
 
-create type fin_account_type as enum ('checking','savings','cash','investment','credit_card','other');
+create type fin_account_type as enum ('checking','savings','cash','investment','credit_card','other','savings_box');
+-- 'savings_box' (Caixinha) entrou na migração 0008_caixinha, só com o ADD VALUE:
+-- o valor novo não pode ser usado na mesma transação em que nasce.
 create type txn_kind        as enum ('income','expense','transfer','adjustment');
 create type txn_status      as enum ('pending','paid');
 create type category_kind   as enum ('income','expense');

@@ -553,9 +553,11 @@ Rollover (opcional por orçamento): sobra (ou excesso) do mês anterior soma ao 
 
 | Indicador | Definição |
 |---|---|
-| **Saldo em contas** | Σ saldos efetivados das contas com `include_in_net_worth`, exceto cartões |
+| **Dinheiro para gastar** (`isSpendableAccount`, `src/lib/finance/spendable.ts`) | conta com `include_in_net_worth`, não arquivada e de tipo fora de `NON_SPENDABLE_ACCOUNT_TYPES` (`credit_card`, `savings_box`). É a **única** regra: o Saldo em contas, a variação do mês, o previsto, o Fluxo de caixa, o Resumo do dia e a Próxima receita leem a mesma lista (`spendableAccountsOf`). Poupança e investimento contam; cartão deve e a caixinha guarda à parte |
+| **Saldo em contas** | Σ saldos efetivados das contas para gastar (regra acima) |
+| **Guardado em caixinhas** | Σ saldos das caixinhas com `include_in_net_worth` e não arquivadas (`isCountedSavingsBox`); `null` sem nenhuma. Fica fora do Saldo e entra no patrimônio |
 | **Saldo previsto (fim do período)** | saldo em contas + receitas pendentes − despesas pendentes (com data ≤ fim do período, **fora de cartões**) − saldo em aberto das faturas com vencimento ≤ fim do período. Compras pendentes no cartão já estão dentro da fatura — não contar duas vezes |
-| **Patrimônio líquido** | Σ saldos de todas as contas incluídas (cartões entram negativos) |
+| **Patrimônio líquido** | Σ saldos de todas as contas incluídas (cartões entram negativos; caixinhas entram). Guardar na caixinha é uma transferência: o patrimônio não muda, o Saldo em contas, o previsto e o "por dia até a próxima receita" caem. Uma transferência **agendada** para a caixinha entra no previsto como saída (e a de volta, como entrada), e o chip "em {mês}" do Saldo mostra a transferência paga como queda |
 | **Taxa de poupança** | (receitas − despesas) / receitas no período, sem transferências; **só meses completos** quando o período inclui o mês corrente (no mockup: 26,8% de nov/25 a set/26) |
 | **Fluxo de caixa diário** | saldo acumulado dia a dia: realizado até hoje; projeção com os pendentes conhecidos até o fim do período |
 | **Variação de categoria** | gasto no período ÷ média dos 3 períodos anteriores **no mesmo ponto do período** (dias 1..E) − 1 |

@@ -20,26 +20,17 @@ Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entreg
 - A 200% de texto em 360 px, o botão destrutivo das folhas de arquivar e de mesclar fica logo abaixo da dobra: é alcançável rolando (a folha inteira rola, `flowFooter`), mas pede um gesto.
 - O e2e "lança uma despesa pelo +" (`e2e/smoke.spec.ts`) falhou uma vez por tempo sob carga e passou ao repetir: observar se volta a falhar.
 
-## 6. Caixinha: novo tipo de conta
+## 6. Caixinha: o que ficou de fora
 
-**Pedido do dono (05/11/2026).** Um tipo de conta novo, **Caixinha**, para dinheiro guardado à parte (como as caixinhas dos bancos):
+A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 
-- **Conta no patrimônio** (Relatórios › Patrimônio, bloco Patrimônio do Início).
-- **Transferências** de uma caixinha para outra conta e de outra conta para a caixinha, como entre contas comuns (as duas pernas balanceadas, doc 01 ADR-04).
-- **Não conta no valor que pode ser gasto**: fica fora da previsão do mês, do "pode gastar por dia" e de tudo que deriva deles (Saldo em contas e previsto no Início, Fluxo de caixa, avisos Resumo do dia e Próxima receita). Guardar dinheiro na caixinha reduz o que dá para gastar; resgatar aumenta.
-
-### O que investigar e decidir
-
-- Hoje os tipos são `checking`, `savings`, `cash`, `investment`, `credit_card` e `other` (`src/server/db/schema/enums.ts`), e a regra de "conta líquida" é `isLiquid` em `src/server/domain/dashboard.ts` (tudo menos cartão, com "incluir no patrimônio", não arquivada), repetida em `reports.ts` e `reminders.ts`: centralizar numa função só e tirar dela a caixinha.
-- Valor novo no enum `fin_account_type` (migração com `npm run db:generate`; nunca editar `drizzle/`), rótulo e ícone (doc 02), formulário de conta, filtros e listas que agrupam por tipo, importação de extrato.
-- **Para o dono decidir** (o arquiteto traz com recomendação): o card "Saldo em contas" mostra o total guardado nas caixinhas à parte (ex.: "Guardado em caixinhas R$ X")? Poupança e investimento continuam contando como dinheiro para gastar, ou passam a se comportar como caixinha? Caixinha pode ter meta ligada (Planejar › Metas)?
-- Transferência para a caixinha não é despesa nem receita (não entra em orçamento nem em Receitas × despesas), como as transferências de hoje.
-
-### Pronto quando
-
-- Criar uma caixinha, transferir para ela e de volta; o patrimônio não muda com a transferência, o Saldo em contas, o previsto e o "pode gastar por dia" mudam.
-- Testes: unidade da regra de conta líquida; integração (previsão, patrimônio, Fluxo de caixa e avisos com e sem caixinha; isolamento); e2e criando a caixinha e transferindo.
-- README, doc 01 (enum e regra de liquidez), doc 02 (tipo de conta, Início) e doc 03 (previsão e "pode gastar por dia") atualizados; novidade em Ajustes › Novidades.
+- **Transferência recorrente** ("guardar todo mês"): `RECURRENCE_KINDS` só tem receita e despesa.
+- **Rendimento configurado** da caixinha (`account_yield`): hoje o caminho é "Ajustar saldo".
+- **Linha "Para as caixinhas" no "(i)"** do previsto: uma transferência agendada para a caixinha entra em "Despesas agendadas".
+- **Pagar fatura a partir de uma caixinha**: não foi tratado nem testado.
+- **Chip de variação do mês** (Saldo): a transferência para a caixinha aparece como queda. Avaliar com o dono se o chip deve ignorá-la.
+- **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
+- Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
 ## Acessibilidade — depois
 
@@ -54,6 +45,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Caixinha: novo tipo de conta — 06/11/2026
+
+Decisões do dono (06/11/2026): **D1** linha "Guardado em caixinhas" no Saldo e nota no "(i)"; **D2** Poupança e Investimento continuam como hoje; **D3** meta ligada à caixinha; **D4** despesa ou receita direto na caixinha permitida, mas ela nunca é a conta padrão (Nova transação e importação); **D5** mudar o tipo de uma conta que não é cartão; **D6** "Guardar" e "Resgatar" no detalhe; **D7** sem flag; **D8** grupo "Caixinhas" em Contas; **D9** saldo inicial sem negativo.
+
+- [x] **Tipo `savings_box`** ("Caixinha", ícone `vault`, cor `cat-6`): migração `0008_caixinha` só com o `ADD VALUE`, formulário (`?tipo=caixinha`), grupo e selo, detalhe com legenda.
+- [x] **Regra única** `isSpendableAccount` (`src/lib/finance/spendable.ts`): os três `isLiquid` e o SQL da variação do mês saíram; `spendableAccountsOf` lê uma vez por requisição. Saldo, previsto, Fluxo (relatório e bloco), Resumo do dia e Próxima receita deixam a caixinha de fora; o patrimônio a soma.
+- [x] **Saldo**: "Guardado em caixinhas" e nota no "(i)"; textos do Fluxo dizem "sem cartões e caixinhas".
+- [x] **Mudar o tipo** em Editar (sem cartão), **Guardar** e **Resgatar** (`openQuickAdd(kind, preset)`) e a novidade `novidade-caixinhas`.
+- [x] Testes: unidade (regra com fast-check, metadados, `defaultAccountFor`, store), integração (`savings-box.integration.test.ts`, bloco Saldo, avisos com caixinha) e e2e (`e2e/caixinha.spec.ts`: criar, guardar, resgatar, axe nos dois temas, arquivar).
 
 ### Categorias: mesclar, arquivar com mover, ordenar e detalhe — 06/11/2026
 
