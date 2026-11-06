@@ -232,7 +232,7 @@ export function SheetContent({
         }}
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none",
+          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none data-[state=closed]:pointer-events-none",
           "md:inset-0 md:m-auto md:h-fit md:max-h-[min(85dvh,48rem)] md:w-[calc(100%-2rem)] md:max-w-140",
           className,
         )}
