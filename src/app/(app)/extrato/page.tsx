@@ -10,10 +10,10 @@ import {
 } from "@/components/transactions/statement-filters";
 import { StatementList } from "@/components/transactions/statement-list";
 import {
-  categoryWithDescendants,
   hasActiveFilters,
   parseStatementParams,
   type StatementFilters,
+  statementCategoryIds,
   statementHref,
 } from "@/components/transactions/statement-params";
 import { StatementSearch } from "@/components/transactions/statement-search";
@@ -22,7 +22,7 @@ import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { monthLabel, periodLabel } from "@/lib/format/date";
 import { requireUser } from "@/server/dal";
 import { ACCOUNT_TYPE_LABELS, listAccounts } from "@/server/domain/accounts";
-import { listCategories } from "@/server/domain/categories";
+import { listCategoriesForAdmin } from "@/server/domain/category-admin";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { listTransactions, periodTotals } from "@/server/domain/transactions";
 
@@ -63,7 +63,9 @@ async function Statement({
 
   const [accounts, categories] = await Promise.all([
     listAccounts(ctx.userId, { includeArchived: true }),
-    listCategories(ctx.userId),
+    // Archived ones too: the filter of a parent brings its archived
+    // subcategories, and a link to an archived category still filters.
+    listCategoriesForAdmin(ctx.userId),
   ]);
   // Ids from the URL count only when they are the user's own.
   const accountId = accounts.some((item) => item.id === parsed.accountId)
@@ -89,7 +91,7 @@ async function Statement({
       end: range.end,
       accountId: accountId ?? undefined,
       categoryIds: categoryId
-        ? categoryWithDescendants(categories, categoryId)
+        ? statementCategoryIds(categories, categoryId)
         : undefined,
       kind: filters.kind ?? undefined,
       status: filters.status ?? undefined,
@@ -123,6 +125,7 @@ async function Statement({
     icon: item.icon,
     color: item.color,
     parentId: item.parentId,
+    archived: item.archived,
   }));
 
   return (

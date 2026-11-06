@@ -760,6 +760,98 @@ describe("statement filters", () => {
     expect(await descriptions({ categoryIds: [bruno.id] })).toEqual([]);
   });
 
+  it("brings archived subcategories and filters by an archived category", async () => {
+    // A person of her own, so her entries change no one else's balances.
+    const { db } = await import("../db/client");
+    const schema = await import("../db/schema");
+    const { ensureOwnerDefaults } = await import("../db/seed-defaults");
+    const { listCategoriesForAdmin, setCategoryArchived } = await import(
+      "./category-admin"
+    );
+    const { statementCategoryIds } = await import(
+      "@/components/transactions/statement-params"
+    );
+    await db
+      .insert(schema.user)
+      .values({ id: "carla", name: "Carla", email: "carla@exemplo.com" });
+    await ensureOwnerDefaults("carla");
+    const carla = await d.context.getUserContext("carla", { now: NOW });
+    const wallet = await d.accounts.createAccount("carla", {
+      name: "Carteira",
+      type: "cash",
+      initialBalanceCents: 0,
+    });
+    const own = await d.categories.listCategories("carla");
+    const market = own.find((category) => category.name === "Mercado");
+    const transport = own.find((category) => category.name === "Transporte");
+    if (!market || !transport) throw new Error("categorias da Carla");
+    const children = await db
+      .insert(schema.categories)
+      .values(
+        ["Feira", "Padaria"].map((name) => ({
+          userId: "carla",
+          parentId: market.id,
+          kind: "expense" as const,
+          name,
+          icon: "carrot",
+          color: "cat-1" as const,
+        })),
+      )
+      .returning({ id: schema.categories.id, name: schema.categories.name });
+    const fair = children.find((category) => category.name === "Feira");
+    const bakery = children.find((category) => category.name === "Padaria");
+    if (!fair || !bakery) throw new Error("subcategorias");
+
+    for (const [categoryId, description] of [
+      [market.id, "Supermercado"],
+      [fair.id, "Feira de sábado"],
+      [bakery.id, "Pão"],
+      [transport.id, "Ônibus"],
+    ] as const) {
+      await d.transactions.createTransaction(carla, {
+        kind: "expense",
+        amountCents: 1_000,
+        accountId: wallet,
+        categoryId,
+        description,
+        occurredOn: "2026-08-10",
+      });
+    }
+    // Padaria is archived after it was used.
+    await setCategoryArchived("carla", bakery.id, true);
+    const descriptions = async (categoryIds: string[]) =>
+      (
+        await d.transactions.listTransactions(carla, {
+          start: "2026-08-01",
+          end: "2026-08-31",
+          categoryIds,
+        })
+      ).items
+        .map((item) => item.description)
+        .sort();
+
+    const all = await listCategoriesForAdmin("carla");
+    expect(all.find((category) => category.id === bakery.id)?.archived).toBe(
+      true,
+    );
+    // The parent brings the archived child along with the active one…
+    expect(await descriptions(statementCategoryIds(all, market.id))).toEqual([
+      "Feira de sábado",
+      "Pão",
+      "Supermercado",
+    ]);
+    // …which the active categories alone would have missed.
+    const active = await d.categories.listCategories("carla");
+    expect(statementCategoryIds(active, market.id)).not.toContain(bakery.id);
+    // The archived one on its own, as a link to it from Relatórios does.
+    expect(await descriptions(statementCategoryIds(all, bakery.id))).toEqual([
+      "Pão",
+    ]);
+    // Ana's category is not Carla's: no filter, and none of Ana's entries.
+    expect(statementCategoryIds(all, ids.groceries)).toEqual([]);
+    expect(await descriptions([ids.groceries])).toEqual([]);
+  });
+
   describe("each filter of the statement, in July", () => {
     const july = { start: "2026-07-01", end: "2026-07-31" };
     const list = (

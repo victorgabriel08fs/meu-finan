@@ -4,6 +4,8 @@
  * server page and the client filters read and write it the same way.
  */
 
+import { matchesSearch } from "@/lib/format/search";
+
 export const KIND_PARAMS = ["receita", "despesa", "transferencia"] as const;
 export const STATUS_PARAMS = ["pendente", "pago"] as const;
 
@@ -152,6 +154,20 @@ export function categoryWithDescendants(
 }
 
 /**
+ * The category ids the statement filters by for the `categoria` of the URL:
+ * the category and every subcategory, archived ones included (an archived
+ * subcategory keeps its entries under its parent). `categories` is all of
+ * the person's categories, archived included; an id not among them gives []
+ * (no filter), so only the person's own categories ever reach the query.
+ */
+export function statementCategoryIds(
+  categories: readonly { id: string; parentId: string | null }[],
+  id: string | null,
+): string[] {
+  return id ? categoryWithDescendants(categories, id) : [];
+}
+
+/**
  * The categories as a tree for a list: each one followed by its
  * subcategories, keeping the given order among siblings. A subcategory whose
  * parent is not in the list goes to the end.
@@ -175,4 +191,25 @@ export function categoryTree<T extends { id: string; parentId: string | null }>(
   // Orphans (and anything caught in a cycle), with their own children.
   for (const category of categories) place(category);
   return tree;
+}
+
+export type OptionGroup<T> = { title: string | null; options: T[] };
+
+/**
+ * The options of a filter sheet whose whole label has the search in it,
+ * accents and case aside ("mercado" finds "Mercado" and "Mercado › Feira"),
+ * in the same order. A group left without options goes away.
+ */
+export function filterOptionGroups<T extends { label: string }>(
+  groups: readonly OptionGroup<T>[],
+  query: string,
+): OptionGroup<T>[] {
+  return groups
+    .map((group) => ({
+      ...group,
+      options: group.options.filter((option) =>
+        matchesSearch(option.label, query),
+      ),
+    }))
+    .filter((group) => group.options.length > 0);
 }

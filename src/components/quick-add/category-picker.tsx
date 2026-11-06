@@ -8,6 +8,7 @@ import {
   SHEET_SEARCH_THRESHOLD,
   SheetSearch,
 } from "@/components/ui/sheet-search";
+import { categoryLabel } from "@/lib/categories/hierarchy";
 import { matchesSearch } from "@/lib/format/search";
 import { cn } from "@/lib/utils";
 import { ChoiceChip } from "./choice-chip";
@@ -106,11 +107,8 @@ function CategorySheet({
   onSelect: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const names = new Map(categories.map((category) => [category.id, category]));
-  const label = (category: QuickAddCategory) => {
-    const parent = category.parentId ? names.get(category.parentId) : null;
-    return parent ? `${parent.name} › ${category.name}` : category.name;
-  };
+  const label = (category: QuickAddCategory) =>
+    categoryLabel(category, categories);
   const sorted = [...categories].sort((a, b) =>
     collator.compare(label(a), label(b)),
   );
@@ -142,11 +140,15 @@ function CategorySheet({
           <ul className="grid grid-cols-4 gap-x-1 gap-y-2 pb-2">
             {visible.map((category) => {
               const isSelected = category.id === selectedId;
+              const parent = category.parentId
+                ? categories.find((item) => item.id === category.parentId)
+                : undefined;
               return (
                 <li key={category.id}>
                   <button
                     type="button"
                     aria-pressed={isSelected}
+                    aria-label={label(category)}
                     onClick={() => onSelect(category.id)}
                     className={cn(
                       "flex w-full flex-col items-center gap-1.5 rounded-control px-1 pt-2 pb-1.5 transition-colors duration-100",
@@ -160,9 +162,23 @@ function CategorySheet({
                       color={category.color}
                       size="md"
                     />
-                    <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word hyphens-auto">
-                      {category.name}
-                    </span>
+                    {parent ? (
+                      <span
+                        aria-hidden="true"
+                        className="flex min-h-9 w-full flex-col items-center"
+                      >
+                        <span className="w-full truncate text-center text-caption text-fg-2">
+                          {parent.name}
+                        </span>
+                        <span className="line-clamp-1 w-full text-center text-caption font-semibold wrap-break-word">
+                          {category.name}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="line-clamp-2 min-h-9 w-full text-center text-caption font-semibold wrap-break-word hyphens-auto">
+                        {category.name}
+                      </span>
+                    )}
                   </button>
                 </li>
               );

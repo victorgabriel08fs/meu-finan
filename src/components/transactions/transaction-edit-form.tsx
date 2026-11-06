@@ -7,6 +7,7 @@ import { formatCents } from "@/components/quick-add/calculator";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { categoryLabel } from "@/lib/categories/hierarchy";
 import { parseBRLToCents } from "@/lib/finance";
 import { updateTransactionAction } from "@/server/actions/transactions";
 import { actionErrorMessage, NETWORK_ERROR } from "./action-result";
@@ -16,6 +17,7 @@ import {
   type StatementItem,
 } from "./statement-data";
 import type { FilterCategory } from "./statement-filters";
+import { categoryTree } from "./statement-params";
 
 type TransactionPatch = {
   description?: string;
@@ -70,7 +72,19 @@ export function TransactionEditForm({
 
   const editsAmount = item.kind !== "adjustment";
   const editsCategory = item.kind === "income" || item.kind === "expense";
-  const options = categories.filter((category) => category.kind === item.kind);
+  // Active categories of the type, as a tree ("Mercado › Feira"); an
+  // archived one only when it is the entry's own, so it does not read as
+  // "Sem categoria".
+  const options = categoryTree(categories)
+    .filter(
+      (category) =>
+        category.kind === item.kind &&
+        (!category.archived || category.id === item.categoryId),
+    )
+    .map((category) => ({
+      id: category.id,
+      label: `${categoryLabel(category, categories)}${category.archived ? " (arquivada)" : ""}`,
+    }));
   const partOfSeries = item.installment !== null || item.recurring;
   const dateChanged = date !== item.occurredOn;
   const amountChanged =
@@ -233,7 +247,7 @@ export function TransactionEditForm({
               <option value="">Sem categoria</option>
               {options.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.label}
                 </option>
               ))}
             </select>

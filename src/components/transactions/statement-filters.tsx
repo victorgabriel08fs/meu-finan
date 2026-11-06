@@ -4,9 +4,19 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  SHEET_SEARCH_THRESHOLD,
+  SheetSearch,
+} from "@/components/ui/sheet-search";
 import { afterSheetsClose } from "@/components/ui/use-back-to-close";
+import { categoryLabel } from "@/lib/categories/hierarchy";
 import { cn } from "@/lib/utils";
-import { categoryTree, type KindParam } from "./statement-params";
+import {
+  categoryTree,
+  filterOptionGroups,
+  type KindParam,
+  type OptionGroup,
+} from "./statement-params";
 import { useStatementFilters } from "./use-statement-filters";
 
 export type FilterAccount = {
@@ -25,6 +35,8 @@ export type FilterCategory = {
   icon: string;
   color: string;
   parentId: string | null;
+  /** Archived: still a filter (links, old entries), never a new choice. */
+  archived: boolean;
 };
 
 const KIND_OPTIONS: { value: KindParam; label: string }[] = [
@@ -93,6 +105,49 @@ export function StatementFilterBar({
     afterSheetsClose(() => void setFilters(patch));
   }, [sheet, setFilters]);
 
+  const accountGroups: OptionGroup<Option>[] = [
+    {
+      title: null,
+      options: accounts.map((item) => ({
+        id: item.id,
+        label: item.name,
+        detail: item.archived
+          ? `${item.typeLabel} · arquivada`
+          : item.typeLabel,
+        icon: (
+          <CategoryIcon
+            icon={item.icon}
+            color={item.color}
+            shape="square"
+            size="sm"
+            className="rounded-chip"
+          />
+        ),
+      })),
+    },
+  ];
+  // Active ones by type, the archived ones in a group of their own at the
+  // end (as archived accounts are marked), each subcategory "Mercado › Feira".
+  const categoryOption = (item: FilterCategory): Option => ({
+    id: item.id,
+    label: categoryLabel(item, categories),
+    detail: null,
+    icon: <CategoryIcon icon={item.icon} color={item.color} size="sm" />,
+  });
+  const tree = categoryTree(categories);
+  const categoryGroups: OptionGroup<Option>[] = [
+    ...(["expense", "income"] as const).map((group) => ({
+      title: group === "expense" ? "Despesas" : "Receitas",
+      options: tree
+        .filter((item) => item.kind === group && !item.archived)
+        .map(categoryOption),
+    })),
+    {
+      title: "Arquivadas",
+      options: tree.filter((item) => item.archived).map(categoryOption),
+    },
+  ];
+
   // The chips scroll sideways; "Limpar" stays outside the scroller, at the
   // end of the row, so it is always on screen (the fade before it says that
   // more chips are hidden).
@@ -117,7 +172,14 @@ export function StatementFilterBar({
         />
         <FilterChip
           label="Categoria"
-          value={category?.name ?? null}
+          value={
+            category
+              ? `${category.name}${category.archived ? " (arquivada)" : ""}`
+              : null
+          }
+          accessibleValue={
+            category ? categoryLabel(category, categories) : undefined
+          }
           placeholder="Categorias"
           onOpen={() => setSheet("categoria")}
           onClear={() => void setFilters({ categoria: null })}
@@ -167,56 +229,42 @@ export function StatementFilterBar({
         title="Filtrar por conta"
         open={sheet === "conta"}
         onClose={() => close("conta")}
+        bodyClassName={searchable(accountGroups) ? "pt-0" : undefined}
       >
         <OptionList
           selected={account?.id ?? null}
           allLabel="Todas as contas"
           onSelect={(id) => choose({ conta: id })}
-          groups={[
-            {
-              title: null,
-              options: accounts.map((item) => ({
-                id: item.id,
-                label: item.name,
-                detail: item.archived
-                  ? `${item.typeLabel} · arquivada`
-                  : item.typeLabel,
-                icon: (
-                  <CategoryIcon
-                    icon={item.icon}
-                    color={item.color}
-                    shape="square"
-                    size="sm"
-                    className="rounded-chip"
-                  />
-                ),
-              })),
-            },
-          ]}
+          groups={accountGroups}
+          search={
+            searchable(accountGroups)
+              ? {
+                  label: "Buscar conta",
+                  empty: (query) => `Nenhuma conta com “${query}”.`,
+                }
+              : undefined
+          }
         />
       </ChoiceSheet>
       <ChoiceSheet
         title="Filtrar por categoria"
         open={sheet === "categoria"}
         onClose={() => close("categoria")}
+        bodyClassName={searchable(categoryGroups) ? "pt-0" : undefined}
       >
         <OptionList
           selected={category?.id ?? null}
           allLabel="Todas as categorias"
           onSelect={(id) => choose({ categoria: id })}
-          groups={(["expense", "income"] as const).map((group) => ({
-            title: group === "expense" ? "Despesas" : "Receitas",
-            options: categoryTree(categories)
-              .filter((item) => item.kind === group)
-              .map((item) => ({
-                id: item.id,
-                label: categoryLabel(item, categories),
-                detail: null,
-                icon: (
-                  <CategoryIcon icon={item.icon} color={item.color} size="sm" />
-                ),
-              })),
-          }))}
+          groups={categoryGroups}
+          search={
+            searchable(categoryGroups)
+              ? {
+                  label: "Buscar categoria",
+                  empty: (query) => `Nenhuma categoria com “${query}”.`,
+                }
+              : undefined
+          }
         />
       </ChoiceSheet>
       <ChoiceSheet
@@ -255,11 +303,14 @@ function ChoiceSheet({
   title,
   open,
   onClose,
+  bodyClassName,
   children,
 }: {
   title: string;
   open: boolean;
   onClose: () => void;
+  /** `pt-0` when a search field tops the list (it brings its own space). */
+  bodyClassName?: string;
   children: ReactNode;
 }) {
   return (
@@ -269,7 +320,9 @@ function ChoiceSheet({
         if (!next) onClose();
       }}
     >
-      <SheetContent title={title}>{children}</SheetContent>
+      <SheetContent title={title} bodyClassName={bodyClassName}>
+        {children}
+      </SheetContent>
     </Sheet>
   );
 }
@@ -277,12 +330,15 @@ function ChoiceSheet({
 function FilterChip({
   label,
   value,
+  accessibleValue,
   placeholder,
   onOpen,
   onClear,
 }: {
   label: string;
   value: string | null;
+  /** Full name for screen readers when it differs ("Mercado › Padaria"). */
+  accessibleValue?: string;
   placeholder: string;
   onOpen: () => void;
   onClear: () => void;
@@ -302,6 +358,11 @@ function FilterChip({
         ref={main}
         type="button"
         aria-haspopup="dialog"
+        aria-label={
+          accessibleValue
+            ? `${label}: ${accessibleValue}${value?.endsWith("(arquivada)") ? " (arquivada)" : ""}`
+            : undefined
+        }
         data-filter-chip=""
         onClick={onOpen}
         className={cn(
@@ -386,49 +447,112 @@ type Option = {
   icon: ReactNode;
 };
 
+type OptionSearch = {
+  /** "Buscar categoria" */
+  label: string;
+  /** What shows when nothing matches: `Nenhuma categoria com “{q}”.` */
+  empty: (query: string) => string;
+};
+
+/** A list with more than 8 options gets a search field (doc 02 §4.4). */
+function searchable(groups: OptionGroup<Option>[]): boolean {
+  const count = groups.reduce((sum, group) => sum + group.options.length, 0);
+  return count > SHEET_SEARCH_THRESHOLD;
+}
+
+/**
+ * The options of a filter sheet, "Todas as …" first. With `search` (given
+ * only to a long list) a field above filters the options by their whole
+ * label; it starts empty each time the sheet opens, since the content
+ * unmounts on close.
+ */
 function OptionList({
   groups,
   selected,
   allLabel,
   onSelect,
+  search,
 }: {
-  groups: { title: string | null; options: Option[] }[];
+  groups: OptionGroup<Option>[];
   selected: string | null;
   allLabel: string;
   onSelect: (id: string | null) => void;
+  search?: OptionSearch;
 }) {
+  const [query, setQuery] = useState("");
+  // The list keeps the height it had before the search started, so the sheet
+  // does not shrink and jump while the results narrow down.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [heldHeight, setHeldHeight] = useState<number | null>(null);
+  function changeQuery(next: string) {
+    if (next.trim() === "") setHeldHeight(null);
+    else if (heldHeight === null) {
+      setHeldHeight(listRef.current?.offsetHeight ?? null);
+    }
+    setQuery(next);
+  }
+  const visible = search ? filterOptionGroups(groups, query) : groups;
+  const emptyText =
+    search && query.trim() !== "" && visible.length === 0
+      ? search.empty(query.trim())
+      : null;
   return (
-    <div className="-mx-2 flex flex-col gap-3">
-      <OptionButton
-        label={allLabel}
-        selected={selected === null}
-        onClick={() => onSelect(null)}
-      />
-      {groups.map((group) =>
-        group.options.length === 0 ? null : (
-          <div key={group.title ?? "all"} className="flex flex-col">
-            {group.title ? (
-              <h3 className="px-2 pb-1 text-overline text-fg-3 uppercase">
-                {group.title}
-              </h3>
-            ) : null}
-            <ul className="flex flex-col">
-              {group.options.map((option) => (
-                <li key={option.id}>
-                  <OptionButton
-                    label={option.label}
-                    detail={option.detail}
-                    icon={option.icon}
-                    selected={option.id === selected}
-                    onClick={() => onSelect(option.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </div>
-        ),
-      )}
-    </div>
+    <>
+      {search ? (
+        <SheetSearch
+          label={search.label}
+          value={query}
+          onChange={changeQuery}
+        />
+      ) : null}
+      <div
+        ref={listRef}
+        style={heldHeight ? { minHeight: heldHeight } : undefined}
+        className="-mx-2 flex flex-col gap-3"
+      >
+        <OptionButton
+          label={allLabel}
+          selected={selected === null}
+          onClick={() => onSelect(null)}
+        />
+        {visible.map((group) =>
+          group.options.length === 0 ? null : (
+            <div key={group.title ?? "all"} className="flex flex-col">
+              {group.title ? (
+                <h3 className="px-2 pb-1 text-overline text-fg-3 uppercase">
+                  {group.title}
+                </h3>
+              ) : null}
+              <ul className="flex flex-col">
+                {group.options.map((option) => (
+                  <li key={option.id}>
+                    <OptionButton
+                      label={option.label}
+                      detail={option.detail}
+                      icon={option.icon}
+                      selected={option.id === selected}
+                      onClick={() => onSelect(option.id)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ),
+        )}
+      </div>
+      {search ? (
+        // A live region (status) always in the DOM, so screen readers hear
+        // it when it fills.
+        <output
+          className={cn(
+            "block text-center text-body text-fg-2",
+            emptyText && "pt-6 pb-2",
+          )}
+        >
+          {emptyText}
+        </output>
+      ) : null}
+    </>
   );
 }
 
@@ -478,15 +602,4 @@ function OptionButton({
       ) : null}
     </button>
   );
-}
-
-/** A subcategory reads "Parent › Child", as in the category picker. */
-function categoryLabel(
-  category: FilterCategory,
-  categories: FilterCategory[],
-): string {
-  const parent = category.parentId
-    ? categories.find((item) => item.id === category.parentId)
-    : null;
-  return parent ? `${parent.name} › ${category.name}` : category.name;
 }

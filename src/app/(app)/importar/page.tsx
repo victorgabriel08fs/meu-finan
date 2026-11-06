@@ -10,6 +10,7 @@ import { recentImportView } from "@/components/imports/labels";
 import type { ImportCategoryOption } from "@/components/imports/types";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
+import { categoryLabel } from "@/lib/categories/hierarchy";
 import { requireUser } from "@/server/dal";
 import { listAccounts } from "@/server/domain/accounts";
 import { listCategories } from "@/server/domain/categories";
@@ -75,17 +76,15 @@ async function ImportScreen({
     accounts.find((account) => account.id === requested) ??
     accounts.find((account) => account.type !== "credit_card") ??
     accounts[0];
-  const names = new Map(categories.map((category) => [category.id, category]));
-  const categoryOptions: ImportCategoryOption[] = categories.map((category) => {
-    const parent = category.parentId ? names.get(category.parentId) : null;
-    return {
+  const categoryOptions: ImportCategoryOption[] = categories.map(
+    (category) => ({
       id: category.id,
       kind: category.kind,
-      label: parent ? `${parent.name} › ${category.name}` : category.name,
+      label: categoryLabel(category, categories),
       icon: category.icon,
       color: category.color,
-    };
-  });
+    }),
+  );
 
   return (
     <ImportFlow
