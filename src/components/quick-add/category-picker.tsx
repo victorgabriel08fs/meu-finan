@@ -1,17 +1,20 @@
 "use client";
 
-import { LayoutGrid, Search } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 import { useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  SHEET_SEARCH_THRESHOLD,
+  SheetSearch,
+} from "@/components/ui/sheet-search";
+import { matchesSearch } from "@/lib/format/search";
 import { cn } from "@/lib/utils";
 import { ChoiceChip } from "./choice-chip";
 import type { QuickAddCategory } from "./types";
 
 /** Chips shown before "Todas" (doc 02 §6.5). */
 const TOP_COUNT = 6;
-/** Choice sheets get a search field past this many items (§4.4). */
-const SEARCH_THRESHOLD = 8;
 
 type CategoryChipsProps = {
   /** Ordered by use in the last 90 days. */
@@ -89,13 +92,6 @@ export function CategoryChips({
 
 const collator = new Intl.Collator("pt-BR", { sensitivity: "base" });
 
-function normalize(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
-
 function CategorySheet({
   open,
   onOpenChange,
@@ -110,7 +106,6 @@ function CategorySheet({
   onSelect: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const needle = normalize(query.trim());
   const names = new Map(categories.map((category) => [category.id, category]));
   const label = (category: QuickAddCategory) => {
     const parent = category.parentId ? names.get(category.parentId) : null;
@@ -119,9 +114,9 @@ function CategorySheet({
   const sorted = [...categories].sort((a, b) =>
     collator.compare(label(a), label(b)),
   );
-  const visible = needle
-    ? sorted.filter((category) => normalize(label(category)).includes(needle))
-    : sorted;
+  const visible = sorted.filter((category) =>
+    matchesSearch(label(category), query),
+  );
 
   return (
     <Sheet
@@ -132,25 +127,12 @@ function CategorySheet({
       }}
     >
       <SheetContent title="Categorias" bodyClassName="pt-0">
-        {categories.length > SEARCH_THRESHOLD ? (
-          <label className="sticky top-0 z-1 -mx-5 mb-3 flex bg-surface px-5 pt-2 pb-2">
-            <span className="sr-only">Buscar categoria</span>
-            <span className="relative flex w-full items-center">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3.5 size-4.5 text-fg-3"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar categoria"
-                enterKeyHint="search"
-                autoComplete="off"
-                className="h-11 w-full rounded-control border border-border-strong bg-surface pr-3 pl-10 text-input text-fg outline-none placeholder:text-fg-3 focus-visible:border-primary focus-visible:shadow-[inset_0_0_0_1px_var(--primary)]"
-              />
-            </span>
-          </label>
+        {categories.length > SHEET_SEARCH_THRESHOLD ? (
+          <SheetSearch
+            label="Buscar categoria"
+            value={query}
+            onChange={setQuery}
+          />
         ) : null}
         {visible.length === 0 ? (
           <p className="py-8 text-center text-body text-fg-2">
