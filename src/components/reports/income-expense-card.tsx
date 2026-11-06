@@ -22,6 +22,9 @@ import {
 
 const INCOME = "var(--chart-3)";
 const EXPENSE = "var(--chart-2)";
+// The columns of the months not selected: duller, still 3:1 against the card.
+const INCOME_REST = "var(--chart-3-rest)";
+const EXPENSE_REST = "var(--chart-2-rest)";
 
 type IncomeExpenseCardProps = {
   months: MonthTotals[];
@@ -73,8 +76,16 @@ export function IncomeExpenseLegend({ className }: { className?: string }) {
     <ChartLegend
       className={className}
       entries={[
-        { key: "income", label: "Receitas", color: INCOME },
-        { key: "expense", label: "Despesas", color: EXPENSE },
+        {
+          key: "income",
+          label: "Receitas",
+          color: INCOME,
+        },
+        {
+          key: "expense",
+          label: "Despesas",
+          color: EXPENSE,
+        },
       ]}
     />
   );
@@ -171,8 +182,18 @@ export function IncomeExpenseChart({
           <GroupedColumnChart
             label="Receitas e despesas por mês; escolha um mês para ver os valores"
             series={[
-              { key: "income", label: "Receitas", color: INCOME },
-              { key: "expense", label: "Despesas", color: EXPENSE },
+              {
+                key: "income",
+                label: "Receitas",
+                color: INCOME,
+                restColor: INCOME_REST,
+              },
+              {
+                key: "expense",
+                label: "Despesas",
+                color: EXPENSE,
+                restColor: EXPENSE_REST,
+              },
             ]}
             groups={months.map((month) => ({
               key: month.month,

@@ -90,6 +90,51 @@ describe("GroupedColumnChart", () => {
   });
 });
 
+describe("GroupedColumnChart, the months not selected", () => {
+  const render = (restColor?: string) =>
+    renderToStaticMarkup(
+      <GroupedColumnChart
+        label="Receitas"
+        series={[
+          {
+            key: "i",
+            label: "Receitas",
+            color: "var(--chart-3)",
+            restColor,
+          },
+        ]}
+        groups={[
+          { key: "09", label: "set", values: [100] },
+          { key: "10", label: "out", values: [50] },
+        ]}
+        selected={0}
+        onSelect={() => {}}
+        ticks={niceTicks(0, 100)}
+        formatTick={(value) => String(value)}
+        describeGroup={(index) => `grupo ${index}`}
+      />,
+    );
+
+  it("take the rest color of the series, the selected one its own", () => {
+    const html = render("var(--chart-3-rest)");
+    expect(html).toContain("--bar:var(--chart-3)");
+    expect(html).toContain("--bar:var(--chart-3-rest)");
+    expect(html).not.toContain("opacity-40");
+  });
+
+  it("fade to 40% when the series has no rest color", () => {
+    const html = render();
+    expect(html).not.toContain("--chart-3-rest");
+    expect(html.match(/opacity-40/g)).toHaveLength(1);
+  });
+
+  it("mark the selected month with a stroke under its label", () => {
+    const html = render("var(--chart-3-rest)");
+    expect(html.match(/h-0.5 w-4[^"]*bg-fg[^"]*opacity-100/g)).toHaveLength(1);
+    expect(html.match(/h-0.5 w-4[^"]*bg-fg[^"]*opacity-0/g)).toHaveLength(1);
+  });
+});
+
 describe("LineChart", () => {
   it("is an image with a summary and labels only the chosen points", () => {
     const html = renderToStaticMarkup(

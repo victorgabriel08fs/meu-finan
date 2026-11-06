@@ -85,6 +85,10 @@
   --chart-6: #008300;
   --chart-7: #6250d6;
   --chart-8: #e34948;
+  /* The columns of the series not selected (Receitas × despesas, doc 02 §9.4):
+     duller than their series but still 3:1 against --surface. */
+  --chart-3-rest: #408d79;
+  --chart-2-rest: #a86a56;
   --chart-grid: #eaecef;
   --chart-axis: #c9ced6;
   --chart-label: var(--text-3);
@@ -177,6 +181,8 @@
   --chart-6: #008300;
   --chart-7: #9085e9;
   --chart-8: #e66767;
+  --chart-3-rest: #187858;
+  --chart-2-rest: #aa4924;
   --chart-grid: #232830;
   --chart-axis: #3a404a;
 
@@ -262,6 +268,8 @@
   --color-chart-6: var(--chart-6);
   --color-chart-7: var(--chart-7);
   --color-chart-8: var(--chart-8);
+  --color-chart-3-rest: var(--chart-3-rest);
+  --color-chart-2-rest: var(--chart-2-rest);
   --color-chart-grid: var(--chart-grid);
   --color-chart-axis: var(--chart-axis);
   --color-chart-label: var(--chart-label);
