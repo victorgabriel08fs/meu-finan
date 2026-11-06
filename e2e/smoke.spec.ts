@@ -281,7 +281,8 @@ test("arquiva uma conta e volta para Contas", async ({ page }) => {
   await page.getByRole("button", { name: "Arquivar", exact: true }).click();
   await page.getByRole("button", { name: "Arquivar conta" }).click();
   await expect(page).toHaveURL(/\/contas$/);
-  await expect(page.getByText("Arquivadas (1)")).toBeVisible();
+  // Other specs may have archived accounts of their own (caixinha.spec.ts).
+  await expect(page.getByText(/^Arquivadas \(\d+\)$/)).toBeVisible();
   expect(errors).toEqual([]);
 });
 
