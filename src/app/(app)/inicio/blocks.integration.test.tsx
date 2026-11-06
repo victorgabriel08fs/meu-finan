@@ -264,15 +264,15 @@ describe("Para onde foi o dinheiro", () => {
     expect(names.sort()).toEqual(["Mercado", "Transporte"]);
   });
 
-  it("opens another month's paid expenses in the statement", async () => {
+  it("opens the report on another month, not the statement", async () => {
     const { type, props } = await load("category-breakdown", ana, "2026-09");
     expect(type).toBe(components.categories.CategoryBreakdownBlock);
     expect(props).toMatchObject({
       isCurrent: false,
       totalCents: 210_000 + 30_000,
       link: {
-        href: "/extrato?mes=2026-09&tipo=despesa&status=pago",
-        label: "Ver no extrato",
+        href: "/relatorios/categorias?periodo=1&mes=2026-09",
+        label: "Ver relatório",
       },
     });
   });
@@ -302,8 +302,11 @@ describe("Receitas × despesas por mês", () => {
     });
   });
 
-  it("ends in a past month, complete", async () => {
+  it("ends in a past month, complete, the report on that month", async () => {
     const { props } = await load("income-expense", ana, "2026-09");
+    expect(props.reportHref).toBe(
+      "/relatorios/visao-geral?periodo=6&mes=2026-09",
+    );
     expect(lastMonth(props)).toBe("2026-09");
     expect(props.endMonthName).toBe("setembro");
     expect(props.partialProgress).toBeNull();
@@ -314,6 +317,7 @@ describe("Receitas × despesas por mês", () => {
     expect(props.months).toHaveLength(6);
     expect(lastMonth(props)).toBe("2026-10");
     expect(props.endMonthName).toBe("outubro");
+    expect(props.reportHref).toBe("/relatorios/visao-geral?periodo=6");
   });
 
   it("invites after 6 empty months", async () => {
@@ -340,9 +344,14 @@ describe("Patrimônio", () => {
     const past = await load("net-worth", ana, "2026-09");
     expect(points(past.props).at(-1)?.month).toBe("2026-09");
     expect(past.props.caption).toBe("no fim de setembro");
+    expect(past.props.reportHref).toBe(
+      "/relatorios/patrimonio?periodo=6&mes=2026-09",
+    );
     const ahead = await load("net-worth", ana, "2026-12");
     expect(points(ahead.props).at(-1)?.month).toBe("2026-10");
     expect(ahead.props.caption).toBe("hoje");
+    // A month ahead has no report: the link is the one of today.
+    expect(ahead.props.reportHref).toBe("/relatorios/patrimonio?periodo=6");
   });
 
   it("invites while everything is at zero", async () => {

@@ -13,12 +13,17 @@ import {
   monthSavingsRate,
   parseReportPeriod,
   partialProgress,
-  periodQuery,
   savingsCaption,
   sumTotals,
 } from "@/components/reports/model";
 import { NetWorthCard } from "@/components/reports/net-worth-card";
+import { ReportEndNote } from "@/components/reports/report-month";
 import { SavingsRateCard } from "@/components/reports/savings-rate-card";
+import {
+  clampReportMonth,
+  parseMonthParam,
+  periodHref,
+} from "@/components/reports/views";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
@@ -53,8 +58,11 @@ async function Overview({
 }) {
   const user = await requireUser();
   const ctx = await getUserContext(user.id);
-  const period = parseReportPeriod((await searchParams).periodo);
-  const range = resolvePeriod(ctx, null);
+  const { periodo, mes } = await searchParams;
+  const period = parseReportPeriod(periodo);
+  const currentMonth = resolvePeriod(ctx, null).month;
+  const month = clampReportMonth(parseMonthParam(mes), currentMonth);
+  const range = resolvePeriod(ctx, month);
   const first = trailingPeriods(range, period)[0] ?? range;
 
   const [series, netWorth, breakdown] = await Promise.all([
@@ -63,6 +71,14 @@ async function Overview({
     netWorthSeries(ctx, range, period + 1),
     categoryBreakdown(ctx, first.start, range.end),
   ]);
+  const note = (
+    <ReportEndNote
+      path="/relatorios/visao-geral"
+      period={period}
+      month={range.month}
+      currentMonth={currentMonth}
+    />
+  );
   const savings = savingsRateOf(ctx, series);
   const totals = sumTotals(series);
 
@@ -71,106 +87,118 @@ async function Overview({
   );
   if (!hasEntries && netWorth.every((point) => point.cents === 0)) {
     return (
-      <EmptyState
-        icon={<ChartColumn />}
-        title="Ainda não há dados suficientes"
-        description="Com alguns dias de registros, os gráficos aparecem aqui."
-        action={
-          <QuickAddButton kind="expense">Adicionar lançamento</QuickAddButton>
-        }
-      />
+      <>
+        {note}
+        <EmptyState
+          icon={<ChartColumn />}
+          title="Ainda não há dados suficientes"
+          description="Com alguns dias de registros, os gráficos aparecem aqui."
+          action={
+            <QuickAddButton kind="expense">Adicionar lançamento</QuickAddButton>
+          }
+        />
+      </>
     );
   }
 
   const complete = series.filter((point) => !point.partial);
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-      <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
-        <KpiTile
-          label="Receitas"
-          value={<CompactMoney cents={totals.incomeCents} />}
-          support={totals.partialCaption}
-        />
-        <KpiTile
-          label="Despesas"
-          value={<CompactMoney cents={totals.expenseCents} />}
-          support={totals.partialCaption}
-        />
-        <KpiTile
-          className="col-span-2 md:col-span-1"
-          label="Taxa de poupança"
-          value={
-            savings.rate === null ? (
-              <>
-                <span aria-hidden="true">—</span>
-                <span className="sr-only">sem dados</span>
-              </>
-            ) : (
-              formatPercent(savings.rate)
-            )
-          }
-          support={savingsCaption(savings)}
-        />
-      </div>
+    <>
+      {note}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+        <div className="grid grid-cols-2 gap-2 md:col-span-2 md:grid-cols-3 md:gap-4">
+          <KpiTile
+            label="Receitas"
+            value={<CompactMoney cents={totals.incomeCents} />}
+            support={totals.partialCaption}
+          />
+          <KpiTile
+            label="Despesas"
+            value={<CompactMoney cents={totals.expenseCents} />}
+            support={totals.partialCaption}
+          />
+          <KpiTile
+            className="col-span-2 md:col-span-1"
+            label="Taxa de poupança"
+            value={
+              savings.rate === null ? (
+                <>
+                  <span aria-hidden="true">—</span>
+                  <span className="sr-only">sem dados</span>
+                </>
+              ) : (
+                formatPercent(savings.rate)
+              )
+            }
+            support={savingsCaption(savings)}
+          />
+        </div>
 
-      <div className="md:col-span-2">
-        <IncomeExpenseCard
-          key={period}
-          months={series.map(
-            ({ month, incomeCents, expenseCents, partial }) => ({
-              month,
-              incomeCents,
-              expenseCents,
-              partial,
-            }),
-          )}
-          defaultSelected={defaultSelectedMonth(series)}
-          summary={incomeExpenseSummary(series)}
-          partialProgress={partialProgress(series, range, ctx.todayIso)}
+        <div className="md:col-span-2">
+          <IncomeExpenseCard
+            key={period}
+            months={series.map(
+              ({ month, incomeCents, expenseCents, partial }) => ({
+                month,
+                incomeCents,
+                expenseCents,
+                partial,
+              }),
+            )}
+            defaultSelected={defaultSelectedMonth(series)}
+            summary={incomeExpenseSummary(series)}
+            partialProgress={partialProgress(series, range, ctx.todayIso)}
+          />
+        </div>
+
+        <SavingsRateCard
+          months={complete.map((point) => point.month)}
+          rates={complete.map((point) => monthSavingsRate(point))}
         />
-      </div>
 
-      <SavingsRateCard
-        months={complete.map((point) => point.month)}
-        rates={complete.map((point) => monthSavingsRate(point))}
-      />
+        <NetWorthCard points={netWorth} period={period} />
 
-      <NetWorthCard points={netWorth} period={period} />
-
-      <Card asChild className="flex flex-col gap-1 md:col-span-2">
-        <section aria-labelledby="relatorio-categorias">
-          <div className="mb-1 flex items-center justify-between gap-3">
-            <h2 id="relatorio-categorias" className="text-headline text-fg">
-              Para onde foi o dinheiro
-            </h2>
-            <span className="text-callout font-semibold text-fg-3 tabular-nums">
-              <span data-privacy-value="">
-                {formatBRL(breakdown.totalCents)}
+        <Card asChild className="flex flex-col gap-1 md:col-span-2">
+          <section aria-labelledby="relatorio-categorias">
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <h2 id="relatorio-categorias" className="text-headline text-fg">
+                Para onde foi o dinheiro
+              </h2>
+              <span className="text-callout font-semibold text-fg-3 tabular-nums">
+                <span data-privacy-value="">
+                  {formatBRL(breakdown.totalCents)}
+                </span>
+                <span data-privacy-mask="">R$ ••••</span>
               </span>
-              <span data-privacy-mask="">R$ ••••</span>
-            </span>
-          </div>
-          {breakdown.items.length === 0 ? (
-            <p className="py-4 text-callout text-fg-2">
-              Nenhuma despesa paga no período.
-            </p>
-          ) : (
-            <CategoryRanking
-              items={breakdown.items}
-              month={range.month}
-              limit={5}
-            />
-          )}
-          <Button asChild variant="secondary" className="mt-2">
-            <Link href={`/relatorios/categorias${periodQuery(period)}`}>
-              Ver todas as categorias
-              <ChevronRight aria-hidden="true" />
-            </Link>
-          </Button>
-        </section>
-      </Card>
-    </div>
+            </div>
+            {breakdown.items.length === 0 ? (
+              <p className="py-4 text-callout text-fg-2">
+                Nenhuma despesa paga no período.
+              </p>
+            ) : (
+              <CategoryRanking
+                items={breakdown.items}
+                month={range.month}
+                limit={5}
+              />
+            )}
+            <Button asChild variant="secondary" className="mt-2">
+              <Link
+                href={periodHref(
+                  "/relatorios/categorias",
+                  period,
+                  range.month === currentMonth ? null : range.month,
+                )}
+              >
+                Ver todas as categorias
+                <ChevronRight aria-hidden="true" />
+              </Link>
+            </Button>
+          </section>
+        </Card>
+      </div>
+    </>
   );
 }
 

@@ -5,8 +5,11 @@ import {
   weekdayDateLabel,
 } from "./day-labels";
 import {
+  clampReportMonth,
   monthViewHref,
   parseMonthParam,
+  periodHref,
+  periodViewHref,
   REPORT_VIEWS,
   reportViewAt,
   reportViewHref,
@@ -43,10 +46,13 @@ describe("report views", () => {
     expect(reportViewAt("/relatorios/fluxo-extra")).toBeNull();
   });
 
-  it("keeps ?periodo= between period views and ?mes= between month views", () => {
+  it("keeps ?periodo= between period views and ?mes= in every view", () => {
     const current = { periodo: "3", mes: "2026-09" };
     expect(reportViewHref(view("Patrimônio"), current)).toBe(
-      "/relatorios/patrimonio?periodo=3",
+      "/relatorios/patrimonio?periodo=3&mes=2026-09",
+    );
+    expect(reportViewHref(view("Visão geral"), { mes: "2026-09" })).toBe(
+      "/relatorios/visao-geral?mes=2026-09",
     );
     expect(reportViewHref(view("Calendário"), current)).toBe(
       "/relatorios/calendario?mes=2026-09",
@@ -62,6 +68,32 @@ describe("report views", () => {
       "/relatorios/fluxo",
     );
     expect(reportViewHref(view("Fluxo"), {})).toBe("/relatorios/fluxo");
+  });
+
+  it("clamps the month a window ends at to today", () => {
+    expect(clampReportMonth("2026-08", "2026-10")).toBe("2026-08");
+    expect(clampReportMonth("2026-10", "2026-10")).toBe("2026-10");
+    expect(clampReportMonth("2027-01", "2026-10")).toBe("2026-10");
+    expect(clampReportMonth(null, "2026-10")).toBe("2026-10");
+    expect(clampReportMonth(parseMonthParam("lixo"), "2026-10")).toBe(
+      "2026-10",
+    );
+    expect(clampReportMonth("2000-01", "2026-10")).toBe("2000-01");
+  });
+
+  it("builds the links of blocks and notices to a window ending in a month", () => {
+    const path = "/relatorios/visao-geral";
+    expect(periodViewHref(path, 6, "2026-10", "2026-10")).toBe(
+      "/relatorios/visao-geral?periodo=6",
+    );
+    expect(periodViewHref(path, 1, "2026-09", "2026-10")).toBe(
+      "/relatorios/visao-geral?periodo=1&mes=2026-09",
+    );
+    expect(periodHref(path, 12, null)).toBe(path);
+    expect(periodHref(path, 12, "2026-09")).toBe(`${path}?mes=2026-09`);
+    expect(periodHref(path, 3, "2026-09")).toBe(
+      `${path}?periodo=3&mes=2026-09`,
+    );
   });
 
   it("links months of a month view, the current one without the query", () => {

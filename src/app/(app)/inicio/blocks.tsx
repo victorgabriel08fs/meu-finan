@@ -39,8 +39,7 @@ import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
 import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
 import { partialProgress } from "@/components/reports/model";
-import { monthViewHref } from "@/components/reports/views";
-import { statementHref } from "@/components/transactions/statement-params";
+import { monthViewHref, periodViewHref } from "@/components/reports/views";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { getBudgets } from "@/server/domain/budgets";
@@ -311,9 +310,8 @@ async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
 }
 
 /**
- * Para onde foi o dinheiro: what was paid in the month on screen. The report
- * only takes a window of months up to today (`?periodo=`), so another month
- * opens its expenses in the statement instead.
+ * Para onde foi o dinheiro: what was paid in the month on screen; the report
+ * opens on that same month (`?periodo=1&mes=`).
  */
 async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
   const { items, totalCents } = await categoryBreakdown(
@@ -332,24 +330,15 @@ async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
       month={range.month}
       monthName={monthName(range.month)}
       isCurrent={range.isCurrent}
-      link={
-        range.isCurrent
-          ? { href: "/relatorios/categorias?periodo=1", label: "Ver relatório" }
-          : {
-              href: statementHref(
-                {
-                  month: range.month,
-                  accountId: null,
-                  categoryId: null,
-                  kind: "expense",
-                  status: "paid",
-                  q: "",
-                },
-                currentMonth,
-              ),
-              label: "Ver no extrato",
-            }
-      }
+      link={{
+        href: periodViewHref(
+          "/relatorios/categorias",
+          1,
+          range.month,
+          currentMonth,
+        ),
+        label: "Ver relatório",
+      }}
     />
   );
 }
@@ -372,7 +361,12 @@ async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
         resolvePeriod(ctx, null),
         ctx.todayIso,
       )}
-      reportHref={`/relatorios/visao-geral?periodo=${INCOME_EXPENSE_BLOCK_MONTHS}`}
+      reportHref={periodViewHref(
+        "/relatorios/visao-geral",
+        INCOME_EXPENSE_BLOCK_MONTHS,
+        end.month,
+        resolvePeriod(ctx, null).month,
+      )}
     />
   );
 }
@@ -393,7 +387,12 @@ async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
           ? `no fim de ${monthName(range.month)}`
           : "hoje"
       }
-      reportHref="/relatorios/patrimonio?periodo=6"
+      reportHref={periodViewHref(
+        "/relatorios/patrimonio",
+        6,
+        seriesEnd(ctx, range).month,
+        resolvePeriod(ctx, null).month,
+      )}
     />
   );
 }

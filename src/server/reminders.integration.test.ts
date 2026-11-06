@@ -100,6 +100,7 @@ const sentTo = (userId: string) =>
         push.body as {
           title: string;
           body: string;
+          url: string;
           tag: string;
           badge: number;
         },
@@ -321,6 +322,8 @@ describe("sendDailyReminders", () => {
     );
     expect(ana[0]?.body).toContain("Dá para gastar R$ 26,66 hoje.");
     expect(ana[3]?.title).toBe("Sua semana: 2/nov – 8/nov");
+    // The monthly summary opens the report on the month that closed.
+    expect(ana[4]?.url).toBe("/relatorios/visao-geral?periodo=1&mes=2026-10");
 
     // Bruno keeps the defaults: no amounts, no daily summary or income, and
     // his financial month starts on the 1st (no monthly summary today).

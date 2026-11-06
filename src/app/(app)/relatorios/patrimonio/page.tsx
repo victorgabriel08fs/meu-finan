@@ -5,6 +5,12 @@ import { EmptyState } from "@/components/app/empty-state";
 import { QuickAddButton } from "@/components/quick-add/quick-add-trigger";
 import { parseReportPeriod } from "@/components/reports/model";
 import { NetWorthReport } from "@/components/reports/net-worth-report";
+import { ReportEndNote } from "@/components/reports/report-month";
+import {
+  clampReportMonth,
+  parseMonthParam,
+  periodViewHref,
+} from "@/components/reports/views";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
@@ -29,8 +35,20 @@ async function NetWorth({
 }) {
   const user = await requireUser();
   const ctx = await getUserContext(user.id);
-  const period = parseReportPeriod((await searchParams).periodo);
-  const range = resolvePeriod(ctx, null);
+  const { periodo, mes } = await searchParams;
+  const period = parseReportPeriod(periodo);
+  const currentMonth = resolvePeriod(ctx, null).month;
+  const month = clampReportMonth(parseMonthParam(mes), currentMonth);
+  const range = resolvePeriod(ctx, month);
+  const note = (
+    <ReportEndNote
+      path="/relatorios/patrimonio"
+      period={period}
+      month={range.month}
+      currentMonth={currentMonth}
+    />
+  );
+
   // One month more: the change is measured from the end of the month before.
   const points = await netWorthBreakdown(ctx, range, period + 1);
 
@@ -40,18 +58,26 @@ async function NetWorth({
     )
   ) {
     return (
-      <EmptyState
-        icon={<Landmark />}
-        title="Ainda não há dados suficientes"
-        description="Com alguns dias de registros, os gráficos aparecem aqui."
-        action={
-          <QuickAddButton kind="expense">Adicionar lançamento</QuickAddButton>
-        }
-      />
+      <>
+        {note}
+        <EmptyState
+          icon={<Landmark />}
+          title="Ainda não há dados suficientes"
+          description="Com alguns dias de registros, os gráficos aparecem aqui."
+          action={
+            <QuickAddButton kind="expense">Adicionar lançamento</QuickAddButton>
+          }
+        />
+      </>
     );
   }
 
-  return <NetWorthReport key={period} points={points} period={period} />;
+  return (
+    <>
+      {note}
+      <NetWorthReport key={period} points={points} period={period} />
+    </>
+  );
 }
 
 function NetWorthSkeleton() {

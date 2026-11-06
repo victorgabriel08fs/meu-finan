@@ -14,6 +14,8 @@ import {
   type ReportPeriod,
 } from "./model";
 import {
+  parseMonthParam,
+  periodHref,
   REPORT_VIEWS,
   type ReportView,
   reportViewAt,
@@ -29,7 +31,7 @@ const UNDERLINE_SPRING = {
 /**
  * Report views (doc 02 §6.12) as route tabs that scroll sideways, with an
  * underline under the current one: Visão geral · Categorias · Fluxo ·
- * Patrimônio · Calendário. Period views keep `?periodo=` and month views keep
+ * Patrimônio · Calendário. Period views keep `?periodo=` and every view keeps
  * `?mes=`. Reads the URL, so render it inside <Suspense> with
  * <ReportTabsFallback /> (same tabs, links without the query).
  */
@@ -153,16 +155,18 @@ export function ReportPeriodFilter({ className }: { className?: string }) {
 
 /**
  * Period filter row (Mês · 3M · 6M · 12M): links that set `?periodo=` on the
- * current view, so the back button undoes a change. Render inside <Suspense>
+ * current view (and keep `?mes=`), so the back button undoes a change. Render inside <Suspense>
  * with <PeriodSelectorView active={null} /> as the fallback.
  */
 export function PeriodSelector({ className }: { className?: string }) {
   const pathname = usePathname();
-  const period = parseReportPeriod(useSearchParams().get("periodo"));
+  const params = useSearchParams();
+  const period = parseReportPeriod(params.get("periodo"));
+  const month = parseMonthParam(params.get("mes"));
   return (
     <PeriodSelectorView
       active={period}
-      hrefFor={(value) => `${pathname}${periodQuery(value)}`}
+      hrefFor={(value) => periodHref(pathname, value, month)}
       className={className}
     />
   );
