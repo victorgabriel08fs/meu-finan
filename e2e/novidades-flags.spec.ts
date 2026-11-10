@@ -39,6 +39,7 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   await expect(page.locator('a[href="/ajustes/notificacoes"]')).toHaveCount(0);
   await expect(page.getByText("Monte o seu Início")).toHaveCount(0);
   await expect(page.getByText("Mais blocos para o Início")).toHaveCount(0);
+  await expect(page.getByText("Quanto dá para gastar por dia")).toHaveCount(0);
 
   // Without notificacoes_push, no Notificações: neither the screen nor its
   // notices (nor the administrators' preview, which he would not get anyway).

@@ -136,12 +136,12 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 12.",
+    "Calendário de gastos na posição 2 de 13.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 12.",
+    "Calendário de gastos na posição 2 de 13.",
   );
 
   const saved = homeSaved(page);
@@ -515,4 +515,50 @@ test("sem violações do axe no Início com os blocos dos relatórios e em Prefe
   await sheetOf(page).getByRole("button", { name: "Restaurar padrão" }).click();
   expect((await restored).ok()).toBe(true);
   await expectBlocks(page, DEFAULT_ORDER);
+});
+
+test("mostra Quanto dá para gastar por dia pela folha, com as linhas, e esconde de novo", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await customizeButton(page).click();
+  const sheet = sheetOf(page);
+  const name = "Quanto dá para gastar por dia";
+  const toggle = sheet.getByRole("switch", { name, exact: true });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(
+    sheet.getByText(
+      "Quanto dá para gastar por dia em cada um dos próximos 14 dias.",
+    ),
+  ).toBeVisible();
+  await toggle.click();
+  let saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(sheet).toBeHidden();
+
+  const block = blockOf(page, "inicio-gasto-por-dia");
+  await expect(
+    block.getByRole("heading", { level: 2, name, exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(block.getByRole("link", { name: "Ver fluxo" })).toHaveAttribute(
+    "href",
+    "/relatorios/fluxo",
+  );
+  // The highlight, and one line per day from today (a single line on the
+  // last day of the month, which the highlight already says).
+  await expect(block.getByText("por dia", { exact: true })).toBeVisible();
+  const items = block.getByRole("listitem");
+  if ((await items.count()) > 0) {
+    await expect(items.first()).toContainText("Hoje");
+    expect(await items.count()).toBeLessThanOrEqual(14);
+  }
+
+  await customizeButton(page).click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(blockOf(page, "inicio-gasto-por-dia")).toHaveCount(0);
 });
