@@ -2,15 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 3. Notificações — próximos avisos
-
-Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lista "Em breve" de Ajustes › Notificações). Cada um entra como mais um interruptor em Avisos, no mesmo passo `sendReminders` (doc 01 §9), com a mesma regra de uma vez por pessoa e por dia e sem valores quando "Mostrar valores nas notificações" estiver desligado:
-
-- **Fatura fechando**: dias antes do fechamento, com o total até agora (doc 02 §10.3).
-- **Orçamento a 80% e a 100%**: quando o total ou uma categoria chega lá; uma vez por limite e por mês.
-- **Meta atingida**: quando o saldo da meta chega ao alvo.
-- **Central de notificações no sino** (doc 02 §6.15): a lista dos avisos, com "Marcar todas como lidas". Com ela, abrir o app deixa de marcar tudo como lido e o número no ícone passa a seguir a central.
-
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
@@ -32,6 +23,11 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
 - Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
+## Rotina diária: a confirmar
+
+- **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
+- Definir o `CRON_SECRET` em Production, fazer um novo deploy e conferir o cron (README › Cron diário).
+
 ## Acessibilidade — depois
 
 Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 200% de texto em 360 px:
@@ -45,6 +41,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Administração › Rotina diária — 10/11/2026
+
+Em produção o `CRON_SECRET` não estava definido e o cron respondia sempre 401, sem rastro. Agora:
+
+- [x] **Origem da execução** no `job_runs.report` (`trigger`: cron, manual, admin) e **linha "Recusada (segredo)"** quando a Vercel chama e a rota recusa (no máximo uma por hora).
+- [x] **Tela Administração › Rotina** (`/admin/rotina`, item em Ajustes › Administração): aviso de saúde do cron, configuração sem segredos, 14 últimas execuções com os passos em português e o botão **Rodar agora** (uma por vez, uma a cada 2 minutos, auditado como `job.run_manual` na Atividade).
+- [x] Texto do passo pulado sem "fase F2/F3"; `SegmentedLinks` quebra de linha a 200% em vez de sobrepor as abas.
+
+Testes de unidade (`src/lib/admin/routine.test.ts`, `activity.test.ts`, `runner.test.ts`), integração contra o PGlite (`src/server/domain/job-runs.integration.test.ts`: lista, configuração, Rodar agora, rota do cron) e e2e (`e2e/rotina.spec.ts` com axe no escuro e no claro). Detalhes: README (Cron diário), doc 01 §9 e §11.9, doc 02 §6.17.
 
 ### Caixinha: novo tipo de conta — 06/11/2026
 

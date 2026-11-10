@@ -164,12 +164,15 @@ export function SegmentedLinks({
 }: SegmentedLinksProps) {
   const layoutId = `segmented-links-thumb-${useId()}`;
   return (
-    <nav aria-label={ariaLabel} className={className}>
+    <nav aria-label={ariaLabel} className={cn("@container", className)}>
       <ul className={trackClass}>
         {items.map((item) => {
           const active = item.href === activeHref;
           return (
-            <li key={item.href} className="flex min-w-0 flex-1">
+            <li
+              key={item.href}
+              className="flex min-w-0 flex-1 @max-tight:flex-[1_1_max-content]"
+            >
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}

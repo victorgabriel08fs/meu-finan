@@ -392,7 +392,7 @@ export const viewport: Viewport = {
 | Tab **Relatórios** | `/relatorios/visao-geral` · `categorias` · `fluxo` · `patrimonio` · `calendario` | abas roláveis |
 | Pelo avatar / Início | `/contas` · `/contas/[id]` · `/cartoes/[id]` · `/cartoes/[id]/faturas/[yyyy-mm]` | contas e cartões |
 | Pelo avatar | `/ajustes/*` · `/importar` | perfil e preferências |
-| Administradores (Ajustes; barra lateral no desktop) | `/admin/usuarios` · `/admin/flags` · `/admin/atividade` | contas e convites · feature flags · auditoria (§6.17) |
+| Administradores (Ajustes; barra lateral no desktop) | `/admin/usuarios` · `/admin/flags` · `/admin/atividade` · `/admin/rotina` | contas e convites · feature flags · auditoria · rotina diária (§6.17) |
 | Onboarding | `/onboarding` | 4 passos, logo depois do primeiro acesso ou do convite |
 | Sem sessão | `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
 
@@ -1080,7 +1080,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
 
   Cada toque salva na conta a escolha inteira e vale para todos os aparelhos da pessoa. A mudança aparece na hora; se não salvar, a tela volta ao que estava e o toast de erro traz **Tentar de novo**. Skeleton com as alturas das três seções. Não há horário configurável nem horário silencioso: o plano Hobby envia uma vez por dia (doc 01 §9). Os textos de cada aviso estão em §10.3; fatura fechando, orçamento 80%/100% e meta atingida ficam para depois (`docs/tarefas.md`). O ícone do app mostra o número de avisos não lidos, que zera ao abrir o app.
 - **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
-- **Administração** (só administradores, antes de Sobre): Usuários ("3 pessoas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada") e Atividade — §6.17.
+- **Administração** (só administradores, antes de Sobre): Usuários ("3 pessoas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada"), Atividade e Rotina diária ("Cron e avisos") — §6.17.
 - **Sobre**: versão, "Instalar app".
 
 ### 6.15 Notificações (central)
@@ -1124,7 +1124,7 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 
 ### 6.17 Administração (`/admin`)
 
-Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop; ele fica numa lista própria, acima de Ajustes, para que a chegada dele, decidida no servidor, não desloque nada). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade** (rotas, o polegar desliza entre elas). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida dos acessos, dos convites e das flags, e nunca vê as finanças de outra pessoa."
+Só para administradores; quem não é vê a página 404. Chega-se por Ajustes › Administração (celular) ou pelo item "Administração" acima de Ajustes na barra lateral (desktop; ele fica numa lista própria, acima de Ajustes, para que a chegada dele, decidida no servidor, não desloque nada). Tela empilhada com voltar para Ajustes, título "Administração" e um segmented control **Usuários · Flags · Atividade · Rotina** (rotas, o polegar desliza entre elas; a 200% de texto as abas quebram de linha em vez de se sobrepor). Coluna de até 768 px no desktop. Princípio que aparece na própria tela: "Quem administra cuida dos acessos, dos convites e das flags, e nunca vê as finanças de outra pessoa."
 
 **Usuários**
 
@@ -1163,6 +1163,15 @@ PESSOAS
 
 - A auditoria, da mais nova para a mais antiga, um card por dia sob o `DayHeader` do extrato ("Hoje · sáb, 17 out"). Cada linha: ícone num círculo (`--danger-soft` só para exclusão), frase ("Você desativou Bruno Lima", "Carla aceitou o convite", "Ana desligou Importar extrato para todos"), detalhe em `caption` e a hora.
 - "Ver ações mais antigas" pagina; vazio: "Nenhuma ação ainda".
+
+**Rotina** (`/admin/rotina`)
+
+- Título "Rotina diária" e a frase "Todo dia entre 6h e 7h (Brasília) o app cria lançamentos recorrentes, atualiza índices, envia avisos e limpa o que foi apagado."
+- **Aviso do cron**: cartão `--warning-soft` com ícone e palavra quando o cron não rodou há 26 h ou mais, nunca rodou, a última execução falhou ou a Vercel foi recusada (o texto diz o que conferir na Vercel); com tudo certo, só a linha "Última execução automática: hoje, 06:12.".
+- **Configuração** (lista de linhas): "Segredo do cron (CRON_SECRET)" e "Chaves de notificação (VAPID)" com selo Definido/Definidas ou Não definido/Não definidas (palavra + ícone, nunca só cor, nunca o valor) e "Pessoas que recebem avisos" ("2 pessoas"; nenhuma: "Ninguém ainda. Ligue a flag em Flags e peça para inscreverem o aparelho em Ajustes › Notificações.").
+- **Rodar agora**: botão primário, largura total no celular. Abre a folha "Rodar a rotina agora?" ("Pode levar até 4 minutos. Mantenha esta tela aberta.", Rodar · Cancelar; ao fechar, o foco volta ao botão). Rodando: "Rodando…" com spinner e `aria-busy`, mais "Rodando a rotina. Pode levar alguns minutos."; ao fim, toast "Rotina concluída.", "Rotina concluída com problemas." ou "A rotina falhou.", o foco volta ao botão e a execução nova entra na lista aberta. Recusas do servidor ("Já tem uma execução em andamento. Espere terminar.", "A rotina rodou há pouco. Espere N s para rodar de novo.") vêm em toast.
+- **Últimas execuções** (14): cartão com uma linha por execução (`aria-expanded`): "sáb, 08/nov, 06:12", origem · duração e o selo Ok, Parcial, Falhou, Em andamento, Interrompida ou Recusada (segredo). Aberta, mostra cada passo (Lançamentos recorrentes, Faturas, Índices do Banco Central, Saldos de fim de mês, Avisos por push, Limpeza de excluídos) com selo, duração, o motivo ou o resumo em português ("2 Contas a vencer enviadas") e, à parte, o "Detalhe técnico" do erro, que quebra de linha. Nunca `chave: valor` em inglês. Vazio: "Nenhuma execução ainda. A primeira roda sozinha entre 6h e 7h de Brasília, ou use Rodar agora."
+- Skeleton com a altura de cada bloco; sem rolagem lateral a 200%.
 
 **Estados**: skeletons com a forma de cada tela; erros das ações em toast com a mensagem do servidor ("É preciso manter pelo menos um administrador ativo.").
 

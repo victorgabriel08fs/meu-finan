@@ -15,6 +15,22 @@ const line = (patch: Partial<ActivityEntry>, viewer: string | null = null) =>
   describeActivity({ ...base, ...patch }, viewer);
 
 describe("describeActivity", () => {
+  it("describes running the daily routine by hand", () => {
+    expect(
+      line({
+        action: "job.run_manual",
+        targetUserId: null,
+        targetName: null,
+        targetEmail: null,
+        metadata: { job: "daily" },
+      }),
+    ).toEqual({
+      kind: "job",
+      title: "Ana rodou a rotina diária",
+      detail: "Pelo botão Rodar agora",
+    });
+  });
+
   it("names the viewer as Você", () => {
     expect(line({}, "ana").title).toBe("Você convidou Bruno Lima");
     expect(line({}, "outra").title).toBe("Ana convidou Bruno Lima");

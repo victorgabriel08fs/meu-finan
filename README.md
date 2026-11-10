@@ -22,7 +22,7 @@ Controle financeiro pessoal, mobile-first e instalável como app (PWA). Registre
 - **Subcategorias**: em Ajustes › Categorias, "Subcategoria de" põe uma categoria dentro de outra, como Mercado › Feira (um nível só, do mesmo tipo da mãe). Arquivar a mãe arquiva as subcategorias, e o Desfazer traz todas de volta. O orçamento fica na categoria principal e soma as subcategorias; os relatórios, os resumos e os insights também somam as subcategorias na mãe.
 - **Organizar categorias**: na folha de uma categoria, "Mais ações" tem **Mesclar com outra** (os lançamentos, as recorrências, as regras de importação e o orçamento vão para a escolhida, e a origem fica em "Arquivadas", vazia; uma mãe leva as subcategorias para dentro da principal escolhida) e **Arquivar categoria**, que pergunta se as despesas (ou receitas) vão para outra categoria. Passar ou mesclar não tem Desfazer: a folha diz quantos lançamentos vão. Arquivar sem passar mantém os lançamentos e o Desfazer. "Mudar a ordem" (abaixo de cada lista) sobe e desce as categorias na árvore, com Desfazer, e a ordem vale nas listas de escolha, nos orçamentos, no extrato e na lista "Todas" da Nova transação.
 - **Ajustes**: passkeys, senha e sessões; aparência, início do mês e dicas de uso; categorias e subcategorias; onboarding em 4 passos.
-- **Administração** (só administradores): convidar pessoas por link, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; feature flags para todos ou por pessoa; atividade (auditoria).
+- **Administração** (só administradores): convidar pessoas por link, desativar e reativar, encerrar sessões, mudar o papel, gerar link de redefinição, excluir conta com todos os dados; feature flags para todos ou por pessoa; atividade (auditoria); rotina diária (se o cron roda, a configuração, as últimas execuções e o botão "Rodar agora").
 
 ## Stack
 
@@ -181,6 +181,25 @@ Para rodar na hora (por exemplo, para carregar os índices logo após o primeiro
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 ```
+
+### Tela Rotina diária
+
+**Administração › Rotina** (`/admin/rotina`; no celular, também em Ajustes › Administração › Rotina diária) mostra, só para administradores:
+
+- **O aviso do cron**: "Última execução automática: hoje, 06:12." quando está tudo certo. Em cartão de aviso: o cron não roda há 26 horas ou mais, nunca rodou, a última execução automática falhou ou a Vercel chamou e a rota recusou. Só conta a execução automática; a manual e a do botão não escondem o problema.
+- **A configuração**: se o `CRON_SECRET` está definido, se as chaves VAPID estão definidas e quantas pessoas recebem avisos (flag `notificacoes_push`, aparelho inscrito e pelo menos um aviso ligado). Nunca mostra o valor de um segredo.
+- **As últimas 14 execuções**: dia e hora, origem (Automática (Vercel), Manual (curl), Botão Rodar agora, ou Origem não registrada para as antigas), duração e resultado (Ok, Parcial, Falhou, Em andamento, Interrompida, Recusada (segredo)). Cada linha abre e mostra os passos, em português, com o motivo de um passo pulado e o erro técnico à parte. Uma execução "Em andamento" há mais de 6 minutos aparece como Interrompida.
+- **Rodar agora**: roda a rotina inteira, depois de uma confirmação, e leva até 4 minutos (mantenha a tela aberta). É seguro repetir: os avisos que já saíram no dia não são enviados de novo. Limites: uma execução por vez ("Já tem uma execução em andamento") e no máximo uma a cada 2 minutos para todo o app ("A rotina rodou há pouco. Espere N s…"). Cada uso fica na Atividade ("Ana rodou a rotina diária"), sem segredo.
+
+**Origem da execução.** A rota marca a origem pelo cabeçalho `User-Agent`: `vercel-cron/1.0` vira "Automática (Vercel)" e qualquer outro, "Manual (curl)". Isso é uma **suposição a confirmar no primeiro cron real**: ninguém ainda conferiu o valor neste app. A origem é só um rótulo: quem autentica é o `CRON_SECRET`.
+
+**Chamada recusada.** Se a Vercel chama a rota e ela responde 401 (sem `CRON_SECRET` em Production, ou com um valor diferente), a rota grava uma linha "Recusada (segredo)" em `job_runs`, no máximo uma por hora, sem corpo, cabeçalhos nem segredo. Chamadas sem esse `User-Agent` (um curl sem o segredo, por exemplo) só recebem o 401 e não deixam linha.
+
+**Quando o cron não roda**, confira, nesta ordem:
+
+1. No painel da Vercel, em **Schedules › Cron Jobs**: o job `/api/cron/daily` aparece e está ativo? (O cron só existe no deploy de produção.)
+2. Em **Settings › Environment Variables**: `CRON_SECRET` definido em **Production**. Depois de criar ou mudar a variável, faça um **novo deploy** de produção: o deploy atual não enxerga o valor novo.
+3. Para disparar na hora pela Vercel: `vercel crons run /api/cron/daily`. A tela Rotina diária mostra a execução (ou a recusa) em seguida.
 
 ## Segurança
 

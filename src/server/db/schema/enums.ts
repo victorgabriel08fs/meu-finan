@@ -92,6 +92,7 @@ export const AUDIT_ACTIONS = [
   "access.recovered",
   "flag.global_set",
   "flag.user_set",
+  "job.run_manual",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

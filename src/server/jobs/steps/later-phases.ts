@@ -11,10 +11,10 @@ function laterPhase(name: string, reason: string): JobStep {
 
 export const rollInvoices = laterPhase(
   "rollInvoices",
-  "Faturas de cartão de crédito chegam na fase F2.",
+  "Faturas: ainda não automatizado.",
 );
 
 export const snapshotBalances = laterPhase(
   "snapshotBalances",
-  "O histórico de saldos (patrimônio) chega na fase F3.",
+  "Histórico de saldos: ainda não automatizado.",
 );

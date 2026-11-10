@@ -40,6 +40,7 @@ const SCREENS = [
   "/admin/usuarios",
   "/admin/flags",
   "/admin/atividade",
+  "/admin/rotina",
 ];
 
 /** Screens that need an id: the first goal, account and card of the demo. */
