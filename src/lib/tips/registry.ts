@@ -320,6 +320,20 @@ export const TIPS: readonly Tip[] = [
     icon: "vault",
     link: { href: "/contas/nova?tipo=caixinha", label: "Criar caixinha" },
   },
+  {
+    id: "novidade-inicio-gasto-por-dia",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the block is added in "Personalizar o Início".
+    routes: [],
+    anchor: null,
+    title: "Quanto dá para gastar por dia",
+    body: "Traga para o Início quanto dá para gastar por dia em cada um dos próximos 14 dias, pelo saldo previsto das suas contas.",
+    since: "2026-11-10",
+    order: 15,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

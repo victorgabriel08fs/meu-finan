@@ -141,6 +141,10 @@ describe("HomeBlockSkeleton", () => {
         "h-132.25 rounded-card @xs:h-117.75 @min-[22.25rem]:h-112.25 @min-[33.75rem]:h-106.75",
       ],
       ["net-worth", "h-51.25 rounded-card @min-[21.75rem]:h-46.75"],
+      [
+        "daily-spend",
+        "h-143 rounded-card @min-[16.75rem]:h-138.5 @min-[18.5625rem]:h-134 @min-[20.875rem]:h-128.5",
+      ],
     ] as const) {
       const html = render(id);
       expect(html, id).toMatch(/^<div class="@container">/);

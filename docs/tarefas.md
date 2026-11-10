@@ -23,6 +23,24 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
 - Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
+## 8. Despesas compartilhadas
+
+**Pedido do dono (10/11/2026).** A pessoa adiciona outra pessoa para dividir despesas em comum e vê, de forma clara, quanto cada um paga dentre as despesas compartilhadas selecionadas. Tela bem funcional e bonita, fácil de detalhar.
+
+- **Divisão**: valor livre (digitado por pessoa) ou proporcional (percentual); propor também outras formas, por exemplo partes iguais, pesos/cotas (ex.: 2 para 1), proporcional à renda de cada um, por item da despesa e "quem pagou" com acerto de contas (saldo entre as pessoas: "Bruno te deve R$ 120" e "Marcar como acertado").
+- **Seleção**: escolher as despesas que entram (por lançamento, por categoria ou por período) e ver o detalhe por despesa e o total por pessoa.
+- **Decidido pelo dono (10/11/2026): a outra pessoa tem login próprio** (outra conta do app) e o convite para dividir vai **pelo app, com notificação** (push). Vale também para a tarefa 9.
+- **Com quem**: decidir se a outra pessoa é outra conta do app (convidada, cada uma com o próprio login) ou só um nome cadastrado por quem divide. Se for outra conta, **isso muda a regra de isolamento entre contas** (CLAUDE.md: "nothing reads another account's financial rows") e precisa de um ADR (doc 01 §17, a fase F4 já prevê "finanças compartilhadas entre contas"): o que cada um vê da despesa do outro, consentimento, como sair, o que acontece ao excluir a conta.
+- Atrás de uma flag nova enquanto estiver em teste.
+
+## 9. Saldo compartilhado (caixinha em conjunto)
+
+**Pedido do dono (10/11/2026).** Uma espécie de caixinha compartilhada: cada pessoa diz quanto está aportando ou pretende aportar, e a tela mostra o saldo total, quanto cada um já colocou e a projeção (quando chega no objetivo, quanto falta por pessoa).
+
+- Partir da Caixinha (tarefa entregue em 06/11/2026) e das Metas (projeção, aportes): decidir se é uma caixinha com participantes, uma meta compartilhada ou os dois.
+- Aportes: realizados (transferência de uma conta da pessoa para a caixinha) e planejados (valor por mês por pessoa); projeção por pessoa e total.
+- Mesma decisão de isolamento da tarefa 8 (participantes como outras contas do app ou só nomes) — as duas tarefas devem compartilhar o mesmo modelo de "participantes" e o mesmo ADR.
+
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
@@ -41,6 +59,14 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Bloco "Quanto dá para gastar por dia" — 10/11/2026
+
+Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, com o teto do orçamento por linha, destaque de hoje e lista com barras finas. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 linha). Decisões do dono: dias até o fim do mês financeiro, 14 dias, teto por linha, lista com barras. O card Orçamento ganhou a nota "O saldo previsto não cobre o mês: veja Quanto dá para gastar." e a descrição dele na folha virou "Quanto do orçamento já foi e o ritmo do mês." Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).
+
+Testes de unidade e fast-check (`src/lib/finance/spendable-by-day.test.ts`), integração (`src/app/(app)/inicio/blocks.integration.test.tsx`), componentes e skeleton, e2e (`e2e/inicio-personalizavel.spec.ts`, `texto-grande.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 02 §5.17 e §6.3, doc 03 §11 e §12.
+
+**Ficou para depois:** marcar a próxima receita na lista do bloco.
 
 ### Administração › Rotina diária — 10/11/2026
 

@@ -2,6 +2,7 @@
 // The other blocks read straight from their domains: periodTotals,
 // getBudgets, listGoals.
 import { and, between, eq, inArray, isNull, sql } from "drizzle-orm";
+import { cache } from "react";
 import {
   addDays,
   type Forecast,
@@ -12,12 +13,19 @@ import {
   isoMonth,
   parse,
   shiftPeriod,
+  spendablePerDayByDay,
 } from "@/lib/finance";
 import { db } from "@/server/db/client";
 import { categories, transactions } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
-import type { PeriodRange, UserContext } from "./context";
-import { categoryRootId, liquidPendingFlows, rootCategory } from "./reports";
+import { getBudgets } from "./budgets";
+import { type PeriodRange, resolvePeriod, type UserContext } from "./context";
+import {
+  cashFlowReport,
+  categoryRootId,
+  liquidPendingFlows,
+  rootCategory,
+} from "./reports";
 import {
   accountsOf,
   cardInvoicesOf,
@@ -179,6 +187,85 @@ export async function getUpcoming(ctx: UserContext): Promise<UpcomingItem[]> {
     ),
   ].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
 }
+
+export type SpendablePerDay = {
+  /** The person has accounts to spend from (no cards or caixinhas). */
+  hasAccounts: boolean;
+  /** Today and the days after it: up to 14, never past `until`. */
+  rows: {
+    date: string;
+    daysLeft: number;
+    perDayCents: number;
+    cappedByBudget: boolean;
+  }[];
+  /** How far under zero the forecast goes up to `until`; 0 when it does not. */
+  shortfallCents: number;
+  /** The forecast balance at the end of today; null without accounts. */
+  balanceTodayCents: number | null;
+  /** End of the financial month the days are counted to, `YYYY-MM-DD`. */
+  until: string;
+  /** The current month has a budget, so each day is also limited by it. */
+  hasBudget: boolean;
+  /** The month of that budget, `YYYY-MM`. */
+  budgetMonth: string;
+};
+
+/**
+ * Quanto dá para gastar por dia (doc 03 §12): for each of the next days, the
+ * lowest forecast balance of the spendable accounts from that day to the end
+ * of the financial month, spread over the days left, and never above what the
+ * month's budget leaves for them. Always from today in the month that
+ * contains it, whatever month the Início shows (`?mes=`). Memoised per
+ * request: the Orçamento card asks too, to note that the forecast does not
+ * cover the month, without another query.
+ */
+export const getSpendablePerDay = cache(async function getSpendablePerDay(
+  ctx: UserContext,
+): Promise<SpendablePerDay> {
+  const current = resolvePeriod(ctx, null);
+  const [report, budgets] = await Promise.all([
+    cashFlowReport(ctx, current),
+    getBudgets(ctx, current),
+  ]);
+  const budgetAvailableCents = budgets.total?.pace.availableCents ?? null;
+  const base = {
+    until: current.end,
+    hasBudget: budgetAvailableCents !== null,
+    budgetMonth: current.month,
+  };
+  if (!report.hasAccounts) {
+    return {
+      ...base,
+      hasAccounts: false,
+      rows: [],
+      shortfallCents: 0,
+      balanceTodayCents: null,
+    };
+  }
+  const { rows, shortfallCents } = spendablePerDayByDay({
+    days: report.days.map((day) => ({
+      date: parse(day.date),
+      projectedCents: day.projectedCents,
+    })),
+    today: ctx.today,
+    until: parse(current.end),
+    budgetAvailableCents,
+  });
+  return {
+    ...base,
+    hasAccounts: true,
+    rows: rows.map((row) => ({
+      date: iso(row.date),
+      daysLeft: row.daysLeft,
+      perDayCents: row.perDayCents,
+      cappedByBudget: row.cappedByBudget,
+    })),
+    shortfallCents,
+    balanceTodayCents:
+      report.days.find((day) => day.date === iso(ctx.today))?.projectedCents ??
+      null,
+  };
+});
 
 export type AccountsStrip = {
   accounts: AccountListItem[];

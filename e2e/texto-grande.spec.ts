@@ -85,6 +85,14 @@ test.describe("telas com texto grande", () => {
       }) => {
         test.setTimeout(420_000);
         await page.setViewportSize({ width, height: 780 });
+        // Opening Ajustes › Novidades marks Ana's novidades read (a Server
+        // Action, POST to the page). Block it so this sweep leaves them unread
+        // for tips.spec.ts, which runs later and expects their balloons.
+        await page.route("**/ajustes/novidades", (route) =>
+          route.request().method() === "POST"
+            ? route.abort()
+            : route.continue(),
+        );
         const screens = [...SCREENS, ...(await screensWithIds(page))];
         const problems: string[] = [];
         for (const path of screens) {
@@ -225,4 +233,36 @@ test("o detalhe da categoria e a folha de ordem a 200% não rolam para o lado ne
   const save = order.getByRole("button", { name: "Salvar ordem" });
   await save.scrollIntoViewIfNeeded();
   await save.click({ trial: true });
+});
+
+test("Quanto dá para gastar por dia a 200% em 360 px não corta valores nem rola para o lado", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.goto("/inicio");
+  await settle(page);
+  const customize = page.getByRole("button", { name: "Personalizar o Início" });
+  const sheet = page.getByRole("dialog", { name: "Personalizar o Início" });
+  const name = "Quanto dá para gastar por dia";
+  await customize.click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  await expect(sheet).toBeHidden();
+  try {
+    await applyScale(page, true);
+    const block = page.locator(
+      'section[aria-labelledby="inicio-gasto-por-dia"]:visible',
+    );
+    await expect(block).toBeVisible({ timeout: 30_000 });
+    await block.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+    await expectNoHorizontalScroll(page, "Gasto por dia a 200%");
+    expect(await clippedValues(page)).toEqual([]);
+  } finally {
+    await customize.click();
+    await sheet.getByRole("switch", { name, exact: true }).click();
+    await sheet.getByRole("button", { name: "Salvar" }).click();
+    await expect(sheet).toBeHidden();
+  }
 });

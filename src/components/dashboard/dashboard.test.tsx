@@ -155,6 +155,35 @@ describe("BudgetCard", () => {
     expect(html).toContain('href="/planejar/orcamentos"');
   });
 
+  it("keeps the per-day pace and adds the note when the forecast does not cover the month", () => {
+    const render = (forecastShort: boolean, isCurrent = true) =>
+      text(
+        renderToStaticMarkup(
+          <BudgetCard
+            total={{
+              budgetCents: 450_000,
+              spentCents: 144_500,
+              scheduledCents: 0,
+              pace: pace(),
+            }}
+            items={[]}
+            monthName="outubro"
+            isCurrent={isCurrent}
+            endLabel="31/out"
+            href="/planejar/orcamentos"
+            forecastShort={forecastShort}
+          />,
+        ),
+      );
+    const note =
+      "O saldo previsto não cobre o mês: veja Quanto dá para gastar.";
+    const short = render(true);
+    expect(short).toContain("Pode gastar R$ 53,05 por dia até 31/out");
+    expect(short).toContain(note);
+    expect(render(false)).not.toContain("não cobre o mês");
+    expect(render(true, false)).not.toContain("não cobre o mês");
+  });
+
   it("tells how a past month ended, without the today marker", () => {
     const html = renderToStaticMarkup(
       <BudgetCard

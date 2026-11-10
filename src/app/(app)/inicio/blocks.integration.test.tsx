@@ -79,6 +79,7 @@ const components = {} as {
   incomeExpense: typeof import("@/components/dashboard/income-expense-block");
   netWorth: typeof import("@/components/dashboard/net-worth-block");
   noRecords: typeof import("@/components/dashboard/block-no-records");
+  spendable: typeof import("@/components/dashboard/spendable-per-day-block");
 };
 
 // 14/out/2026, 12:00 in São Paulo.
@@ -133,6 +134,9 @@ beforeAll(async () => {
   components.netWorth = await import("@/components/dashboard/net-worth-block");
   components.noRecords = await import(
     "@/components/dashboard/block-no-records"
+  );
+  components.spendable = await import(
+    "@/components/dashboard/spendable-per-day-block"
   );
   const { listCategories } = await import("@/server/domain/categories");
 
@@ -467,5 +471,163 @@ describe("Saldo e caixinhas", () => {
   it("keeps the caixinha of another person out", async () => {
     const { props } = await load("balance", bia, "2026-10");
     expect(props.savingsBoxCents).toBeNull();
+  });
+});
+
+describe("Quanto dá para gastar por dia", () => {
+  type Spendable = import("@/server/domain/dashboard").SpendablePerDay;
+
+  async function loadSpendable(ctx: UserContext, month: string) {
+    const range = context.resolvePeriod(ctx, month);
+    const element = (await blocks.HOME_BLOCK_LOADERS["daily-spend"]({
+      ctx,
+      range,
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  it("lists the days left of today's month, counted to its last day", async () => {
+    const { type, props } = await loadSpendable(ana, "2026-10");
+    expect(type).toBe(components.spendable.SpendablePerDayBlock);
+    expect(props).toMatchObject({ today: "2026-10-14", isCurrent: true });
+    const spendable = props.spendable as Spendable;
+    expect(spendable.until).toBe("2026-10-31");
+    // 14/out to 31/out is 18 days: the first 14 are listed.
+    expect(spendable.rows).toHaveLength(14);
+    expect(spendable.rows[0]).toMatchObject({
+      date: "2026-10-14",
+      daysLeft: 18,
+    });
+    expect(spendable.rows.at(-1)).toMatchObject({
+      date: "2026-10-27",
+      daysLeft: 5,
+    });
+    expect(spendable.hasBudget).toBe(false);
+  });
+
+  it("counts the rent and the invoice due before the end of the month", async () => {
+    const { props } = await loadSpendable(ana, "2026-10");
+    const { rows } = props.spendable as Spendable;
+    // The Saldo previsto of the month's end is what today's balance leaves
+    // after the rent (15/out) and the card's invoice (25/out): well under it.
+    const { getBalanceSummary } = await import("@/server/domain/dashboard");
+    const summary = await getBalanceSummary(
+      ana,
+      context.resolvePeriod(ana, "2026-10"),
+    );
+    expect(rows[0]?.perDayCents).toBeLessThanOrEqual(
+      Math.floor(summary.balanceCents / 18),
+    );
+    expect(rows[0]?.perDayCents).toBeGreaterThan(0);
+  });
+
+  it("shows the same days in another month, saying where it starts", async () => {
+    const current = await loadSpendable(ana, "2026-10");
+    for (const month of ["2026-09", "2026-12"]) {
+      const other = await loadSpendable(ana, month);
+      expect(other.type).toBe(components.spendable.SpendablePerDayBlock);
+      expect(other.props.isCurrent).toBe(false);
+      expect(other.props.spendable).toEqual(current.props.spendable);
+    }
+  });
+
+  it("invites without an account off the cards and caixinhas", async () => {
+    const none = await loadSpendable(caio, "2026-10");
+    expect(none.type).toBe(
+      components.spendable.SpendablePerDayNoAccountsInvite,
+    );
+  });
+
+  it("gives each account its own days", async () => {
+    // Bia's account is empty: nothing to spend, whatever Ana has.
+    const { props } = await loadSpendable(bia, "2026-10");
+    const spendable = props.spendable as Spendable;
+    expect(spendable.rows.every((row) => row.perDayCents === 0)).toBe(true);
+    expect(spendable.shortfallCents).toBe(0);
+  });
+
+  it("limits each day by what the month's budget leaves", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    const { listCategories } = await import("@/server/domain/categories");
+    const { upsertBudget } = await import("@/server/domain/budgets");
+    const market = (await listCategories("ana")).find(
+      (item) => item.name === "Mercado",
+    );
+    if (!market) throw new Error("categoria Mercado");
+    await upsertBudget(ana, {
+      categoryId: market.id,
+      month: "2026-10",
+      amountCents: 24_550 + 6_450,
+    });
+    try {
+      const { props } = await loadSpendable(ana, "2026-10");
+      const spendable = props.spendable as Spendable;
+      expect(spendable.hasBudget).toBe(true);
+      expect(spendable.budgetMonth).toBe("2026-10");
+      // 31.000 − 6.450 paid = 24.550 over 18 days.
+      expect(spendable.rows[0]).toMatchObject({
+        perDayCents: Math.floor(24_550 / 18),
+        cappedByBudget: true,
+      });
+      expect(spendable.rows[0]?.perDayCents).toBe(1_363);
+    } finally {
+      await db.delete(schema.budgets).where(eq(schema.budgets.userId, "ana"));
+    }
+  });
+
+  it("notes on the Orçamento that the forecast does not cover the month, only this month", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    const { listCategories } = await import("@/server/domain/categories");
+    const { upsertBudget } = await import("@/server/domain/budgets");
+    const market = (await listCategories("ana")).find(
+      (item) => item.name === "Mercado",
+    );
+    const checking = (await accounts.listAccounts("ana")).find(
+      (item) => item.name === "Conta principal",
+    );
+    if (!market || !checking) throw new Error("fixtures");
+    const budgetOf = async (month: string) => {
+      const range = context.resolvePeriod(ana, month);
+      const element = (await blocks.HOME_BLOCK_LOADERS.budget({
+        ctx: ana,
+        range,
+      })) as ReactElement<Props>;
+      return element.props.forecastShort === true;
+    };
+    await upsertBudget(ana, {
+      categoryId: market.id,
+      month: "2026-10",
+      amountCents: 31_000,
+    });
+    await upsertBudget(ana, {
+      categoryId: market.id,
+      month: "2026-09",
+      amountCents: 31_000,
+    });
+    try {
+      // The forecast covers the rest of the month: no note.
+      expect(await budgetOf("2026-10")).toBe(false);
+      // A bill bigger than the balance on the 20th takes it under zero.
+      await transactions.createTransaction(ana, {
+        kind: "expense",
+        amountCents: 5_000_000,
+        accountId: checking.id,
+        categoryId: market.id,
+        description: "Reforma",
+        occurredOn: "2026-10-20",
+      });
+      for (const store of memo.stores) store.clear();
+      expect(await budgetOf("2026-10")).toBe(true);
+      // Another month's budget never carries the note.
+      for (const store of memo.stores) store.clear();
+      expect(await budgetOf("2026-09")).toBe(false);
+    } finally {
+      await db
+        .delete(schema.transactions)
+        .where(eq(schema.transactions.description, "Reforma"));
+      await db.delete(schema.budgets).where(eq(schema.budgets.userId, "ana"));
+    }
   });
 });
