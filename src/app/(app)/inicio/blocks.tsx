@@ -200,7 +200,9 @@ async function BudgetBlock({ ctx, range }: HomeBlockProps) {
   return budgets.total ? (
     <BudgetCard
       total={budgets.total}
-      forecastShort={spendable?.hasAccounts && spendable.shortfallCents > 0}
+      forecastShort={
+        spendable?.hasAccounts === true && spendable.shortfallCents > 0
+      }
       items={budgets.items}
       monthName={monthName(range.month)}
       isCurrent={range.isCurrent}
