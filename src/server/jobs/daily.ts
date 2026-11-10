@@ -1,6 +1,11 @@
 import "server-only";
 import { dbJobRunStore } from "./job-run-store";
-import { type JobRunSummary, type JobStep, runJob } from "./runner";
+import {
+  type JobRunSummary,
+  type JobStep,
+  type JobTrigger,
+  runJob,
+} from "./runner";
 import { rollInvoices, snapshotBalances } from "./steps/later-phases";
 import { materializeRecurrences } from "./steps/materialize-recurrences";
 import { purgeDeleted } from "./steps/purge-deleted";
@@ -25,8 +30,11 @@ export const dailySteps: readonly JobStep[] = [
   purgeDeleted,
 ];
 
-export function runDailyJob(): Promise<JobRunSummary> {
+export function runDailyJob(
+  options: { trigger?: JobTrigger } = {},
+): Promise<JobRunSummary> {
   return runJob({
+    trigger: options.trigger ?? "manual",
     job: DAILY_JOB,
     steps: dailySteps,
     store: dbJobRunStore,

@@ -87,6 +87,31 @@ describe("runJob", () => {
       expect(step.durationMs).toBeGreaterThanOrEqual(0);
   });
 
+  it("keeps who started the run in the report and the summary", async () => {
+    const { store, finished } = memoryStore();
+
+    const summary = await runJob({
+      job: "daily",
+      steps: [ok("a")],
+      store,
+      budgetMs: 10_000,
+      trigger: "admin",
+      logger: silent,
+    });
+
+    expect(summary.trigger).toBe("admin");
+    expect(finished[0]?.report.trigger).toBe("admin");
+
+    const legacy = await runJob({
+      job: "daily",
+      steps: [ok("a")],
+      store,
+      budgetMs: 10_000,
+      logger: silent,
+    });
+    expect(legacy).not.toHaveProperty("trigger");
+  });
+
   it("isolates a failing step and keeps running the next ones", async () => {
     const { store } = memoryStore();
     const after = vi.fn(async () => ({ status: "ok" as const }));

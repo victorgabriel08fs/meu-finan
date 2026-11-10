@@ -122,7 +122,14 @@ export type JobStepReport = {
 };
 
 /** job_runs.report */
-export type JobRunReport = { durationMs: number; steps: JobStepReport[] };
+export type JobRunReport = {
+  durationMs: number;
+  steps: JobStepReport[];
+  /** Who started the run; absent in runs recorded before it was kept. */
+  trigger?: "cron" | "manual" | "admin";
+  /** A call refused before running anything: no steps. */
+  rejected?: "unauthorized";
+};
 
 /**
  * audit_log.metadata: the details of an action that the sentence in
@@ -144,4 +151,6 @@ export type AuditMetadata = {
   flag?: string;
   /** flag.*: on, off, or null for back to the default. */
   value?: boolean | null;
+  /** job.run_manual: which job. */
+  job?: string;
 };

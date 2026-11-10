@@ -41,10 +41,17 @@ export interface StepReport {
   error?: string;
 }
 
+/** Who started a run: Vercel Cron, a call with the secret by hand, or the admin screen. */
+export type JobTrigger = "cron" | "manual" | "admin";
+
 /** Stored in job_runs.report. */
 export interface JobRunReport {
   durationMs: number;
   steps: StepReport[];
+  /** Absent in runs recorded before the origin was kept. */
+  trigger?: JobTrigger;
+  /** A call that was refused before running anything (no steps). */
+  rejected?: "unauthorized";
 }
 
 export interface JobRunSummary extends JobRunReport {
@@ -81,6 +88,8 @@ export interface RunJobOptions {
   store: JobRunStore;
   /** No step starts after this many milliseconds, and a running step is abandoned. */
   budgetMs: number;
+  /** Who started the run; kept in the report. */
+  trigger?: JobTrigger;
   newId?: () => string;
   logger?: Pick<Console, "error">;
 }
@@ -131,6 +140,7 @@ export async function runJob(options: RunJobOptions): Promise<JobRunSummary> {
   const report: JobRunReport = {
     durationMs: elapsedMs(startTick),
     steps: reports,
+    ...(options.trigger ? { trigger: options.trigger } : {}),
   };
   try {
     await store.finish({ id, job, startedAt, finishedAt, status, report });

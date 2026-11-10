@@ -1,6 +1,7 @@
 import { readServerEnv } from "@/server/env";
 import { isAuthorizedCronRequest } from "@/server/jobs/cron-auth";
-import { runDailyJob } from "@/server/jobs/daily";
+import { DAILY_JOB, runDailyJob } from "@/server/jobs/daily";
+import { recordRejectedCronCall } from "@/server/jobs/job-run-store";
 
 export const maxDuration = 300;
 
@@ -15,7 +16,13 @@ const NO_STORE = { "Cache-Control": "no-store" };
 export async function GET(request: Request): Promise<Response> {
   // Read the header first: request data also keeps this handler out of prerendering.
   const authorization = request.headers.get("authorization");
+  // Only a label of who called (the secret is the credential): Vercel Cron
+  // sends `vercel-cron/1.0`. To be confirmed on the first real cron run.
+  const fromVercel = (request.headers.get("user-agent") ?? "").startsWith(
+    "vercel-cron/",
+  );
   if (!isAuthorizedCronRequest(authorization, cronSecret())) {
+    if (fromVercel) await recordRejectedCronCall(DAILY_JOB);
     return Response.json(
       {
         ok: false,
@@ -26,7 +33,9 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const summary = await runDailyJob();
+    const summary = await runDailyJob({
+      trigger: fromVercel ? "cron" : "manual",
+    });
     const failed = summary.status === "failed";
     return Response.json(
       { ok: !failed, ...summary },
