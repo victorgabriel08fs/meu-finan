@@ -44,7 +44,7 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
-- Definir o `CRON_SECRET` em Production, fazer um novo deploy e conferir o cron (README › Cron diário).
+- ~~Definir o `CRON_SECRET` em Production~~: feito pelo dono em 10/11/2026; o "Rodar agora" funcionou. Falta só a confirmação da execução automática (item acima).
 
 ## Acessibilidade — depois
 
