@@ -37,6 +37,7 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 
 - **Divisão**: valor livre (digitado por pessoa) ou proporcional (percentual); propor também outras formas, por exemplo partes iguais, pesos/cotas (ex.: 2 para 1), proporcional à renda de cada um, por item da despesa e "quem pagou" com acerto de contas (saldo entre as pessoas: "Bruno te deve R$ 120" e "Marcar como acertado").
 - **Seleção**: escolher as despesas que entram (por lançamento, por categoria ou por período) e ver o detalhe por despesa e o total por pessoa.
+- **Decidido pelo dono (10/11/2026): a outra pessoa tem login próprio** (outra conta do app) e o convite para dividir vai **pelo app, com notificação** (push). Vale também para a tarefa 9.
 - **Com quem**: decidir se a outra pessoa é outra conta do app (convidada, cada uma com o próprio login) ou só um nome cadastrado por quem divide. Se for outra conta, **isso muda a regra de isolamento entre contas** (CLAUDE.md: "nothing reads another account's financial rows") e precisa de um ADR (doc 01 §17, a fase F4 já prevê "finanças compartilhadas entre contas"): o que cada um vê da despesa do outro, consentimento, como sair, o que acontece ao excluir a conta.
 - Atrás de uma flag nova enquanto estiver em teste.
 
