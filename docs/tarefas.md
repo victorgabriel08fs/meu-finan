@@ -2,15 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 3. Notificações — próximos avisos
-
-Ficaram de fora da primeira leva de avisos (05/11/2026) e saíram da tela (a lista "Em breve" de Ajustes › Notificações). Cada um entra como mais um interruptor em Avisos, no mesmo passo `sendReminders` (doc 01 §9), com a mesma regra de uma vez por pessoa e por dia e sem valores quando "Mostrar valores nas notificações" estiver desligado:
-
-- **Fatura fechando**: dias antes do fechamento, com o total até agora (doc 02 §10.3).
-- **Orçamento a 80% e a 100%**: quando o total ou uma categoria chega lá; uma vez por limite e por mês.
-- **Meta atingida**: quando o saldo da meta chega ao alvo.
-- **Central de notificações no sino** (doc 02 §6.15): a lista dos avisos, com "Marcar todas como lidas". Com ela, abrir o app deixa de marcar tudo como lido e o número no ícone passa a seguir a central.
-
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
