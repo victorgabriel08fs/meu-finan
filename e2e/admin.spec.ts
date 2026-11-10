@@ -128,10 +128,12 @@ test("desligar importar_extrato tira a entrada de Ajustes e fecha /importar", as
   const card = page.locator('[data-flag="importar_extrato"]');
   await page.goto("/admin/flags");
   await card.getByRole("radio", { name: "Desligado" }).click();
-  await expect(
-    page.getByText("Importar extrato desligado para todos."),
-  ).toBeVisible();
   try {
+    // Inside the try: if the first request is slow, the flag is still put
+    // back for the tests that come after.
+    await expect(
+      page.getByText("Importar extrato desligado para todos."),
+    ).toBeVisible({ timeout: 15_000 });
     await page.goto("/ajustes");
     await expect(
       page.getByRole("link", { name: /Exportar lançamentos/ }),
@@ -149,7 +151,7 @@ test("desligar importar_extrato tira a entrada de Ajustes e fecha /importar", as
     await card.getByRole("radio", { name: "Padrão" }).click();
     await expect(
       page.getByText(/Importar extrato voltou ao padrão/),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
   }
   await page.goto("/ajustes");
   await expect(

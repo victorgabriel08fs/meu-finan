@@ -150,12 +150,12 @@ function CronNotice({
   } else if (health.state === "never") {
     title = "Ainda não houve nenhuma execução automática.";
     body =
-      "O cron só roda no deploy de produção. Confira Settings › Cron Jobs na Vercel.";
+      "O cron só roda no deploy de produção. Confira Schedules › Cron Jobs na Vercel.";
   } else if (health.state === "stale") {
     title = `O cron da Vercel não rodou desde ${deadlineLabel(health.at, now)}.`;
     body = (
       <>
-        Confira na Vercel: Settings › Cron Jobs (se o job aparece e está ativo)
+        Confira na Vercel: Schedules › Cron Jobs (se o job aparece e está ativo)
         e Settings › Environment Variables (<code>CRON_SECRET</code> em
         Production). Depois de mexer nas variáveis, faça um novo deploy de
         produção.
