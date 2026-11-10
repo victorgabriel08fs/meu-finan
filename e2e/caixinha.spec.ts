@@ -79,11 +79,13 @@ test("cria uma caixinha: o Saldo em contas não muda e o patrimônio também nã
   patrimonioBefore = await patrimonio(page);
 
   await page.goto("/contas/nova?tipo=caixinha");
-  await expect(page.getByLabel("Nome")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel("Nome").filter({ visible: true })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(
     page.getByText("Para guardar dinheiro à parte.", { exact: false }),
   ).toBeVisible();
-  await page.getByLabel("Nome").fill(BOX);
+  await page.getByLabel("Nome").filter({ visible: true }).fill(BOX);
   await page.getByRole("button", { name: "Criar caixinha" }).click();
   await expect(toast(page).filter({ hasText: "Caixinha criada" })).toBeVisible({
     timeout: 30_000,
@@ -144,7 +146,9 @@ test("sem violações de acessibilidade em Contas e no formulário, nos dois tem
       await expectNoA11yViolations(page);
 
       await page.goto("/contas/nova?tipo=caixinha");
-      await expect(page.getByLabel("Nome")).toBeVisible({ timeout: 30_000 });
+      await expect(
+        page.getByLabel("Nome").filter({ visible: true }),
+      ).toBeVisible({ timeout: 30_000 });
       await expectNoA11yViolations(page);
     }
   } finally {
