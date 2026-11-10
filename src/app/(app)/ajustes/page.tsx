@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpen,
+  CalendarClock,
   CalendarRange,
   FileUp,
   History,
@@ -209,6 +210,12 @@ async function Settings() {
               label="Atividade"
               description="Quem fez o quê na administração"
               href="/admin/atividade"
+            />
+            <InsetListItem
+              icon={<CalendarClock />}
+              label="Rotina diária"
+              description="Cron e avisos"
+              href="/admin/rotina"
             />
           </InsetList>
         </section>
