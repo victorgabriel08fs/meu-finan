@@ -23,6 +23,31 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
 - Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
+## 7. Bloco "Quanto dá para gastar por dia" nos próximos dias
+
+**Pedido do dono (10/11/2026).** Um bloco do Início (catálogo do Início personalizável) com a projeção, dia a dia, de quanto dá para gastar por dia: para cada um dos próximos dias, o saldo previsto naquele dia (contas para gastar, com os agendados até ele) dividido pelo número de dias que faltam.
+
+- Reaproveitar o que já existe: saldo previsto dia a dia do Fluxo de caixa (`cashFlowReport`), `spendablePerDay` e `isSpendableAccount` (caixinhas e cartões fora), em `src/lib/finance`.
+- **Para decidir com o dono:** "dias que faltam" até o fim do mês financeiro (`month_start_day`) ou até a próxima receita prevista; quantos dias mostrar (7? até o fim do mês?); se o valor considera o teto do orçamento, como no aviso Próxima receita (o menor dos dois); formato (lista "hoje R$ 87 · amanhã R$ 92…" ou gráfico de barras com tabela).
+- Respeitar modo discreto, `?mes=` do Início, skeleton medido e texto a 200%.
+
+## 8. Despesas compartilhadas
+
+**Pedido do dono (10/11/2026).** A pessoa adiciona outra pessoa para dividir despesas em comum e vê, de forma clara, quanto cada um paga dentre as despesas compartilhadas selecionadas. Tela bem funcional e bonita, fácil de detalhar.
+
+- **Divisão**: valor livre (digitado por pessoa) ou proporcional (percentual); propor também outras formas, por exemplo partes iguais, pesos/cotas (ex.: 2 para 1), proporcional à renda de cada um, por item da despesa e "quem pagou" com acerto de contas (saldo entre as pessoas: "Bruno te deve R$ 120" e "Marcar como acertado").
+- **Seleção**: escolher as despesas que entram (por lançamento, por categoria ou por período) e ver o detalhe por despesa e o total por pessoa.
+- **Com quem**: decidir se a outra pessoa é outra conta do app (convidada, cada uma com o próprio login) ou só um nome cadastrado por quem divide. Se for outra conta, **isso muda a regra de isolamento entre contas** (CLAUDE.md: "nothing reads another account's financial rows") e precisa de um ADR (doc 01 §17, a fase F4 já prevê "finanças compartilhadas entre contas"): o que cada um vê da despesa do outro, consentimento, como sair, o que acontece ao excluir a conta.
+- Atrás de uma flag nova enquanto estiver em teste.
+
+## 9. Saldo compartilhado (caixinha em conjunto)
+
+**Pedido do dono (10/11/2026).** Uma espécie de caixinha compartilhada: cada pessoa diz quanto está aportando ou pretende aportar, e a tela mostra o saldo total, quanto cada um já colocou e a projeção (quando chega no objetivo, quanto falta por pessoa).
+
+- Partir da Caixinha (tarefa entregue em 06/11/2026) e das Metas (projeção, aportes): decidir se é uma caixinha com participantes, uma meta compartilhada ou os dois.
+- Aportes: realizados (transferência de uma conta da pessoa para a caixinha) e planejados (valor por mês por pessoa); projeção por pessoa e total.
+- Mesma decisão de isolamento da tarefa 8 (participantes como outras contas do app ou só nomes) — as duas tarefas devem compartilhar o mesmo modelo de "participantes" e o mesmo ADR.
+
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
