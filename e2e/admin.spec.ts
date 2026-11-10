@@ -258,6 +258,7 @@ test.describe("sem ser administrador", () => {
       "/admin/usuarios",
       "/admin/flags",
       "/admin/atividade",
+      "/admin/rotina",
     ]) {
       await page.goto(path);
       await expect(

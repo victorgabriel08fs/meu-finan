@@ -26,6 +26,7 @@ const SCREENS = [
   "/admin/usuarios",
   "/admin/flags",
   "/admin/atividade",
+  "/admin/rotina",
 ];
 
 test.describe.configure({ mode: "serial" });
