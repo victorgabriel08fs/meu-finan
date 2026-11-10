@@ -61,12 +61,13 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-5)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-6)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
       "income-expense",
       "net-worth",
+      "daily-spend",
     ]);
     expect(HOME_BLOCKS["cash-flow"].size).toBe("wide");
     for (const id of [
@@ -93,6 +94,19 @@ describe("home blocks catalog", () => {
     expect(novidade?.link?.href).toBe("/ajustes/preferencias");
     // The first stage's novidade keeps its own day.
     expect(tipById("novidade-inicio-personalizavel")?.since).toBe("2026-11-02");
+  });
+
+  it("offers the gasto por dia as a narrow block, out of the default, with its novidade", () => {
+    const block = HOME_BLOCKS["daily-spend"];
+    expect(block.label).toBe("Quanto dá para gastar por dia");
+    expect(block.size).toBe("narrow");
+    expect(block.inDefault).toBe(false);
+    const novidade = tipById("novidade-inicio-gasto-por-dia");
+    expect(novidade?.kind).toBe("novidade");
+    expect(novidade?.since).toBe(block.since);
+    expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
+    expect(novidade?.link?.href).toBe("/ajustes/preferencias");
+    expect(novidade?.body.length).toBeLessThanOrEqual(150);
   });
 
   it("knows its own ids only", () => {

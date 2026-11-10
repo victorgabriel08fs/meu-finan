@@ -392,6 +392,20 @@ export function HomeBlockSkeleton({
           <Skeleton className="h-51.25 rounded-card @min-[21.75rem]:h-46.75" />
         </div>
       );
+    // 14 rows (24px each) under the heading, the amount and the note: 514px
+    // from a 334px slot; the title and the caption wrap as it narrows (536
+    // from 297px, 554 from 268px, 572 from 256px). Measured with 14 rows: in
+    // the last 13 days of the month there are fewer and the block is shorter,
+    // and on its last day the list is hidden. The states with no list ("não
+    // sobra", the invite without accounts, the error card) are shorter too:
+    // the shift when they load is accepted. The same goes for the Orçamento,
+    // which gains a line when the forecast does not cover the month.
+    case "daily-spend":
+      return (
+        <div className="@container">
+          <Skeleton className="h-143 rounded-card @min-[16.75rem]:h-138.5 @min-[18.5625rem]:h-134 @min-[20.875rem]:h-128.5" />
+        </div>
+      );
   }
 }
 

@@ -52,7 +52,7 @@ export const HOME_BLOCKS = {
   },
   budget: {
     label: "Orçamento",
-    description: "Quanto do orçamento já foi e quanto dá para gastar por dia.",
+    description: "Quanto do orçamento já foi e o ritmo do mês.",
     errorTitle: "Não deu para carregar o orçamento",
     size: "narrow",
     inDefault: true,
@@ -141,6 +141,16 @@ export const HOME_BLOCKS = {
     weight: 187,
     since: REPORT_BLOCKS_SINCE,
   },
+  "daily-spend": {
+    label: "Quanto dá para gastar por dia",
+    description:
+      "Quanto dá para gastar por dia em cada um dos próximos 14 dias.",
+    errorTitle: "Não deu para carregar o gasto por dia",
+    size: "narrow",
+    inDefault: false,
+    weight: 514,
+    since: "2026-11-10",
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -164,6 +174,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "category-breakdown",
   "income-expense",
   "net-worth",
+  "daily-spend",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];

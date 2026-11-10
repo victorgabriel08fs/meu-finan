@@ -52,6 +52,7 @@ describe("defaultHomeLayout", () => {
       { id: "category-breakdown", visible: false },
       { id: "income-expense", visible: false },
       { id: "net-worth", visible: false },
+      { id: "daily-spend", visible: false },
     ]);
   });
 });
@@ -94,6 +95,7 @@ describe("resolveHomeLayout", () => {
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: true },
       { id: "income-expense", visible: false },
+      { id: "daily-spend", visible: false, isNew: true },
     ]);
   });
 
@@ -136,6 +138,7 @@ describe("resolveHomeLayout", () => {
       "category-breakdown",
       "income-expense",
       "net-worth",
+      "daily-spend",
     ]);
     for (const entry of entries.slice(3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
@@ -190,8 +193,8 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-4)).toEqual(reports);
-    for (const entry of saved.slice(-4)) {
+    expect(ids(saved).slice(-5)).toEqual([...reports, "daily-spend"]);
+    for (const entry of saved.slice(-5)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -252,6 +255,7 @@ describe("toStoredLayout", () => {
       { id: "category-breakdown", visible: false },
       { id: "income-expense", visible: false },
       { id: "net-worth", visible: false },
+      { id: "daily-spend", visible: false },
     ]);
   });
 });
@@ -268,7 +272,7 @@ describe("moveHomeBlock", () => {
     const layout = defaultHomeLayout();
     expect(moveHomeBlock(layout, "balance", "down")).toEqual(layout);
     expect(moveHomeBlock(layout, "month-totals", "up")).toEqual(layout);
-    expect(moveHomeBlock(layout, "net-worth", "down")).toEqual(layout);
+    expect(moveHomeBlock(layout, "daily-spend", "down")).toEqual(layout);
   });
 
   it("keeps the same blocks, the Saldo first, whatever the moves", () => {
@@ -308,8 +312,9 @@ describe("canMoveHomeBlock", () => {
     expect(canMoveHomeBlock(layout, "month-totals", "down")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(true);
-    expect(canMoveHomeBlock(layout, "net-worth", "up")).toBe(true);
-    expect(canMoveHomeBlock(layout, "net-worth", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "net-worth", "down")).toBe(true);
+    expect(canMoveHomeBlock(layout, "daily-spend", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "daily-spend", "down")).toBe(false);
   });
 
   it("agrees with moveHomeBlock", () => {

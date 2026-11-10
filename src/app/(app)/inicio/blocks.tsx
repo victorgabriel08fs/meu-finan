@@ -33,6 +33,10 @@ import {
   NetWorthInvite,
 } from "@/components/dashboard/net-worth-block";
 import {
+  SpendablePerDayBlock,
+  SpendablePerDayNoAccountsInvite,
+} from "@/components/dashboard/spendable-per-day-block";
+import {
   SpendingCalendarBlock,
   SpendingCalendarInvite,
 } from "@/components/dashboard/spending-calendar-block";
@@ -59,6 +63,7 @@ import {
   categoryInsight,
   getAccountsStrip,
   getBalanceSummary,
+  getSpendablePerDay,
   getUpcoming,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
@@ -96,6 +101,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "category-breakdown": CategoryBreakdownBlockLoader,
   "income-expense": IncomeExpenseBlockLoader,
   "net-worth": NetWorthBlockLoader,
+  "daily-spend": DailySpendBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -185,11 +191,16 @@ async function MonthTotalsBlock({ ctx, range }: HomeBlockProps) {
 }
 
 async function BudgetBlock({ ctx, range }: HomeBlockProps) {
-  const budgets = await getBudgets(ctx, range);
+  const [budgets, spendable] = await Promise.all([
+    getBudgets(ctx, range),
+    // The same read as Quanto dá para gastar, memoised; only for this month.
+    range.isCurrent ? getSpendablePerDay(ctx) : null,
+  ]);
   const href = withMonth(range, "/planejar/orcamentos");
   return budgets.total ? (
     <BudgetCard
       total={budgets.total}
+      forecastShort={spendable?.hasAccounts && spendable.shortfallCents > 0}
       items={budgets.items}
       monthName={monthName(range.month)}
       isCurrent={range.isCurrent}
@@ -418,6 +429,23 @@ async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
         seriesEnd(ctx, range).month,
         resolvePeriod(ctx, null).month,
       )}
+    />
+  );
+}
+
+/**
+ * Quanto dá para gastar por dia: always from today to the end of the month
+ * that contains it, whatever month the Início shows (`?mes=`), so there is
+ * no "no records before" invite: a caption says where it starts.
+ */
+async function DailySpendBlockLoader({ ctx, range }: HomeBlockProps) {
+  const spendable = await getSpendablePerDay(ctx);
+  if (!spendable.hasAccounts) return <SpendablePerDayNoAccountsInvite />;
+  return (
+    <SpendablePerDayBlock
+      spendable={spendable}
+      today={ctx.todayIso}
+      isCurrent={range.isCurrent}
     />
   );
 }
