@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarClock,
   KeyRound,
   Link2,
   Link2Off,
@@ -34,6 +35,7 @@ const ICONS: Record<ActivityKind, ReactNode> = {
   role: <ShieldCheck />,
   delete: <Trash2 />,
   flag: <ToggleRight />,
+  job: <CalendarClock />,
   other: <Activity />,
 };
 

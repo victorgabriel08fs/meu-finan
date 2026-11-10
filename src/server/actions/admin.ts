@@ -7,6 +7,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { USER_ROLES } from "@/lib/admin/roles";
 import { setGlobalFlag, setUserFlag } from "@/server/domain/flag-admin";
+import { runDailyNow } from "@/server/domain/job-runs";
 import {
   createAccessLink,
   createUserWithInvite,
@@ -143,3 +144,15 @@ export const setUserFlagAction = adminAction
     );
     refresh();
   });
+
+/**
+ * "Rodar agora" (Administração › Rotina diária): the whole daily job. The
+ * page sets `maxDuration`, which is what Server Actions used from it get.
+ */
+export const runDailyJobAction = adminAction.action(
+  async ({ ctx: { admin } }) => {
+    const result = await runDailyNow(admin.id);
+    refresh();
+    return result;
+  },
+);

@@ -18,6 +18,7 @@ export type ActivityEntry = {
     sessions?: number;
     flag?: string;
     value?: boolean | null;
+    job?: string;
   };
 };
 
@@ -33,6 +34,7 @@ export type ActivityKind =
   | "role"
   | "delete"
   | "flag"
+  | "job"
   | "other";
 
 export type ActivityLine = {
@@ -159,6 +161,12 @@ export function describeActivity(
               : `${actor} voltou ${name} ao padrão`;
       return { kind: "flag", title };
     }
+    case "job.run_manual":
+      return {
+        kind: "job",
+        title: `${actor} rodou a rotina diária`,
+        detail: "Pelo botão Rodar agora",
+      };
     default:
       return { kind: "other", title: `${actor} fez uma alteração` };
   }
