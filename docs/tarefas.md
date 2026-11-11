@@ -2,6 +2,15 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
+## 10. Gasto por dia: sem orçamento e na horizontal
+
+**Pedido do dono (11/11/2026), na frente das outras.** O bloco "Quanto dá para gastar por dia" (entregue em 10/11/2026, PR #12) ficou confuso. Fazer na mesma branch (`feat/gasto-por-dia`), antes do merge da #12.
+
+- **Sem orçamento**: a conta usa só o saldo de hoje das contas para gastar e as despesas e receitas agendadas (o saldo previsto, doc 03 §12). Sai o teto do orçamento por linha (`budgetAvailableCents` e `cappedByBudget` em `src/lib/finance/spendable-by-day.ts` e a leitura do orçamento no bloco). Rever também a nota do card Orçamento ("O saldo previsto não cobre o mês: veja Quanto dá para gastar."), que amarra os dois.
+- **Na horizontal**: os dias lado a lado (hoje primeiro, com destaque), em vez da lista com barras. Rolagem lateral dentro do bloco se não couber, sem rolagem da página a 360 px e a 200% de texto; leitor de tela e teclado percorrem os dias.
+- A confirmar no plano: as faturas de cartão contam como despesa agendada (hoje entram no saldo previsto e no "(i)" dele).
+- Atualizar doc 02 §5.17 e §6.3, doc 03 §12, README, testes de unidade, integração, componente e e2e.
+
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
