@@ -18,7 +18,6 @@ import {
 import { db } from "@/server/db/client";
 import { categories, transactions } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
-import { getBudgets } from "./budgets";
 import { type PeriodRange, resolvePeriod, type UserContext } from "./context";
 import {
   cashFlowReport,
@@ -196,7 +195,6 @@ export type SpendablePerDay = {
     date: string;
     daysLeft: number;
     perDayCents: number;
-    cappedByBudget: boolean;
   }[];
   /** How far under zero the forecast goes up to `until`; 0 when it does not. */
   shortfallCents: number;
@@ -204,35 +202,21 @@ export type SpendablePerDay = {
   balanceTodayCents: number | null;
   /** End of the financial month the days are counted to, `YYYY-MM-DD`. */
   until: string;
-  /** The current month has a budget, so each day is also limited by it. */
-  hasBudget: boolean;
-  /** The month of that budget, `YYYY-MM`. */
-  budgetMonth: string;
 };
 
 /**
  * Quanto dá para gastar por dia (doc 03 §12): for each of the next days, the
  * lowest forecast balance of the spendable accounts from that day to the end
- * of the financial month, spread over the days left, and never above what the
- * month's budget leaves for them. Always from today in the month that
+ * of the financial month, spread over the days left. Always from today in the month that
  * contains it, whatever month the Início shows (`?mes=`). Memoised per
- * request: the Orçamento card asks too, to note that the forecast does not
- * cover the month, without another query.
+ * request.
  */
 export const getSpendablePerDay = cache(async function getSpendablePerDay(
   ctx: UserContext,
 ): Promise<SpendablePerDay> {
   const current = resolvePeriod(ctx, null);
-  const [report, budgets] = await Promise.all([
-    cashFlowReport(ctx, current),
-    getBudgets(ctx, current),
-  ]);
-  const budgetAvailableCents = budgets.total?.pace.availableCents ?? null;
-  const base = {
-    until: current.end,
-    hasBudget: budgetAvailableCents !== null,
-    budgetMonth: current.month,
-  };
+  const report = await cashFlowReport(ctx, current);
+  const base = { until: current.end };
   if (!report.hasAccounts) {
     return {
       ...base,
@@ -249,7 +233,6 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
     })),
     today: ctx.today,
     until: parse(current.end),
-    budgetAvailableCents,
   });
   return {
     ...base,
@@ -258,7 +241,6 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
       date: iso(row.date),
       daysLeft: row.daysLeft,
       perDayCents: row.perDayCents,
-      cappedByBudget: row.cappedByBudget,
     })),
     shortfallCents,
     balanceTodayCents:

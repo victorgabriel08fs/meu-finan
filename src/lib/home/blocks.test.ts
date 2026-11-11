@@ -96,10 +96,10 @@ describe("home blocks catalog", () => {
     expect(tipById("novidade-inicio-personalizavel")?.since).toBe("2026-11-02");
   });
 
-  it("offers the gasto por dia as a narrow block, out of the default, with its novidade", () => {
+  it("offers the gasto por dia as a wide block, out of the default, with its novidade", () => {
     const block = HOME_BLOCKS["daily-spend"];
     expect(block.label).toBe("Quanto dá para gastar por dia");
-    expect(block.size).toBe("narrow");
+    expect(block.size).toBe("wide");
     expect(block.inDefault).toBe(false);
     const novidade = tipById("novidade-inicio-gasto-por-dia");
     expect(novidade?.kind).toBe("novidade");

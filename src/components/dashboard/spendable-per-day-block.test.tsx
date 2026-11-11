@@ -9,8 +9,8 @@ import {
   SpendablePerDayNoAccountsInvite,
 } from "./spendable-per-day-block";
 
-// Quanto dá para gastar por dia on the Início (doc 02 §6.3): today's amount,
-// one line per day with a bar for the proportion, and the states around it.
+// Quanto dá para gastar por dia on the Início (doc 02 §6.3): a strip of day
+// cards, today first, and the states around it.
 
 const plain = (html: string) => html.replaceAll(NBSP, " ");
 
@@ -19,13 +19,11 @@ const TODAY = "2026-11-10";
 function days(
   perDay: (k: number) => number,
   count = SPENDABLE_DAYS,
-  capped = false,
 ): SpendablePerDay["rows"] {
   return Array.from({ length: count }, (_, k) => ({
     date: iso(addDays(parse(TODAY), k)),
     daysLeft: 21 - k,
     perDayCents: perDay(k),
-    cappedByBudget: capped,
   }));
 }
 
@@ -35,8 +33,6 @@ const base: SpendablePerDay = {
   shortfallCents: 0,
   balanceTodayCents: 150_000,
   until: "2026-11-30",
-  hasBudget: false,
-  budgetMonth: "2026-11",
 };
 
 const render = (spendable: SpendablePerDay, isCurrent = true) =>
@@ -51,7 +47,7 @@ const render = (spendable: SpendablePerDay, isCurrent = true) =>
   );
 
 describe("SpendablePerDayBlock", () => {
-  it("shows today's amount, a line per day and the way to the flow", () => {
+  it("shows a card per day and the way to the flow", () => {
     const html = render(base);
     expect(html).toContain('<section aria-labelledby="inicio-gasto-por-dia"');
     expect(html).toContain('id="inicio-gasto-por-dia"');
@@ -63,23 +59,20 @@ describe("SpendablePerDayBlock", () => {
     expect(html.match(/<li /g)).toHaveLength(14);
     expect(html).toContain("R$ 100,00");
     expect(html).toContain("R$ 165,00");
-    expect(html).toContain("Saldo previsto dividido pelos dias que faltam.");
+    expect(html).toContain(
+      "Pelo saldo e pelo agendado, sem o orçamento, dividido pelos dias que faltam.",
+    );
+    expect(html).toContain('aria-label="Quanto dá para gastar em cada dia"');
+    expect(html).toContain('aria-current="date"');
   });
 
-  it("names the first days and then gives weekday and date", () => {
+  it("names the first days and then the weekday, the date on its own line", () => {
     const html = render(base);
     expect(html).toContain(">Hoje<");
     expect(html).toContain(">Amanhã<");
-    expect(html).toContain(">sex, 13 nov<");
-    expect(html).toContain(">sáb, 14 nov<");
-  });
-
-  it("draws the bars in proportion to the largest day, out of the reader's way", () => {
-    const html = render(base);
-    expect(html.match(/aria-hidden="true" class="h-1\.5 /g)).toHaveLength(14);
-    expect(html).toContain("width:100%");
-    // 100,00 of 165,00.
-    expect(html).toContain("width:61%");
+    expect(html).toContain(">sex<");
+    expect(html).toContain(">13 nov<");
+    expect(html).toContain(">sáb<");
   });
 
   it("keeps the amounts whole and masked in privacy mode", () => {
@@ -88,10 +81,21 @@ describe("SpendablePerDayBlock", () => {
     expect(html).toContain("data-privacy-mask");
   });
 
-  it("clamps the day label and stacks the row when the text is large", () => {
+  it("gives the strip a name and the keyboard, and each card its words", () => {
     const html = render(base);
-    expect(html).toContain("truncate @max-tight:wrap-anywhere");
-    expect(html).toContain("@max-[14rem]:grid-cols-1");
+    expect(html).toMatch(
+      /<section aria-label="Quanto dá para gastar em cada dia"[^>]*tabindex="0"/,
+    );
+    expect(html.match(/<span class="sr-only"> por dia<\/span>/g)).toHaveLength(
+      14,
+    );
+    // Only today carries the mark, and it comes first.
+    expect(html.match(/aria-current="date"/g)).toHaveLength(1);
+    expect(html.indexOf("aria-current")).toBeLessThan(html.indexOf(">Amanhã<"));
+  });
+
+  it("clamps the day label", () => {
+    expect(render(base)).toContain("truncate @max-tight:wrap-anywhere");
   });
 
   it("says where it starts in another month", () => {
@@ -108,40 +112,24 @@ describe("SpendablePerDayBlock", () => {
     expect(html.match(/<li /g)).toHaveLength(3);
   });
 
-  it("flags the days the budget limits, in the note and for screen readers", () => {
-    const html = render({
-      ...base,
-      hasBudget: true,
-      rows: days(() => 3_000, 14, true),
-    });
-    expect(html).toContain("Limitado pelo orçamento de novembro.");
-    // The note says it for every line: the reader does not hear it 14 times.
-    expect(html).not.toContain("limitado pelo orçamento");
-    expect(render(base)).not.toContain("imitado pelo orçamento");
-  });
-
-  it("tells the reader which days the budget limits when it limits only some", () => {
-    const html = render({
-      ...base,
-      hasBudget: true,
-      rows: days((k) => 3_000 + k * 100).map((row, k) => ({
-        ...row,
-        cappedByBudget: k < 3,
-      })),
-    });
-    expect(html.match(/, limitado pelo orçamento/g)).toHaveLength(3);
-    expect(html).toContain("Alguns dias limitados pelo orçamento de novembro.");
-  });
-
-  it("hides the list on the last day of the month, the figure says it all", () => {
+  it("shows a single card on the last day of the month", () => {
     const html = render({
       ...base,
       until: "2026-11-10",
       rows: days(() => 4_000, 1),
     });
-    expect(html).not.toContain("<ul");
+    expect(html.match(/<li /g)).toHaveLength(1);
+    expect(html).toContain(">Hoje<");
     expect(html).toContain("40 reais");
     expect(html).toContain("por dia");
+  });
+
+  it("says it leaves the budget out, and never limits by it", () => {
+    expect(render(base)).toContain("sem o orçamento");
+    expect(render(base).toLowerCase()).not.toContain("limitado");
+    expect(
+      render({ ...base, rows: days(() => 0) }).toLowerCase(),
+    ).not.toContain("orçamento");
   });
 
   it("draws no bar when every day is zero, with the shortfall in a sentence", () => {
@@ -158,7 +146,7 @@ describe("SpendablePerDayBlock", () => {
     expect(html).toContain("Ver fluxo");
   });
 
-  it("explains a zero without shortfall: no balance, or the budget used up", () => {
+  it("explains a zero without shortfall: no balance", () => {
     const none = render({ ...base, rows: days(() => 0) });
     expect(none).toContain("O saldo previsto chega a zero antes de 30/nov.");
     expect(none).not.toContain("Sem saldo");
@@ -168,15 +156,6 @@ describe("SpendablePerDayBlock", () => {
       rows: days(() => 0),
     });
     expect(broke).toContain("Sem saldo nas contas para gastar até 30/nov.");
-    const budget = render({
-      ...base,
-      hasBudget: true,
-      rows: days(() => 0, 14, true),
-    });
-    expect(budget).toContain("Não sobra para gastar até 30/nov");
-    expect(budget).toContain("O orçamento de novembro não deixa mais");
-    expect(budget).not.toContain("Sem saldo");
-    expect(budget).not.toContain("chega a zero");
   });
 });
 
