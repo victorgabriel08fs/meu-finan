@@ -2,6 +2,15 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
+## 11. Alerta de conta que vence em dia não útil
+
+**Pedido do dono (11/11/2026), a próxima.** Avisar quando uma conta vence num dia não útil (sábado, domingo ou feriado), no app e por push.
+
+- **No app**: um sinal visual junto da conta (próximas contas do Início, Extrato, detalhe da transação, fatura do cartão) dizendo que o vencimento cai em dia não útil, e o que costuma acontecer (o pagamento passa para o próximo dia útil, ou é preciso pagar antes). O plano decide onde e com que texto (doc 02 §10).
+- **Push**: entra nos avisos do cron diário (doc 01 §6.3, README › Notificações), com preferência própria e o prazo de antecedência definido no plano; respeita as preferências e o número no ícone.
+- **Feriados por API pública**: planejar a consulta (por exemplo BrasilAPI `/api/feriados/v1/{ano}` ou Nager.Date), com cache no banco por ano, atualização pelo cron, tempo limite e um cálculo próprio dos feriados nacionais (fixos e móveis, a partir da Páscoa) como reserva quando a API falhar. Nada de chamada externa durante o render ou o prerender. Decidir também feriados estaduais e municipais (a maioria das APIs só tem os nacionais).
+- Lógica de dia útil pura em `src/lib/finance` (ou `src/lib`), com Vitest e fast-check; variáveis novas em `src/server/env.ts` e `.env.example`; flag nova enquanto estiver em teste; dica ou novidade com `when: { flag }`.
+
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
