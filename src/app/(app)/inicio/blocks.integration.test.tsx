@@ -502,7 +502,6 @@ describe("Quanto dá para gastar por dia", () => {
       date: "2026-10-27",
       daysLeft: 5,
     });
-    expect(spendable.hasBudget).toBe(false);
   });
 
   it("counts the rent and the invoice due before the end of the month", async () => {
@@ -546,7 +545,7 @@ describe("Quanto dá para gastar por dia", () => {
     expect(spendable.shortfallCents).toBe(0);
   });
 
-  it("limits each day by what the month's budget leaves", async () => {
+  it("ignores the budget: each day is the balance over the days left", async () => {
     const { db } = await import("@/server/db/client");
     const schema = await import("@/server/db/schema");
     const { listCategories } = await import("@/server/domain/categories");
@@ -555,78 +554,23 @@ describe("Quanto dá para gastar por dia", () => {
       (item) => item.name === "Mercado",
     );
     if (!market) throw new Error("categoria Mercado");
+    const before = (await loadSpendable(ana, "2026-10")).props.spendable;
     await upsertBudget(ana, {
       categoryId: market.id,
       month: "2026-10",
-      amountCents: 24_550 + 6_450,
+      amountCents: 1_000,
     });
     try {
+      for (const store of memo.stores) store.clear();
       const { props } = await loadSpendable(ana, "2026-10");
       const spendable = props.spendable as Spendable;
-      expect(spendable.hasBudget).toBe(true);
-      expect(spendable.budgetMonth).toBe("2026-10");
-      // 31.000 − 6.450 paid = 24.550 over 18 days.
-      expect(spendable.rows[0]).toMatchObject({
-        perDayCents: Math.floor(24_550 / 18),
-        cappedByBudget: true,
-      });
-      expect(spendable.rows[0]?.perDayCents).toBe(1_363);
+      expect(spendable).toEqual(before);
+      expect(spendable).not.toHaveProperty("hasBudget");
+      expect(spendable).not.toHaveProperty("budgetMonth");
+      expect(spendable.rows[0]).not.toHaveProperty("cappedByBudget");
+      const row = spendable.rows[0];
+      expect(row?.perDayCents).toBeGreaterThan(1_000 / 18);
     } finally {
-      await db.delete(schema.budgets).where(eq(schema.budgets.userId, "ana"));
-    }
-  });
-
-  it("notes on the Orçamento that the forecast does not cover the month, only this month", async () => {
-    const { db } = await import("@/server/db/client");
-    const schema = await import("@/server/db/schema");
-    const { listCategories } = await import("@/server/domain/categories");
-    const { upsertBudget } = await import("@/server/domain/budgets");
-    const market = (await listCategories("ana")).find(
-      (item) => item.name === "Mercado",
-    );
-    const checking = (await accounts.listAccounts("ana")).find(
-      (item) => item.name === "Conta principal",
-    );
-    if (!market || !checking) throw new Error("fixtures");
-    const budgetOf = async (month: string) => {
-      const range = context.resolvePeriod(ana, month);
-      const element = (await blocks.HOME_BLOCK_LOADERS.budget({
-        ctx: ana,
-        range,
-      })) as ReactElement<Props>;
-      return element.props.forecastShort === true;
-    };
-    await upsertBudget(ana, {
-      categoryId: market.id,
-      month: "2026-10",
-      amountCents: 31_000,
-    });
-    await upsertBudget(ana, {
-      categoryId: market.id,
-      month: "2026-09",
-      amountCents: 31_000,
-    });
-    try {
-      // The forecast covers the rest of the month: no note.
-      expect(await budgetOf("2026-10")).toBe(false);
-      // A bill bigger than the balance on the 20th takes it under zero.
-      await transactions.createTransaction(ana, {
-        kind: "expense",
-        amountCents: 5_000_000,
-        accountId: checking.id,
-        categoryId: market.id,
-        description: "Reforma",
-        occurredOn: "2026-10-20",
-      });
-      for (const store of memo.stores) store.clear();
-      expect(await budgetOf("2026-10")).toBe(true);
-      // Another month's budget never carries the note.
-      for (const store of memo.stores) store.clear();
-      expect(await budgetOf("2026-09")).toBe(false);
-    } finally {
-      await db
-        .delete(schema.transactions)
-        .where(eq(schema.transactions.description, "Reforma"));
       await db.delete(schema.budgets).where(eq(schema.budgets.userId, "ana"));
     }
   });

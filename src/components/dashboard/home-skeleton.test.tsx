@@ -143,7 +143,7 @@ describe("HomeBlockSkeleton", () => {
       ["net-worth", "h-51.25 rounded-card @min-[21.75rem]:h-46.75"],
       [
         "daily-spend",
-        "h-143 rounded-card @min-[16.75rem]:h-138.5 @min-[18.5625rem]:h-134 @min-[20.875rem]:h-128.5",
+        "h-65.5 rounded-card @min-[19rem]:h-61 @min-[21rem]:h-55.5 @min-[31.25rem]:h-51",
       ],
     ] as const) {
       const html = render(id);

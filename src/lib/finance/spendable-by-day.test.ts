@@ -41,7 +41,6 @@ describe("spendablePerDayByDay", () => {
       daysLeft: 21,
       balanceCents: 105_000,
       perDayCents: 5_000,
-      cappedByBudget: false,
     });
     expect(rows[2]?.balanceCents).toBe(105_000);
     // From the 13th on the bill is behind: 105.000 over 18 days.
@@ -62,52 +61,6 @@ describe("spendablePerDayByDay", () => {
     ]);
     expect(rows.at(-1)).toMatchObject({ daysLeft: 1, perDayCents: 30_000 });
     expect(rows[0]).toMatchObject({ daysLeft: 3, perDayCents: 10_000 });
-  });
-
-  it("caps each row by the budget's share of the days left", () => {
-    const { rows } = spendablePerDayByDay({
-      days: series(Array(21).fill(210_000)),
-      today: TODAY,
-      until: UNTIL,
-      budgetAvailableCents: 63_000,
-    });
-    // 63.000 / 21 = 3.000 against 10.000 from the balance.
-    expect(rows[0]).toMatchObject({ perDayCents: 3_000, cappedByBudget: true });
-    // 63.000 / 8 = 7.875 on the 23rd (daysLeft 8), still under 26.250.
-    expect(rows[13]).toMatchObject({ daysLeft: 8, perDayCents: 7_875 });
-  });
-
-  it("does not flag the cap when the budget is not the lower one", () => {
-    const days = series(Array(21).fill(21_000));
-    const high = spendablePerDayByDay({
-      days,
-      today: TODAY,
-      until: UNTIL,
-      budgetAvailableCents: 1_000_000,
-    });
-    expect(high.rows[0]).toMatchObject({
-      perDayCents: 1_000,
-      cappedByBudget: false,
-    });
-    // A cap equal to the balance's share is not "limited by".
-    const equal = spendablePerDayByDay({
-      days,
-      today: TODAY,
-      until: UNTIL,
-      budgetAvailableCents: 21_000,
-    });
-    expect(equal.rows[0]?.cappedByBudget).toBe(false);
-  });
-
-  it("gives 0 for an overspent budget", () => {
-    const { rows } = spendablePerDayByDay({
-      days: series(Array(21).fill(210_000)),
-      today: TODAY,
-      until: UNTIL,
-      budgetAvailableCents: -5_000,
-    });
-    expect(rows.every((row) => row.perDayCents === 0)).toBe(true);
-    expect(rows.every((row) => row.cappedByBudget)).toBe(true);
   });
 
   it("reports the shortfall when the forecast goes under zero", () => {
@@ -154,14 +107,6 @@ describe("spendablePerDayByDay", () => {
   it("rejects what is not integer cents and an until before today", () => {
     expect(() =>
       spendablePerDayByDay({ days: series([1.5]), today: TODAY, until: TODAY }),
-    ).toThrow(RangeError);
-    expect(() =>
-      spendablePerDayByDay({
-        days: [],
-        today: TODAY,
-        until: TODAY,
-        budgetAvailableCents: 0.5,
-      }),
     ).toThrow(RangeError);
     expect(() =>
       spendablePerDayByDay({ days: [], today: TODAY, until: D("2026-11-09") }),
@@ -218,18 +163,14 @@ describe("spendablePerDayByDay properties", () => {
         minLength: 31,
         maxLength: 31,
       }),
-      budget: fc.option(fc.integer({ min: -100_000, max: 3_000_000 }), {
-        nil: null,
-      }),
       maxDays: fc.integer({ min: 1, max: 20 }),
     })
-    .map(({ startOffset, length, balances, budget, maxDays }) => {
+    .map(({ startOffset, length, balances, maxDays }) => {
       const today = addDays(D("2026-01-01"), startOffset);
       return {
         today,
         until: addDays(today, length - 1),
         maxDays,
-        budgetAvailableCents: budget,
         days: series(balances.slice(0, length), today),
       };
     });
@@ -250,7 +191,7 @@ describe("spendablePerDayByDay properties", () => {
     );
   });
 
-  it("never goes negative, nor above the balance's or the budget's share", () => {
+  it("never goes negative, nor above the balance's share", () => {
     fc.assert(
       fc.property(input, (args) => {
         const { rows } = spendablePerDayByDay(args);
@@ -258,16 +199,7 @@ describe("spendablePerDayByDay properties", () => {
           const fromBalance = spendablePerDay(row.balanceCents, row.daysLeft);
           expect(row.perDayCents).toBeGreaterThanOrEqual(0);
           expect(row.perDayCents).toBeLessThanOrEqual(fromBalance);
-          if (args.budgetAvailableCents !== null) {
-            const cap = Math.floor(
-              Math.max(0, args.budgetAvailableCents) / row.daysLeft,
-            );
-            expect(row.perDayCents).toBeLessThanOrEqual(cap);
-            expect(row.cappedByBudget).toBe(cap < fromBalance);
-          } else {
-            expect(row.cappedByBudget).toBe(false);
-            expect(row.perDayCents).toBe(fromBalance);
-          }
+          expect(row.perDayCents).toBe(fromBalance);
         }
       }),
     );

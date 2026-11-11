@@ -15,8 +15,6 @@ export type SpendableByDayInput = {
   today: LocalDate;
   /** Last day counted: the end of the financial month. */
   until: LocalDate;
-  /** The month's budget still available (`pace.availableCents`); null without a budget. */
-  budgetAvailableCents?: number | null;
   /** Most rows to return. Default 14. */
   maxDays?: number;
 };
@@ -28,8 +26,6 @@ export type SpendableDay = {
   /** The lowest forecast balance from this day to `until`. */
   balanceCents: number;
   perDayCents: number;
-  /** The budget's share of the day is below what the balance alone would allow. */
-  cappedByBudget: boolean;
 };
 
 export type SpendableByDay = {
@@ -43,27 +39,17 @@ export const SPENDABLE_BY_DAY_MAX_DAYS = 14;
 /**
  * "Quanto dá para gastar por dia" for each of the next days (doc 03 §12): the
  * lowest forecast balance from that day to `until` (a bill due on the 25th
- * lowers every day before it) spread over the days left, both ends counted,
- * and never above the budget's available amount spread the same way. Days
+ * lowers every day before it) spread over the days left, both ends counted. Days
  * before today or after `until` are ignored; one row per day from today,
  * at most `maxDays` and never past `until`.
  */
 export function spendablePerDayByDay(
   input: SpendableByDayInput,
 ): SpendableByDay {
-  const {
-    days,
-    today,
-    until,
-    budgetAvailableCents = null,
-    maxDays = SPENDABLE_BY_DAY_MAX_DAYS,
-  } = input;
+  const { days, today, until, maxDays = SPENDABLE_BY_DAY_MAX_DAYS } = input;
   assertDate(today, "today");
   assertDate(until, "until");
   assertInteger(maxDays, "maxDays", 0);
-  if (budgetAvailableCents !== null) {
-    assertCents(budgetAvailableCents, "budgetAvailableCents");
-  }
   if (compare(until, today) < 0) {
     throw new RangeError("until must not be before today");
   }
@@ -95,17 +81,11 @@ export function spendablePerDayByDay(
     const balanceCents = lowest[offset];
     if (balanceCents === null) continue;
     const daysLeft = length - offset;
-    const fromBalance = spendablePerDay(balanceCents, daysLeft);
-    const cap =
-      budgetAvailableCents === null
-        ? null
-        : Math.max(0, Math.floor(budgetAvailableCents / daysLeft));
     rows.push({
       date: addDays(today, offset),
       daysLeft,
       balanceCents,
-      perDayCents: spendablePerDay(balanceCents, daysLeft, cap),
-      cappedByBudget: cap !== null && cap < fromBalance,
+      perDayCents: spendablePerDay(balanceCents, daysLeft),
     });
   }
 

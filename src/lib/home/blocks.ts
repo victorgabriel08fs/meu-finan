@@ -146,9 +146,9 @@ export const HOME_BLOCKS = {
     description:
       "Quanto dá para gastar por dia em cada um dos próximos 14 dias.",
     errorTitle: "Não deu para carregar o gasto por dia",
-    size: "narrow",
+    size: "wide",
     inDefault: false,
-    weight: 514,
+    weight: 190,
     since: "2026-11-10",
   },
 } as const satisfies Record<string, HomeBlockDefinition>;

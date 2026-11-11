@@ -191,18 +191,11 @@ async function MonthTotalsBlock({ ctx, range }: HomeBlockProps) {
 }
 
 async function BudgetBlock({ ctx, range }: HomeBlockProps) {
-  const [budgets, spendable] = await Promise.all([
-    getBudgets(ctx, range),
-    // The same read as Quanto dá para gastar, memoised; only for this month.
-    range.isCurrent ? getSpendablePerDay(ctx) : null,
-  ]);
+  const budgets = await getBudgets(ctx, range);
   const href = withMonth(range, "/planejar/orcamentos");
   return budgets.total ? (
     <BudgetCard
       total={budgets.total}
-      forecastShort={
-        spendable?.hasAccounts === true && spendable.shortfallCents > 0
-      }
       items={budgets.items}
       monthName={monthName(range.month)}
       isCurrent={range.isCurrent}

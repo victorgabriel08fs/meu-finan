@@ -517,7 +517,7 @@ test("sem violações do axe no Início com os blocos dos relatórios e em Prefe
   await expectBlocks(page, DEFAULT_ORDER);
 });
 
-test("mostra Quanto dá para gastar por dia pela folha, com as linhas, e esconde de novo", async ({
+test("mostra Quanto dá para gastar por dia pela folha, na horizontal, e esconde de novo", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -546,13 +546,40 @@ test("mostra Quanto dá para gastar por dia pela folha, com as linhas, e esconde
     "href",
     "/relatorios/fluxo",
   );
-  // The highlight, and one line per day from today (a single line on the
-  // last day of the month, which the highlight already says).
-  await expect(block.getByText("por dia", { exact: true })).toBeVisible();
-  const items = block.getByRole("listitem");
-  if ((await items.count()) > 0) {
-    await expect(items.first()).toContainText("Hoje");
-    expect(await items.count()).toBeLessThanOrEqual(14);
+  // A focusable strip of day cards, today first (a single card on the last
+  // day of the month), and a page that never scrolls sideways.
+  const strip = block.getByRole("region", {
+    name: "Quanto dá para gastar em cada dia",
+  });
+  await expect(strip).toHaveAttribute("tabindex", "0");
+  const items = strip.getByRole("listitem");
+  await expect(items.first()).toContainText("Hoje");
+  await expect(items.first()).toHaveAttribute("aria-current", "date");
+  expect(await items.count()).toBeLessThanOrEqual(14);
+  await expect(strip.locator('[aria-current="date"]')).toHaveCount(1);
+  await expect(block.getByText("sem o orçamento")).toBeVisible();
+  await strip.focus();
+  await expect(strip).toBeFocused();
+  for (const width of [360, 430]) {
+    await page.setViewportSize({ width, height: 780 });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth,
+        ),
+      )
+      .toBe(true);
+  }
+  await expectNoA11yViolations(page);
+  try {
+    await chooseTheme(page, "Claro");
+    await page.goto("/inicio");
+    await expect(strip).toBeVisible();
+    await expectNoA11yViolations(page);
+  } finally {
+    await chooseTheme(page, "Escuro");
   }
 
   await customizeButton(page).click();

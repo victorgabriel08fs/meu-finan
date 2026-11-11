@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import type { SpendablePerDay } from "@/server/domain/dashboard";
 import { BlockInvite } from "./block-invite";
 import { BlockLink } from "./block-link";
-import { monthName } from "./labels";
 
 type SpendablePerDayBlockProps = {
   spendable: SpendablePerDay;
@@ -25,19 +24,22 @@ type SpendablePerDayBlockProps = {
 /** Days listed: the next two weeks, or the rest of the month when it is shorter. */
 export const SPENDABLE_DAYS = 14;
 
-/** "Hoje", "Amanhã", then "sex, 13 nov". */
-function dayLabel(date: string, today: string): string {
+/** "Hoje", "Amanhã", then the short weekday ("sex"), and the date ("13 nov"). */
+function dayLabels(
+  date: string,
+  today: string,
+): { name: string; date: string } {
+  const [weekday = "", rest = ""] = weekdayDateLabel(date).split(", ");
   const diff = daysBetween(parse(today), parse(date));
-  if (diff === 0) return "Hoje";
-  if (diff === 1) return "Amanhã";
-  return weekdayDateLabel(date);
+  const name = diff === 0 ? "Hoje" : diff === 1 ? "Amanhã" : weekday;
+  return { name, date: rest };
 }
 
 /**
- * Quanto dá para gastar por dia on the Início (doc 02 §6.3): today's amount
- * and one line per day ahead, the forecast balance of the day-to-day accounts
- * spread over the days left. The list is its own text equivalent (§9.5): the
- * bar only repeats the proportion.
+ * Quanto dá para gastar por dia on the Início (doc 02 §6.3): one card per day
+ * from today, side by side in a strip that scrolls on its own, the forecast
+ * balance of the day-to-day accounts spread over the days left. The cards are
+ * their own text equivalent (§9.5).
  */
 export function SpendablePerDayBlock({
   spendable,
@@ -45,23 +47,19 @@ export function SpendablePerDayBlock({
   isCurrent,
   reportHref = "/relatorios/fluxo",
 }: SpendablePerDayBlockProps) {
-  const { rows, shortfallCents, until, hasBudget, budgetMonth } = spendable;
-  const balanceTodayCents = spendable.balanceTodayCents;
+  const { rows, shortfallCents, until, balanceTodayCents } = spendable;
   const untilLabel = shortDateLabel(until);
-  const first = rows[0];
-  const largest = Math.max(0, ...rows.map((row) => row.perDayCents));
-  const anyCapped = rows.some((row) => row.cappedByBudget);
-  // The footer says it when the budget limits every line; each line says it
-  // (for the reader) only when it limits some.
-  const someCapped = anyCapped && !rows.every((row) => row.cappedByBudget);
-  const nothingLeft = largest === 0;
+  const nothingLeft = rows.every((row) => row.perDayCents === 0);
 
   return (
     <Card asChild className="flex flex-col gap-3">
       <section aria-labelledby="inicio-gasto-por-dia">
         <div className="flex flex-wrap items-start justify-between gap-x-3">
           <div className="flex min-w-0 flex-[1_1_8rem] flex-col">
-            <h2 id="inicio-gasto-por-dia" className="text-headline text-fg">
+            <h2
+              id="inicio-gasto-por-dia"
+              className="text-balance text-headline text-fg"
+            >
               Quanto dá para gastar por dia
             </h2>
             <p className="text-caption text-fg-3">
@@ -72,70 +70,74 @@ export function SpendablePerDayBlock({
           </div>
           <BlockLink href={reportHref}>Ver fluxo</BlockLink>
         </div>
-        {nothingLeft || !first ? (
+        {nothingLeft ? (
           <NothingLeft
             untilLabel={untilLabel}
             shortfallCents={shortfallCents}
             balanceTodayCents={balanceTodayCents}
-            budgetMonth={hasBudget && anyCapped ? budgetMonth : null}
           />
         ) : (
           <>
-            <p className="flex flex-wrap items-baseline gap-x-2">
-              <Money cents={first.perDayCents} variant="title" tone="neutral" />
-              <span className="text-callout text-fg-3">por dia</span>
-            </p>
-            {/* One line (the last day of the month) only repeats the figure above. */}
-            {rows.length < 2 ? null : (
-              <ul className="-my-1 flex flex-col">
-                {rows.map((row) => (
-                  <li
-                    key={row.date}
-                    className="grid grid-cols-[5.25rem_minmax(1.5rem,1fr)_auto] items-center gap-x-3 py-0.5 @max-[14rem]:grid-cols-1 @max-[14rem]:gap-y-1 @max-[14rem]:py-2"
-                  >
-                    <span
-                      className={cn(
-                        "text-callout",
-                        CLAMP_TEXT,
-                        row.date === today
-                          ? "font-semibold text-fg"
-                          : "text-fg-2",
-                      )}
+            {/* The strip is focusable so the keyboard can scroll it (WCAG 2.1.1). */}
+            <section
+              aria-label="Quanto dá para gastar em cada dia"
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must take focus (WCAG 2.1.1)
+              tabIndex={0}
+              className="scrollbar-none relative overflow-x-auto overscroll-x-contain rounded-chip pb-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
+            >
+              <ul className="flex w-max min-w-full gap-2">
+                {rows.map((row) => {
+                  const labels = dayLabels(row.date, today);
+                  const isToday = row.date === today;
+                  return (
+                    <li
+                      key={row.date}
+                      aria-current={isToday ? "date" : undefined}
+                      className="shrink-0 snap-start"
                     >
-                      {dayLabel(row.date, today)}
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="h-1.5 overflow-hidden rounded-full bg-primary-soft @max-[14rem]:order-3"
-                    >
-                      <span
-                        className="block h-full rounded-full bg-primary"
-                        style={{
-                          width: `${Math.round((row.perDayCents / largest) * 100)}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="text-right @max-[14rem]:order-2 @max-[14rem]:text-left">
-                      <Money
-                        cents={row.perDayCents}
-                        variant="callout"
-                        tone="neutral"
-                        fit
-                      />
-                      {someCapped && row.cappedByBudget ? (
-                        <span className="sr-only">
-                          , limitado pelo orçamento
+                      <div
+                        className={cn(
+                          "flex w-[6.25rem] flex-col gap-0.5 rounded-card p-3",
+                          isToday ? "bg-primary-soft" : "bg-surface-2",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "text-caption font-semibold",
+                            CLAMP_TEXT,
+                            isToday ? "text-on-primary-soft" : "text-fg",
+                          )}
+                        >
+                          {labels.name}
                         </span>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
+                        <span
+                          className={cn(
+                            "text-caption",
+                            CLAMP_TEXT,
+                            isToday ? "text-on-primary-soft" : "text-fg-3",
+                          )}
+                        >
+                          {labels.date}
+                        </span>
+                        <span>
+                          <Money
+                            cents={row.perDayCents}
+                            variant="callout"
+                            tone="neutral"
+                            fit
+                            className="font-bold"
+                          />
+                          <span className="sr-only"> por dia</span>
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
-            )}
+            </section>
             <p className="text-caption text-fg-3">
-              {anyCapped
-                ? `${someCapped ? "Alguns dias limitados" : "Limitado"} pelo orçamento de ${monthName(budgetMonth)}.`
-                : "Saldo previsto dividido pelos dias que faltam."}
+              Pelo saldo e pelo agendado, sem o orçamento, dividido pelos dias
+              que faltam.
             </p>
           </>
         )}
@@ -144,33 +146,17 @@ export function SpendablePerDayBlock({
   );
 }
 
-/** Every day at zero: the forecast runs out, or the budget has nothing left. */
+/** Every day at zero: the forecast runs out. */
 function NothingLeft({
   untilLabel,
   shortfallCents,
   balanceTodayCents,
-  budgetMonth,
 }: {
   untilLabel: string;
   shortfallCents: number;
   /** Forecast balance at the end of today. */
   balanceTodayCents: number | null;
-  /** Set when the budget is what leaves nothing, with the balance positive. */
-  budgetMonth: string | null;
 }) {
-  if (budgetMonth !== null && shortfallCents === 0) {
-    return (
-      <div className="flex flex-col gap-0.5">
-        <p className="text-headline text-warning">
-          Não sobra para gastar até {untilLabel}
-        </p>
-        <p className="text-caption text-fg-3">
-          O orçamento de {monthName(budgetMonth)} não deixa mais para os dias
-          que faltam.
-        </p>
-      </div>
-    );
-  }
   return (
     <div className="flex flex-col gap-0.5">
       <p

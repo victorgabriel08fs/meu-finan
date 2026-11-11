@@ -258,6 +258,11 @@ test("Quanto dá para gastar por dia a 200% em 360 px não corta valores nem rol
     await block.scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
     await expectNoHorizontalScroll(page, "Gasto por dia a 200%");
+    // Only the strip may scroll, never the page, and it keeps the focus.
+    const strip = block.getByRole("region", {
+      name: "Quanto dá para gastar em cada dia",
+    });
+    await expect(strip).toHaveAttribute("tabindex", "0");
     expect(await clippedValues(page)).toEqual([]);
   } finally {
     await customize.click();

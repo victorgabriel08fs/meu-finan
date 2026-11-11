@@ -44,7 +44,7 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
-- Definir o `CRON_SECRET` em Production, fazer um novo deploy e conferir o cron (README › Cron diário).
+- ~~Definir o `CRON_SECRET` em Production~~: feito pelo dono em 10/11/2026; o "Rodar agora" funcionou. Falta só a confirmação da execução automática (item acima).
 
 ## Acessibilidade — depois
 
@@ -62,7 +62,7 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 
-Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, com o teto do orçamento por linha, destaque de hoje e lista com barras finas. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 linha). Decisões do dono: dias até o fim do mês financeiro, 14 dias, teto por linha, lista com barras. O card Orçamento ganhou a nota "O saldo previsto não cobre o mês: veja Quanto dá para gastar." e a descrição dele na folha virou "Quanto do orçamento já foi e o ritmo do mês." Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).
+Bloco novo do catálogo do Início (largo, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, em cartões lado a lado numa faixa que rola dentro do bloco (hoje primeiro, com destaque e `aria-current="date"`; região focusável para o teclado). O orçamento não entra na conta: vale o saldo de hoje mais as despesas e receitas agendadas, com as faturas de cartão como despesa agendada. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 cartão). Decisões do dono: dias até o fim do mês financeiro, 14 dias; em 11/11/2026, sem o teto do orçamento (a nota do card Orçamento "O saldo previsto não cobre o mês" também saiu) e na horizontal em vez da lista com barras (tarefa 10, mesma branch e PR #12). Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).
 
 Testes de unidade e fast-check (`src/lib/finance/spendable-by-day.test.ts`), integração (`src/app/(app)/inicio/blocks.integration.test.tsx`), componentes e skeleton, e2e (`e2e/inicio-personalizavel.spec.ts`, `texto-grande.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 02 §5.17 e §6.3, doc 03 §11 e §12.
 

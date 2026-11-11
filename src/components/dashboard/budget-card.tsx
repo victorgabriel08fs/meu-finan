@@ -1,9 +1,4 @@
-import {
-  CalendarDays,
-  ChevronRight,
-  Target,
-  TriangleAlert,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Target } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
@@ -49,8 +44,6 @@ type BudgetCardProps = {
   /** "31/out": last day of the period. */
   endLabel: string;
   href: string;
-  /** The forecast balance of the day-to-day accounts goes under zero before the month ends. */
-  forecastShort?: boolean;
 };
 
 /**
@@ -65,7 +58,6 @@ export function BudgetCard({
   isCurrent,
   endLabel,
   href,
-  forecastShort = false,
 }: BudgetCardProps) {
   const { pace } = total;
   const percent = Math.round(pace.elapsedRatio * 100);
@@ -163,15 +155,6 @@ export function BudgetCard({
         monthName={monthName}
         endLabel={endLabel}
       />
-
-      {isCurrent && forecastShort ? (
-        <p className="flex items-start gap-1.5 text-caption text-warning">
-          <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" />
-          <span>
-            O saldo previsto não cobre o mês: veja Quanto dá para gastar.
-          </span>
-        </p>
-      ) : null}
 
       {items.length > 0 ? (
         <ul aria-label="Categorias que pedem atenção" className="-mb-1">
