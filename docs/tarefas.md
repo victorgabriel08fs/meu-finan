@@ -2,15 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 10. Gasto por dia: sem orçamento e na horizontal
-
-**Pedido do dono (11/11/2026), na frente das outras.** O bloco "Quanto dá para gastar por dia" (entregue em 10/11/2026, PR #12) ficou confuso. Fazer na mesma branch (`feat/gasto-por-dia`), antes do merge da #12.
-
-- **Sem orçamento**: a conta usa só o saldo de hoje das contas para gastar e as despesas e receitas agendadas (o saldo previsto, doc 03 §12). Sai o teto do orçamento por linha (`budgetAvailableCents` e `cappedByBudget` em `src/lib/finance/spendable-by-day.ts` e a leitura do orçamento no bloco). Rever também a nota do card Orçamento ("O saldo previsto não cobre o mês: veja Quanto dá para gastar."), que amarra os dois.
-- **Na horizontal**: os dias lado a lado (hoje primeiro, com destaque), em vez da lista com barras. Rolagem lateral dentro do bloco se não couber, sem rolagem da página a 360 px e a 200% de texto; leitor de tela e teclado percorrem os dias.
-- A confirmar no plano: as faturas de cartão contam como despesa agendada (hoje entram no saldo previsto e no "(i)" dele).
-- Atualizar doc 02 §5.17 e §6.3, doc 03 §12, README, testes de unidade, integração, componente e e2e.
-
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
@@ -71,7 +62,7 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 
-Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, com o teto do orçamento por linha, destaque de hoje e lista com barras finas. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 linha). Decisões do dono: dias até o fim do mês financeiro, 14 dias, teto por linha, lista com barras. O card Orçamento ganhou a nota "O saldo previsto não cobre o mês: veja Quanto dá para gastar." e a descrição dele na folha virou "Quanto do orçamento já foi e o ritmo do mês." Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).
+Bloco novo do catálogo do Início (largo, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, em cartões lado a lado numa faixa que rola dentro do bloco (hoje primeiro, com destaque e `aria-current="date"`; região focusável para o teclado). O orçamento não entra na conta: vale o saldo de hoje mais as despesas e receitas agendadas, com as faturas de cartão como despesa agendada. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 cartão). Decisões do dono: dias até o fim do mês financeiro, 14 dias; em 11/11/2026, sem o teto do orçamento (a nota do card Orçamento "O saldo previsto não cobre o mês" também saiu) e na horizontal em vez da lista com barras (tarefa 10, mesma branch e PR #12). Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).
 
 Testes de unidade e fast-check (`src/lib/finance/spendable-by-day.test.ts`), integração (`src/app/(app)/inicio/blocks.integration.test.tsx`), componentes e skeleton, e2e (`e2e/inicio-personalizavel.spec.ts`, `texto-grande.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 02 §5.17 e §6.3, doc 03 §11 e §12.
 
