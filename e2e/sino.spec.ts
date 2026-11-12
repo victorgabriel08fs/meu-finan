@@ -109,15 +109,9 @@ test("dispensar tira o aviso da lista e Desfazer o traz de volta", async ({
   await expect(sheet(page).getByText("Sua semana")).toBeVisible();
 });
 
-// BUG (reported to the dev): with the sheet open, Radix's modal leaves the
-// page with `pointer-events: none` and the toast sits under that rule, so the
-// "Desfazer" of "Notificação dispensada" cannot be tapped (the same goes for
-// the other toasts with an action opened from a sheet). Expected to fail
-// until the toaster takes pointer events back; remove `test.fail` then.
 test("Desfazer do toast pode ser tocado com a folha aberta", async ({
   page,
 }) => {
-  test.fail();
   await openBell(page);
   const week = sheet(page).getByText("Sua semana");
   const dismissed = actionDone(page);
@@ -142,16 +136,9 @@ test("Desfazer do toast pode ser tocado com a folha aberta", async ({
   }
 });
 
-// BUG (reported to the dev): NoticeRow closes the sheet (setOpen(false)) and
-// then calls router.push(href); closing from the UI steps back over the
-// sheet's history entry (use-back-to-close.ts), which undoes the push, so the
-// page stays on /inicio. The sheet should navigate and let the page unmount
-// it, or push inside afterSheetsClose. Expected to fail until then; remove
-// `test.fail` when fixed.
 test("tocar num aviso lido fecha a folha e abre o destino", async ({
   page,
 }) => {
-  test.fail();
   await openBell(page);
   await sheet(page)
     .getByRole("button", { name: /Sua semana/ })

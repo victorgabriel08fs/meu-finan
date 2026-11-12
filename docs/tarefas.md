@@ -80,10 +80,7 @@ Etapa A das tarefas 8 e 9 (central de avisos antes dos convites para dividir des
 - [x] **Avisos do cron no sino sem aparelho** (`bellOnly` na Rotina) e **número do ícone** pelas não lidas do sino: abrir o app não o zera com a flag ligada.
 - [x] Testes: unidade (`center`, `kinds`, `withNoticeParam`, componentes do sino, do item da barra e da folha), integração contra o PGlite (domínio com isolamento entre contas, rota, avisos do cron, sync do aparelho, flag) e e2e (`e2e/sino.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`; axe nos dois temas, 360 px a 200%, desktop, flag desligada).
 
-**Problemas conhecidos (com e2e marcado `test.fail` em `e2e/sino.spec.ts`, para tirar quando corrigir):**
-
-- **Tocar num aviso não abre o destino no celular.** `NoticeRow` fecha a folha e chama `router.push`; o passo atrás do `use-back-to-close` desfaz o `push` e a pessoa fica no Início. Navegar e deixar a página desmontar a folha, ou empurrar dentro de `afterSheetsClose` (`src/components/notifications/notifications-sheet.tsx`, `open()`).
-- **"Desfazer" do toast não recebe toque com a folha aberta.** O modal do Radix deixa a página com `pointer-events: none` e o toast herda; vale também para os toasts com ação abertos de dentro de outras folhas (Administração › Flags, Personalizar o Início). Devolver os eventos de ponteiro ao `Toaster` (`src/components/providers.tsx`).
+- [x] **Correções da verificação**: tocar num aviso abre o destino depois que a folha fecha (`afterSheetsClose`, Voltar desfaz); o "Desfazer" de um toast recebe o toque com qualquer folha aberta (Sino, Flags, Personalizar o Início) sem fechar a folha.
 
 **Ficou para depois:** tempo real (a contagem atualiza ao voltar ao app); avisos de orçamento 80%/100%, meta atingida e fatura fechando; os convites das tarefas 8 e 9 (o registro de tipos já tem o espaço); o "Marcar como pago" não tem teste de e2e que clica (pagar o Condomínio mudaria as telas dos testes seguintes); só unidade e integração.
 ### Alerta de conta que vence em dia não útil — 12/11/2026

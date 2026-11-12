@@ -60,6 +60,8 @@ function AppToaster() {
       containerAriaLabel="Notificações"
       style={
         {
+          // An open sheet (Radix modal) sets pointer-events: none on the body.
+          pointerEvents: "auto",
           "--normal-bg": "var(--toast-bg)",
           "--normal-text": "var(--toast-fg)",
           "--normal-border": "transparent",
@@ -71,7 +73,7 @@ function AppToaster() {
           // With large text the action drops under the message (which would
           // break letter by letter beside it), keeping its 44px target.
           toast:
-            "font-sans! shadow-dialog! flex-wrap! gap-x-3! gap-y-0! px-4! py-3!",
+            "pointer-events-auto! font-sans! shadow-dialog! flex-wrap! gap-x-3! gap-y-0! px-4! py-3!",
           content: "min-w-40!",
           title: "text-callout! font-semibold!",
           description: "text-caption! text-(--toast-fg)! opacity-80",

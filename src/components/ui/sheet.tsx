@@ -110,6 +110,12 @@ export function Sheet({
   // "tap outside" would close it at once. So a tap outside counts only when
   // it started while the sheet was open.
   const keepIfReopened = useCallback((event: PointerDownOutsideEvent) => {
+    // A toast's action (Desfazer) sits outside the sheet but belongs to it.
+    const target = event.detail.originalEvent.target;
+    if (target instanceof Element && target.closest("[data-sonner-toaster]")) {
+      event.preventDefault();
+      return;
+    }
     if (
       !isOpen.current ||
       event.detail.originalEvent.timeStamp < openedAt.current

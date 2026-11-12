@@ -15,6 +15,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { toastWithUndo } from "@/components/ui/toast";
+import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import {
   groupNotifications,
   noticeTimeLabel,
@@ -36,6 +37,13 @@ const DISMISS_DISTANCE = 96;
 const DISMISS_VELOCITY = 500;
 
 /**
+ * Where a tapped notice points, pushed once the sheet is closed and its
+ * history entry is gone: pushed earlier, the sheet's step back would undo it
+ * (useBackToClose).
+ */
+let pendingHref: string | null = null;
+
+/**
  * The notification center (doc 02 §6.15): a sheet (a dialog from md) with the
  * notices grouped in Hoje, Esta semana and Antes. Tapping a notice reads it
  * and goes where it points; each one may carry buttons (the kind decides),
@@ -51,6 +59,7 @@ export function NotificationsSheet({ timeZone }: { timeZone: string }) {
   const next = useNotificationsStore((state) => state.next);
   const load = useNotificationsStore((state) => state.load);
   const loadMore = useNotificationsStore((state) => state.loadMore);
+  const router = useRouter();
   const markAllRead = useNotificationsStore((state) => state.markAllRead);
 
   // A fresh list each time the sheet opens; what is already there stays on
@@ -58,6 +67,13 @@ export function NotificationsSheet({ timeZone }: { timeZone: string }) {
   useEffect(() => {
     if (open) void load();
   }, [open, load]);
+
+  useEffect(() => {
+    if (open || pendingHref === null) return;
+    const href = pendingHref;
+    pendingHref = null;
+    afterSheetsClose(() => router.push(href));
+  }, [open, router]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -200,7 +216,6 @@ function NoticeRow({
   now: number;
   timeZone: string;
 }) {
-  const router = useRouter();
   const setOpen = useNotificationsStore((state) => state.setOpen);
   const markRead = useNotificationsStore((state) => state.markRead);
   const dismiss = useNotificationsStore((state) => state.dismiss);
@@ -215,8 +230,8 @@ function NoticeRow({
   function open() {
     if (dragged.current) return;
     if (!item.read) void markRead([item.id]);
+    pendingHref = item.href;
     setOpen(false);
-    router.push(item.href);
   }
 
   async function dismissItem() {
