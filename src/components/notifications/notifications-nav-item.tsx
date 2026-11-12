@@ -27,13 +27,17 @@ export function NotificationsNavItem() {
         className="relative flex h-11 w-full items-center gap-3 rounded-control px-3 text-headline text-fg-2 transition-colors duration-150 hover:bg-surface-2 hover:text-fg"
       >
         <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
-        {/* The name comes from the visible text (WCAG 2.5.3): "Notificações, 2 não lidas". */}
-        <span>Notificações</span>
-        {unread > 0 ? (
-          <span className="sr-only">
-            {bellLabel(unread).slice("Notificações".length)}
-          </span>
-        ) : null}
+        {/* The name comes from the visible text (WCAG 2.5.3): "Notificações, 2 não lidas".
+            The count sits inside the label's span: as a sibling flex item it
+            would get a space before the comma. */}
+        <span>
+          Notificações
+          {unread > 0 ? (
+            <span className="sr-only">
+              {bellLabel(unread).slice("Notificações".length)}
+            </span>
+          ) : null}
+        </span>
         {unread > 0 ? (
           <span
             aria-hidden="true"
