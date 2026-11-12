@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  index,
   integer,
   jsonb,
   numeric,
@@ -152,10 +153,16 @@ export const notifications = pgTable(
     dedupeKey: text("dedupe_key").notNull(),
     payload: jsonb("payload").$type<NotificationPayload>().notNull(),
     readAt: timestamptz("read_at"),
+    /**
+     * Dismissed from the bell. The row stays: the daily job reads `itemKeys`
+     * and the day's dedupe key, and deleting it would repeat the notice.
+     */
+    dismissedAt: timestamptz("dismissed_at"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("notifications_user_id_dedupe_key_key").on(t.userId, t.dedupeKey),
+    index("notifications_user_id_created_at_idx").on(t.userId, t.createdAt),
   ],
 );
 

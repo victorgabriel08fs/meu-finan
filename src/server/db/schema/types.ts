@@ -98,6 +98,11 @@ export type NotificationPayload =
        * selectBillReminders and selectNonBusinessDueReminders).
        */
       itemKeys?: string[];
+      /**
+       * Whether the title or body carry money, as sent (`showAmounts`). Rows
+       * without it count as "may carry amounts".
+       */
+      amounts?: boolean;
     };
 
 export type JsonValue =
