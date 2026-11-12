@@ -69,6 +69,23 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ## Entregue
 
+### Sino de notificações — 12/11/2026
+
+Etapa A das tarefas 8 e 9 (central de avisos antes dos convites para dividir despesas). Decisões do dono (12/11/2026): avisos do cron gravados no sino mesmo sem aparelho, número do ícone pelas não lidas do sino, dispensar sem apagar a linha, tempo real fica para depois.
+
+- [x] **Flag `central_notificacoes`** (desligada por padrão; a demo liga para a Ana e o Bruno) e a novidade "Notificações num lugar só" (só em Ajustes › Novidades).
+- [x] **Tabela `notifications`**: `dismissed_at` e índice `(user_id, created_at)` (migração `0010_central_notificacoes`); `payload.amounts` para o modo discreto.
+- [x] **Domínio e rota**: listar, contar, marcar como lido (por ids ou até uma data), dispensar e restaurar (`src/server/domain/notifications.ts`), `GET /api/notificacoes` (sessão, flag, cursor, `limite=0`) e registro de tipos `src/lib/notifications/kinds.ts` (ações por tipo, modo discreto, tipos por flag, espaço para convites das tarefas 8 e 9).
+- [x] **Sino**: botão no Início (com selo, "9+"), item na barra lateral, folha com Hoje / Esta semana / Antes, ação direta, "Marcar como pago", marcar uma ou todas como lidas, dispensar (X ou deslizar) com Desfazer, estados vazio, carregando e erro; toque no aviso do celular marca como lido (`?aviso=`).
+- [x] **Avisos do cron no sino sem aparelho** (`bellOnly` na Rotina) e **número do ícone** pelas não lidas do sino: abrir o app não o zera com a flag ligada.
+- [x] Testes: unidade (`center`, `kinds`, `withNoticeParam`, componentes do sino, do item da barra e da folha), integração contra o PGlite (domínio com isolamento entre contas, rota, avisos do cron, sync do aparelho, flag) e e2e (`e2e/sino.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`; axe nos dois temas, 360 px a 200%, desktop, flag desligada).
+
+**Problemas conhecidos (com e2e marcado `test.fail` em `e2e/sino.spec.ts`, para tirar quando corrigir):**
+
+- **Tocar num aviso não abre o destino no celular.** `NoticeRow` fecha a folha e chama `router.push`; o passo atrás do `use-back-to-close` desfaz o `push` e a pessoa fica no Início. Navegar e deixar a página desmontar a folha, ou empurrar dentro de `afterSheetsClose` (`src/components/notifications/notifications-sheet.tsx`, `open()`).
+- **"Desfazer" do toast não recebe toque com a folha aberta.** O modal do Radix deixa a página com `pointer-events: none` e o toast herda; vale também para os toasts com ação abertos de dentro de outras folhas (Administração › Flags, Personalizar o Início). Devolver os eventos de ponteiro ao `Toaster` (`src/components/providers.tsx`).
+
+**Ficou para depois:** tempo real (a contagem atualiza ao voltar ao app); avisos de orçamento 80%/100%, meta atingida e fatura fechando; os convites das tarefas 8 e 9 (o registro de tipos já tem o espaço); o "Marcar como pago" não tem teste de e2e que clica (pagar o Condomínio mudaria as telas dos testes seguintes); só unidade e integração.
 ### Alerta de conta que vence em dia não útil — 12/11/2026
 
 Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendário bancário; "Venceu" só depois do próximo dia útil (D2); aviso push com interruptor próprio, ligado por padrão, no último dia útil antes, uma vez por conta; só feriados nacionais por enquanto.
@@ -87,7 +104,7 @@ Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendá
 - A nota no **detalhe da conta** (`/contas/[id]`) e nos lançamentos da fatura: o campo opcional já serve, só falta anotar na página.
 - **Receita (salário) em dia não útil** e "Próxima receita" ajustada.
 - O **status gravado da fatura** e a previsão por dia útil: hoje só a apresentação muda.
-- A central do sino (doc 02 §6.15) não tem o aviso.
+- O aviso na central do sino já existe (entregue em 12/11/2026, abaixo).
 
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 
