@@ -84,6 +84,7 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
       "upcoming-bills",
       "accounts",
       "goals",
+      "shared",
     ]);
   await expect(
     page.getByRole("button", { name: "Personalizar o Início" }),

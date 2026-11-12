@@ -1082,6 +1082,21 @@ async function seedSharing(
       )[0]?.email ?? "",
     ],
   });
+  // Ana's bell keeps only the 3 notices of seedNotifications (the specs of
+  // the bell count them): what the group wrote to her is dismissed. The
+  // invite itself still shows in Compartilhado.
+  const now = new Date();
+  const mine = await db
+    .select({ id: notifications.id, type: notifications.type })
+    .from(notifications)
+    .where(eq(notifications.userId, anaId));
+  for (const row of mine) {
+    if (!row.type.startsWith("share")) continue;
+    await db
+      .update(notifications)
+      .set({ readAt: now, dismissedAt: now })
+      .where(eq(notifications.id, row.id));
+  }
 }
 
 main().catch(async (error: unknown) => {
