@@ -2,10 +2,16 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
+import { MAX_HIDDEN_ACCOUNTS } from "@/lib/home/block-settings";
 import { MOVABLE_HOME_BLOCK_IDS } from "@/lib/home/blocks";
 import { THEMES } from "@/server/db/schema";
-import { setHomeLayout, setThemePreference } from "@/server/domain/preferences";
+import {
+  setDailySpendHidden,
+  setHomeLayout,
+  setThemePreference,
+} from "@/server/domain/preferences";
 import { authAction, flaggedAction } from "@/server/safe-action";
+import { idSchema } from "./schemas";
 
 /**
  * Theme chosen in Ajustes or in a quick toggle (doc 02 §6.14). The device
@@ -54,5 +60,29 @@ export const saveHomeLayoutAction = flaggedAction(
   .inputSchema(homeLayoutInput)
   .action(async ({ parsedInput: { blocks }, ctx: { user } }) => {
     await setHomeLayout(user.id, blocks);
+    refresh();
+  });
+
+const dailySpendAccountsInput = z.strictObject({
+  /** The accounts left out of the lines; every other one shows. */
+  hiddenAccountIds: z
+    .array(idSchema)
+    .max(MAX_HIDDEN_ACCOUNTS)
+    .refine((ids) => new Set(ids).size === ids.length, "Conta repetida."),
+});
+
+/**
+ * "Contas no bloco" of Quanto dá para gastar por dia (doc 02 §6.3): the
+ * accounts without a line under each day, kept on the account. Behind
+ * inicio_personalizavel like the rest of the Início's choices; the domain
+ * refuses an id that is not the person's.
+ */
+export const saveDailySpendAccountsAction = flaggedAction(
+  "inicio_personalizavel",
+  "Personalizar o Início não está disponível na sua conta.",
+)
+  .inputSchema(dailySpendAccountsInput)
+  .action(async ({ parsedInput: { hiddenAccountIds }, ctx: { user } }) => {
+    await setDailySpendHidden(user.id, hiddenAccountIds);
     refresh();
   });

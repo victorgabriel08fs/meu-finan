@@ -643,6 +643,8 @@ export async function pendingEntries(ctx: UserContext, until: string) {
       categoryIcon: categories.icon,
       categoryColor: categories.color,
       transferId: transactions.transferId,
+      // The card leg of a scheduled invoice payment points at the invoice.
+      invoiceId: transactions.invoiceId,
     })
     .from(transactions)
     .innerJoin(finAccounts, eq(finAccounts.id, transactions.accountId))

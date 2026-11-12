@@ -10,6 +10,7 @@ import { CardVisual } from "./card-visual";
 import { InvoiceEntries, type InvoiceEntryView } from "./invoice-entries";
 import { InvoiceSummaryCard } from "./invoice-summary";
 import { InvoiceTabs } from "./invoice-tabs";
+import { paymentAccountIn } from "./pay-invoice-sheet";
 
 // Server Actions and the app router are not available outside Next.
 vi.mock("@/server/actions/planning", () => ({
@@ -53,7 +54,12 @@ const card = account({
   icon: "credit-card",
   balanceCents: -138_042,
   pendingCents: -39_992,
-  card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
+  card: {
+    limitCents: 550_000,
+    closingDay: 17,
+    dueDay: 25,
+    paymentAccountId: null,
+  },
 });
 
 describe("NetWorthHero and AccountGroupList", () => {
@@ -319,6 +325,21 @@ describe("InvoiceSummaryCard", () => {
       />,
     );
     expect(text(html)).toContain("Cadastrar conta");
+  });
+});
+
+describe("paymentAccountIn", () => {
+  const accounts = [{ id: "a1" }, { id: "a2" }];
+
+  it("keeps the card's paying account when it can still pay", () => {
+    expect(paymentAccountIn(accounts, "a2")).toBe("a2");
+  });
+
+  it("drops one no longer listed (archived), or none chosen", () => {
+    expect(paymentAccountIn(accounts, "gone")).toBeNull();
+    expect(paymentAccountIn(accounts, null)).toBeNull();
+    expect(paymentAccountIn(accounts, undefined)).toBeNull();
+    expect(paymentAccountIn([], "a1")).toBeNull();
   });
 });
 

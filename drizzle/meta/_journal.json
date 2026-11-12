@@ -92,6 +92,13 @@
       "when": 1794507326463,
       "tag": "0012_caixinha_compartilhada",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794516480754,
+      "tag": "0013_gasto_por_conta",
+      "breakpoints": true
     }
   ]
 }

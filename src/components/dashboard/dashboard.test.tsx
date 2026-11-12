@@ -314,7 +314,12 @@ describe("AccountsCarousel", () => {
             type: "credit_card",
             icon: "credit-card",
             balanceCents: -138_042,
-            card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
+            card: {
+              limitCents: 550_000,
+              closingDay: 17,
+              dueDay: 25,
+              paymentAccountId: null,
+            },
           }),
         ]}
       />,
@@ -357,7 +362,12 @@ describe("AccountsCarousel", () => {
             name: "Cartão principal",
             type: "credit_card",
             balanceCents: -138_042,
-            card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
+            card: {
+              limitCents: 550_000,
+              closingDay: 17,
+              dueDay: 25,
+              paymentAccountId: null,
+            },
           }),
         ]}
         currentInvoiceCents={{ c1: 41_290 }}

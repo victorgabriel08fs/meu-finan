@@ -18,7 +18,13 @@ export type AccountSnapshot = {
   icon: string;
   balanceCents: number;
   includeInNetWorth: boolean;
-  card: { limitCents: number; closingDay: number; dueDay: number } | null;
+  card: {
+    limitCents: number;
+    closingDay: number;
+    dueDay: number;
+    /** "Conta que paga a fatura"; null or absent when none was chosen. */
+    paymentAccountId?: string | null;
+  } | null;
 };
 
 export const ACCOUNT_TYPE_OPTIONS: readonly {

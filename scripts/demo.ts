@@ -249,7 +249,13 @@ async function main(): Promise<void> {
     type: "credit_card",
     initialBalanceCents: 0,
     color: "cat-7",
-    card: { limitCents: 550_000, closingDay: 17, dueDay: 25 },
+    // The checking account pays the invoice (it opens there in "Pagar fatura").
+    card: {
+      limitCents: 550_000,
+      closingDay: 17,
+      dueDay: 25,
+      paymentAccountId: checking,
+    },
   });
 
   // History ----------------------------------------------------------------------

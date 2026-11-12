@@ -642,3 +642,153 @@ describe("saveNotificationPreferencesAction", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });
+
+// "Contas no bloco" of Quanto dá para gastar por dia: the accounts hidden
+// from the lines, in user_settings.home_block_settings.
+describe("home block settings", () => {
+  let accountIds: { mine: string; archived: string; theirs: string };
+
+  const storedBlockSettings = async (userId: string) => {
+    const [row] = await m.db
+      .select({ settings: m.schema.userSettings.homeBlockSettings })
+      .from(m.schema.userSettings)
+      .where(m.eq(m.schema.userSettings.userId, userId));
+    return row?.settings;
+  };
+  const saveAccounts = async (hiddenAccountIds: unknown) =>
+    (await import("../actions/preferences")).saveDailySpendAccountsAction({
+      hiddenAccountIds,
+    } as never);
+
+  beforeAll(async () => {
+    const { createAccount, archiveAccount } = await import("./accounts");
+    const account = (userId: string, name: string) =>
+      createAccount(userId, {
+        name,
+        type: "checking",
+        initialBalanceCents: 0,
+      });
+    accountIds = {
+      mine: await account("owner", "Conta principal"),
+      archived: await account("owner", "Antiga"),
+      theirs: await account("outro", "Do outro"),
+    };
+    await archiveAccount("owner", accountIds.archived);
+  });
+
+  beforeEach(async () => {
+    await resetHomeLayouts();
+    await m.db.update(m.schema.userSettings).set({ homeBlockSettings: null });
+  });
+
+  it("starts empty and reads back what was saved", async () => {
+    expect(await m.preferences.getHomeBlockSettings("owner")).toBeNull();
+    await m.preferences.setDailySpendHidden("owner", [accountIds.mine]);
+    expect(await m.preferences.getHomeBlockSettings("owner")).toEqual({
+      "daily-spend": { hiddenAccountIds: [accountIds.mine] },
+    });
+    await m.preferences.setDailySpendHidden("owner", []);
+    expect(await storedBlockSettings("owner")).toEqual({
+      "daily-spend": { hiddenAccountIds: [] },
+    });
+  });
+
+  it("keeps the other blocks' settings and the Início's layout", async () => {
+    await m.db.execute(
+      m.sql.raw(
+        `update user_settings set home_block_settings = '{"outro-bloco":{"x":1}}'::jsonb where user_id = 'owner'`,
+      ),
+    );
+    await m.preferences.setDailySpendHidden("owner", [accountIds.mine]);
+    expect(await storedBlockSettings("owner")).toEqual({
+      "outro-bloco": { x: 1 },
+      "daily-spend": { hiddenAccountIds: [accountIds.mine] },
+    });
+    // Not a layout of its own: the Início stays the app's default.
+    expect(await storedHomeLayout("owner")).toBeNull();
+    expect((await m.preferences.getHomeLayout("owner")).customized).toBe(false);
+  });
+
+  it("creates the settings row when it is missing", async () => {
+    await m.db
+      .delete(m.schema.userSettings)
+      .where(m.eq(m.schema.userSettings.userId, "outro"));
+    await m.preferences.setDailySpendHidden("outro", [accountIds.theirs]);
+    expect(await storedBlockSettings("outro")).toEqual({
+      "daily-spend": { hiddenAccountIds: [accountIds.theirs] },
+    });
+  });
+
+  it("accepts an archived account of the person, refuses anyone else's", async () => {
+    await m.preferences.setDailySpendHidden("owner", [accountIds.archived]);
+    await expect(
+      m.preferences.setDailySpendHidden("owner", [
+        accountIds.mine,
+        accountIds.theirs,
+      ]),
+    ).rejects.toThrow("Conta não encontrado(a).");
+    expect(await storedBlockSettings("owner")).toEqual({
+      "daily-spend": { hiddenAccountIds: [accountIds.archived] },
+    });
+  });
+
+  it("refuses anything but an object in the column", async () => {
+    for (const value of [`'[]'`, `'"x"'`, `'1'`]) {
+      await expect(
+        m.db.execute(
+          m.sql.raw(
+            `update user_settings set home_block_settings = ${value}::jsonb where user_id = 'owner'`,
+          ),
+        ),
+      ).rejects.toThrow();
+    }
+  });
+
+  it("is refused on the server while the flag is off", async () => {
+    const result = await saveAccounts([accountIds.mine]);
+    expect(result.serverError).toBe(
+      "Personalizar o Início não está disponível na sua conta.",
+    );
+    expect(await storedBlockSettings("owner")).toBeNull();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("saves the session owner's choice and refreshes the page", async () => {
+    await enableHomeLayout("owner");
+    const result = await saveAccounts([accountIds.mine]);
+    expect(result.serverError).toBeUndefined();
+    expect(result.validationErrors).toBeUndefined();
+    expect(await storedBlockSettings("owner")).toEqual({
+      "daily-spend": { hiddenAccountIds: [accountIds.mine] },
+    });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses repeated, malformed and someone else's ids, and a user from the client", async () => {
+    await enableHomeLayout("owner");
+    for (const ids of [
+      [accountIds.mine, accountIds.mine],
+      ["nao-e-uuid"],
+      "x",
+    ]) {
+      const result = await saveAccounts(ids);
+      expect(result.validationErrors, JSON.stringify(ids)).toBeDefined();
+    }
+    const repeated = await saveAccounts([accountIds.mine, accountIds.mine]);
+    expect(JSON.stringify(repeated.validationErrors)).toContain(
+      "Conta repetida.",
+    );
+    const sneaky = await (
+      await import("../actions/preferences")
+    ).saveDailySpendAccountsAction({
+      hiddenAccountIds: [],
+      userId: "outro",
+    } as never);
+    expect(sneaky.validationErrors).toBeDefined();
+    const theirs = await saveAccounts([accountIds.theirs]);
+    expect(theirs.serverError).toBe("Conta não encontrado(a).");
+    expect(await storedBlockSettings("owner")).toBeNull();
+    expect(await storedBlockSettings("outro")).toBeNull();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+});

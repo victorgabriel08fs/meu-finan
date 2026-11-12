@@ -216,7 +216,12 @@ async function CardDetail({
       <PageHeader
         title={account.name}
         back={BACK}
-        actions={<CardHeaderActions account={snapshot} />}
+        actions={
+          <CardHeaderActions
+            account={snapshot}
+            paymentAccounts={paymentAccounts}
+          />
+        }
       />
       <CardVisual
         name={account.name}
@@ -234,6 +239,7 @@ async function CardDetail({
         cardName={account.name}
         split={split}
         paymentAccounts={paymentAccounts}
+        defaultPaymentAccountId={account.card?.paymentAccountId ?? null}
         nonBusinessDue={nonBusiness.get(invoice.dueDate) ?? null}
       />
       <BestDayCard

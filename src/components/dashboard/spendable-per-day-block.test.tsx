@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { addDays, iso, parse } from "@/lib/finance/dates";
 import { NBSP } from "@/lib/format/money";
 import type { SpendablePerDay } from "@/server/domain/dashboard";
@@ -11,6 +11,11 @@ import {
 
 // Quanto dá para gastar por dia on the Início (doc 02 §6.3): a strip of day
 // cards, today first, and the states around it.
+
+// Server Actions are not available outside Next ("Escolher contas").
+vi.mock("@/server/actions/preferences", () => ({
+  saveDailySpendAccountsAction: vi.fn(),
+}));
 
 const plain = (html: string) => html.replaceAll(NBSP, " ");
 
@@ -24,6 +29,7 @@ function days(
     date: iso(addDays(parse(TODAY), k)),
     daysLeft: 21 - k,
     perDayCents: perDay(k),
+    byAccount: [],
   }));
 }
 
@@ -33,6 +39,8 @@ const base: SpendablePerDay = {
   shortfallCents: 0,
   balanceTodayCents: 150_000,
   until: "2026-11-30",
+  accounts: [],
+  unassignedCards: [],
 };
 
 const render = (spendable: SpendablePerDay, isCurrent = true) =>
@@ -156,6 +164,139 @@ describe("SpendablePerDayBlock", () => {
       rows: days(() => 0),
     });
     expect(broke).toContain("Sem saldo nas contas para gastar até 30/nov.");
+  });
+});
+
+describe("SpendablePerDayBlock by account", () => {
+  const accounts: SpendablePerDay["accounts"] = [
+    {
+      id: "checking",
+      name: "Conta principal",
+      color: "cat-1",
+      icon: "landmark",
+      type: "checking",
+      shown: true,
+    },
+    {
+      id: "reserve",
+      name: "Reserva",
+      color: "cat-3",
+      icon: "trending-up",
+      type: "investment",
+      shown: true,
+    },
+    {
+      id: "wallet",
+      name: "Carteira",
+      color: "cat-4",
+      icon: "wallet",
+      type: "cash",
+      shown: false,
+    },
+  ];
+  const withLines: SpendablePerDay = {
+    ...base,
+    rows: base.rows.map((row) => ({
+      ...row,
+      perDayCents: 8_500,
+      byAccount: [
+        { accountId: "checking", perDayCents: 5_000 },
+        { accountId: "reserve", perDayCents: 0 },
+      ],
+    })),
+    accounts,
+  };
+
+  it("gives each day a line per shown account, under the total", () => {
+    const html = render(withLines);
+    expect(html.match(/>Conta principal</g)).toHaveLength(14);
+    expect(html.match(/>Reserva</g)).toHaveLength(14);
+    expect(html).not.toContain(">Carteira<");
+    expect(html).toContain("R$ 50,00");
+    expect(html.match(/>Não sobra</g)).toHaveLength(14);
+    // Wider cards with lines, the divider in a token.
+    expect(html).toContain("w-34");
+    expect(html).toContain(">Total<");
+    expect(html).not.toContain("w-25");
+    expect(html).toContain("border-t border-border");
+    // The account's color as a dot, hidden from screen readers.
+    expect(html).toMatch(
+      /aria-hidden="true" class="mt-1.25 size-2 shrink-0 rounded-full bg-cat-1-fg"/,
+    );
+  });
+
+  it("reads each card as one sentence", () => {
+    const html = render(withLines);
+    expect(html).toContain('<span class="sr-only">:</span>');
+    expect(html.match(/<span class="sr-only"> por dia;<\/span>/g)).toHaveLength(
+      14,
+    );
+    expect(html).not.toContain('<span class="sr-only"> por dia</span>');
+    expect(html.match(/<span class="sr-only">;<\/span>/g)).toHaveLength(28);
+  });
+
+  it("explains the lines and offers to choose the accounts", () => {
+    const html = render(withLines);
+    expect(html).toContain(
+      "Em cada conta, o saldo e o agendado dela, com as faturas que ela paga.",
+    );
+    expect(html).toContain("Escolher contas");
+    expect(html).toContain('aria-haspopup="dialog"');
+  });
+
+  it("keeps the button with every line hidden, but not the lines' note", () => {
+    const html = render({
+      ...withLines,
+      rows: base.rows,
+      accounts: accounts.map((account) => ({ ...account, shown: false })),
+    });
+    expect(html).toContain("Escolher contas");
+    expect(html).toContain("w-25");
+    expect(html).not.toContain("Em cada conta");
+    expect(html).toContain('<span class="sr-only"> por dia</span>');
+  });
+
+  it("has no lines nor button with a single account", () => {
+    const html = render(base);
+    expect(html).not.toContain("Escolher contas");
+    expect(html).not.toContain("Em cada conta");
+  });
+
+  it("drops the lines and the button when nothing is left in the total", () => {
+    const html = render({
+      ...withLines,
+      rows: withLines.rows.map((row) => ({ ...row, perDayCents: 0 })),
+    });
+    expect(html).toContain("Não sobra para gastar até 30/nov");
+    expect(html).not.toContain("Conta principal");
+    expect(html).not.toContain("Escolher contas");
+  });
+
+  it("says when a card's invoice counts only in the total", () => {
+    const one = render({
+      ...withLines,
+      unassignedCards: [{ id: "card-1", name: "Cartão Principal" }],
+    });
+    expect(one).toContain("A fatura do Cartão Principal entra só no total.");
+    expect(one).toContain('href="/cartoes/card-1"');
+    expect(one).toContain("Escolher a conta que paga");
+    const two = render({
+      ...withLines,
+      unassignedCards: [
+        { id: "card-1", name: "Cartão Principal" },
+        { id: "card-2", name: "Outro" },
+      ],
+    });
+    expect(two).toContain("As faturas de 2 cartões entram só no total.");
+    expect(two).toContain('href="/contas"');
+    expect(two).toContain("Ver contas");
+    // Without lines the note has nothing to qualify.
+    expect(
+      render({
+        ...base,
+        unassignedCards: [{ id: "card-1", name: "Cartão Principal" }],
+      }),
+    ).not.toContain("entra só no total");
   });
 });
 

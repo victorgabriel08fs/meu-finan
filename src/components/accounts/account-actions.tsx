@@ -15,6 +15,7 @@ import { AccountEditSheet } from "./account-edit-sheet";
 import type { AccountSnapshot } from "./account-meta";
 import { AdjustBalanceSheet } from "./adjust-balance-sheet";
 import { ArchiveAccountSheet } from "./archive-account-sheet";
+import type { PaymentAccount } from "./pay-invoice-sheet";
 
 /** In-line actions of an account (doc 02 §6.7): Ajustar saldo · Editar · Arquivar. */
 export function AccountActions({ account }: { account: AccountSnapshot }) {
@@ -75,12 +76,22 @@ export function SavingsBoxActions({
   );
 }
 
-/** Edit and archive a card from its screen header (two 44px icon buttons). */
-export function CardHeaderActions({ account }: { account: AccountSnapshot }) {
+/**
+ * Edit and archive a card from its screen header (two 44px icon buttons).
+ * `paymentAccounts`: the accounts that can pay its invoices.
+ */
+export function CardHeaderActions({
+  account,
+  paymentAccounts,
+}: {
+  account: AccountSnapshot;
+  paymentAccounts: PaymentAccount[];
+}) {
   return (
     <>
       <AccountEditSheet
         account={account}
+        paymentAccounts={paymentAccounts}
         trigger={
           <IconButton label="Editar cartão">
             <Pencil />

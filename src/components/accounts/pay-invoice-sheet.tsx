@@ -22,6 +22,17 @@ export type PaymentAccount = {
   balanceCents: number;
 };
 
+/**
+ * The id when it is one of `accounts`, otherwise null: the card's "Conta
+ * que paga a fatura" may have been archived since it was chosen.
+ */
+export function paymentAccountIn(
+  accounts: readonly { id: string }[],
+  id: string | null | undefined,
+): string | null {
+  return accounts.find((account) => account.id === id)?.id ?? null;
+}
+
 type PayInvoiceSheetProps = {
   invoiceId: string;
   /** Suggested amount: what is still owed on the invoice. */
@@ -30,6 +41,8 @@ type PayInvoiceSheetProps = {
   invoiceLabel: string;
   /** Regular (non-card) accounts; the first one is preselected. */
   accounts: PaymentAccount[];
+  /** The card's "Conta que paga a fatura", preselected when it is in `accounts`. */
+  defaultFromId?: string | null;
   /** `YYYY-MM-DD`, the default date. */
   today: string;
 };
@@ -46,12 +59,15 @@ export function PayInvoiceSheet({
   outstandingCents,
   invoiceLabel,
   accounts,
+  defaultFromId = null,
   today,
 }: PayInvoiceSheetProps) {
   const id = useId();
+  const initialFromId =
+    paymentAccountIn(accounts, defaultFromId) ?? accounts[0]?.id ?? "";
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState<number | null>(outstandingCents);
-  const [fromId, setFromId] = useState(accounts[0]?.id ?? "");
+  const [fromId, setFromId] = useState(initialFromId);
   const [date, setDate] = useState(today);
   const [errors, setErrors] = useState<Errors>({});
   const { executeAsync, isPending } = useAction(payInvoiceAction);
@@ -60,7 +76,7 @@ export function PayInvoiceSheet({
   function changeOpen(next: boolean) {
     if (next) {
       setAmount(outstandingCents);
-      setFromId(accounts[0]?.id ?? "");
+      setFromId(initialFromId);
       setDate(today);
       setErrors({});
     }

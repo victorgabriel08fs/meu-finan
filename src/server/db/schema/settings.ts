@@ -30,6 +30,15 @@ export type StoredNotificationPreferences = {
   showAmounts?: boolean;
 };
 
+/**
+ * Settings of single blocks of the Início, by block id
+ * (src/lib/home/block-settings.ts). Read defensively: an unknown key or a
+ * malformed value takes the default.
+ */
+export type StoredHomeBlockSettings = {
+  "daily-spend"?: { hiddenAccountIds?: string[] };
+};
+
 /** Owner preferences, one row per user. */
 export const userSettings = pgTable(
   "user_settings",
@@ -52,6 +61,11 @@ export const userSettings = pgTable(
     onboardingDoneAt: timestamptz("onboarding_done_at"),
     // Null: the app's own Início (doc 02 §6.3), later default blocks included.
     homeLayout: jsonb("home_layout").$type<StoredHomeLayout>(),
+    // Null: every block with its defaults. Not in home_layout, where any
+    // value marks the Início as customized.
+    homeBlockSettings: jsonb(
+      "home_block_settings",
+    ).$type<StoredHomeBlockSettings>(),
     // Null: the default notices (doc 02 §6.14), later events included.
     notificationPrefs:
       jsonb("notification_prefs").$type<StoredNotificationPreferences>(),
@@ -71,6 +85,10 @@ export const userSettings = pgTable(
     check(
       "user_settings_home_layout_check",
       sql`${t.homeLayout} is null or jsonb_typeof(${t.homeLayout}) = 'array'`,
+    ),
+    check(
+      "user_settings_home_block_settings_check",
+      sql`${t.homeBlockSettings} is null or jsonb_typeof(${t.homeBlockSettings}) = 'object'`,
     ),
     check(
       "user_settings_notification_prefs_check",

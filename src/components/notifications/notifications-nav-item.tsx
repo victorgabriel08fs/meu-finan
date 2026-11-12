@@ -22,13 +22,22 @@ export function NotificationsNavItem() {
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={bellLabel(unread)}
         onClick={() => setOpen(true)}
         data-tip="sino"
         className="relative flex h-11 w-full items-center gap-3 rounded-control px-3 text-headline text-fg-2 transition-colors duration-150 hover:bg-surface-2 hover:text-fg"
       >
         <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
-        <span aria-hidden="true">Notificações</span>
+        {/* The name comes from the visible text (WCAG 2.5.3): "Notificações, 2 não lidas".
+            Chrome still adds a space before the sr-only (absolute) count,
+            "Notificações , 1 não lida", which screen readers don't voice. */}
+        <span>
+          Notificações
+          {unread > 0 ? (
+            <span className="sr-only">
+              {bellLabel(unread).slice("Notificações".length)}
+            </span>
+          ) : null}
+        </span>
         {unread > 0 ? (
           <span
             aria-hidden="true"

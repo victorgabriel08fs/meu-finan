@@ -51,7 +51,13 @@ export type AccountListItem = {
   pendingCents: number;
   includeInNetWorth: boolean;
   archived: boolean;
-  card: { limitCents: number; closingDay: number; dueDay: number } | null;
+  card: {
+    limitCents: number;
+    closingDay: number;
+    dueDay: number;
+    /** "Conta que paga a fatura"; null when none was chosen. */
+    paymentAccountId: string | null;
+  } | null;
 };
 
 // Aggregates over a LEFT JOIN (see cards.ts for why not correlated subqueries).
@@ -83,6 +89,7 @@ export async function listAccounts(
       limitCents: creditCardDetails.limitCents,
       closingDay: creditCardDetails.closingDay,
       dueDay: creditCardDetails.dueDay,
+      paymentAccountId: creditCardDetails.paymentAccountId,
     })
     .from(finAccounts)
     .leftJoin(
@@ -107,6 +114,7 @@ export async function listAccounts(
       creditCardDetails.limitCents,
       creditCardDetails.closingDay,
       creditCardDetails.dueDay,
+      creditCardDetails.paymentAccountId,
     )
     .orderBy(asc(finAccounts.sortOrder), asc(finAccounts.createdAt));
 
@@ -129,6 +137,7 @@ export async function listAccounts(
             limitCents: row.limitCents,
             closingDay: row.closingDay,
             dueDay: row.dueDay,
+            paymentAccountId: row.paymentAccountId,
           }
         : null,
   }));
@@ -180,8 +189,30 @@ export type AccountInput = {
   /** Current balance in cents (cards: amount owed today as a positive number). */
   initialBalanceCents: number;
   includeInNetWorth?: boolean;
-  card?: { limitCents: number; closingDay: number; dueDay: number } | null;
+  card?: {
+    limitCents: number;
+    closingDay: number;
+    dueDay: number;
+    /** "Conta que paga a fatura": an active account of the person, not a card. */
+    paymentAccountId?: string | null;
+  } | null;
 };
+
+/**
+ * Checks the account chosen to pay a card's invoices: the person's own,
+ * active, and not a card. Null or undefined pass through.
+ */
+async function checkPaymentAccount(
+  tx: Executor,
+  userId: string,
+  paymentAccountId: string | null | undefined,
+): Promise<void> {
+  if (!paymentAccountId) return;
+  const payer = await requireAccount(tx, userId, paymentAccountId);
+  if (payer.type === "credit_card") {
+    throw new DomainError("Escolha uma conta, não um cartão.");
+  }
+}
 
 export async function createAccount(
   userId: string,
@@ -214,11 +245,13 @@ export async function createAccount(
       sortOrder: count,
     });
     if (isCard && input.card) {
+      await checkPaymentAccount(tx, userId, input.card.paymentAccountId);
       await tx.insert(creditCardDetails).values({
         accountId: id,
         limitCents: input.card.limitCents,
         closingDay: input.card.closingDay,
         dueDay: input.card.dueDay,
+        paymentAccountId: input.card.paymentAccountId ?? null,
       });
     }
   });
@@ -255,27 +288,39 @@ export async function updateAccount(
       (newType && account.icon === ACCOUNT_TYPE_ICONS[account.type]
         ? ACCOUNT_TYPE_ICONS[newType]
         : undefined);
-    await tx
-      .update(finAccounts)
-      .set({
-        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-        ...(newType ? { type: newType } : {}),
-        ...(input.color !== undefined ? { color: input.color } : {}),
-        ...(icon !== undefined ? { icon } : {}),
-        ...(input.includeInNetWorth !== undefined
-          ? { includeInNetWorth: input.includeInNetWorth }
-          : {}),
-      })
-      .where(
-        and(eq(finAccounts.id, accountId), eq(finAccounts.userId, userId)),
-      );
+    const changes = {
+      ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+      ...(newType ? { type: newType } : {}),
+      ...(input.color !== undefined ? { color: input.color } : {}),
+      ...(icon !== undefined ? { icon } : {}),
+      ...(input.includeInNetWorth !== undefined
+        ? { includeInNetWorth: input.includeInNetWorth }
+        : {}),
+    };
+    // Only the card's details may change (Drizzle refuses an empty SET).
+    if (Object.keys(changes).length > 0) {
+      await tx
+        .update(finAccounts)
+        .set(changes)
+        .where(
+          and(eq(finAccounts.id, accountId), eq(finAccounts.userId, userId)),
+        );
+    }
     if (account.type === "credit_card" && input.card) {
       if (!isValidCardCycle(input.card)) {
         throw new DomainError("Confira os dias de fechamento e de vencimento.");
       }
+      const { paymentAccountId } = input.card;
+      await checkPaymentAccount(tx, userId, paymentAccountId);
       await tx
         .update(creditCardDetails)
-        .set(input.card)
+        .set({
+          limitCents: input.card.limitCents,
+          closingDay: input.card.closingDay,
+          dueDay: input.card.dueDay,
+          // Left out, the chosen account stays as it is.
+          ...(paymentAccountId !== undefined ? { paymentAccountId } : {}),
+        })
         .where(eq(creditCardDetails.accountId, accountId));
     }
   });

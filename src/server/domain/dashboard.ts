@@ -7,18 +7,28 @@ import {
   addDays,
   type Forecast,
   forecastBalance,
+  type InvoiceToAttribute,
   invoiceFor,
+  invoicePayer,
   isCountedSavingsBox,
   isInGrace,
   iso,
   isoMonth,
   type NonBusinessDue,
   parse,
+  type SpendableAccountInput,
   shiftPeriod,
+  spendablePerDayByAccount,
   spendablePerDayByDay,
 } from "@/lib/finance";
+import { dailySpendLineIds } from "@/lib/home/block-settings";
 import { db } from "@/server/db/client";
-import { categories, transactions } from "@/server/db/schema";
+import {
+  type ColorToken,
+  categories,
+  type FinAccountType,
+  transactions,
+} from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
 import { type PeriodRange, resolvePeriod, type UserContext } from "./context";
 import { pendingNonBusinessDue } from "./holidays";
@@ -31,6 +41,9 @@ import {
 import {
   accountsOf,
   cardInvoicesOf,
+  homeBlockSettingsOf,
+  invoicePayersOf,
+  paidByAccountDaySince,
   pendingUntil,
   spendableAccountsOf,
 } from "./request-reads";
@@ -226,7 +239,23 @@ export type SpendablePerDay = {
     date: string;
     daysLeft: number;
     perDayCents: number;
+    /** The day in each account with a line (`accounts` shown), in their order. */
+    byAccount: { accountId: string; perDayCents: number }[];
   }[];
+  /**
+   * Every account to spend from when there are two or more (`shown`: it
+   * has a line under each day, "Contas no bloco"); empty otherwise.
+   */
+  accounts: {
+    id: string;
+    name: string;
+    color: ColorToken;
+    icon: string;
+    type: FinAccountType;
+    shown: boolean;
+  }[];
+  /** Cards with an invoice (or part of one) due by `until` that no account to spend from pays. */
+  unassignedCards: { id: string; name: string }[];
   /** How far under zero the forecast goes up to `until`; 0 when it does not. */
   shortfallCents: number;
   /** The forecast balance at the end of today; null without accounts. */
@@ -246,39 +275,193 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
   ctx: UserContext,
 ): Promise<SpendablePerDay> {
   const current = resolvePeriod(ctx, null);
-  const report = await cashFlowReport(ctx, current);
+  const [report, spendable] = await Promise.all([
+    cashFlowReport(ctx, current),
+    spendableAccountsOf(ctx),
+  ]);
   const base = { until: current.end };
   if (!report.hasAccounts) {
     return {
       ...base,
       hasAccounts: false,
       rows: [],
+      accounts: [],
+      unassignedCards: [],
       shortfallCents: 0,
       balanceTodayCents: null,
     };
   }
+  const until = parse(current.end);
   const { rows, shortfallCents } = spendablePerDayByDay({
     days: report.days.map((day) => ({
       date: parse(day.date),
       projectedCents: day.projectedCents,
     })),
     today: ctx.today,
-    until: parse(current.end),
+    until,
   });
+
+  // One account: the total says it all, and nothing more is read.
+  let accounts: SpendablePerDay["accounts"] = [];
+  let unassignedCards: SpendablePerDay["unassignedCards"] = [];
+  let shownIds: string[] = [];
+  const byDate = new Map<string, Map<string, number>>();
+  if (spendable.length >= 2) {
+    const [inputs, settings, all] = await Promise.all([
+      spendableAccountInputs(ctx, current),
+      homeBlockSettingsOf(ctx),
+      accountsOf(ctx),
+    ]);
+    shownIds = dailySpendLineIds(
+      settings,
+      spendable.map((account) => account.id),
+    );
+    const byAccount = spendablePerDayByAccount({
+      ...inputs,
+      today: ctx.today,
+      until,
+    });
+    for (const account of byAccount.accounts) {
+      for (const row of account.rows) {
+        const date = iso(row.date);
+        const day = byDate.get(date) ?? new Map<string, number>();
+        day.set(account.id, row.perDayCents);
+        byDate.set(date, day);
+      }
+    }
+    accounts = spendable.map((account) => ({
+      id: account.id,
+      name: account.name,
+      color: account.color,
+      icon: account.icon,
+      type: account.type,
+      shown: shownIds.includes(account.id),
+    }));
+    const names = new Map(all.map((account) => [account.id, account.name]));
+    unassignedCards = byAccount.unassignedCardIds.map((id) => ({
+      id,
+      name: names.get(id) ?? "",
+    }));
+  }
+
   return {
     ...base,
     hasAccounts: true,
-    rows: rows.map((row) => ({
-      date: iso(row.date),
-      daysLeft: row.daysLeft,
-      perDayCents: row.perDayCents,
-    })),
+    rows: rows.map((row) => {
+      const date = iso(row.date);
+      return {
+        date,
+        daysLeft: row.daysLeft,
+        perDayCents: row.perDayCents,
+        byAccount: shownIds.map((accountId) => ({
+          accountId,
+          perDayCents: byDate.get(date)?.get(accountId) ?? 0,
+        })),
+      };
+    }),
+    accounts,
+    unassignedCards,
     shortfallCents,
     balanceTodayCents:
       report.days.find((day) => day.date === iso(ctx.today))?.projectedCents ??
       null,
   };
 });
+
+/**
+ * What the per-account Quanto dá para gastar takes from the ledger (doc 03
+ * §12), by the rules of the total (`cashFlowReport`): each spendable
+ * account's balance, its paid entries from today on and its own pending
+ * entries (a transfer to another spendable account leaves one and enters the
+ * other); each invoice with its scheduled payments (the card leg points at
+ * the invoice, the other leg says where the money leaves from); and who pays
+ * each card's invoice otherwise (`invoicePayer`). Reads only what the
+ * request already shares.
+ */
+export async function spendableAccountInputs(
+  ctx: UserContext,
+  current: PeriodRange,
+): Promise<{
+  accounts: SpendableAccountInput[];
+  invoices: InvoiceToAttribute[];
+  payerByCard: Map<string, string | null>;
+}> {
+  const [spendable, pending, { cards, invoicesByCard }, paid, lastPayers] =
+    await Promise.all([
+      spendableAccountsOf(ctx),
+      pendingUntil(ctx, current.end),
+      cardInvoicesOf(ctx),
+      paidByAccountDaySince(ctx, current.start),
+      invoicePayersOf(ctx),
+    ]);
+  const spendableIds = new Set(spendable.map((account) => account.id));
+
+  const accounts = spendable.map((account) => ({
+    id: account.id,
+    balanceCents: account.balanceCents,
+    paidFromToday: paid
+      .filter((row) => row.accountId === account.id && row.day >= ctx.todayIso)
+      .map((row) => ({
+        amountCents: row.totalCents,
+        occurredOn: parse(row.day),
+      })),
+    pending: liquidPendingFlows(pending, new Set([account.id])).map(
+      (flow) => flow.entry,
+    ),
+  }));
+
+  // Scheduled invoice payments by invoice: the card leg names the invoice,
+  // the other leg the account the money leaves from.
+  const cardIds = new Set(cards.map((card) => card.id));
+  const scheduled = new Map<
+    string,
+    { fromAccountId: string; amountCents: number; occurredOn: string }[]
+  >();
+  for (const leg of pending) {
+    if (!cardIds.has(leg.accountId) || !leg.invoiceId || !leg.transferId) {
+      continue;
+    }
+    const source = pending.find(
+      (other) => other.transferId === leg.transferId && other.id !== leg.id,
+    );
+    if (!source) continue;
+    scheduled.set(leg.invoiceId, [
+      ...(scheduled.get(leg.invoiceId) ?? []),
+      {
+        fromAccountId: source.accountId,
+        amountCents: Math.max(0, leg.amountCents),
+        occurredOn: leg.occurredOn,
+      },
+    ]);
+  }
+
+  const invoices = cards.flatMap((card, index) =>
+    (invoicesByCard[index] ?? []).map((invoice) => ({
+      cardId: card.id,
+      dueDate: parse(invoice.dueDate),
+      totalCents: invoice.totalCents,
+      paidCents: invoice.paidCents,
+      scheduled: (scheduled.get(invoice.id) ?? [])
+        .sort((a, b) => a.occurredOn.localeCompare(b.occurredOn))
+        .map(({ fromAccountId, amountCents }) => ({
+          fromAccountId,
+          amountCents,
+        })),
+    })),
+  );
+
+  const payerByCard = new Map(
+    cards.map((card) => [
+      card.id,
+      invoicePayer({
+        configuredId: card.card?.paymentAccountId,
+        lastPaidFromId: lastPayers.get(card.id),
+        spendableIds,
+      }),
+    ]),
+  );
+  return { accounts, invoices, payerByCard };
+}
 
 export type AccountsStrip = {
   accounts: AccountListItem[];

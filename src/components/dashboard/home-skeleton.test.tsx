@@ -157,3 +157,36 @@ describe("HomeBlockSkeleton", () => {
     }
   });
 });
+
+describe("HomeBlockSkeleton of Quanto dá para gastar por dia", () => {
+  const of = (dailySpend?: { lines: number; chooser: boolean }) =>
+    renderToStaticMarkup(
+      <HomeBlockSkeleton id="daily-spend" dailySpend={dailySpend} />,
+    );
+
+  it("keeps its height with one account (no lines, no button)", () => {
+    expect(of({ lines: 0, chooser: false })).toBe(of());
+  });
+
+  it("grows by the button with lines all hidden", () => {
+    const html = of({ lines: 0, chooser: true });
+    // 44px button + 12px gap = 3.5rem.
+    expect(html).toContain("--daily-spend-extra:3.5rem");
+    expect(html).toContain(
+      "h-[calc(16.375rem+var(--daily-spend-extra))] rounded-card",
+    );
+  });
+
+  it("grows by each line, the button and the longer footnote", () => {
+    const html = of({ lines: 3, chooser: true });
+    // 29 + 3 × 42 + 56 = 211px.
+    expect(html).toContain(`--daily-spend-extra:${211 / 16}rem`);
+    expect(html).toContain(
+      "h-[calc(18.625rem+var(--daily-spend-extra))] rounded-card",
+    );
+    expect(html).toContain(
+      "@min-[57rem]:h-[calc(12.75rem+var(--daily-spend-extra))]",
+    );
+    expect(html).toMatch(/^<div class="@container">/);
+  });
+});

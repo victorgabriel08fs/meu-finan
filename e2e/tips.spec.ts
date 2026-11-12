@@ -154,7 +154,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+16 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+17 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -169,6 +169,12 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   await expect(
     item("Atalhos no ícone do app").getByText("Nova", { exact: true }),
   ).toBeVisible();
+  // By title: the text of the novidade "por conta" also says "Quanto dá para
+  // gastar por dia".
+  const itemTitled = (title: string) =>
+    page.getByRole("listitem").filter({
+      has: page.getByRole("heading", { name: title, exact: true }),
+    });
   // Ana has notificacoes_push on: its novidade shows, with the way there.
   await expect(
     item("Notificações no aparelho").getByText("Nova", { exact: true }),
@@ -207,10 +213,21 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   ).toHaveAttribute("href", "/ajustes/preferencias");
   // Quanto dá para gastar por dia, also behind inicio_personalizavel.
   await expect(
-    item("Quanto dá para gastar por dia").getByText("Nova", { exact: true }),
+    itemTitled("Quanto dá para gastar por dia").getByText("Nova", {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
-    item("Quanto dá para gastar por dia").getByRole("link", {
+    itemTitled("Quanto dá para gastar por dia").getByRole("link", {
+      name: "Personalizar o Início",
+    }),
+  ).toHaveAttribute("href", "/ajustes/preferencias");
+  // The same block, by account, behind the same flag.
+  await expect(
+    item("Quanto dá para gastar, por conta").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item("Quanto dá para gastar, por conta").getByRole("link", {
       name: "Personalizar o Início",
     }),
   ).toHaveAttribute("href", "/ajustes/preferencias");

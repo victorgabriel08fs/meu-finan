@@ -237,21 +237,41 @@ test("o detalhe da categoria e a folha de ordem a 200% não rolam para o lado ne
   await save.click({ trial: true });
 });
 
-test("Quanto dá para gastar por dia a 200% em 360 px não corta valores nem rola para o lado", async ({
+test("Quanto dá para gastar, por conta, a 200% em 360 px com quatro linhas não corta valores nem rola para o lado", async ({
   page,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto("/inicio");
-  await settle(page);
+  // smoke.spec.ts archives Carteira before this one: two more accounts to
+  // spend from make the four lines (Conta principal, Reserva and these).
+  const run = Date.now().toString(36).slice(-5);
+  const extras = [`Extra A ${run}`, `Extra B ${run}`];
+  const toast = page.locator("[data-sonner-toast]");
   const customize = page.getByRole("button", { name: "Personalizar o Início" });
   const sheet = page.getByRole("dialog", { name: "Personalizar o Início" });
   const name = "Quanto dá para gastar por dia";
-  await customize.click();
-  await sheet.getByRole("switch", { name, exact: true }).click();
-  await sheet.getByRole("button", { name: "Salvar" }).click();
-  await expect(sheet).toBeHidden();
+  let blockOn = false;
+  const created: string[] = [];
   try {
+    for (const extra of extras) {
+      await page.goto("/contas/nova");
+      await page.getByLabel("Nome").filter({ visible: true }).fill(extra);
+      await page.getByRole("button", { name: "Criar conta" }).click();
+      await expect(toast.filter({ hasText: "Conta criada" })).toBeVisible({
+        timeout: 30_000,
+      });
+      created.push(extra);
+      await expect(page).toHaveURL(/\/contas\/[0-9a-f-]+$/);
+    }
+
+    await page.goto("/inicio");
+    await settle(page);
+    await customize.click();
+    await sheet.getByRole("switch", { name, exact: true }).click();
+    await sheet.getByRole("button", { name: "Salvar" }).click();
+    await expect(sheet).toBeHidden();
+    blockOn = true;
+
     await applyScale(page, true);
     const block = page.locator(
       'section[aria-labelledby="inicio-gasto-por-dia"]:visible',
@@ -259,17 +279,46 @@ test("Quanto dá para gastar por dia a 200% em 360 px não corta valores nem rol
     await expect(block).toBeVisible({ timeout: 30_000 });
     await block.scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
-    await expectNoHorizontalScroll(page, "Gasto por dia a 200%");
     // Only the strip may scroll, never the page, and it keeps the focus.
     const strip = block.getByRole("region", {
       name: "Quanto dá para gastar em cada dia",
     });
     await expect(strip).toHaveAttribute("tabindex", "0");
+    const today = strip.getByRole("listitem").first();
+    for (const account of ["Conta principal", "Reserva", ...extras]) {
+      await expect(today).toContainText(account);
+    }
+    await expectNoHorizontalScroll(page, "Gasto por conta a 200%");
     expect(await clippedValues(page)).toEqual([]);
+
+    // The sheet of accounts reaches "Salvar" at 200% with four switches.
+    await block.getByRole("button", { name: "Escolher contas" }).click();
+    const chooser = page.getByRole("dialog", { name: "Contas no bloco" });
+    await expect(chooser).toBeVisible();
+    await page.waitForTimeout(500);
+    const save = chooser.getByRole("button", { name: "Salvar" });
+    await save.scrollIntoViewIfNeeded();
+    await save.click({ trial: true });
+    await expectNoHorizontalScroll(page, "Contas no bloco a 200%");
+    await page.keyboard.press("Escape");
+    await expect(chooser).toBeHidden();
   } finally {
-    await customize.click();
-    await sheet.getByRole("switch", { name, exact: true }).click();
-    await sheet.getByRole("button", { name: "Salvar" }).click();
-    await expect(sheet).toBeHidden();
+    if (blockOn) {
+      await page.goto("/inicio");
+      await customize.click();
+      await sheet.getByRole("switch", { name, exact: true }).click();
+      await sheet.getByRole("button", { name: "Salvar" }).click();
+      await expect(sheet).toBeHidden();
+    }
+    for (const extra of created) {
+      await page.goto("/contas");
+      await page
+        .getByRole("link", { name: new RegExp(`^${extra}`) })
+        .first()
+        .click();
+      await page.getByRole("button", { name: "Arquivar", exact: true }).click();
+      await page.getByRole("button", { name: "Arquivar conta" }).click();
+      await expect(page).toHaveURL(/\/contas$/);
+    }
   }
 });

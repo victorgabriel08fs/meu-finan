@@ -385,6 +385,10 @@ create table user_settings (
   onboarding_done_at   timestamptz,
   home_layout          jsonb check (home_layout is null or jsonb_typeof(home_layout) = 'array'),
                        -- blocos do Início escolhidos (doc 02 §6.3): [{ id, visible }], sem o Saldo; null = padrão do app
+  home_block_settings  jsonb check (home_block_settings is null or jsonb_typeof(home_block_settings) = 'object'),
+                       -- ajustes de cada bloco, por id (12/11/2026): { "daily-spend": { hiddenAccountIds: uuid[] } };
+                       -- guarda as contas ESCONDIDAS (conta nova aparece sozinha); null = nada escondido. Fora do
+                       -- home_layout para que escolher contas não marque o Início como personalizado
   notification_prefs   jsonb check (notification_prefs is null or jsonb_typeof(notification_prefs) = 'object'),
                        -- avisos do cron (doc 02 §6.14): { events: { daily_summary, bills_due, non_business_due,
                        -- income_countdown, weekly_summary, monthly_summary }, billsLeadDays: 0|1|3, showAmounts }; null = padrão;
@@ -416,6 +420,8 @@ create table credit_card_details (
   closing_day         smallint not null check (closing_day between 1 and 31),
   due_day             smallint not null check (due_day between 1 and 31),
   payment_account_id  uuid references fin_accounts(id) on delete set null
+                      -- conta que paga a fatura (12/11/2026): "Pagar fatura" abre nela e o gasto por dia por conta
+                      -- põe a fatura nela; a conta é da pessoa e não é cartão (checado no domínio)
 );
 
 create table account_yield (                          -- para projeções de investimentos
@@ -1084,6 +1090,8 @@ Dados financeiros são **por usuário** e mudam a cada lançamento, então o cac
 O extrato paginado **não** é cacheado no servidor (muda demais); no cliente, TanStack Query mantém as páginas e é invalidado após mutações.
 
 **Início personalizável (decisão de 02/11/2026).** A escolha dos blocos (`user_settings.home_layout`) é lida **a cada requisição**, sem `'use cache'`: é uma consulta pela chave primária, dentro do `<Suspense>` do resumo. A action de salvar termina com `refresh()`. Motivo: na Vercel, `updateTag` limpa só o cache da instância que rodou a action, e outra instância poderia mostrar o Início antigo em outro aparelho. Os dados de cada bloco também não são cacheados: cada bloco tem o próprio carregador e só os blocos visíveis leem o banco. O que vários blocos usam (contas, faturas dos cartões, pendentes) é lido uma vez por requisição, com `cache` do React, em `src/server/domain/request-reads.ts` (`accountsOf`, `cardInvoicesOf`, `pendingUntil`). O relatório de Fluxo de caixa (`cashFlowReport`) lê pelo mesmo caminho: com o bloco Fluxo de caixa ligado, ele e o Saldo leem as contas, as faturas e os pendentes uma vez só (05/11/2026). Se um dia houver cache aqui, a tag é `u:{id}:home`.
+
+**Gasto por dia por conta (12/11/2026).** `user_settings.home_block_settings` (migração `0013_gasto_por_conta`) guarda as contas escondidas do bloco; `setDailySpendHidden` confere que cada id é conta da pessoa (`notFound("Conta")` para as de outra) e faz o merge no banco (`coalesce(home_block_settings, '{}') || jsonb_build_object(...)`), sem apagar ajustes de outros blocos. A leitura é por requisição, como o `home_layout` (`homeBlockSettingsOf`). `paidByAccountDaySince` (pagos por conta e dia, uma leitura por requisição) alimenta o Fluxo de caixa e as linhas por conta; `invoicePayersOf` dá a conta do último pagamento de cada cartão (usada quando o cartão não tem `payment_account_id`). Regras do cálculo: doc 03 §12.
 
 ---
 

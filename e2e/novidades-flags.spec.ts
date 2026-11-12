@@ -41,6 +41,9 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   await expect(page.getByText("Monte o seu Início")).toHaveCount(0);
   await expect(page.getByText("Mais blocos para o Início")).toHaveCount(0);
   await expect(page.getByText("Quanto dá para gastar por dia")).toHaveCount(0);
+  await expect(page.getByText("Quanto dá para gastar, por conta")).toHaveCount(
+    0,
+  );
   // Nor the non-business day alert (alerta_dia_nao_util, on for Ana only).
   await expect(
     page.getByRole("heading", { name: "Vencimento em dia não útil" }),

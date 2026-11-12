@@ -43,6 +43,8 @@ type InvoiceSummaryCardProps = {
   /** Owed in single payments and in installments, when there are both. */
   split: { cashCents: number; installmentCents: number } | null;
   paymentAccounts: PaymentAccount[];
+  /** The card's "Conta que paga a fatura": "Pagar fatura" opens on it. */
+  defaultPaymentAccountId?: string | null;
   /**
    * Due on a non-business day with an amount still open (flag
    * alerta_dia_nao_util): a note under the dates and, up to the next
@@ -62,6 +64,7 @@ export function InvoiceSummaryCard({
   cardName,
   split,
   paymentAccounts,
+  defaultPaymentAccountId = null,
   nonBusinessDue = null,
 }: InvoiceSummaryCardProps) {
   const nb = invoice.outstandingCents > 0 ? nonBusinessDue : null;
@@ -167,6 +170,7 @@ export function InvoiceSummaryCard({
               outstandingCents={invoice.outstandingCents}
               invoiceLabel={`Fatura de ${month} do ${cardName}`}
               accounts={paymentAccounts}
+              defaultFromId={defaultPaymentAccountId}
               today={today}
             />
           ) : (

@@ -48,6 +48,8 @@ const cardSchema = z.object({
   limitCents: z.number().int().min(0),
   closingDay: day,
   dueDay: day,
+  /** "Conta que paga a fatura"; null clears it, left out keeps it. */
+  paymentAccountId: idSchema.nullable().optional(),
 });
 
 // Contas ----------------------------------------------------------------------
