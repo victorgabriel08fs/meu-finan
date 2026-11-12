@@ -83,7 +83,9 @@ test("cria uma caixinha: o Saldo em contas não muda e o patrimônio também nã
     timeout: 30_000,
   });
   await expect(
-    page.getByText("Para guardar dinheiro à parte.", { exact: false }),
+    page
+      .getByText("Para guardar dinheiro à parte.", { exact: false })
+      .filter({ visible: true }),
   ).toBeVisible();
   await page.getByLabel("Nome").filter({ visible: true }).fill(BOX);
   await page.getByRole("button", { name: "Criar caixinha" }).click();
@@ -100,7 +102,9 @@ test("cria uma caixinha: o Saldo em contas não muda e o patrimônio também nã
 
   expect(await saldo(page)).toBe(saldoBefore);
   // With a caixinha, the Saldo says what is set aside (zero for now).
-  await expect(page.getByText("Guardado em caixinhas:")).toBeVisible();
+  await expect(
+    page.getByText("Guardado em caixinhas:").filter({ visible: true }),
+  ).toBeVisible();
   expect(await patrimonio(page)).toBe(patrimonioBefore);
   await expect(
     page.getByRole("heading", { name: "Caixinhas", level: 2 }),
