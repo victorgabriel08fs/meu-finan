@@ -41,6 +41,15 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - Aportes: realizados (transferência de uma conta da pessoa para a caixinha) e planejados (valor por mês por pessoa); projeção por pessoa e total.
 - Mesma decisão de isolamento da tarefa 8 (participantes como outras contas do app ou só nomes) — as duas tarefas devem compartilhar o mesmo modelo de "participantes" e o mesmo ADR.
 
+## 12. Quanto dá para gastar, por conta
+
+**Pedido do dono (12/11/2026).** O bloco "Quanto dá para gastar por dia" (Início) passa a ser por conta: hoje ele soma todas as contas para gastar num saldo só; a pessoa quer ver quanto dá para gastar em cada conta.
+
+- Mesma regra de hoje, aplicada a cada conta para gastar: saldo de hoje mais as despesas e receitas agendadas **daquela conta**, com a fatura do cartão na conta que paga a fatura, dividido pelos dias que faltam no mês financeiro.
+- A decidir com o dono: escolher a conta no bloco (chips ou seletor, com "Todas" como hoje) ou uma linha por conta em cada cartão do dia; se a escolha fica salva na conta (`home_layout`) ou vale só na visita; se o aviso "Próxima receita" e o "Resumo do dia" também passam a dizer por conta.
+- Cuidado com a fatura de um cartão sem conta de pagamento definida e com transferências entre contas para gastar (saem de uma e entram na outra).
+- Testes: `src/lib/finance/spendable-by-day.ts` por conta (fast-check: a soma das contas fecha com o total quando não há transferência agendada), integração do bloco e e2e a 360 px e 200%.
+
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
