@@ -49,6 +49,25 @@ describe("projectGoal", () => {
     ).toEqual({ year: 2026, month: 11 });
   });
 
+  it("has no eta when the plan would only get there after year 9999", () => {
+    // R$ 2.000 missing at 1 cent a month: 200 000 months, past the calendar.
+    const projection = projectGoal(
+      goal({ currentCents: 0, targetCents: 200_000, monthlyCents: 1 }),
+    );
+    expect(projection.status).toBe("no_plan");
+    expect(projection.eta).toBeNull();
+    const withDeadline = projectGoal(
+      goal({
+        currentCents: 0,
+        targetCents: 200_000,
+        monthlyCents: 1,
+        targetMonth: { year: 2027, month: 10 },
+      }),
+    );
+    expect(withDeadline.status).toBe("behind");
+    expect(withDeadline.requiredMonthlyCents).toBe(16_700);
+  });
+
   it("has no plan without contributions and without yield", () => {
     const projection = projectGoal(goal({ monthlyCents: 0 }));
     expect(projection.status).toBe("no_plan");

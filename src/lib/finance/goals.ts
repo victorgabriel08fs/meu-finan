@@ -2,6 +2,7 @@ import { periodsToReach, requiredPayment } from "./compound";
 import {
   addMonths,
   assertYearMonth,
+  MAX_YEAR,
   monthsBetween,
   type YearMonth,
 } from "./dates";
@@ -50,6 +51,18 @@ export const GOAL_AHEAD_MONTHS = 2;
 // (e.g. 1.0000000000000002 months is reached in 1 month, not 2).
 const MONTHS_EPSILON = 1e-9;
 
+/**
+ * The month reached after `months` (fractional, from the next month on), or
+ * null when it falls past the last representable year: a plan of a few cents
+ * a month toward a large target never gets there in practice.
+ */
+function etaAfter(today: YearMonth, months: number): YearMonth | null {
+  const ahead = Math.max(1, Math.ceil(months - MONTHS_EPSILON));
+  const last = MAX_YEAR * 12 + 11;
+  if (today.year * 12 + today.month - 1 + ahead > last) return null;
+  return addMonths(today, ahead);
+}
+
 /** Goal projection on gross values (doc 03 §8). */
 export function projectGoal(input: GoalInput): GoalProjection {
   const {
@@ -87,10 +100,7 @@ export function projectGoal(input: GoalInput): GoalProjection {
     monthlyCents,
     monthlyRate,
   );
-  const eta =
-    months === null
-      ? null
-      : addMonths(today, Math.max(1, Math.ceil(months - MONTHS_EPSILON)));
+  const eta = months === null ? null : etaAfter(today, months);
 
   if (targetMonth === undefined) {
     return {
