@@ -39,6 +39,8 @@ type GoalsViewProps = {
   accounts: GoalAccount[];
   market: MarketRatesView;
   today: YearMonth;
+  /** The person has shared boxes below: the empty state shrinks to fit them. */
+  hasSharedBoxes?: boolean;
 };
 
 type SheetTarget = {
@@ -47,7 +49,13 @@ type SheetTarget = {
 };
 
 /** Planejar › Metas (doc 02 §6.10). */
-export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
+export function GoalsView({
+  goals,
+  accounts,
+  market,
+  today,
+  hasSharedBoxes = false,
+}: GoalsViewProps) {
   const sheet = useSheetTarget<SheetTarget>();
   const saved = goals.reduce((sum, goal) => sum + goal.currentCents, 0);
   const target = goals.reduce((sum, goal) => sum + goal.targetCents, 0);
@@ -57,7 +65,24 @@ export function GoalsView({ goals, accounts, market, today }: GoalsViewProps) {
 
   return (
     <>
-      {goals.length === 0 ? (
+      {goals.length === 0 && hasSharedBoxes ? (
+        <Card className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="min-w-0 flex-[1_1_12rem]">
+            <h2 className="text-headline text-fg">Qual é o próximo sonho?</h2>
+            <p className="text-callout text-fg-2">
+              Uma reserva, uma viagem, um carro… a gente calcula o caminho.
+            </p>
+          </div>
+          <Button
+            variant="tonal"
+            className="max-w-full shrink"
+            onClick={() => sheet.show({ goal: null })}
+          >
+            <Plus aria-hidden="true" />
+            Criar meta
+          </Button>
+        </Card>
+      ) : goals.length === 0 ? (
         <EmptyState
           icon={<Goal />}
           title="Qual é o próximo sonho?"
