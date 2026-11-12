@@ -4,7 +4,7 @@ import { ChevronRight, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAction } from "next-safe-action/hooks";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { uuidv7 } from "uuidv7";
 import { EmptyState } from "@/components/app/empty-state";
@@ -20,6 +20,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import { membersLine } from "@/lib/sharing/labels";
 import { GROUP_NAME_MAX, MAX_GROUP_MEMBERS } from "@/lib/sharing/limits";
 import {
@@ -41,7 +42,14 @@ export function SharingOverview({
   groups: GroupSummary[];
   invites: InviteForMe[];
 }) {
+  const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const [goTo, setGoTo] = useState<string | null>(null);
+  // The sheet gives its history entry back while it unmounts, in this same
+  // commit's cleanup; only then can the push stick.
+  useEffect(() => {
+    if (goTo && !creating) afterSheetsClose(() => router.push(goTo));
+  }, [goTo, creating, router]);
   // A fresh form on every opening; the old one stays while the sheet leaves.
   const [sheetKey, setSheetKey] = useState(0);
   const create = () => {
@@ -104,7 +112,13 @@ export function SharingOverview({
       )}
 
       <Sheet open={creating} onOpenChange={setCreating}>
-        <NewGroupSheet key={sheetKey} onDone={() => setCreating(false)} />
+        <NewGroupSheet
+          key={sheetKey}
+          onDone={(groupId) => {
+            setGoTo(`/compartilhado/${groupId}`);
+            setCreating(false);
+          }}
+        />
       </Sheet>
     </>
   );
@@ -201,9 +215,8 @@ export function InviteCard({ invite }: { invite: InviteForMe }) {
   );
 }
 
-function NewGroupSheet({ onDone }: { onDone: () => void }) {
+function NewGroupSheet({ onDone }: { onDone: (groupId: string) => void }) {
   const id = useId();
-  const router = useRouter();
   const [groupId] = useState(() => uuidv7());
   const [name, setName] = useState("");
   const [emails, setEmails] = useState<string[]>([""]);
@@ -231,11 +244,10 @@ function NewGroupSheet({ onDone }: { onDone: () => void }) {
       emails: list,
     }).catch(() => undefined);
     if (result?.data) {
-      onDone();
+      onDone(result.data.groupId);
       toast(
         list.length > 0 ? "Grupo criado. Convite enviado." : "Grupo criado.",
       );
-      router.push(`/compartilhado/${result.data.groupId}`);
       return;
     }
     setErrors({

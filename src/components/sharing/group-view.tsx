@@ -1,7 +1,8 @@
 "use client";
 
 import { Plus, Receipt, Users } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { SplitBar } from "@/components/charts/split-bar";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { Sheet } from "@/components/ui/sheet";
+import { afterSheetsClose } from "@/components/ui/use-back-to-close";
 import { dayHeaderLabel } from "@/lib/format/date";
 import { formatBRL } from "@/lib/format/money";
 import { settlementLine } from "@/lib/sharing/labels";
@@ -67,7 +69,15 @@ export function GroupView({
   categories,
   monthSwitcher,
 }: GroupViewProps) {
+  const router = useRouter();
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [left, setLeft] = useState(false);
+  // The sheet gives its history entry back while it unmounts, in this same
+  // commit's cleanup; only then can the push stick.
+  useEffect(() => {
+    if (left && !peopleOpen)
+      afterSheetsClose(() => router.push("/compartilhado"));
+  }, [left, peopleOpen, router]);
   const [adding, setAdding] = useState({ open: false, key: 0 });
   const [planOpen, setPlanOpen] = useState(false);
   const settle = useSheetTarget<SettleTarget>();
@@ -150,6 +160,7 @@ export function GroupView({
           {onlyOne ? (
             <Button
               variant="tonal"
+              className="max-w-full shrink"
               onClick={() =>
                 settle.show({
                   memberId: onlyOne.memberId,
@@ -162,7 +173,11 @@ export function GroupView({
             </Button>
           ) : null}
           {group.plan.length > 0 && (activeCount >= 3 || mine.length > 1) ? (
-            <Button variant="secondary" onClick={() => setPlanOpen(true)}>
+            <Button
+              variant="secondary"
+              className="max-w-full shrink"
+              onClick={() => setPlanOpen(true)}
+            >
               Acertar contas
             </Button>
           ) : null}
@@ -230,7 +245,10 @@ export function GroupView({
         <MembersSheet
           group={group}
           todayIso={todayIso}
-          onClose={() => setPeopleOpen(false)}
+          onLeft={() => {
+            setLeft(true);
+            setPeopleOpen(false);
+          }}
         />
       </Sheet>
       <Sheet

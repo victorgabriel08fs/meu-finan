@@ -1,7 +1,6 @@
 "use client";
 
 import { LogOut, UserMinus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAction } from "next-safe-action/hooks";
 import { type FormEvent, useId, useState } from "react";
 import { toast } from "sonner";
@@ -32,14 +31,14 @@ import { checkEmails, InviteFields } from "./invite-fields";
 export function MembersSheet({
   group,
   todayIso,
-  onClose,
+  onLeft,
 }: {
   group: GroupDetail;
   todayIso: string;
-  onClose: () => void;
+  /** Closes the sheet and leaves for the list. */
+  onLeft: () => void;
 }) {
   const id = useId();
-  const router = useRouter();
   const [leaving, setLeaving] = useState(false);
   const [emails, setEmails] = useState<string[]>([""]);
   const [errors, setErrors] = useState<{
@@ -118,9 +117,8 @@ export function MembersSheet({
       setErrors({ form: message });
       return;
     }
-    onClose();
+    onLeft();
     toast(`Você saiu de ${group.name}.`);
-    router.push("/compartilhado");
   }
 
   if (leaving) {

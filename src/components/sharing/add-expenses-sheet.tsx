@@ -393,6 +393,7 @@ function StatementTab({
             <Button
               size="sm"
               variant="ghost"
+              className="text-on-primary-soft"
               onClick={() => setEditingSplit((value) => !value)}
             >
               {editingSplit ? "Pronto" : "Mudar"}

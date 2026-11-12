@@ -73,11 +73,6 @@ Tarefa 8 (etapa B). Decisões do dono (12/11/2026): grupo de até 6 pessoas com 
 
 **Ficou para depois:** dividir **por renda** (percentual sugerido pela renda que cada um digita no grupo) e **por item**; **regra automática** ("toda despesa de Mercado entra"); **compra parcelada inteira** de uma vez (hoje cada parcela entra como lançamento); sincronizar a despesa do grupo quando o lançamento muda (hoje só a nota "Desatualizada" com "Atualizar"); moedas e anexos; a **caixinha compartilhada** (tarefa 9); tempo real.
 
-**Pendências achadas na verificação (para o dev):**
-- [ ] Criar o grupo (`NewGroupSheet`) e sair dele (`MembersSheet`) chamam `router.push` com a folha ainda aberta e a navegação se perde: a pessoa continua na lista (ou numa página "Grupo não encontrado"). Usar `afterSheetsClose`, como o sino e a folha de acerto. O e2e "criar um grupo leva para a tela dele" cobre.
-- [ ] "Marcar como acertado" a 360 px e 200% de texto (`group-view.tsx`) faz a página rolar para o lado (421 px de botão num cartão de 360): deixar o texto quebrar. O e2e "a 360 px e 200% nada rola para o lado" cobre.
-- [ ] O botão "Mudar" da divisão padrão na folha Adicionar despesas (`add-expenses-sheet.tsx`) tem contraste 4,39:1 no tema claro (texto `--primary` sobre `--surface-2`; mínimo 4,5:1). O axe do e2e "as folhas do grupo … tema claro" cobre.
-
 ### Sino de notificações — 12/11/2026
 
 Etapa A das tarefas 8 e 9 (central de avisos antes dos convites para dividir despesas). Decisões do dono (12/11/2026): avisos do cron gravados no sino mesmo sem aparelho, número do ícone pelas não lidas do sino, dispensar sem apagar a linha, tempo real fica para depois.
