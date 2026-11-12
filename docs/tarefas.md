@@ -23,14 +23,18 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
 - Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
-## 12. Quanto dá para gastar, por conta
+## 12. Quanto dá para gastar, por conta: o que ficou de fora
 
-**Pedido do dono (12/11/2026).** O bloco "Quanto dá para gastar por dia" (Início) passa a ser por conta: hoje ele soma todas as contas para gastar num saldo só; a pessoa quer ver quanto dá para gastar em cada conta.
+A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
 
-- Mesma regra de hoje, aplicada a cada conta para gastar: saldo de hoje mais as despesas e receitas agendadas **daquela conta**, com a fatura do cartão na conta que paga a fatura, dividido pelos dias que faltam no mês financeiro.
-- A decidir com o dono: escolher a conta no bloco (chips ou seletor, com "Todas" como hoje) ou uma linha por conta em cada cartão do dia; se a escolha fica salva na conta (`home_layout`) ou vale só na visita; se o aviso "Próxima receita" e o "Resumo do dia" também passam a dizer por conta.
-- Cuidado com a fatura de um cartão sem conta de pagamento definida e com transferências entre contas para gastar (saem de uma e entram na outra).
-- Testes: `src/lib/finance/spendable-by-day.ts` por conta (fast-check: a soma das contas fecha com o total quando não há transferência agendada), integração do bloco e e2e a 360 px e 200%.
+- **Campo "Conta que paga a fatura" no cartão novo** (hoje só na edição).
+- **Linhas por conta no estado "não sobra"** do total.
+- **Avisos por conta** ("Próxima receita" e "Resumo do dia" seguem com o total).
+- **Fatura paga por caixinha**: entra só no total, com a nota.
+- **Renomear `liquidPendingFlows` e `liquidIds`** (hoje significam "para gastar").
+- **"Paga com {conta}"** no detalhe do cartão.
+- **Cor das contas novas**: todas recebem a mesma cor padrão, e os pontos do bloco ficam iguais; variar a cor ao criar.
+- **"Não sobra" por conta no modo discreto**: continua visível (o total e os valores são mascarados). Perguntar ao dono se deve mascarar.
 
 ## Rotina diária: a confirmar
 
@@ -50,6 +54,22 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Quanto dá para gastar, por conta (tarefa 12) — 12/11/2026
+
+Pedido do dono (12/11/2026). Decisões: uma linha por conta em cada cartão do dia (o total continua), a escolha de quais contas aparecem fica salva na conta (todos os aparelhos), os avisos seguem com o total.
+
+- [x] **Cálculo puro** (`src/lib/finance/spendable-by-account.ts`): série por conta, fatura atribuída a quem paga (agendados da fatura, conta escolhida no cartão, último pagamento, sem conta), valor por dia por conta. Doc 03 §12 e §13.2.
+- [x] **Conta que paga a fatura**: `credit_card_details.payment_account_id` passa a ser gravado e lido (edição do cartão); "Pagar fatura" abre nela. Corrige "No values to set" ao editar um cartão só com os campos do cartão (`updateAccount`).
+- [x] **Dados** (migração `0013_gasto_por_conta`): `user_settings.home_block_settings`, `setDailySpendHidden` com checagem de posse e merge atômico.
+- [x] **Leituras**: `paidByAccountDaySince` e `invoicePayersOf` uma vez por requisição; `cashFlowReport` usa a mesma leitura (resultado idêntico).
+- [x] **Início**: linhas por conta, rótulo "Total", nota das faturas que entram só no total, folha "Contas no bloco" (`saveDailySpendAccountsAction`, atrás de `inicio_personalizavel`), skeleton (`HomeBlockFrame` › `dailySpend`, `--daily-spend-extra`).
+- [x] **Dicas**: novidade `novidade-gasto-por-dia-por-conta`; demo com o cartão da Ana pago pela Conta principal.
+- [x] **Ajustes de acessibilidade da revisão**: item do sino na barra lateral nomeado pelo texto visível (axe `label-content-name-mismatch`).
+
+Detalhes que valem lembrar: uma conta mostra "Não sobra" sempre que o valor por dia dela é 0; pagamentos de fatura agendados para depois do fim do mês não são lidos (a fatura vai para o pagador do cartão); a nota das faturas sem conta só aparece com linhas visíveis; a 200% de texto um cartão do dia pode passar da largura da faixa e a faixa rola (aceito).
+
+Testes: unidade e fast-check (`spendable-by-account.test.ts`, `block-settings.test.ts`), componentes (bloco, folha, edição do cartão, Pagar fatura, skeleton), integração (`blocks.integration.test.tsx`, `card-payer.integration.test.ts`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `texto-grande.spec.ts` com uma quarta conta, `cartao-conta-pagamento.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 (`home_block_settings`, `payment_account_id`), doc 02 §5.17, §6.3, §6.8 e §6.16, doc 03 §12 e §13.2. O que ficou: "12. Quanto dá para gastar, por conta: o que ficou de fora".
 
 ### Caixinha compartilhada (tarefa 9) — 12/11/2026
 
