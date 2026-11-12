@@ -334,6 +334,22 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-dia-nao-util",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the note shows only when a bill falls on
+    // a non-business day. The push notice stays out of the text: `when`
+    // takes one flag, and notificacoes_push may be off for the reader.
+    routes: [],
+    anchor: null,
+    title: "Vencimento em dia não útil",
+    body: "Quando uma conta vence no fim de semana ou num feriado, o Início, o Extrato e a fatura do cartão mostram para quando o pagamento costuma passar.",
+    since: "2026-11-12",
+    order: 16,
+    when: { flag: "alerta_dia_nao_util" },
+    icon: "sparkles",
+    link: { href: "/extrato?status=pendente", label: "Ver contas pendentes" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
