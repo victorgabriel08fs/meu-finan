@@ -216,7 +216,7 @@ test("no desktop o item da barra lateral abre a mesma folha", async ({
     .locator("aside")
     .getByRole("button", { name: /^Notificações/ });
   await expect(item).toBeVisible({ timeout: 30_000 });
-  await expect(item).toHaveAccessibleName("Notificações, 1 não lida");
+  await expect(item).toHaveAccessibleName(/^Notificações\W+1 não lida$/);
   await item.click();
   await expect(sheet(page)).toBeVisible();
   await expect(

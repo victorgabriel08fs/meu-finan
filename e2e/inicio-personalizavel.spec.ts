@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoA11yViolations } from "./axe";
-import { OWNER_STATE } from "./demo";
+import { actionSaved, OWNER_STATE } from "./demo";
 import { chooseTheme } from "./theme";
 
 // Início personalizável (doc 02 §6.3), as Ana: the demo turns the
@@ -590,4 +590,100 @@ test("mostra Quanto dá para gastar por dia pela folha, na horizontal, e esconde
   await sheet.getByRole("button", { name: "Salvar" }).click();
   expect((await saved).ok()).toBe(true);
   await expect(blockOf(page, "inicio-gasto-por-dia")).toHaveCount(0);
+});
+
+test("Quanto dá para gastar, por conta: uma linha por conta, esconder uma, total igual e vale depois de recarregar", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const name = "Quanto dá para gastar por dia";
+  const sheet = sheetOf(page);
+  const chooser = page.getByRole("dialog", { name: "Contas no bloco" });
+  const block = blockOf(page, "inicio-gasto-por-dia");
+  const today = () =>
+    block
+      .getByRole("region", { name: "Quanto dá para gastar em cada dia" })
+      .getByRole("listitem")
+      .first();
+  const accountSwitch = (account: string) =>
+    chooser.getByRole("switch", { name: account, exact: true });
+
+  await page.goto("/inicio");
+  await customizeButton(page).click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  let saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  try {
+    await expect(today()).toBeVisible({ timeout: 30_000 });
+    // One line per account to spend from under the total (the demo has
+    // three; smoke.spec.ts archives Carteira later in the run).
+    for (const account of ["Conta principal", "Reserva"]) {
+      await expect(today()).toContainText(account);
+    }
+    await expect(today().getByText("Total", { exact: true })).toBeVisible();
+    await expect(
+      block.getByText("Em cada conta, o saldo e o agendado dela", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    const totalBefore = await today()
+      .locator('[data-slot="money"]')
+      .first()
+      .textContent();
+    await expectNoA11yViolations(page);
+
+    // Hide "Reserva": its line goes, the total stays.
+    await block.getByRole("button", { name: "Escolher contas" }).click();
+    await expect(chooser).toBeVisible();
+    await expect(accountSwitch("Reserva")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await accountSwitch("Reserva").click();
+    saved = actionSaved(page, "hiddenAccountIds");
+    await chooser.getByRole("button", { name: "Salvar" }).click();
+    expect((await saved).ok()).toBe(true);
+    await expect(chooser).toBeHidden();
+    await expect(today()).not.toContainText("Reserva");
+    await expect(today()).toContainText("Conta principal");
+    await expect(today().locator('[data-slot="money"]').first()).toHaveText(
+      totalBefore ?? "",
+    );
+
+    // The choice is on the account, not on the device: it survives a reload.
+    await page.reload();
+    await expect(today()).toBeVisible({ timeout: 30_000 });
+    await expect(today()).not.toContainText("Reserva");
+    await expect(today().locator('[data-slot="money"]').first()).toHaveText(
+      totalBefore ?? "",
+    );
+  } finally {
+    // Back to the default: every account shown, the block off.
+    await page.goto("/inicio");
+    const choose = block.getByRole("button", { name: "Escolher contas" });
+    const streamed = await choose
+      .waitFor({ timeout: 30_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (streamed) {
+      await choose.click();
+      if (
+        (await accountSwitch("Reserva").getAttribute("aria-checked")) !== "true"
+      ) {
+        await accountSwitch("Reserva").click();
+        const restored = actionSaved(page, "hiddenAccountIds");
+        await chooser.getByRole("button", { name: "Salvar" }).click();
+        await restored;
+      } else {
+        await page.keyboard.press("Escape");
+      }
+      await expect(chooser).toBeHidden();
+    }
+    await customizeButton(page).click();
+    await sheet.getByRole("switch", { name, exact: true }).click();
+    const off = homeSaved(page);
+    await sheet.getByRole("button", { name: "Salvar" }).click();
+    await off;
+  }
 });
