@@ -350,6 +350,21 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/extrato?status=pendente", label: "Ver contas pendentes" },
   },
+  {
+    id: "novidade-sino",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the Início already has 3 tips (the limit
+    // per screen), so the bell has its anchor (`data-tip="sino"`) but no balloon.
+    routes: [],
+    anchor: null,
+    title: "Notificações num lugar só",
+    body: "Toque no sino para ver os avisos e os convites, mesmo sem notificações no celular.",
+    since: "2026-11-12",
+    order: 17,
+    when: { flag: "central_notificacoes" },
+    icon: "bell",
+    link: { href: "/inicio", label: "Ver no Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

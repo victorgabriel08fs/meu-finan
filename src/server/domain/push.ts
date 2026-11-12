@@ -1,16 +1,16 @@
 // Web Push subscriptions per person (doc 01 §10): one row per device that
-// turned notifications on, and the unread count behind the number on the app
-// icon. Sending lives in src/server/push.
+// turned notifications on. Sending lives in src/server/push; the unread count
+// behind the number on the app icon, in src/server/domain/notifications.
 //
 // One device, several accounts: a browser has a single subscription (one
 // endpoint), so it belongs to whoever turned notifications on last there,
 // and whoever is signed in on the device takes it from anyone before them
 // (devicePushState). Nobody keeps getting notices on a device someone else
 // now uses.
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { PushSubscriptionInput } from "@/lib/push/subscription";
 import { db, type Executor } from "@/server/db/client";
-import { notifications, pushSubscriptions } from "@/server/db/schema";
+import { pushSubscriptions } from "@/server/db/schema";
 
 /** The user agent is only a hint for people; long ones are cut. */
 const USER_AGENT_MAX = 300;
@@ -128,30 +128,4 @@ export async function dropPushTarget(
   executor: Executor = db,
 ): Promise<void> {
   await executor.delete(pushSubscriptions).where(eq(pushSubscriptions.id, id));
-}
-
-/** Unread notices: the number on the app icon. */
-export async function countUnreadNotifications(
-  userId: string,
-  executor: Executor = db,
-): Promise<number> {
-  const [row] = await executor
-    .select({ total: count() })
-    .from(notifications)
-    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-  return row?.total ?? 0;
-}
-
-/**
- * Opening the app marks the person's notices as read, so the number on the
- * icon goes back to zero (until the notification center lists them).
- */
-export async function markNotificationsRead(
-  userId: string,
-  executor: Executor = db,
-): Promise<void> {
-  await executor
-    .update(notifications)
-    .set({ readAt: new Date() })
-    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
 }

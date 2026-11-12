@@ -157,6 +157,20 @@ describe("ReminderList", () => {
     expect(devicesNote(0, allOff)).toBe("Todos os avisos estão desligados.");
   });
 
+  it("with the bell on, the notices also stay in the sino, device or not", () => {
+    const defaults = DEFAULT_NOTIFICATION_PREFERENCES;
+    const events = ["bills_due", "weekly_summary"] as const;
+    expect(devicesNote(1, defaults, events, true)).toBe(
+      "Chegam uma vez por dia, entre 6h e 7h (horário de Brasília), no sino e em 1 aparelho.",
+    );
+    expect(devicesNote(3, defaults, events, true)).toContain(
+      "no sino e em 3 aparelhos.",
+    );
+    expect(devicesNote(0, defaults, events, true)).toBe(
+      "Chegam uma vez por dia, entre 6h e 7h (horário de Brasília), no sino do app. Para receber também no celular, ligue “Receber notificações” acima.",
+    );
+  });
+
   it("lets the lead time wrap instead of cutting it", () => {
     const bills = row(render(), "bills_due");
     expect(bills).toContain("break-words");

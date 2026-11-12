@@ -17,7 +17,7 @@ import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import {
   addDays,
@@ -46,7 +46,9 @@ import {
   featureFlagOverrides,
   goals,
   marketRates,
+  notifications,
   session,
+  transactions,
   user,
   userSettings,
 } from "../src/server/db/schema";
@@ -621,6 +623,98 @@ async function main(): Promise<void> {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * What the bell lists for Ana: today's "Contas a vencer" (unread, naming the
+ * pending Condomínio, so "Marcar como pago" shows), yesterday's weekly summary
+ * (read), a monthly summary from 10 days ago (read) and a dismissed notice
+ * (kept in the table, off the list).
+ */
+async function seedNotifications(
+  userId: string,
+  ago: (days: number, hours?: number) => Date,
+): Promise<void> {
+  const ctx = await getUserContext(userId);
+  const [bill] = await db
+    .select({ id: transactions.id, dueOn: transactions.occurredOn })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, userId),
+        eq(transactions.description, "Condomínio"),
+        eq(transactions.status, "pending"),
+      ),
+    )
+    .limit(1);
+  const day = (offset: number) => iso(addDays(ctx.today, offset));
+  const rows: (typeof notifications.$inferInsert)[] = [];
+  if (bill) {
+    rows.push({
+      userId,
+      type: "bills_due",
+      dedupeKey: `bills_due:${ctx.todayIso}`,
+      payload: {
+        type: "bills_due",
+        date: ctx.todayIso,
+        title: "Condomínio vence em dia não útil",
+        body: "Condomínio (R$ 680,00): o pagamento costuma passar para segunda.",
+        url: "/extrato?status=pendente",
+        itemKeys: [`t:${bill.id}:${bill.dueOn}`],
+        amounts: true,
+      },
+      createdAt: ago(0),
+    });
+  }
+  rows.push(
+    {
+      userId,
+      type: "weekly_summary",
+      dedupeKey: `weekly_summary:${day(-1)}`,
+      payload: {
+        type: "weekly_summary",
+        date: day(-1),
+        title: "Sua semana",
+        body: "Você gastou 8% menos que na semana anterior.",
+        url: "/relatorios/calendario",
+        amounts: false,
+      },
+      readAt: ago(1),
+      createdAt: ago(1),
+    },
+    {
+      userId,
+      type: "monthly_summary",
+      dedupeKey: `monthly_summary:${day(-10)}`,
+      payload: {
+        type: "monthly_summary",
+        date: day(-10),
+        title: "Resumo do mês",
+        body: "O mês fechou com sobra de R$ 1.240,00.",
+        url: "/relatorios/visao-geral",
+        amounts: true,
+      },
+      readAt: ago(10),
+      createdAt: ago(10),
+    },
+    {
+      userId,
+      type: "daily_summary",
+      dedupeKey: `daily_summary:${day(-3)}`,
+      payload: {
+        type: "daily_summary",
+        date: day(-3),
+        title: "Resumo do dia",
+        body: "Tudo em dia por aqui.",
+        url: "/inicio",
+        amounts: false,
+      },
+      readAt: ago(3),
+      dismissedAt: ago(3),
+      createdAt: ago(3),
+    },
+  );
+  await db.insert(notifications).values(rows);
+}
+
+/**
  * Administração (doc 01 §11.9): besides Ana, the administrator, a regular
  * account with a little data of its own (Bruno, who accepted his invite a
  * while ago) and a pending invite (Carla), plus the activity that led there.
@@ -720,7 +814,8 @@ async function seedPeople(
   }
   // Importar extrato turned off for Bruno only (a per-person flag), and the
   // notifications, the customizable Início and the non-business day alert
-  // (off by default) on for Ana, so the demo shows them.
+  // (off by default) on for Ana, so the demo shows them. The notification
+  // center (the bell) is on for Ana and Bruno.
   await db.insert(featureFlagOverrides).values([
     {
       userId: brunoId,
@@ -750,7 +845,22 @@ async function seedPeople(
       updatedBy: admin.id,
       updatedAt: ago(0),
     },
+    {
+      userId: admin.id,
+      key: "central_notificacoes",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
+    {
+      userId: brunoId,
+      key: "central_notificacoes",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
   ]);
+  await seedNotifications(admin.id, ago);
 
   // Carla: invited yesterday, still pending -------------------------------------
   const carlaId = randomBytes(16).toString("hex");

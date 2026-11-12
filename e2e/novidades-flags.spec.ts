@@ -49,6 +49,11 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
     page.getByText("fim de semana ou num feriado", { exact: false }),
   ).toHaveCount(0);
 
+  // The bell is on for Bruno too (the demo turns it on for him): its novidade
+  // reaches him, and only in Ajustes › Novidades.
+  await expect(
+    page.getByRole("heading", { name: "Notificações num lugar só" }),
+  ).toBeVisible();
   // Without notificacoes_push, no Notificações: neither the screen nor its
   // notices (nor the administrators' preview, which he would not get anyway).
   await page.goto("/ajustes/notificacoes");

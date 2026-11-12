@@ -5,7 +5,6 @@
 // the server: only whether it is set.
 import { and, desc, eq, gt } from "drizzle-orm";
 import { hasAdminRole } from "@/lib/admin/roles";
-import { availableReminderEvents } from "@/lib/notifications/preferences";
 import { db } from "@/server/db/client";
 import { jobRuns, user } from "@/server/db/schema";
 import { readServerEnv } from "@/server/env";
@@ -16,7 +15,7 @@ import { vapidKeys } from "@/server/push";
 import { throttle } from "@/server/security/throttle";
 import { recordAudit } from "./audit";
 import { DomainError, NOT_ALLOWED } from "./errors";
-import { listReminderRecipients } from "./reminders";
+import { isReminderRecipient, listReminderRecipients } from "./reminders";
 
 export type RoutineRunItem = {
   id: string;
@@ -53,7 +52,7 @@ export type RoutineConfig = {
   cronSecretSet: boolean;
   /** The VAPID keys are set. Without them the notices step is skipped. */
   vapidSet: boolean;
-  /** People with the flag, a device and at least one notice on. */
+  /** People with the flag and at least one notice on, a device or the bell. */
   recipients: number;
 };
 
@@ -70,13 +69,8 @@ export async function routineConfig(): Promise<RoutineConfig> {
   const flags = await loadFlagsForUsers(
     candidates.map((candidate) => candidate.userId),
   );
-  const recipients = candidates.filter(
-    (candidate) =>
-      flags.get(candidate.userId)?.notificacoes_push &&
-      availableReminderEvents(candidate.preferences, {
-        nonBusinessDue:
-          flags.get(candidate.userId)?.alerta_dia_nao_util ?? false,
-      }).length > 0,
+  const recipients = candidates.filter((candidate) =>
+    isReminderRecipient(candidate, flags.get(candidate.userId)),
   ).length;
   return {
     cronSecretSet: isSet(() => readServerEnv("CRON_SECRET")),

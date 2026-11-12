@@ -3,7 +3,7 @@
 // person at a time. No texts here (src/lib/notifications/messages.ts) and
 // no sending (src/server/reminders.ts). The job has no session: every read
 // takes the person's own context, a new one per person.
-import { and, between, eq, isNull, or, sql } from "drizzle-orm";
+import { and, between, count, eq, isNull, or, sql } from "drizzle-orm";
 import {
   addDays,
   compareToAverage,
@@ -15,6 +15,7 @@ import {
   periodContaining,
   spendablePerDay,
 } from "@/lib/finance";
+import type { Flags } from "@/lib/flags/registry";
 import type {
   DailySummaryInput,
   IncomeCountdownInput,
@@ -22,6 +23,7 @@ import type {
   WeeklySummaryInput,
 } from "@/lib/notifications/messages";
 import {
+  availableReminderEvents,
   type NotificationPreferences,
   resolveNotificationPreferences,
 } from "@/lib/notifications/preferences";
@@ -62,28 +64,52 @@ import { periodTotals } from "./transactions";
 export type ReminderRecipient = {
   userId: string;
   preferences: NotificationPreferences;
+  /** At least one device receives the person's notifications. */
+  hasDevice: boolean;
 };
 
 /**
- * Everyone with at least one device that receives notifications, except
- * blocked accounts, with their choice of notices. The flag is checked by
- * the caller (loadFlagsForUsers), and again by sendPush.
+ * Every account except blocked ones, with their choice of notices and
+ * whether a device receives their notifications. The flags (notificacoes_push,
+ * central_notificacoes) are checked by the caller (loadFlagsForUsers), and
+ * sendPush checks notificacoes_push again.
  */
 export async function listReminderRecipients(): Promise<ReminderRecipient[]> {
   const rows = await db
-    .selectDistinct({
+    .select({
       userId: user.id,
       notificationPrefs: userSettings.notificationPrefs,
+      devices: count(pushSubscriptions.id),
     })
-    .from(pushSubscriptions)
-    .innerJoin(user, eq(user.id, pushSubscriptions.userId))
+    .from(user)
     .leftJoin(userSettings, eq(userSettings.userId, user.id))
+    .leftJoin(pushSubscriptions, eq(pushSubscriptions.userId, user.id))
     .where(or(isNull(user.banned), eq(user.banned, false)))
+    .groupBy(user.id, userSettings.notificationPrefs)
     .orderBy(user.id);
   return rows.map((row) => ({
     userId: row.userId,
     preferences: resolveNotificationPreferences(row.notificationPrefs),
+    hasDevice: row.devices > 0,
   }));
+}
+
+/**
+ * Who the daily notices go to: people with notificacoes_push and at least
+ * one notice left on, that a device receives or the bell
+ * (central_notificacoes) records.
+ */
+export function isReminderRecipient(
+  recipient: ReminderRecipient,
+  flags: Flags | undefined,
+): boolean {
+  if (!flags?.notificacoes_push) return false;
+  if (!recipient.hasDevice && !flags.central_notificacoes) return false;
+  return (
+    availableReminderEvents(recipient.preferences, {
+      nonBusinessDue: flags.alerta_dia_nao_util,
+    }).length > 0
+  );
 }
 
 /** Resumo do dia: Saldo em contas, what is due today, the budget's pace. */

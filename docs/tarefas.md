@@ -41,6 +41,15 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - Aportes: realizados (transferência de uma conta da pessoa para a caixinha) e planejados (valor por mês por pessoa); projeção por pessoa e total.
 - Mesma decisão de isolamento da tarefa 8 (participantes como outras contas do app ou só nomes) — as duas tarefas devem compartilhar o mesmo modelo de "participantes" e o mesmo ADR.
 
+## 12. Quanto dá para gastar, por conta
+
+**Pedido do dono (12/11/2026).** O bloco "Quanto dá para gastar por dia" (Início) passa a ser por conta: hoje ele soma todas as contas para gastar num saldo só; a pessoa quer ver quanto dá para gastar em cada conta.
+
+- Mesma regra de hoje, aplicada a cada conta para gastar: saldo de hoje mais as despesas e receitas agendadas **daquela conta**, com a fatura do cartão na conta que paga a fatura, dividido pelos dias que faltam no mês financeiro.
+- A decidir com o dono: escolher a conta no bloco (chips ou seletor, com "Todas" como hoje) ou uma linha por conta em cada cartão do dia; se a escolha fica salva na conta (`home_layout`) ou vale só na visita; se o aviso "Próxima receita" e o "Resumo do dia" também passam a dizer por conta.
+- Cuidado com a fatura de um cartão sem conta de pagamento definida e com transferências entre contas para gastar (saem de uma e entram na outra).
+- Testes: `src/lib/finance/spendable-by-day.ts` por conta (fast-check: a soma das contas fecha com o total quando não há transferência agendada), integração do bloco e e2e a 360 px e 200%.
+
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
@@ -60,6 +69,20 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ## Entregue
 
+### Sino de notificações — 12/11/2026
+
+Etapa A das tarefas 8 e 9 (central de avisos antes dos convites para dividir despesas). Decisões do dono (12/11/2026): avisos do cron gravados no sino mesmo sem aparelho, número do ícone pelas não lidas do sino, dispensar sem apagar a linha, tempo real fica para depois.
+
+- [x] **Flag `central_notificacoes`** (desligada por padrão; a demo liga para a Ana e o Bruno) e a novidade "Notificações num lugar só" (só em Ajustes › Novidades).
+- [x] **Tabela `notifications`**: `dismissed_at` e índice `(user_id, created_at)` (migração `0010_central_notificacoes`); `payload.amounts` para o modo discreto.
+- [x] **Domínio e rota**: listar, contar, marcar como lido (por ids ou até uma data), dispensar e restaurar (`src/server/domain/notifications.ts`), `GET /api/notificacoes` (sessão, flag, cursor, `limite=0`) e registro de tipos `src/lib/notifications/kinds.ts` (ações por tipo, modo discreto, tipos por flag, espaço para convites das tarefas 8 e 9).
+- [x] **Sino**: botão no Início (com selo, "9+"), item na barra lateral, folha com Hoje / Esta semana / Antes, ação direta, "Marcar como pago", marcar uma ou todas como lidas, dispensar (X ou deslizar) com Desfazer, estados vazio, carregando e erro; toque no aviso do celular marca como lido (`?aviso=`).
+- [x] **Avisos do cron no sino sem aparelho** (`bellOnly` na Rotina) e **número do ícone** pelas não lidas do sino: abrir o app não o zera com a flag ligada.
+- [x] Testes: unidade (`center`, `kinds`, `withNoticeParam`, componentes do sino, do item da barra e da folha), integração contra o PGlite (domínio com isolamento entre contas, rota, avisos do cron, sync do aparelho, flag) e e2e (`e2e/sino.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`; axe nos dois temas, 360 px a 200%, desktop, flag desligada).
+
+- [x] **Correções da verificação**: tocar num aviso abre o destino depois que a folha fecha (`afterSheetsClose`, Voltar desfaz); o "Desfazer" de um toast recebe o toque com qualquer folha aberta (Sino, Flags, Personalizar o Início) sem fechar a folha.
+
+**Ficou para depois:** tempo real (a contagem atualiza ao voltar ao app); avisos de orçamento 80%/100%, meta atingida e fatura fechando; os convites das tarefas 8 e 9 (o registro de tipos já tem o espaço); o "Marcar como pago" não tem teste de e2e que clica (pagar o Condomínio mudaria as telas dos testes seguintes); só unidade e integração.
 ### Alerta de conta que vence em dia não útil — 12/11/2026
 
 Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendário bancário; "Venceu" só depois do próximo dia útil (D2); aviso push com interruptor próprio, ligado por padrão, no último dia útil antes, uma vez por conta; só feriados nacionais por enquanto.
@@ -78,7 +101,7 @@ Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendá
 - A nota no **detalhe da conta** (`/contas/[id]`) e nos lançamentos da fatura: o campo opcional já serve, só falta anotar na página.
 - **Receita (salário) em dia não útil** e "Próxima receita" ajustada.
 - O **status gravado da fatura** e a previsão por dia útil: hoje só a apresentação muda.
-- A central do sino (doc 02 §6.15) não tem o aviso.
+- O aviso na central do sino já existe (entregue em 12/11/2026, abaixo).
 
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 

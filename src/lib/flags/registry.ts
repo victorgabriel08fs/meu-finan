@@ -70,6 +70,15 @@ export const FLAGS = {
     owner: "Contas",
     since: "2026-11-12",
   },
+  central_notificacoes: {
+    label: "Central de notificações",
+    grammar: { gender: "feminine", plural: false },
+    description:
+      "O sino no Início e na barra lateral, com os avisos e os convites, e o número do ícone pelas não lidas. Quando desligado, o sino some, o servidor recusa as ações dele e abrir o app zera o número, como antes.",
+    defaultValue: false,
+    owner: "Notificações",
+    since: "2026-11-12",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAGS;

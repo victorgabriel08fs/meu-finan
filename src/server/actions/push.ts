@@ -2,15 +2,18 @@
 
 import { headers } from "next/headers";
 import { z } from "zod";
+import { visibleNotificationTypes } from "@/lib/notifications/kinds";
 import { badgeNumber, pushSubscriptionSchema } from "@/lib/push/subscription";
 import {
   countUnreadNotifications,
-  devicePushState,
   markNotificationsRead,
+} from "@/server/domain/notifications";
+import {
+  devicePushState,
   removePushSubscription,
   savePushSubscription,
 } from "@/server/domain/push";
-import { isFlagEnabled } from "@/server/flags";
+import { getFlags, isFlagEnabled } from "@/server/flags";
 import { sendPush, vapidKeys } from "@/server/push";
 import { ActionError, authAction, flaggedAction } from "@/server/safe-action";
 import { throttle } from "@/server/security/throttle";
@@ -46,13 +49,19 @@ export const unsubscribePushAction = authAction
 /**
  * On every page load of the app: whether this device sends the person's
  * notifications (taking it over from whoever used it before) and the number
- * for the app icon, which is only shown on a device that is theirs. Opening
- * the app marks the notices as read, so the number goes back to zero.
+ * for the app icon, which is only shown on a device that is theirs. Without
+ * the bell (central_notificacoes) opening the app marks the notices as read,
+ * so the number goes back to zero; with it, the number is the bell's unread
+ * count and only reading the notices lowers it.
  */
 export const syncPushDeviceAction = authAction
   .inputSchema(z.object({ endpoint: endpoint.nullable() }))
   .action(async ({ parsedInput, ctx: { user } }) => {
-    await markNotificationsRead(user.id);
+    const flags = await getFlags(user.id);
+    const types = visibleNotificationTypes(flags);
+    if (!flags.central_notificacoes) {
+      await markNotificationsRead(user.id, { until: new Date() }, types);
+    }
     const state = parsedInput.endpoint
       ? await devicePushState(user.id, parsedInput.endpoint)
       : "off";
@@ -60,7 +69,9 @@ export const syncPushDeviceAction = authAction
       state === "on" && (await isFlagEnabled("notificacoes_push", user.id));
     return {
       on,
-      badge: on ? badgeNumber(await countUnreadNotifications(user.id)) : 0,
+      badge: on
+        ? badgeNumber(await countUnreadNotifications(user.id, types))
+        : 0,
     };
   });
 
@@ -77,12 +88,18 @@ export const sendTestPushAction = flaggedAction("notificacoes_push", FLAG_OFF)
         "Você já enviou alguns testes. Espere um minuto e tente de novo.",
       );
     }
-    const unread = await countUnreadNotifications(user.id);
+    const flags = await getFlags(user.id);
+    const unread = await countUnreadNotifications(
+      user.id,
+      visibleNotificationTypes(flags),
+    );
     const outcome = await sendPush(
       user.id,
       {
         title: "Meu Finan",
-        body: "Notificação de teste: tudo certo neste aparelho. O número no ícone some quando você abre o app.",
+        body: flags.central_notificacoes
+          ? "Notificação de teste: tudo certo neste aparelho. O número no ícone some quando você lê os avisos no sino."
+          : "Notificação de teste: tudo certo neste aparelho. O número no ícone some quando você abre o app.",
         url: "/ajustes/notificacoes",
         tag: "teste",
       },

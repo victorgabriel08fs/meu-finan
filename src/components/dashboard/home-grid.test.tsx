@@ -7,9 +7,14 @@ import {
 } from "@/lib/home/layout";
 import { HomeGrid } from "./dashboard-layout";
 
-// Server Actions are not available outside Next (the header's news dot and
+// Server Actions are not available outside Next (the header's bell, news dot and
 // theme toggle).
 vi.mock("@/server/actions/preferences", () => ({ setThemeAction: vi.fn() }));
+vi.mock("@/server/actions/notifications", () => ({
+  markNotificationsReadAction: vi.fn(),
+  dismissNotificationAction: vi.fn(),
+  restoreNotificationAction: vi.fn(),
+}));
 vi.mock("@/server/actions/tips", () => ({
   markTipsSeenAction: vi.fn(),
   setTipsOffAction: vi.fn(),

@@ -114,9 +114,12 @@ test("Avisos: os padrões, e cada toque fica salvo na conta", async ({
   await expect(
     leadTime(page).getByRole("radio", { name: "1 dia" }),
   ).toHaveAttribute("aria-checked", "true");
-  // The demo account has no device that receives them.
+  // The demo account has no device that receives them, and the bell (on for
+  // Ana) keeps the notices: "no sino do app".
   await expect(
-    page.getByText("Nenhum aparelho recebe ainda", { exact: false }),
+    page.getByText("no sino do app. Para receber também no celular", {
+      exact: false,
+    }),
   ).toBeVisible();
   // Doc 02 §6.14: the old "Em breve" list is gone.
   await expect(page.getByText("Em breve")).toHaveCount(0);
@@ -306,7 +309,9 @@ test("com o aparelho pronto: a nota do aparelho, 1 aparelho nos Avisos e a prév
   ).toBeVisible();
   // The count under Avisos comes from the server, refreshed.
   await expect(
-    page.getByText("entre 6h e 7h (horário de Brasília), em 1 aparelho."),
+    page.getByText(
+      "entre 6h e 7h (horário de Brasília), no sino e em 1 aparelho.",
+    ),
   ).toBeVisible();
   await expectNoA11yViolations(page);
 
@@ -314,7 +319,9 @@ test("com o aparelho pronto: a nota do aparelho, 1 aparelho nos Avisos e a prév
   await device.click();
   await expect(device).toHaveAttribute("aria-checked", "false");
   await expect(
-    page.getByText("Nenhum aparelho recebe ainda", { exact: false }),
+    page.getByText("no sino do app. Para receber também no celular", {
+      exact: false,
+    }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /^Enviar prévia dos avisos/ }),

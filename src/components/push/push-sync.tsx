@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { syncPushDeviceAction } from "@/server/actions/push";
+import { useNotificationsStore } from "@/stores/notifications";
 import { currentSubscription, setAppBadge } from "./device";
 
 /** Coming back to the app more often than this does not ask again. */
@@ -13,11 +14,15 @@ const RESYNC_AFTER_MS = 30_000;
  * server which subscription the device holds (so a device someone else used
  * stops sending their notifications) and sets the number on the app icon to
  * the person's unread notices. Renders nothing. Disabled (the flag is off),
- * it only clears the icon.
+ * it only clears the icon. It also tells the notification center whether this
+ * device receives the person's notifications: with the bell on, the icon
+ * number follows the bell's unread count (NotificationsHost).
  */
 export function PushSync({ enabled }: { enabled: boolean }) {
   useEffect(() => {
+    const { setPushOn } = useNotificationsStore.getState();
     if (!enabled) {
+      setPushOn(false);
       void setAppBadge(0);
       return;
     }
@@ -33,6 +38,7 @@ export function PushSync({ enabled }: { enabled: boolean }) {
           endpoint: subscription?.endpoint ?? null,
         });
         if (cancelled || !result?.data) return;
+        setPushOn(result.data.on);
         await setAppBadge(result.data.badge);
       } catch {
         // Offline or no service worker: the icon keeps its number for now.

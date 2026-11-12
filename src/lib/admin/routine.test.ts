@@ -71,7 +71,7 @@ describe("describeReminders", () => {
 
   it("says so when nobody had notices on and nothing went out", () => {
     expect(describeReminders({ recipients: 0, sent: {}, errors: 0 })).toEqual([
-      "Ninguém tinha aviso ligado e aparelho inscrito.",
+      "Ninguém tinha aviso ligado.",
       "Nenhum aviso enviado nesta execução.",
     ]);
     expect(describeReminders({ recipients: 1 })).toEqual([
@@ -87,7 +87,7 @@ describe("describeReminders", () => {
     expect(
       describeReminders({ recipients: "muitas", sent: [1], errors: null }),
     ).toEqual([
-      "Ninguém tinha aviso ligado e aparelho inscrito.",
+      "Ninguém tinha aviso ligado.",
       "Nenhum aviso enviado nesta execução.",
     ]);
   });

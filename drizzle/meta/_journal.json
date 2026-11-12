@@ -71,6 +71,13 @@
       "when": 1794479324296,
       "tag": "0009_feriados",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794486741624,
+      "tag": "0010_central_notificacoes",
+      "breakpoints": true
     }
   ]
 }

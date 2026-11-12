@@ -25,6 +25,7 @@ describe("useFlag", () => {
       notificacoes_push: false,
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
+      central_notificacoes: false,
     };
     expect(
       renderToStaticMarkup(
@@ -41,6 +42,7 @@ describe("useFlag", () => {
       notificacoes_push: false,
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
+      central_notificacoes: false,
     });
     const html = await prerenderToString(
       <FlagsProvider flags={flags}>

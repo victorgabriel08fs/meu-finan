@@ -2,12 +2,19 @@
 
 import { refresh } from "next/cache";
 import { z } from "zod";
+import { visibleNotificationTypes } from "@/lib/notifications/kinds";
 import { notificationPreferencesSchema } from "@/lib/notifications/preferences";
+import {
+  countUnreadNotifications,
+  dismissNotification,
+  markNotificationsRead,
+  restoreNotification,
+} from "@/server/domain/notifications";
 import {
   getNotificationPreferences,
   setNotificationPreferences,
 } from "@/server/domain/preferences";
-import { isFlagEnabled } from "@/server/flags";
+import { getFlags, isFlagEnabled } from "@/server/flags";
 import { previewReminders } from "@/server/reminders";
 import { ActionError, adminAction, flaggedAction } from "@/server/safe-action";
 import { throttle } from "@/server/security/throttle";
@@ -71,4 +78,65 @@ export const previewRemindersAction = adminAction
       );
     }
     return { sent: outcome.sent };
+  });
+
+/**
+ * The bell (central_notificacoes, doc 02 §6.15). Each action answers with the
+ * unread count after it, which the sheet and the icon number follow. They
+ * skip refresh(): the store of the sheet is what shows the result.
+ */
+const BELL_OFF = "A central de notificações não está disponível.";
+
+const noticeId = z.uuid();
+
+/** The count of the bell for the person, read after a change. */
+async function bellUnread(userId: string): Promise<{ unread: number }> {
+  const types = visibleNotificationTypes(await getFlags(userId));
+  return { unread: await countUnreadNotifications(userId, types) };
+}
+
+/** Some notices (`ids`) or all up to `until` ("Marcar todas como lidas"). */
+export const markNotificationsReadAction = flaggedAction(
+  "central_notificacoes",
+  BELL_OFF,
+)
+  .inputSchema(
+    z.union([
+      z.object({ ids: z.array(noticeId).min(1).max(100) }),
+      z.object({ until: z.iso.datetime() }),
+    ]),
+  )
+  .action(async ({ parsedInput, ctx: { user } }) => {
+    const types = visibleNotificationTypes(await getFlags(user.id));
+    return markNotificationsRead(
+      user.id,
+      "ids" in parsedInput
+        ? { ids: parsedInput.ids }
+        : { until: new Date(parsedInput.until) },
+      types,
+    );
+  });
+
+export const dismissNotificationAction = flaggedAction(
+  "central_notificacoes",
+  BELL_OFF,
+)
+  .inputSchema(z.object({ id: noticeId }))
+  .action(async ({ parsedInput, ctx: { user } }) => {
+    if (!(await dismissNotification(user.id, parsedInput.id))) {
+      throw new ActionError("Não encontramos esta notificação.");
+    }
+    return bellUnread(user.id);
+  });
+
+export const restoreNotificationAction = flaggedAction(
+  "central_notificacoes",
+  BELL_OFF,
+)
+  .inputSchema(z.object({ id: noticeId }))
+  .action(async ({ parsedInput, ctx: { user } }) => {
+    if (!(await restoreNotification(user.id, parsedInput.id))) {
+      throw new ActionError("Não encontramos esta notificação.");
+    }
+    return bellUnread(user.id);
   });

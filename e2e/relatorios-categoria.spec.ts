@@ -73,16 +73,22 @@ test("categoria que não existe: a tela explica e leva às categorias", async ({
 }) => {
   for (const id of ["00000000-0000-7000-8000-000000000000", "abc"]) {
     await page.goto(`/relatorios/categorias/${id}`);
-    await expect(page.getByText("Categoria não encontrada")).toBeVisible({
+    await expect(
+      page.getByText("Categoria não encontrada").filter({ visible: true }),
+    ).toBeVisible({
       timeout: 30_000,
     });
     await expect(
-      page.getByText(
-        "Ela pode ter sido mesclada com outra, ou o link está incompleto.",
-      ),
+      page
+        .getByText(
+          "Ela pode ter sido mesclada com outra, ou o link está incompleto.",
+        )
+        .filter({ visible: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Ver categorias" }),
+      page
+        .getByRole("link", { name: "Ver categorias" })
+        .filter({ visible: true }),
     ).toBeVisible();
   }
 });

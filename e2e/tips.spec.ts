@@ -154,7 +154,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+13 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+14 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -228,6 +228,16 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   await expect(
     item("Caixinhas").getByRole("link", { name: "Criar caixinha" }),
   ).toHaveAttribute("href", "/contas/nova?tipo=caixinha");
+  // The bell, behind central_notificacoes (on for Ana): Ajustes › Novidades
+  // only, no balloon; it leads back to the Início.
+  await expect(
+    item("Notificações num lugar só").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    item("Notificações num lugar só").getByRole("link", {
+      name: "Ver no Início",
+    }),
+  ).toHaveAttribute("href", "/inicio");
   await read;
 
   await page.goto("/inicio");
