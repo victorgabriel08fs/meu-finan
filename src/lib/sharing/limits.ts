@@ -23,3 +23,6 @@ export const INVITE_PAIR_WINDOW_DAYS = 30;
 
 /** The weight of one person in "Cotas": 1 to 9. */
 export const MAX_SPLIT_WEIGHT = 9;
+
+/** A shared box name ("Viagem para Salvador"). */
+export const BOX_NAME_MAX = 40;

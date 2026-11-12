@@ -21,15 +21,19 @@ import {
   updatedAt,
 } from "./columns";
 import {
+  COLOR_TOKENS,
+  type ColorToken,
+  SHARE_BOX_TARGET_SPLITS,
   SHARE_MEMBER_ROLES,
   SHARE_MEMBER_STATUSES,
   SHARE_SPLIT_METHODS,
+  type ShareBoxTargetSplit,
   type ShareMemberRole,
   type ShareMemberStatus,
   type ShareSplitMethod,
 } from "./enums";
 import { transactions } from "./transactions";
-import type { ShareDefaultSplit } from "./types";
+import type { GoalExpectedRate, ShareDefaultSplit } from "./types";
 
 // Shared finances between accounts (ADR-13, doc 01 §11.11). These are the
 // only tables more than one account reads: the active members of a group, and
@@ -220,5 +224,117 @@ export const shareSettlements = pgTable(
     ),
     check("share_settlements_amount_cents_check", sql`${t.amountCents} > 0`),
     index("share_settlements_group_idx").on(t.groupId),
+  ],
+);
+
+/**
+ * A group's shared box ("caixinha compartilhada", doc 03 §8.1): not anyone's
+ * account and not a goal of its own, only the record of what each member put
+ * in (shared_box_entries) toward an optional target. The money itself stays
+ * in each member's own accounts.
+ */
+export const sharedBoxes = pgTable(
+  "shared_boxes",
+  {
+    id: idColumn(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => shareGroups.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    icon: text("icon").notNull(),
+    color: text("color", { enum: COLOR_TOKENS }).$type<ColorToken>().notNull(),
+    targetCents: cents("target_cents"),
+    targetDate: localDate("target_date"),
+    expectedRate: jsonb("expected_rate").$type<GoalExpectedRate>(),
+    /** How the target is divided among the active members. */
+    targetSplit: text("target_split", { enum: SHARE_BOX_TARGET_SPLITS })
+      .$type<ShareBoxTargetSplit>()
+      .notNull()
+      .default("equal"),
+    createdByMember: uuid("created_by_member")
+      .notNull()
+      .references(() => shareMembers.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    archivedAt: timestamptz("archived_at"),
+  },
+  (t) => [
+    check(
+      "shared_boxes_name_check",
+      sql`char_length(${t.name}) between 1 and 40`,
+    ),
+    check("shared_boxes_color_check", oneOf(t.color, COLOR_TOKENS)),
+    check("shared_boxes_target_cents_check", sql`${t.targetCents} > 0`),
+    check(
+      "shared_boxes_expected_rate_check",
+      sql`jsonb_typeof(${t.expectedRate}) = 'object'`,
+    ),
+    check(
+      "shared_boxes_target_split_check",
+      oneOf(t.targetSplit, SHARE_BOX_TARGET_SPLITS),
+    ),
+    index("shared_boxes_group_idx").on(t.groupId),
+  ],
+);
+
+/**
+ * A member's own settings in a box: the monthly plan they set for themself
+ * and, with target_split = 'percent', their part of the target in basis
+ * points. A member without a row plans nothing (and has weight 0).
+ */
+export const sharedBoxMembers = pgTable(
+  "shared_box_members",
+  {
+    boxId: uuid("box_id")
+      .notNull()
+      .references(() => sharedBoxes.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => shareMembers.id),
+    monthlyPlanCents: cents("monthly_plan_cents").notNull().default(0),
+    targetWeight: integer("target_weight").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({
+      name: "shared_box_members_pkey",
+      columns: [t.boxId, t.memberId],
+    }),
+    check(
+      "shared_box_members_monthly_plan_cents_check",
+      sql`${t.monthlyPlanCents} >= 0`,
+    ),
+    check(
+      "shared_box_members_target_weight_check",
+      sql`${t.targetWeight} between 0 and 10000`,
+    ),
+  ],
+);
+
+/**
+ * What a member put in (positive) or took out (negative) of a box. The id
+ * comes from the client, so the same entry sent twice is recorded once.
+ * `source_transfer_id`: the transfer between the member's own accounts made
+ * with it ("Lançar no meu extrato"); no foreign key, transfer_id is not
+ * unique, and only its owner's queries follow it.
+ */
+export const sharedBoxEntries = pgTable(
+  "shared_box_entries",
+  {
+    id: uuid("id").primaryKey(),
+    boxId: uuid("box_id")
+      .notNull()
+      .references(() => sharedBoxes.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => shareMembers.id),
+    amountCents: cents("amount_cents").notNull(),
+    occurredOn: localDate("occurred_on").notNull(),
+    sourceTransferId: uuid("source_transfer_id"),
+    createdAt: createdAt(),
+    deletedAt: timestamptz("deleted_at"),
+  },
+  (t) => [
+    check("shared_box_entries_amount_cents_check", sql`${t.amountCents} <> 0`),
+    index("shared_box_entries_box_date_idx").on(t.boxId, t.occurredOn),
   ],
 );

@@ -57,7 +57,11 @@ export async function deliverPushes(
         const message = shareMessage(item.payload, showAmounts);
         await sendPush(
           item.userId,
-          { ...message, url: item.url, tag: `grupo-${item.groupId}` },
+          {
+            ...message,
+            url: item.url,
+            tag: item.tag ?? `grupo-${item.groupId}`,
+          },
           { noticeId: noticeIds.get(`${item.userId}:${item.dedupeKey}`) },
         );
       }),

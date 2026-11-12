@@ -119,3 +119,68 @@ describe("the notices of a group", () => {
     );
   });
 });
+
+describe("the notices of a shared box", () => {
+  const activity = {
+    type: "box_activity",
+    groupId: "g1",
+    groupName: "Casa",
+    boxId: "b1",
+    boxName: "Viagem",
+    actorName: "Bruno",
+    saved: 1,
+    savedCents: 50_000,
+    withdrawn: 0,
+    withdrawnCents: 0,
+  } as const;
+  const reached = {
+    type: "box_reached",
+    groupId: "g1",
+    groupName: "Casa",
+    boxId: "b1",
+    boxName: "Viagem",
+  } as const;
+
+  it("open the box, only with financas_compartilhadas", () => {
+    expect(visibleNotificationTypes(defaultFlags())).not.toContain(
+      "box_activity",
+    );
+    expect(
+      visibleNotificationTypes({
+        ...defaultFlags(),
+        financas_compartilhadas: true,
+      }),
+    ).toEqual(expect.arrayContaining(["box_activity", "box_reached"]));
+    expect(renderNotice(activity, { discreet: false })).toMatchObject({
+      title: "Casa",
+      href: "/compartilhado/g1/caixinhas/b1",
+      actions: [{ id: "open", label: "Ver caixinha" }],
+    });
+    expect(renderNotice(reached, { discreet: false })?.body).toBe(
+      "A caixinha Viagem chegou ao objetivo. Que tal a próxima?",
+    );
+  });
+
+  it("say who saved or took out how much, and hide it in the privacy mode", () => {
+    const body = (payload: Parameters<typeof renderNotice>[0]) =>
+      renderNotice(payload, { discreet: false })?.body.replace(/\s/g, " ");
+    expect(body(activity)).toBe("Bruno guardou R$ 500,00 na caixinha Viagem.");
+    expect(
+      body({
+        ...activity,
+        saved: 0,
+        savedCents: 0,
+        withdrawn: 1,
+        withdrawnCents: 20_000,
+      }),
+    ).toBe("Bruno resgatou R$ 200,00 da caixinha Viagem.");
+    expect(body({ ...activity, withdrawn: 1, withdrawnCents: 20_000 })).toBe(
+      "Bruno guardou R$ 500,00 e resgatou R$ 200,00 na caixinha Viagem.",
+    );
+    expect(payloadHasAmounts(activity)).toBe(true);
+    expect(payloadHasAmounts(reached)).toBe(false);
+    expect(renderNotice(activity, { discreet: true })?.body).toBe(
+      DISCREET_BODY,
+    );
+  });
+});

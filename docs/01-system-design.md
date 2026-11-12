@@ -801,6 +801,44 @@ create table share_settlements (  -- "Marcar como acertado": from pagou to, fora
   deleted_at        timestamptz
 );
 create index share_settlements_group_idx on share_settlements (group_id);
+
+-- Caixinha compartilhada (ADR-13, tarefa 9; migração 0012_caixinha_compartilhada).
+create table shared_boxes (  -- uma caixinha do grupo; o dinheiro mora nas contas de cada um
+  id                uuid primary key,
+  group_id          uuid not null references share_groups(id) on delete cascade,
+  name              text not null check (char_length(name) between 1 and 40),
+  icon              text not null,
+  color             text not null,  -- COLOR_TOKENS
+  target_cents      bigint check (target_cents > 0),  -- sem objetivo: só acompanham o guardado
+  target_date       date,
+  expected_rate     jsonb check (jsonb_typeof(expected_rate) = 'object'),  -- reservado: sem campo na tela ainda
+  target_split      text not null default 'equal' check (target_split in ('equal', 'percent')),
+  created_by_member uuid not null references share_members(id),
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now(),
+  archived_at       timestamptz
+);
+create index shared_boxes_group_idx on shared_boxes (group_id);
+
+create table shared_box_members (  -- o plano de cada um e o peso na parte do objetivo
+  box_id             uuid not null references shared_boxes(id) on delete cascade,
+  member_id          uuid not null references share_members(id),
+  monthly_plan_cents bigint not null default 0 check (monthly_plan_cents >= 0),
+  target_weight      integer not null default 0 check (target_weight between 0 and 10000),  -- pontos-base; só vale com target_split = 'percent'
+  primary key (box_id, member_id)
+);
+
+create table shared_box_entries (  -- + guardar, - resgatar; só o que a pessoa pôs na caixinha do grupo
+  id                 uuid primary key,  -- gerado no cliente (idempotência)
+  box_id             uuid not null references shared_boxes(id) on delete cascade,
+  member_id          uuid not null references share_members(id),
+  amount_cents       bigint not null check (amount_cents <> 0),
+  occurred_on        date not null,  -- nunca no futuro
+  source_transfer_id uuid,  -- a transferência da própria pessoa que acompanhou a entrada (sem FK: transfer_id não é único)
+  created_at         timestamptz not null default now(),
+  deleted_at         timestamptz
+);
+create index shared_box_entries_box_date_idx on shared_box_entries (box_id, occurred_on);
 ```
 
 ### 6.4 Exemplo de schema Drizzle (convenção)
@@ -971,7 +1009,7 @@ export const requireUser = cache(async () => {
 | Simulador | `saveSimulation`, `deleteSimulation` | |
 | Importação | `parseImport(importId)`, `confirmImport(importId, rows)` | |
 | Ajustes | `updateSettings`, `subscribePush`, `unsubscribePush`, `syncPushDevice`, `sendTestPush` | as de push atrás da flag `notificacoes_push` (desligar e sincronizar o aparelho funcionam sempre); o teste vai só para este aparelho, no máximo 3 por minuto |
-| Compartilhado | `createGroup`, `inviteToGroup`, `respondToInvite`, `leaveGroup`, `removeMember`, `renameGroup`, `setDefaultSplit`, `addSharedExpenses` (1 a 100 itens), `updateSharedExpense`, `deleteSharedExpense` / `restoreSharedExpense`, `settleUp`, `undoSettlement`, `refreshFromSource` | atrás da flag `financas_compartilhadas` (`flaggedAction`); membro ativo conferido na transação (`requireActiveMember`); a divisão é refeita no servidor (`splitExpense`); o push sai depois do commit (`after`) e cada action termina com `refresh()`; limites de convite por pessoa (§11.11) |
+| Compartilhado | `createGroup`, `inviteToGroup`, `respondToInvite`, `leaveGroup`, `removeMember`, `renameGroup`, `setDefaultSplit`, `addSharedExpenses` (1 a 100 itens), `updateSharedExpense`, `deleteSharedExpense` / `restoreSharedExpense`, `settleUp`, `undoSettlement`, `refreshFromSource`, e as da caixinha: `createBox`, `updateBox`, `archiveBox`, `setMyPlan`, `setTargetWeights`, `contribute`, `withdraw`, `undoEntry` | atrás da flag `financas_compartilhadas` (`flaggedAction`); membro ativo conferido na transação (`requireActiveMember`); a divisão é refeita no servidor (`splitExpense`); o push sai depois do commit (`after`) e cada action termina com `refresh()`; limites de convite por pessoa (§11.11) |
 | Dados | `requestDataExport()`, `deleteAllData(confirmation)` | ambas exigem sessão recente; apagar remove dados financeiros e blobs, mantém o acesso (usuário, senha, passkeys) e volta ao onboarding (§11.8) |
 
 ### 7.3 Route Handlers (`/api/v1`)
@@ -1297,7 +1335,7 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 
 Grupos de até 6 pessoas do app dividem despesas (tarefa 8). É a única exceção à regra "cada conta só lê o que é dela", e tem fronteira própria.
 
-- **Fronteira.** Os dados do grupo moram só em `share_groups`, `share_members`, `shared_expenses`, `shared_expense_shares` e `share_settlements` (a caixinha compartilhada, tarefa 9, acrescenta as dela). Só membros **ativos** leem, e só uma ação explícita de um membro escreve. As tabelas privadas (`user_id`) continuam lidas só pela dona: nenhuma consulta feita para uma pessoa lê a linha privada de outra, e ninguém escreve nas tabelas privadas de outra. Copiar um lançamento próprio para o grupo (retrato de descrição, valor e data) só acontece por ação da dona, e `source_transaction_id` só é seguido para a própria criadora (JOIN com `transactions.user_id = ctx.userId`).
+- **Fronteira.** Os dados do grupo moram só em `share_groups`, `share_members`, `shared_expenses`, `shared_expense_shares` e `share_settlements` e, da caixinha compartilhada (tarefa 9), `shared_boxes`, `shared_box_members` e `shared_box_entries`. Só membros **ativos** leem, e só uma ação explícita de um membro escreve. As tabelas privadas (`user_id`) continuam lidas só pela dona: nenhuma consulta feita para uma pessoa lê a linha privada de outra, e ninguém escreve nas tabelas privadas de outra. Copiar um lançamento próprio para o grupo (retrato de descrição, valor e data) só acontece por ação da dona, e `source_transaction_id` só é seguido para a própria criadora (JOIN com `transactions.user_id = ctx.userId`).
 - **Pertencimento.** Toda leitura e escrita compartilhada chama `requireActiveMember(executor, userId, groupId, { lock })` na mesma transação, e cada id recebido (despesa, membro, acerto) precisa pertencer ao grupo. Para quem não é membro a resposta é "Grupo não encontrado.", igual a um id inexistente.
 - **Consentimento.** Convite, depois aceitar ou recusar (no sino, em Compartilhado ou no bloco do Início). Até aceitar, a convidada vê o nome e o e-mail de quem convidou e o nome do grupo; quem convidou vê só o e-mail que digitou e o status. Recusar mostra "Recusou" a quem convidou.
 - **Descoberta sem vazamento.** A resposta ao convite é neutra (mesma tela e mesmo status para e-mail com e sem conta), o convite vale 14 dias e um e-mail sem conta só expira (não vira convite se a conta for criada depois). Limites: 20 e-mails por dia por pessoa (`throttle("share-invite:{userId}")`), 3 por par em 30 dias (`share-invite:{userId}:{sha256(e-mail)[0..16]}`, nunca o e-mail na chave) e 6 pessoas por grupo, contando ativas e pendentes. Responder convite: 30 por minuto.
@@ -1305,9 +1343,19 @@ Grupos de até 6 pessoas do app dividem despesas (tarefa 8). É a única exceç�
 - **Transação e travas.** Convidar, aceitar, adicionar despesas e acertar travam o grupo (`FOR UPDATE`) e usam só `tx`. `settleUp` recalcula o saldo na transação e recusa se a transferência mudou ("O saldo mudou enquanto você acertava"); o aceite confere o limite de 6 com o grupo travado.
 - **Saldo.** Calculado, nunca guardado: `groupNets` (pago − parte + acertos enviados − acertos recebidos, desde sempre) por agregados com GROUP BY; a divisão e o plano de acerto são funções puras (`src/lib/finance/split.ts` e `settle.ts`, doc 03 §14).
 - **Administração.** Nenhuma tela com dinheiro de grupo. A auditoria grava `share.invited`, `share.accepted`, `share.declined`, `share.left` e `share.removed` (alvo quando a conta existe), sem valores e sem o nome do grupo; convite para e-mail sem conta leva `metadata: { unresolved: true }`, sem o e-mail.
-- **Avisos.** Sete tipos no sino (`share_invite`, `share_joined`, `share_declined`, `share_left`, `share_removed`, `shared_activity` agregado por dia e `share_settled`), gravados na mesma transação da mudança; o push sai depois do commit (`src/server/notify.ts`, tag `grupo-{id}`), respeita a flag de cada destinatária e o "Mostrar valores nas notificações". A rota `GET /api/notificacoes` só oferece Aceitar/Recusar enquanto o convite vale e leva o aviso de um grupo que a pessoa deixou para `/compartilhado`, sem ações.
+- **Avisos.** Nove tipos no sino (`share_invite`, `share_joined`, `share_declined`, `share_left`, `share_removed`, `shared_activity` agregado por dia, `share_settled`, `box_activity` e `box_reached`), gravados na mesma transação da mudança; o push sai depois do commit (`src/server/notify.ts`, tag `grupo-{id}`), respeita a flag de cada destinatária e o "Mostrar valores nas notificações". A rota `GET /api/notificacoes` só oferece Aceitar/Recusar enquanto o convite vale e leva o aviso de um grupo que a pessoa deixou para `/compartilhado`, sem ações.
 - **Cache.** Sem `'use cache'` nas leituras compartilhadas; as actions terminam com `refresh()` e o outro membro vê na próxima navegação. Se um dia houver cache, a tag é `g:{groupId}`, invalidada para o grupo inteiro.
-- **Testes.** Isolamento com uma terceira conta (Carla) em toda função do domínio; catálogo de cascade em `admin.integration.test.ts`; limites e push em `src/server/sharing-actions.integration.test.ts`; e2e em `e2e/compartilhado.spec.ts`.
+- **Testes.** Isolamento com uma terceira conta (Carla) em toda função do domínio; catálogo de cascade em `admin.integration.test.ts`; limites e push em `src/server/sharing-actions.integration.test.ts`; e2e em `e2e/compartilhado.spec.ts` e `e2e/caixinha-compartilhada.spec.ts`.
+- **Caixinha compartilhada (tarefa 9).** Uma caixinha pertence ao grupo; o dinheiro continua nas contas de cada pessoa, e o grupo guarda só o que cada uma disse que guardou.
+  - *Quem faz o quê.* Qualquer membro ativo cria, edita, arquiva e desarquiva (sem auditoria: não há valor sensível nem ação de administração). Cada um muda só o próprio plano (`setMyPlan`). Só a criadora do grupo muda as partes do objetivo (`setTargetWeights`: `equal` ou `percent` em pontos-base somando 10.000, para todos os membros ativos).
+  - *Guardar e resgatar.* `contribute` e `withdraw` travam a caixinha e o grupo (`FOR UPDATE`) e conferem o membro ativo na mesma transação. Com "Lançar no meu extrato", chamam `insertTransfer(tx, ctx, …)` (extraído de `createTransfer`): a perna da conta própria e a da caixinha **própria** (`savings_box`), nunca cartão, nunca conta de outra pessoa (`fromAccountId` e `toBoxAccountId` são conferidos com `user_id` = quem age); a entrada guarda `source_transfer_id`. Sem a opção, só a entrada é gravada.
+  - *Limite do resgate.* Resgatar no máximo o que a própria pessoa guardou, conferido sob a trava (dois resgates ao mesmo tempo: só um passa): "Você pode resgatar até R$ 1.800,00, o que você guardou." Datas no futuro são recusadas.
+  - *Desfazer.* `undoEntry`, só de quem fez: marca a entrada e as duas pernas da transferência dela (`transfer_id`, `user_id` = quem age) como apagadas na mesma transação. Recusado quando a pessoa já resgatou parte do que a entrada guardou ("Não dá para desfazer: você já resgatou parte desse valor.").
+  - *Partes.* `target_split` (`equal` por padrão, `percent`). Quando alguém entra, sai ou é removido, a divisão volta a ser igual para todas as caixinhas do grupo (`resetBoxTargets`), porque os percentuais escolhidos não cobrem mais as pessoas que estão.
+  - *Quem sai ou tem a conta excluída.* O histórico fica ("Bruno (saiu)", "(conta excluída)"), mas a pessoa deixa de contar no total, na projeção e nas partes; a tela lista "Bruno guardou R$ 1.100,00; não conta mais no total." `hasHistory` (que decide entre apagar a linha do membro ou guardá-la) também conta caixinhas, planos e entradas.
+  - *Avisos.* `box_activity` ("Bruno guardou R$ 500,00 na caixinha Viagem.", agregado por dia, pessoa e caixinha; para os outros membros, com push de tag `caixinha-{id}`) e `box_reached` ("A caixinha Viagem chegou ao objetivo. Que tal a próxima?"; uma vez por caixinha, no sino de todos; push só para os outros, que não agiram). Gravados na mesma transação; o push sai depois do commit.
+  - *Cache.* Sem tags: todas as actions terminam com `refresh()`.
+  - *Fica para depois.* O campo de rendimento esperado (a coluna `expected_rate` existe e a projeção a usa, mas a tela ainda não a pede); o aviso agregado do dia não é corrigido quando alguém desfaz um aporte.
 
 ## 12. Performance
 
@@ -1400,7 +1448,7 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 | **F1 — MVP** | onboarding, contas, categorias, lançamentos (quick-add), extrato com busca/filtros, Início, simulador de juros compostos, relatórios Visão geral e Categorias; 2FA TOTP; backup semanal criptografado | o dono registra e entende o mês sem planilha; um backup semanal restaurado com sucesso num branch de teste |
 | **F2 — Planejamento** | cartão de crédito e faturas, parcelamento, recorrências, orçamentos com pace, metas com projeção, previsão de saldo | fecha o ciclo do cartão de crédito sem ajuste manual |
 | **F3 — Hábito e dados** | importação OFX/CSV com regras, notificações push (e-mail opcional), insights, fluxo de caixa, patrimônio, calendário, exportação CSV/PDF e "Exportar meus dados", fila offline | o registro em 3+ dias por semana virou hábito (métrica no próprio banco, §13) |
-| **F4 — Expansão** | Open Finance, categorização assistida por IA, metas com investimento real; finanças compartilhadas entre contas (grupos com despesas divididas entregues em 12/11/2026, §11.11; caixinha compartilhada, contas ou orçamentos em conjunto ainda não) | — |
+| **F4 — Expansão** | Open Finance, categorização assistida por IA, metas com investimento real; finanças compartilhadas entre contas (grupos com despesas divididas entregues em 12/11/2026, §11.11; caixinha compartilhada entregue em 12/11/2026; contas ou orçamentos em conjunto ainda não) | — |
 
 ---
 
@@ -1430,7 +1478,7 @@ Pontos de atenção: os limites dos planos gratuitos mudam — conferir as tabel
 
 **ADR-12 — Feature flags no código, valores no banco.** As flags são um registro tipado no código (chave, rótulo, padrão), então uma flag nova funciona sem migração e uma removida vira valor ignorado; o banco guarda só o valor global e o de cada pessoa, lidos a cada requisição (sem cache entre requisições, efeito imediato). A flag é aplicada no servidor (página e action), e o cliente só esconde. *Alternativa considerada*: um serviço externo de flags — dispensado: mais uma origem na CSP, custo e dados de uso fora do app para poucas flags.
 
-**ADR-13 — Compartilhamento entre contas (exceção ao isolamento do ADR-11).** O dono quer dividir despesas com outra pessoa que tem login próprio. *Decisão*: um **grupo** de até 6 pessoas, com convite pelo e-mail, aceite e saída; os dados compartilhados ficam só em tabelas próprias, lidas por membros ativos e escritas por ação explícita de um membro; as tabelas privadas seguem lidas só pela dona e **ninguém escreve nas tabelas privadas de outra pessoa** (acerto e despesa oferecem "Lançar no meu extrato" na conta de quem age). O outro vê só o que alguém pôs no grupo (descrição, valor, data, quem pagou e a divisão), nunca conta, categoria ou observação. O convite não revela quem tem conta (resposta neutra, limites por pessoa e por par). Sair é livre e mantém o histórico ("Bruno (saiu)"); conta excluída vira "conta excluída" no grupo (`share_members.user_id ON DELETE SET NULL`). A auditoria registra convite, aceite, recusa, saída e remoção, sem valores. *Alternativas descartadas*: lista de pessoas do app para convidar (revela quem usa), link de convite fora do app, e participantes que são só nomes (sem login, sem consentimento). *Consequências*: regra nova no CLAUDE.md ("…except the shared tables of ADR-13, read only by active members of the group"); testes de isolamento com uma terceira conta em toda função; detalhes em §11.11.
+**ADR-13 — Compartilhamento entre contas (exceção ao isolamento do ADR-11).** O dono quer dividir despesas com outra pessoa que tem login próprio. *Decisão*: um **grupo** de até 6 pessoas, com convite pelo e-mail, aceite e saída; os dados compartilhados ficam só em tabelas próprias, lidas por membros ativos e escritas por ação explícita de um membro; as tabelas privadas seguem lidas só pela dona e **ninguém escreve nas tabelas privadas de outra pessoa** (acerto e despesa oferecem "Lançar no meu extrato" na conta de quem age). O outro vê só o que alguém pôs no grupo (descrição, valor, data, quem pagou e a divisão), nunca conta, categoria ou observação. O convite não revela quem tem conta (resposta neutra, limites por pessoa e por par). Sair é livre e mantém o histórico ("Bruno (saiu)"); conta excluída vira "conta excluída" no grupo (`share_members.user_id ON DELETE SET NULL`). A auditoria registra convite, aceite, recusa, saída e remoção, sem valores. *Alternativas descartadas*: lista de pessoas do app para convidar (revela quem usa), link de convite fora do app, e participantes que são só nomes (sem login, sem consentimento). *Consequências*: regra nova no CLAUDE.md ("…except the shared tables of ADR-13, read only by active members of the group"); testes de isolamento com uma terceira conta em toda função; detalhes em §11.11. A caixinha compartilhada (tarefa 9, decisão do dono em 12/11/2026) segue a mesma fronteira: três tabelas do grupo, cada pessoa resgata no máximo o que guardou, a parte no objetivo é igual por padrão e ajustável em percentual pela criadora do grupo, e o lançamento na conta de cada pessoa só acontece por ação dela ("Lançar no meu extrato"), com Desfazer.
 
 ---
 

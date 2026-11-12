@@ -70,6 +70,19 @@ async function move(page: Page, action: "Guardar" | "Resgatar") {
 
 let saldoBefore = 0;
 let patrimonioBefore = 0;
+// What the demo already set aside in other caixinhas (the shared box's
+// transfers), in cents: the line below adds this run's R$ 100,00 to it.
+let guardadoBefore = 0;
+const guardadoLine = (page: Page) =>
+  page
+    .locator("p:visible")
+    .filter({ hasText: "Guardado em caixinhas:" })
+    .first();
+async function guardado(page: Page) {
+  const text = (await guardadoLine(page).textContent()) ?? "";
+  const match = text.match(/R\$\s*([0-9.]+),([0-9]{2})/);
+  return match ? Number((match[1] ?? "").replace(/\./g, "") + match[2]) : 0;
+}
 
 test("cria uma caixinha: o Saldo em contas não muda e o patrimônio também não", async ({
   page,
@@ -105,6 +118,7 @@ test("cria uma caixinha: o Saldo em contas não muda e o patrimônio também nã
   await expect(
     page.getByText("Guardado em caixinhas:").filter({ visible: true }),
   ).toBeVisible();
+  guardadoBefore = await guardado(page);
   expect(await patrimonio(page)).toBe(patrimonioBefore);
   await expect(
     page.getByRole("heading", { name: "Caixinhas", level: 2 }),
@@ -119,8 +133,8 @@ test("guardar R$ 100,00 baixa o Saldo, mantém o patrimônio e mostra o guardado
   await move(page, "Guardar");
 
   expect(await saldo(page)).toBe(saldoBefore - 10_000);
-  const line = page.getByText("Guardado em caixinhas:").locator("visible=true");
-  await expect(line.first()).toContainText("100,00");
+  await expect(guardadoLine(page)).toBeVisible();
+  expect(await guardado(page)).toBe(guardadoBefore + 10_000);
   expect(await patrimonio(page)).toBe(patrimonioBefore);
 });
 

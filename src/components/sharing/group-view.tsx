@@ -28,6 +28,7 @@ import type { GroupDetail } from "@/server/domain/sharing/groups";
 import { AddExpensesSheet, type CategoryOption } from "./add-expenses-sheet";
 import { BalanceText } from "./balance-text";
 import { ExpenseDetailSheet } from "./expense-detail-sheet";
+import { GroupTabs } from "./group-tabs";
 import { MembersSheet } from "./members-sheet";
 import type { SplitMember } from "./model";
 import { PlanSheet, SettleSheet, type SettleTarget } from "./settle-sheet";
@@ -147,6 +148,8 @@ export function GroupView({
           </>
         }
       />
+
+      <GroupTabs groupId={group.id} active="expenses" />
 
       <Card className="flex flex-col gap-4">
         <h2 className="sr-only">Saldo</h2>

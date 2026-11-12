@@ -54,6 +54,10 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   await expect(
     page.getByRole("heading", { name: "Notificações num lugar só" }),
   ).toBeVisible();
+  // …and so is the shared box's, the flag being on for him.
+  await expect(
+    page.getByRole("heading", { name: "Guardem dinheiro juntos" }),
+  ).toBeVisible();
   // Without notificacoes_push, no Notificações: neither the screen nor its
   // notices (nor the administrators' preview, which he would not get anyway).
   await page.goto("/ajustes/notificacoes");
