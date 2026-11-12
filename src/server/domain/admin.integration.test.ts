@@ -803,6 +803,36 @@ describe("deleting an account", () => {
       backedUp: false,
     });
     await m.users.createAccessLink(ANA.id, rui, LINKS);
+    // A group with Ana (ADR-13): share_members.user_id is the one foreign key
+    // to the user that is ON DELETE SET NULL, so the row outlives the account.
+    const [group] = await m.db
+      .insert(s.shareGroups)
+      .values({
+        id: "0190a000-0000-7000-8000-000000000001",
+        name: "Casa",
+        createdBy: ANA.id,
+      })
+      .returning({ id: s.shareGroups.id });
+    const [ruiMember] = await m.db
+      .insert(s.shareMembers)
+      .values([
+        {
+          groupId: group?.id ?? "",
+          userId: rui,
+          invitedEmail: "rui@exemplo.com",
+          displayName: "Rui",
+          status: "active",
+        },
+        {
+          groupId: group?.id ?? "",
+          userId: ANA.id,
+          invitedEmail: ANA.email,
+          displayName: ANA.name,
+          role: "owner",
+          status: "active",
+        },
+      ])
+      .returning({ id: s.shareMembers.id });
     expect(imported.imported).toBe(1);
 
     // Every table with a user_id column, found from the catalog, must have
@@ -871,6 +901,17 @@ describe("deleting an account", () => {
       .from(s.transactionTags)
       .where(eq(s.transactionTags.tagId, tag.id));
     expect(tagged?.total).toBe(0);
+
+    // In the group Rui stays by name, gone from the account (conta excluída).
+    const [kept] = await m.db
+      .select()
+      .from(s.shareMembers)
+      .where(eq(s.shareMembers.id, ruiMember?.id ?? ""));
+    expect(kept).toMatchObject({
+      userId: null,
+      displayName: "Rui",
+      status: "left",
+    });
 
     // Other people's data is untouched.
     expect(await rowsOf(ANA.id)).toEqual(anaBefore);

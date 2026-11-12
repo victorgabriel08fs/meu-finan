@@ -11,6 +11,7 @@ import {
   Trash2,
   UserCheck,
   UserPlus,
+  Users,
   UserX,
 } from "lucide-react";
 import Link from "next/link";
@@ -36,6 +37,7 @@ const ICONS: Record<ActivityKind, ReactNode> = {
   delete: <Trash2 />,
   flag: <ToggleRight />,
   job: <CalendarClock />,
+  share: <Users />,
   other: <Activity />,
 };
 

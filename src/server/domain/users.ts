@@ -41,6 +41,7 @@ import { normalizeEmail } from "@/server/security/guards";
 import { recordAudit } from "./audit";
 import { DomainError, NOT_ALLOWED } from "./errors";
 import { recoveryTarget } from "./recovery";
+import { detachDeletedAccount } from "./sharing/groups";
 
 const NOT_FOUND = "Conta não encontrada.";
 
@@ -664,6 +665,8 @@ export async function deleteUserAccount(
       target: auditTarget(target),
       metadata: { role: target.role },
     });
+    // Groups keep the name and the history (ADR-13); open invites go away.
+    await detachDeletedAccount(tx, target.id);
     await tx.delete(user).where(eq(user.id, target.id));
     return { name: target.name, email: target.email };
   });

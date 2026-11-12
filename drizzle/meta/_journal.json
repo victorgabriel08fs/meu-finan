@@ -78,6 +78,13 @@
       "when": 1794486741624,
       "tag": "0010_central_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794492951904,
+      "tag": "0011_compartilhado",
+      "breakpoints": true
     }
   ]
 }
