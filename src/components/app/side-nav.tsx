@@ -16,6 +16,7 @@ import {
   type NavItem,
   PRIMARY_NAV,
   SETTINGS_NAV,
+  SHARED_NAV,
 } from "./nav-items";
 import { ThemeSwitcher } from "./theme-switcher";
 
@@ -39,6 +40,12 @@ type SideNavProps = {
    * Administração.
    */
   noticesItem?: ReactNode;
+  /**
+   * "Compartilhado", decided on the server (financas_compartilhadas): a
+   * <SharedSideNavLink> inside its own <Suspense>, or nothing. Last of the
+   * main areas.
+   */
+  sharedItem?: ReactNode;
 };
 
 /**
@@ -47,13 +54,19 @@ type SideNavProps = {
  * the theme switch sits at the foot. Reads the pathname, so render it inside
  * <Suspense> with <SideNavView pathname={null} /> as the fallback.
  */
-export function SideNav({ addButton, extraItem, noticesItem }: SideNavProps) {
+export function SideNav({
+  addButton,
+  extraItem,
+  noticesItem,
+  sharedItem,
+}: SideNavProps) {
   return (
     <SideNavView
       pathname={usePathname()}
       addButton={addButton}
       extraItem={extraItem}
       noticesItem={noticesItem}
+      sharedItem={sharedItem}
     />
   );
 }
@@ -66,11 +79,17 @@ export function AdminSideNavLink() {
   return <SideNavLink item={ADMIN_NAV} pathname={usePathname()} />;
 }
 
+/** "Compartilhado" for the sidebar's shared slot (see AdminSideNavLink). */
+export function SharedSideNavLink() {
+  return <SideNavLink item={SHARED_NAV} pathname={usePathname()} />;
+}
+
 export function SideNavView({
   pathname,
   addButton,
   extraItem,
   noticesItem,
+  sharedItem,
 }: SideNavProps & { pathname: string | null }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col border-r border-border bg-surface px-3 pt-6 pb-4 lg:flex">
@@ -87,6 +106,7 @@ export function SideNavView({
           {PRIMARY_NAV.map((item) => (
             <SideNavLink key={item.href} item={item} pathname={pathname} />
           ))}
+          {sharedItem}
         </ul>
         {/* Apart from Ajustes: when Administração arrives (it is decided on the
             server), nothing below it moves (§4.5). */}

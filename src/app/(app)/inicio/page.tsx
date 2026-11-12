@@ -23,6 +23,7 @@ import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { getHomeLayout } from "@/server/domain/preferences";
 import { reportPhase } from "@/server/domain/reports";
 import { accountsOf } from "@/server/domain/request-reads";
+import { sharingCounts } from "@/server/domain/sharing/groups";
 import { isFlagEnabled } from "@/server/flags";
 import { HomeBlock } from "./blocks";
 
@@ -75,16 +76,24 @@ async function Summary({
     typeof params.mes === "string" ? params.mes : null,
   );
   // With the flag off the Início is the app's default, whatever was saved.
-  const [accounts, layout] = await Promise.all([
+  const [accounts, layout, sharing] = await Promise.all([
     accountsOf(ctx),
     isFlagEnabled("inicio_personalizavel", user.id).then((enabled) =>
       enabled ? getHomeLayout(user.id, { today: ctx.todayIso }) : null,
     ),
+    // Compartilhado only takes a place with the flag and a group or invite,
+    // so the desktop columns stay as they were for everyone else.
+    isFlagEnabled("financas_compartilhadas", user.id).then((enabled) =>
+      enabled ? sharingCounts(user.id) : null,
+    ),
   ]);
   if (accounts.length === 0) return <FirstRunChecklist />;
 
+  const showShared = sharing !== null && sharing.groups + sharing.invites > 0;
   const sections = packHomeLayout(
-    visibleHomeBlocks(layout?.entries ?? defaultHomeLayout()),
+    visibleHomeBlocks(layout?.entries ?? defaultHomeLayout()).filter(
+      (id) => id !== "shared" || showShared,
+    ),
   );
   const phase = reportPhase(ctx, range);
 

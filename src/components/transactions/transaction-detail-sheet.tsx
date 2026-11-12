@@ -1,6 +1,7 @@
 "use client";
 
-import { CircleCheck, Clock, Pencil, Repeat, Trash } from "lucide-react";
+import { CircleCheck, Clock, Pencil, Repeat, Trash, Users } from "lucide-react";
+import Link from "next/link";
 import {
   type ReactNode,
   type RefObject,
@@ -11,13 +12,16 @@ import {
 } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Money } from "@/components/money/money";
+import { DivideForm } from "@/components/sharing/divide-form";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FieldError } from "@/components/ui/field-error";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { categoryLabel } from "@/lib/categories/hierarchy";
 import { isInGrace } from "@/lib/finance/business-days";
 import { fullDateLabel, relativeDayLabel } from "@/lib/format/date";
 import { graceLabel, nonBusinessDetail } from "@/lib/format/due-day";
+import type { ShareTarget } from "@/server/domain/sharing/groups";
 import {
   type EditScope,
   editScopeOptions,
@@ -31,7 +35,7 @@ import { TransactionEditForm } from "./transaction-edit-form";
 
 export type DeleteScope = "this" | "future" | "all";
 
-type Mode = "view" | "edit" | "delete";
+type Mode = "view" | "edit" | "delete" | "divide";
 
 type TransactionDetailSheetProps = {
   /** Entry on screen; kept while the sheet animates out. */
@@ -44,6 +48,11 @@ type TransactionDetailSheetProps = {
   onDelete: (item: StatementItem, scope: DeleteScope) => void;
   /** Row that opened the sheet: the focus goes back to it. */
   returnFocusRef: RefObject<HTMLElement | null>;
+  /**
+   * The groups an expense can be divided in ("Dividir"); null while
+   * financas_compartilhadas is off.
+   */
+  sharing?: ShareTarget[] | null;
 };
 
 const KIND_LABEL: Record<StatementItem["kind"], string> = {
@@ -91,9 +100,11 @@ export function TransactionDetailSheet({
   onSetPaid,
   onDelete,
   returnFocusRef,
+  sharing = null,
 }: TransactionDetailSheetProps) {
   const [mode, setMode] = useState<Mode>("view");
   const [saving, setSaving] = useState(false);
+  const [divideError, setDivideError] = useState<string | null>(null);
   // Saving a series asks where the edit applies; the footer holds the choices.
   const [askingScope, setAskingScope] = useState(false);
   const scopeAnswer = useRef<((scope: EditScope | null) => void) | null>(null);
@@ -105,6 +116,7 @@ export function TransactionDetailSheet({
     if (open && itemId) {
       setMode("view");
       setSaving(false);
+      setDivideError(null);
     }
   }, [open, itemId]);
 
@@ -195,6 +207,29 @@ export function TransactionDetailSheet({
         </Button>
       </>
     );
+  } else if (mode === "divide") {
+    footer = (
+      <>
+        <FieldError id={`${formId}-divide-error`}>{divideError}</FieldError>
+        <Button
+          type="submit"
+          form={formId}
+          size="lg"
+          className="w-full"
+          loading={saving}
+        >
+          Dividir
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full"
+          disabled={saving}
+          onClick={() => setMode("view")}
+        >
+          Cancelar
+        </Button>
+      </>
+    );
   } else if (mode === "delete") {
     const installment = item.installment;
     footer = (
@@ -230,8 +265,25 @@ export function TransactionDetailSheet({
       </>
     );
   } else {
+    const canDivide =
+      sharing !== null &&
+      sharing.length > 0 &&
+      item.kind === "expense" &&
+      item.amountCents < 0 &&
+      !item.sharedIn;
     footer = (
       <>
+        {canDivide ? (
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full"
+            onClick={() => setMode("divide")}
+          >
+            <Users aria-hidden="true" />
+            Dividir
+          </Button>
+        ) : null}
         {adjustment ? null : (
           <Button
             variant={pending ? "tonal" : "secondary"}
@@ -277,7 +329,13 @@ export function TransactionDetailSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        title={mode === "edit" ? "Editar lançamento" : item.description}
+        title={
+          mode === "edit"
+            ? "Editar lançamento"
+            : mode === "divide"
+              ? "Dividir despesa"
+              : item.description
+        }
         footer={footer}
         className="md:max-w-120"
         onCloseAutoFocus={(event) => {
@@ -286,7 +344,17 @@ export function TransactionDetailSheet({
           if (target?.isConnected) target.focus({ preventScroll: true });
         }}
       >
-        {mode === "edit" ? (
+        {mode === "divide" && sharing ? (
+          <DivideForm
+            key={item.id}
+            formId={formId}
+            transaction={item}
+            groups={sharing}
+            onPendingChange={setSaving}
+            onError={setDivideError}
+            onDone={() => setMode("view")}
+          />
+        ) : mode === "edit" ? (
           <TransactionEditForm
             key={item.id}
             item={item}
@@ -386,6 +454,16 @@ export function TransactionDetailSheet({
                   {item.recurrence
                     ? recurrenceLabel(item.recurrence, item.occurredOn)
                     : "Lançamento recorrente"}
+                </Fact>
+              ) : null}
+              {item.sharedIn ? (
+                <Fact label="Dividida em">
+                  <Link
+                    href={`/compartilhado/${item.sharedIn.groupId}`}
+                    className="text-primary underline-offset-2 hover:underline"
+                  >
+                    {item.sharedIn.groupName}
+                  </Link>
                 </Fact>
               ) : null}
               {item.notes ? (

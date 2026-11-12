@@ -49,6 +49,7 @@ import {
   monthViewHref,
   periodViewHref,
 } from "@/components/reports/views";
+import { SharedBlock } from "@/components/sharing/shared-block";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { isBeforeFirstRecord, trimToFirstRecord } from "@/lib/reports/coverage";
@@ -77,6 +78,7 @@ import {
   reportPhase,
 } from "@/server/domain/reports";
 import { firstRecordOn } from "@/server/domain/request-reads";
+import { listMyGroups } from "@/server/domain/sharing/groups";
 import { periodTotals } from "@/server/domain/transactions";
 import { isFlagEnabled } from "@/server/flags";
 
@@ -104,6 +106,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "income-expense": IncomeExpenseBlockLoader,
   "net-worth": NetWorthBlockLoader,
   "daily-spend": DailySpendBlockLoader,
+  shared: SharedBlockLoader,
 };
 
 /** The block of one id of the catalog. */
@@ -500,4 +503,16 @@ function SectionLink({
       {children}
     </Link>
   );
+}
+
+/**
+ * Compartilhado (financas_compartilhadas): only with a group or an invite;
+ * otherwise nothing, and the slot closes up.
+ */
+async function SharedBlockLoader({ ctx }: HomeBlockProps) {
+  if (!(await isFlagEnabled("financas_compartilhadas", ctx.userId)))
+    return null;
+  const { groups, invites } = await listMyGroups(ctx);
+  if (groups.length === 0 && invites.length === 0) return null;
+  return <SharedBlock groups={groups} invites={invites} />;
 }

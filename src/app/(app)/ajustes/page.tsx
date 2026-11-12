@@ -12,6 +12,7 @@ import {
   Sparkles,
   SunMoon,
   ToggleRight,
+  Users,
   UsersRound,
 } from "lucide-react";
 import type { Metadata } from "next";
@@ -29,6 +30,7 @@ import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
 import { getThemePreference } from "@/server/domain/preferences";
+import { sharingCounts } from "@/server/domain/sharing/groups";
 import { getTipsOff } from "@/server/domain/tips";
 import { usersOverview } from "@/server/domain/users";
 import { getFlags } from "@/server/flags";
@@ -63,6 +65,10 @@ async function Settings() {
     (category) => category.kind === "expense",
   ).length;
   const incomes = categories.length - expenses;
+  // Compartilhado (financas_compartilhadas): "2 grupos · 1 convite".
+  const sharing = flags.financas_compartilhadas
+    ? await sharingCounts(user.id)
+    : null;
 
   return (
     <>
@@ -142,6 +148,25 @@ async function Settings() {
             description={`${expenses} de despesa · ${incomes} de receita`}
             href="/ajustes/categorias"
           />
+          {sharing ? (
+            <InsetListItem
+              icon={<Users />}
+              label="Compartilhado"
+              description={
+                sharing.groups === 0 && sharing.invites === 0
+                  ? "Divida despesas com outras pessoas"
+                  : [
+                      plural(sharing.groups, "grupo", "grupos"),
+                      sharing.invites > 0
+                        ? plural(sharing.invites, "convite", "convites")
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+              }
+              href="/compartilhado"
+            />
+          ) : null}
         </InsetList>
       </section>
 
@@ -260,7 +285,8 @@ function SettingsSkeleton() {
       <Skeleton className="h-25 rounded-2xl" />
       {/* Preferências: 36 + 3 × 52 + 2 hairlines = 194 */}
       <Skeleton className="h-48.5 rounded-2xl" />
-      {/* Organização */}
+      {/* Organização: 36 + 64 = 100. The "Compartilhado" row (+65) only shows
+          with financas_compartilhadas, off by default: size for the default. */}
       <Skeleton className="h-25 rounded-2xl" />
       {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
       <Skeleton className="h-41.25 rounded-2xl" />

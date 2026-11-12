@@ -26,6 +26,7 @@ describe("useFlag", () => {
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
       central_notificacoes: false,
+      financas_compartilhadas: false,
     };
     expect(
       renderToStaticMarkup(
@@ -43,6 +44,7 @@ describe("useFlag", () => {
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
       central_notificacoes: false,
+      financas_compartilhadas: false,
     });
     const html = await prerenderToString(
       <FlagsProvider flags={flags}>

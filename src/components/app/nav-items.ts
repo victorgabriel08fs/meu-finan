@@ -6,6 +6,7 @@ import {
   Settings,
   ShieldUser,
   Target,
+  Users,
 } from "lucide-react";
 
 export type NavItem = {
@@ -41,6 +42,17 @@ export const SETTINGS_NAV: NavItem = {
   match: "/ajustes",
   label: "Ajustes",
   icon: Settings,
+};
+
+/**
+ * Compartilhado (financas_compartilhadas): in the sidebar after Relatórios;
+ * on phones from the Início and Ajustes.
+ */
+export const SHARED_NAV: NavItem = {
+  href: "/compartilhado",
+  match: "/compartilhado",
+  label: "Compartilhado",
+  icon: Users,
 };
 
 /** Administrators only: from Ajustes on phones, in the sidebar on desktop. */
