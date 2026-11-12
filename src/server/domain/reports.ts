@@ -40,6 +40,7 @@ import { type PeriodRange, toRange, type UserContext } from "./context";
 import {
   accountsOf,
   cardInvoicesOf,
+  paidByAccountDaySince,
   pendingUntil,
   spendableAccountsOf,
 } from "./request-reads";
@@ -517,32 +518,23 @@ export async function cashFlowReport(
   const liquidIds = new Set(liquid.map((account) => account.id));
   const projects = phase !== "past";
 
-  const [paidRows, pending, { cards, invoicesByCard }] = await Promise.all([
-    db
-      .select({
-        day: transactions.occurredOn,
-        total:
-          sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
-            Number,
-          ),
-        count: sql<number>`count(*)`.mapWith(Number),
-      })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, ctx.userId),
-          inArray(transactions.accountId, [...liquidIds]),
-          isNull(transactions.deletedAt),
-          eq(transactions.status, "paid"),
-          gte(transactions.occurredOn, range.start),
-        ),
-      )
-      .groupBy(transactions.occurredOn),
+  const [byAccountDay, pending, { cards, invoicesByCard }] = await Promise.all([
+    // By account and day, shared with Quanto dá para gastar; summed by day here.
+    paidByAccountDaySince(ctx, range.start),
     projects ? pendingUntil(ctx, range.end) : Promise.resolve([]),
     projects
       ? cardInvoicesOf(ctx)
       : Promise.resolve({ cards: [], invoicesByCard: [] }),
   ]);
+
+  const byDay = new Map<string, { total: number; count: number }>();
+  for (const row of byAccountDay) {
+    const day = byDay.get(row.day) ?? { total: 0, count: 0 };
+    day.total += row.totalCents;
+    day.count += row.count;
+    byDay.set(row.day, day);
+  }
+  const paidRows = [...byDay].map(([day, sums]) => ({ day, ...sums }));
 
   // The ledger before the month: today's balance minus everything paid since.
   const balanceCents = liquid.reduce(
