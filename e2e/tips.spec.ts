@@ -154,7 +154,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+15 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+16 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
