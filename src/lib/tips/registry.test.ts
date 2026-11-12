@@ -85,6 +85,7 @@ describe("tips registry", () => {
     const FLAGGED_ROUTES: Record<string, FlagKey> = {
       "/importar": "importar_extrato",
       "/ajustes/notificacoes": "notificacoes_push",
+      "/compartilhado": "financas_compartilhadas",
     };
     for (const tip of TIPS) {
       const href = tip.link?.href;

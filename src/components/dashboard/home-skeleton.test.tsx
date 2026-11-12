@@ -26,9 +26,9 @@ const of = (
 ) => renderToStaticMarkup(<HomeBlockSkeleton id={id} phase={phase} />);
 
 describe("HomeBlockSkeleton", () => {
-  it("has a skeleton for every block but the highlight", () => {
+  it("has a skeleton for every block but the highlight and Compartilhado", () => {
     for (const id of HOME_BLOCK_IDS) {
-      expect(render(id) === "", id).toBe(id === "insight");
+      expect(render(id) === "", id).toBe(id === "insight" || id === "shared");
     }
   });
 

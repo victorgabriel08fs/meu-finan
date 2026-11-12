@@ -10,6 +10,7 @@ export * from "./flags";
 export * from "./planning";
 export * from "./relations";
 export * from "./settings";
+export * from "./sharing";
 export * from "./system";
 export * from "./tips";
 export * from "./transactions";

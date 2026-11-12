@@ -35,7 +35,14 @@ describe("home blocks catalog", () => {
       "accounts",
       "goals",
       "insight",
+      "shared",
     ]);
+  });
+
+  it("puts Compartilhado last in the default, after every other block", () => {
+    expect(HOME_BLOCK_IDS.at(-1)).toBe("shared");
+    expect(DEFAULT_HOME_ORDER.at(-1)).toBe("shared");
+    expect(HOME_BLOCKS.shared.size).toBe("narrow");
   });
 
   it("lists every block but the pinned one as movable", () => {
@@ -61,7 +68,7 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-6)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-7, -1)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",

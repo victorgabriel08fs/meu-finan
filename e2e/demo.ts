@@ -9,6 +9,8 @@ export const OWNER_STATE = "e2e/.auth/owner.json";
 /** A regular account (not an administrator) with its own data. */
 export const BRUNO_EMAIL = "bruno@meu-finan.local";
 export const BRUNO_PASSWORD = "meu-finan-bruno";
+/** His session, saved by the setup project for compartilhado.spec.ts. */
+export const BRUNO_STATE = "e2e/.auth/bruno.json";
 
 /**
  * Resolves once a Server Action carrying `text` (a tip id, say) got its

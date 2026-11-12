@@ -19,6 +19,7 @@ export type ActivityEntry = {
     flag?: string;
     value?: boolean | null;
     job?: string;
+    unresolved?: boolean;
   };
 };
 
@@ -35,6 +36,7 @@ export type ActivityKind =
   | "delete"
   | "flag"
   | "job"
+  | "share"
   | "other";
 
 export type ActivityLine = {
@@ -166,6 +168,46 @@ export function describeActivity(
         kind: "job",
         title: `${actor} rodou a rotina diária`,
         detail: "Pelo botão Rodar agora",
+      };
+    // Groups of the shared finances (ADR-13): who opened access to whom,
+    // never the group's name or any amount.
+    case "share.invited":
+      return {
+        kind: "share",
+        title: meta.unresolved
+          ? `${actor} convidou um e-mail sem conta para um grupo`
+          : `${actor} convidou ${target} para um grupo`,
+        detail: "Finanças compartilhadas",
+      };
+    case "share.accepted":
+      return {
+        kind: "share",
+        title: entry.targetName
+          ? `${actor} aceitou o convite de ${entry.targetName} para um grupo`
+          : `${actor} aceitou um convite para um grupo`,
+        detail: "Finanças compartilhadas",
+      };
+    case "share.declined":
+      return {
+        kind: "share",
+        title: entry.targetName
+          ? `${actor} recusou o convite de ${entry.targetName} para um grupo`
+          : `${actor} recusou um convite para um grupo`,
+        detail: "Finanças compartilhadas",
+      };
+    case "share.left":
+      return {
+        kind: "share",
+        title: `${actor} saiu de um grupo`,
+        detail: "Finanças compartilhadas",
+      };
+    case "share.removed":
+      return {
+        kind: "share",
+        title: entry.targetName
+          ? `${actor} tirou ${entry.targetName} de um grupo`
+          : `${actor} tirou uma pessoa de um grupo`,
+        detail: "Finanças compartilhadas",
       };
     default:
       return { kind: "other", title: `${actor} fez uma alteração` };

@@ -12,6 +12,7 @@ import {
   listNotifications,
   pendingTransactionIds,
 } from "@/server/domain/notifications";
+import { noticeStates } from "@/server/domain/sharing/groups";
 import { getFlags } from "@/server/flags";
 
 const NO_STORE = { "Cache-Control": "private, no-store" };
@@ -83,11 +84,46 @@ export async function GET(request: NextRequest): Promise<Response> {
         ? [singleBillId(row.payload.itemKeys)].filter((id) => id !== null)
         : [],
     );
-    const pending = await pendingTransactionIds(userId, billIds);
+    // A group's notice acts only while the person is still in the group, and
+    // an invite only while it can be answered (ADR-13).
+    const groupIds = new Set<string>();
+    const inviteIds: string[] = [];
+    for (const row of rows) {
+      if (!row.type.startsWith("share") || !("groupId" in row.payload))
+        continue;
+      groupIds.add(row.payload.groupId);
+      if (row.payload.type === "share_invite")
+        inviteIds.push(row.payload.memberId);
+    }
+    const [pending, sharing] = await Promise.all([
+      pendingTransactionIds(userId, billIds),
+      noticeStates(userId, [...groupIds], inviteIds),
+    ]);
 
     const items = rows.flatMap((row): NoticeItem[] => {
       const rendered = renderNotice(row.payload, { discreet: false });
       if (!rendered) return [];
+      const payload = row.payload;
+      let shareExtras: Partial<NoticeItem> = {};
+      if (payload.type === "share_invite") {
+        const open = sharing.openInvites.has(payload.memberId);
+        rendered.actions = open ? rendered.actions : [];
+        if (open) shareExtras = { inviteId: payload.memberId };
+      } else if ("groupId" in payload && row.type.startsWith("share")) {
+        if (!sharing.activeGroups.has(payload.groupId)) {
+          rendered.href = "/compartilhado";
+          rendered.actions = [];
+        } else if (payload.type === "share_settled") {
+          shareExtras = {
+            settlement: {
+              groupName: payload.groupName,
+              amountCents: payload.amountCents,
+              received: payload.direction === "paid_you",
+              date: payload.date,
+            },
+          };
+        }
+      }
       const billId =
         row.payload.type === "bills_due"
           ? singleBillId(row.payload.itemKeys)
@@ -112,6 +148,7 @@ export async function GET(request: NextRequest): Promise<Response> {
               ]
             : rendered.actions,
           ...(payable ? { transactionId: billId } : {}),
+          ...shareExtras,
         },
       ];
     });

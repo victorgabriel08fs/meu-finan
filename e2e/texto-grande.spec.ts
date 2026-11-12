@@ -36,6 +36,7 @@ const SCREENS = [
   "/ajustes/sobre",
   "/contas",
   "/contas/nova",
+  "/compartilhado",
   "/importar",
   "/admin/usuarios",
   "/admin/flags",
@@ -59,7 +60,8 @@ async function screensWithIds(page: Page): Promise<string[]> {
     "a[href^='/contas/']:not([href='/contas/nova'])",
   );
   const card = await first("/contas", "a[href^='/cartoes/']");
-  return [goal, account, card].filter((href): href is string => !!href);
+  const group = await first("/compartilhado", "a[href^='/compartilhado/']");
+  return [goal, account, card, group].filter((href): href is string => !!href);
 }
 
 async function applyScale(page: Page, bigText: boolean) {

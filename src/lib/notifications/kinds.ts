@@ -5,6 +5,11 @@
 // entry here and its payload shape in src/server/db/schema/types.ts. Pure: the
 // route handler renders on the server, the sheet only draws the result.
 import type { FlagKey, Flags } from "@/lib/flags/registry";
+import {
+  isSharePayload,
+  shareMessage,
+  shareMessageHasAmounts,
+} from "@/lib/sharing/messages";
 import type {
   NotificationType,
   ReminderNotificationType,
@@ -21,6 +26,10 @@ export const NOTICE_ICONS = [
   "calendar-days",
   "chart",
   "bell",
+  "users",
+  "user-plus",
+  "user-minus",
+  "handshake",
 ] as const;
 export type NoticeIconName = (typeof NOTICE_ICONS)[number];
 
@@ -81,6 +90,16 @@ export type NoticeItem = {
   actions: NoticeAction[];
   /** With a "mark_paid" action: the entry it pays. */
   transactionId?: string;
+  /** With "accept_share" / "decline_share": the invite (share_members.id). */
+  inviteId?: string;
+  /** With "record_settlement": what goes into "Nova transação". */
+  settlement?: {
+    groupName: string;
+    amountCents: number;
+    /** The person received the money (a Receita) or paid it (a Despesa). */
+    received: boolean;
+    date: string;
+  };
 };
 
 export type NoticesResponse = {
@@ -95,6 +114,7 @@ export const DISCREET_BODY = "Valores ocultos. Toque para abrir.";
 
 /** Whether the payload's title or body may carry money (old rows: yes). */
 export function payloadHasAmounts(payload: NotificationPayload): boolean {
+  if (isSharePayload(payload)) return shareMessageHasAmounts(payload);
   return "amounts" in payload ? payload.amounts !== false : true;
 }
 
@@ -135,6 +155,39 @@ function reminderKind(
   };
 }
 
+/** What a group tells its members (ADR-13): rendered from the payload. */
+function shareKind(
+  icon: NoticeIconName,
+  tone: NoticeTone,
+  actions: NoticeAction[],
+  href: (groupId: string) => string = (groupId) => `/compartilhado/${groupId}`,
+): NoticeKind {
+  return {
+    icon,
+    tone,
+    flag: "financas_compartilhadas",
+    pushTag: "grupo",
+    render: (payload, { discreet }) => {
+      if (!isSharePayload(payload)) {
+        throw new Error(`Not a sharing payload: ${payload.type}`);
+      }
+      const message = shareMessage(payload, true);
+      return {
+        title: message.title,
+        body:
+          discreet && shareMessageHasAmounts(payload)
+            ? DISCREET_BODY
+            : message.body,
+        href: href(payload.groupId),
+        actions,
+      };
+    },
+  };
+}
+
+const SEE_GROUP: NoticeAction = { id: "open", label: "Ver grupo" };
+const toSharing = () => "/compartilhado";
+
 /** Kinds by `notifications.type`; a type without an entry is never listed. */
 export const NOTICE_KINDS: Partial<Record<NotificationType, NoticeKind>> = {
   daily_summary: reminderKind("sun", "primary", "resumo-dia", "Ver resumo"),
@@ -158,6 +211,24 @@ export const NOTICE_KINDS: Partial<Record<NotificationType, NoticeKind>> = {
     "resumo-mes",
     "Ver relatório",
   ),
+  share_invite: shareKind(
+    "user-plus",
+    "primary",
+    [
+      { id: "accept_share", label: "Aceitar" },
+      { id: "decline_share", label: "Recusar" },
+    ],
+    toSharing,
+  ),
+  share_joined: shareKind("users", "cat-3", [SEE_GROUP]),
+  share_declined: shareKind("user-minus", "cat-8", []),
+  share_left: shareKind("user-minus", "cat-8", [SEE_GROUP]),
+  share_removed: shareKind("user-minus", "cat-8", [], toSharing),
+  shared_activity: shareKind("users", "cat-5", [SEE_GROUP]),
+  share_settled: shareKind("handshake", "cat-3", [
+    { id: "record_settlement", label: "Lançar no extrato" },
+    SEE_GROUP,
+  ]),
 };
 
 /** A notice as the sheet and the route see it, rendered by its kind. */

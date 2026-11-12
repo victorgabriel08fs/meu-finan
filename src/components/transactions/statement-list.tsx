@@ -26,6 +26,7 @@ import {
   restoreTransactionsAction,
   setPaidAction,
 } from "@/server/actions/transactions";
+import type { ShareTarget } from "@/server/domain/sharing/groups";
 import {
   actionErrorMessage,
   GENERIC_ERROR,
@@ -57,6 +58,8 @@ type StatementListProps = {
   filtered: boolean;
   query: string;
   categories: FilterCategory[];
+  /** The groups to divide an expense in; null with financas_compartilhadas off. */
+  sharing?: ShareTarget[] | null;
 };
 
 type OptimisticChange =
@@ -90,6 +93,7 @@ export function StatementList({
   filtered,
   query,
   categories,
+  sharing = null,
 }: StatementListProps) {
   const [shown, applyOptimistic] = useOptimistic(items, applyChange);
   const [, startTransition] = useTransition();
@@ -198,6 +202,7 @@ export function StatementList({
       onSetPaid={setPaid}
       onDelete={remove}
       returnFocusRef={returnFocus}
+      sharing={sharing}
     />
   );
 

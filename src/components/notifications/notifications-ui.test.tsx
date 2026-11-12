@@ -16,6 +16,7 @@ vi.mock("@/server/actions/notifications", () => ({
   restoreNotificationAction: vi.fn(),
 }));
 vi.mock("@/server/actions/transactions", () => ({ setPaidAction: vi.fn() }));
+vi.mock("@/server/actions/sharing", () => ({ respondToInviteAction: vi.fn() }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { error: vi.fn() }),
 }));

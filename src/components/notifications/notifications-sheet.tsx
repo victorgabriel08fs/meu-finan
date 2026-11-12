@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/app/empty-state";
+import { quickAddPreset } from "@/components/sharing/model";
 import {
   actionErrorMessage,
   NETWORK_ERROR,
@@ -27,9 +28,11 @@ import {
   type NoticeItem,
 } from "@/lib/notifications/kinds";
 import { cn } from "@/lib/utils";
+import { respondToInviteAction } from "@/server/actions/sharing";
 import { setPaidAction } from "@/server/actions/transactions";
 import { useNotificationsStore } from "@/stores/notifications";
 import { usePrivacyStore } from "@/stores/privacy";
+import { useQuickAddStore } from "@/stores/quick-add";
 import { NoticeIcon } from "./notice-icon";
 
 /** Dragged this far to the left (or flicked), a notice is dismissed. */
@@ -42,6 +45,9 @@ const DISMISS_VELOCITY = 500;
  * (useBackToClose).
  */
 let pendingHref: string | null = null;
+
+/** The same for what opens another sheet ("Lançar no extrato"). */
+let pendingSheet: (() => void) | null = null;
 
 /**
  * The notification center (doc 02 §6.15): a sheet (a dialog from md) with the
@@ -69,7 +75,13 @@ export function NotificationsSheet({ timeZone }: { timeZone: string }) {
   }, [open, load]);
 
   useEffect(() => {
-    if (open || pendingHref === null) return;
+    if (open) return;
+    if (pendingSheet) {
+      const run = pendingSheet;
+      pendingSheet = null;
+      afterSheetsClose(run);
+    }
+    if (pendingHref === null) return;
     const href = pendingHref;
     pendingHref = null;
     afterSheetsClose(() => router.push(href));
@@ -221,6 +233,7 @@ function NoticeRow({
   const dismiss = useNotificationsStore((state) => state.dismiss);
   const restore = useNotificationsStore((state) => state.restore);
   const discreet = usePrivacyStore((state) => state.hidden);
+  const openQuickAdd = useQuickAddStore((state) => state.openQuickAdd);
   const [busy, setBusy] = useState<string | null>(null);
   // A drag ends in a click on whatever is under the finger: ignore that one.
   const dragged = useRef(false);
@@ -255,9 +268,72 @@ function NoticeRow({
     }
   }
 
+  /** Takes the buttons off a notice once they did their part. */
+  function dropActions(ids: readonly string[]) {
+    useNotificationsStore.setState((state) => ({
+      items:
+        state.items?.map((candidate) =>
+          candidate.id === item.id
+            ? {
+                ...candidate,
+                actions: candidate.actions.filter(
+                  (entry) => !ids.includes(entry.id),
+                ),
+              }
+            : candidate,
+        ) ?? null,
+    }));
+  }
+
   async function run(action: NoticeAction) {
     if (action.id === "open") {
       open();
+      return;
+    }
+    if (
+      (action.id === "accept_share" || action.id === "decline_share") &&
+      item.inviteId
+    ) {
+      setBusy(action.id);
+      try {
+        const answer = action.id === "accept_share" ? "accept" : "decline";
+        const result = await respondToInviteAction({
+          memberId: item.inviteId,
+          answer,
+        });
+        const error = actionErrorMessage(result);
+        if (error) {
+          toast.error(error);
+          return;
+        }
+        dropActions(["accept_share", "decline_share"]);
+        if (!item.read) void markRead([item.id]);
+        toast(
+          answer === "accept" && result?.data
+            ? `Você entrou no grupo ${result.data.groupName}.`
+            : "Convite recusado.",
+        );
+      } catch {
+        toast.error(NETWORK_ERROR);
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
+    if (action.id === "record_settlement" && item.settlement) {
+      const { settlement } = item;
+      if (!item.read) void markRead([item.id]);
+      // Opened once this sheet and its history entry are gone.
+      pendingSheet = () =>
+        openQuickAdd(
+          settlement.received ? "income" : "expense",
+          quickAddPreset({
+            amountCents: settlement.amountCents,
+            description: `Acerto · ${settlement.groupName}`,
+            date: settlement.date,
+          }),
+        );
+      setOpen(false);
       return;
     }
     if (action.id === "mark_paid" && item.transactionId) {
@@ -296,8 +372,15 @@ function NoticeRow({
   }
 
   const actions = item.actions.filter(
-    (action) => action.id === "open" || action.id === "mark_paid",
+    (action) =>
+      action.id === "open" ||
+      action.id === "mark_paid" ||
+      ((action.id === "accept_share" || action.id === "decline_share") &&
+        item.inviteId) ||
+      (action.id === "record_settlement" && item.settlement),
   );
+  const primary = (id: NoticeAction["id"]) =>
+    id === "mark_paid" || id === "accept_share";
 
   return (
     <li className="relative overflow-hidden">
@@ -357,8 +440,7 @@ function NoticeRow({
               {actions.map((action) => (
                 <Button
                   key={action.id}
-                  size="sm"
-                  variant={action.id === "mark_paid" ? "tonal" : "secondary"}
+                  variant={primary(action.id) ? "tonal" : "secondary"}
                   loading={busy === action.id}
                   onClick={() => void run(action)}
                 >
