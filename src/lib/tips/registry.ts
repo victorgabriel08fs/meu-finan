@@ -395,6 +395,21 @@ export const TIPS: readonly Tip[] = [
     icon: "vault",
     link: { href: "/compartilhado", label: "Ver Compartilhado" },
   },
+  {
+    id: "novidade-gasto-por-dia-por-conta",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like the block's own: it lives in
+    // "Personalizar o Início".
+    routes: [],
+    anchor: null,
+    title: "Quanto dá para gastar, por conta",
+    body: "O bloco Quanto dá para gastar por dia mostra também quanto dá em cada conta, com a fatura do cartão na conta que paga.",
+    since: "2026-11-12",
+    order: 20,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
