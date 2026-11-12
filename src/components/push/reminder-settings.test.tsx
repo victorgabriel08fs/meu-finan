@@ -32,13 +32,14 @@ beforeEach(() => {
 
 const render = (
   preferences: NotificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
-  { monthStartDay = 1, devices = 1 } = {},
+  { monthStartDay = 1, devices = 1, nonBusinessDue = false } = {},
 ) =>
   renderToStaticMarkup(
     <ReminderList
       preferences={preferences}
       monthStartDay={monthStartDay}
       devices={devices}
+      nonBusinessDue={nonBusinessDue}
       onChange={vi.fn()}
     />,
   );
@@ -70,6 +71,42 @@ describe("ReminderList", () => {
     const privacy = html.slice(html.indexOf("Privacidade"));
     expect(privacy).toContain("Mostrar valores nas notificações");
     expect(switchOn(privacy)).toBe(false);
+  });
+
+  it("shows Vencimento em dia não útil only with the flag, right after Contas a vencer, on by default", () => {
+    const off = render();
+    expect(off).not.toContain("Vencimento em dia não útil");
+    expect(off).not.toContain('data-event="non_business_due"');
+    const on = render(undefined, { nonBusinessDue: true });
+    expect(on).toContain("Vencimento em dia não útil");
+    expect(on).toContain(
+      "No último dia útil antes, quando uma conta vence no fim de semana ou num feriado.",
+    );
+    expect(on.indexOf('data-event="bills_due"')).toBeLessThan(
+      on.indexOf('data-event="non_business_due"'),
+    );
+    expect(on.indexOf('data-event="non_business_due"')).toBeLessThan(
+      on.indexOf('data-event="income_countdown"'),
+    );
+    expect(switchOn(row(on, "non_business_due"))).toBe(true);
+  });
+
+  it("counts only the visible rows for 'Todos os avisos estão desligados'", () => {
+    const hiddenOnly = {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      events: {
+        daily_summary: false,
+        bills_due: false,
+        non_business_due: true,
+        income_countdown: false,
+        weekly_summary: false,
+        monthly_summary: false,
+      },
+    };
+    expect(render(hiddenOnly)).toContain("Todos os avisos estão desligados.");
+    expect(render(hiddenOnly, { nonBusinessDue: true })).not.toContain(
+      "Todos os avisos estão desligados.",
+    );
   });
 
   it("shows the lead time only while Contas a vencer is on", () => {
@@ -110,6 +147,7 @@ describe("ReminderList", () => {
       events: {
         daily_summary: false,
         bills_due: false,
+        non_business_due: false,
         income_countdown: false,
         weekly_summary: false,
         monthly_summary: false,

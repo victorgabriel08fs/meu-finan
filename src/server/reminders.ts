@@ -1,6 +1,7 @@
 // The daily notices (doc 01 §9, step sendReminders; doc 02 §6.14): for each
 // person with the notificacoes_push flag and a device, the events they left
-// on that are due today, at most once a day each. The job has no session:
+// on that are due today, at most once a day each ("Vencimento em dia não
+// útil" also needs the person's alerta_dia_nao_util flag). The job has no session:
 // each person gets a context of their own, and only their own devices.
 //
 // Order per notice: build it (null: nothing to say), claim it in the
@@ -18,11 +19,12 @@ import {
   incomeCountdownMessage,
   type MessageOptions,
   monthlySummaryMessage,
+  nonBusinessDueMessage,
   type ReminderMessage,
   weeklySummaryMessage,
 } from "@/lib/notifications/messages";
 import {
-  enabledReminderEvents,
+  availableReminderEvents,
   type NotificationPreferences,
 } from "@/lib/notifications/preferences";
 import {
@@ -31,11 +33,13 @@ import {
   NOTIFIED_BILLS_LOOKBACK_DAYS,
   previousWeek,
   selectBillReminders,
+  selectNonBusinessDueReminders,
 } from "@/lib/notifications/schedule";
 import { getUserContext, type UserContext } from "@/server/domain/context";
 import type { UpcomingItem } from "@/server/domain/dashboard";
 import {
   claimNotification,
+  noticeItemKeys,
   recentBillKeys,
   releaseNotification,
   reminderDedupeKey,
@@ -52,7 +56,7 @@ import {
   periodMonthOf,
   type ReminderRecipient,
 } from "@/server/domain/reminders";
-import { loadFlagsForUsers } from "@/server/flags";
+import { getFlags, loadFlagsForUsers } from "@/server/flags";
 import { describeError } from "@/server/jobs/runner";
 import { sendPush } from "@/server/push";
 
@@ -70,6 +74,7 @@ const PUSH_OPTIONS: Record<ReminderEvent, { tag: string; ttlSeconds: number }> =
   {
     daily_summary: { tag: "resumo-dia", ttlSeconds: 12 * HOUR_SECONDS },
     bills_due: { tag: "contas", ttlSeconds: 24 * HOUR_SECONDS },
+    non_business_due: { tag: "dia-nao-util", ttlSeconds: 24 * HOUR_SECONDS },
     income_countdown: { tag: "receita", ttlSeconds: 12 * HOUR_SECONDS },
     weekly_summary: { tag: "resumo-semana", ttlSeconds: 24 * HOUR_SECONDS },
     monthly_summary: { tag: "resumo-mes", ttlSeconds: 24 * HOUR_SECONDS },
@@ -77,6 +82,9 @@ const PUSH_OPTIONS: Record<ReminderEvent, { tag: string; ttlSeconds: number }> =
 
 /** A notice ready to send: the texts, where a tap leads, the bills it names. */
 export type Reminder = ReminderMessage & { url: string; itemKeys?: string[] };
+
+/** The person's flags that shape the notices. */
+type ReminderFlags = { nonBusinessDue: boolean };
 
 /** The weekly summary only on Mondays, the monthly one on the first day. */
 function isDueToday(event: ReminderEvent, ctx: UserContext): boolean {
@@ -108,22 +116,23 @@ function billsUrl(ctx: UserContext, items: readonly UpcomingItem[]): string {
   );
 }
 
+const lookbackStart = (now: Date) =>
+  new Date(now.getTime() - NOTIFIED_BILLS_LOOKBACK_DAYS * DAY_MS);
+
 async function billsReminder(
   ctx: UserContext,
   preferences: NotificationPreferences,
   options: MessageOptions,
   now: Date,
   preview: boolean,
+  flags: ReminderFlags,
 ): Promise<Reminder | null> {
   const [items, notifiedKeys] = await Promise.all([
-    loadBillCandidates(ctx),
+    loadBillCandidates(ctx, { nonBusiness: flags.nonBusinessDue }),
     // The preview shows every bill in the window, announced or not.
     preview
       ? new Set<string>()
-      : recentBillKeys(
-          ctx.userId,
-          new Date(now.getTime() - NOTIFIED_BILLS_LOOKBACK_DAYS * DAY_MS),
-        ),
+      : recentBillKeys(ctx.userId, lookbackStart(now)),
   ]);
   const selected = selectBillReminders(items, {
     todayIso: ctx.todayIso,
@@ -139,6 +148,56 @@ async function billsReminder(
       dueOn: item.dueOn,
       days,
       overdue,
+      nonBusinessDue: item.nonBusinessDue,
+    })),
+    options,
+  );
+  if (!message) return null;
+  return {
+    ...message,
+    url: billsUrl(
+      ctx,
+      selected.map(({ item }) => item),
+    ),
+    itemKeys: selected.map(({ key }) => key),
+  };
+}
+
+/**
+ * Vencimento em dia não útil, on the last business day before. Runs after
+ * the day's Contas a vencer (REMINDER_EVENTS order) and leaves out the bills
+ * it already named, so a bill gets one push a day.
+ */
+async function nonBusinessReminder(
+  ctx: UserContext,
+  options: MessageOptions,
+  now: Date,
+  preview: boolean,
+): Promise<Reminder | null> {
+  const none = new Set<string>();
+  const [items, notifiedKeys, coveredToday] = await Promise.all([
+    loadBillCandidates(ctx, { nonBusiness: true }),
+    preview
+      ? none
+      : recentBillKeys(ctx.userId, lookbackStart(now), "non_business_due"),
+    preview ? none : noticeItemKeys(ctx.userId, "bills_due", ctx.todayIso),
+  ]);
+  const selected = selectNonBusinessDueReminders(items, {
+    todayIso: ctx.todayIso,
+    notifiedKeys,
+    coveredToday,
+    preview,
+  });
+  const message = nonBusinessDueMessage(
+    selected.map(({ item, days }) => ({
+      type: item.type,
+      title: item.title,
+      amountCents: item.amountCents,
+      accountName: item.accountName,
+      dueOn: item.dueOn,
+      days,
+      overdue: false,
+      nonBusinessDue: item.nonBusinessDue,
     })),
     options,
   );
@@ -172,6 +231,7 @@ async function buildReminder(
   event: ReminderEvent,
   preferences: NotificationPreferences,
   now: Date,
+  flags: ReminderFlags,
   preview = false,
 ): Promise<Reminder | null> {
   const options = {
@@ -184,7 +244,11 @@ async function buildReminder(
       return message && { ...message, url: "/inicio" };
     }
     case "bills_due":
-      return billsReminder(ctx, preferences, options, now, preview);
+      return billsReminder(ctx, preferences, options, now, preview, flags);
+    case "non_business_due":
+      return flags.nonBusinessDue
+        ? nonBusinessReminder(ctx, options, now, preview)
+        : null;
     case "income_countdown": {
       const input = await loadIncomeCountdown(
         ctx,
@@ -252,6 +316,7 @@ function emptyReport(): RemindersReport {
     sent: {
       daily_summary: 0,
       bills_due: 0,
+      non_business_due: 0,
       income_countdown: 0,
       weekly_summary: 0,
       monthly_summary: 0,
@@ -270,9 +335,10 @@ async function sendOne(
   event: ReminderEvent,
   preferences: NotificationPreferences,
   now: Date,
+  flags: ReminderFlags,
   report: RemindersReport,
 ): Promise<void> {
-  const reminder = await buildReminder(ctx, event, preferences, now);
+  const reminder = await buildReminder(ctx, event, preferences, now, flags);
   if (!reminder) {
     report.nothingToSend += 1;
     return;
@@ -305,13 +371,14 @@ async function sendOne(
 
 async function remindPerson(
   { userId, preferences }: ReminderRecipient,
+  flags: ReminderFlags,
   now: Date,
   report: RemindersReport,
 ): Promise<void> {
   try {
     // A new context per person: the per-request reads are keyed on it.
     const ctx = await getUserContext(userId, { now: now.getTime() });
-    const events = enabledReminderEvents(preferences).filter((event) =>
+    const events = availableReminderEvents(preferences, flags).filter((event) =>
       isDueToday(event, ctx),
     );
     if (events.length === 0) return;
@@ -322,7 +389,7 @@ async function remindPerson(
         continue;
       }
       try {
-        await sendOne(ctx, event, preferences, now, report);
+        await sendOne(ctx, event, preferences, now, flags, report);
       } catch (error) {
         report.errors += 1;
         console.error(
@@ -364,10 +431,16 @@ export async function sendDailyReminders({
   const flags = await loadFlagsForUsers(
     candidates.map((candidate) => candidate.userId),
   );
+  const reminderFlags = (userId: string): ReminderFlags => ({
+    nonBusinessDue: flags.get(userId)?.alerta_dia_nao_util ?? false,
+  });
   const recipients = candidates.filter(
     (candidate) =>
       flags.get(candidate.userId)?.notificacoes_push &&
-      enabledReminderEvents(candidate.preferences).length > 0,
+      availableReminderEvents(
+        candidate.preferences,
+        reminderFlags(candidate.userId),
+      ).length > 0,
   );
   report.recipients = recipients.length;
 
@@ -379,7 +452,9 @@ export async function sendDailyReminders({
     await Promise.all(
       recipients
         .slice(start, start + BATCH_SIZE)
-        .map((recipient) => remindPerson(recipient, now, report)),
+        .map((recipient) =>
+          remindPerson(recipient, reminderFlags(recipient.userId), now, report),
+        ),
     );
   }
   return report;
@@ -405,13 +480,22 @@ export async function previewReminders(
   endpoint: string,
   now: Date = new Date(),
 ): Promise<PreviewOutcome> {
-  const [ctx, preferences] = await Promise.all([
+  const [ctx, preferences, userFlags] = await Promise.all([
     getUserContext(userId, { now: now.getTime() }),
     getNotificationPreferences(userId),
+    getFlags(userId),
   ]);
+  const flags = { nonBusinessDue: userFlags.alerta_dia_nao_util };
   const outcome: PreviewOutcome = { built: 0, sent: 0, removed: false };
-  for (const event of enabledReminderEvents(preferences)) {
-    const reminder = await buildReminder(ctx, event, preferences, now, true);
+  for (const event of availableReminderEvents(preferences, flags)) {
+    const reminder = await buildReminder(
+      ctx,
+      event,
+      preferences,
+      now,
+      flags,
+      true,
+    );
     if (!reminder) continue;
     outcome.built += 1;
     if (outcome.removed) continue;

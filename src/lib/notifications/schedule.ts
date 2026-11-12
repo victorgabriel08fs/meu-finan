@@ -4,8 +4,10 @@ import {
   addDays,
   dayOfWeek,
   daysBetween,
+  isInGrace,
   iso,
   type LocalDate,
+  type NonBusinessDue,
   type Period,
   parse,
   periodContaining,
@@ -48,6 +50,8 @@ export type BillCandidate = {
   type: "transaction" | "invoice";
   /** YYYY-MM-DD */
   dueOn: string;
+  /** Due on a non-business day (only with the flag alerta_dia_nao_util). */
+  nonBusinessDue?: NonBusinessDue | null;
 };
 
 export type BillReminder<T extends BillCandidate> = {
@@ -69,7 +73,9 @@ export function billKey(item: BillCandidate): string {
  * `leadDays` ahead, and those that went overdue in the last
  * {@link OVERDUE_WINDOW_DAYS} days, each once before the due date and once
  * overdue, skipping keys already notified. Upcoming first (soonest first),
- * then overdue (most recent first).
+ * then overdue (most recent first). A bill due on a non-business day is not
+ * overdue up to the next business day, when the payment usually still goes
+ * through: its overdue notice waits until the day after.
  */
 export function selectBillReminders<T extends BillCandidate>(
   items: readonly T[],
@@ -89,7 +95,11 @@ export function selectBillReminders<T extends BillCandidate>(
       if (!notifiedKeys.has(key)) {
         upcoming.push({ item, key, overdue: false, days });
       }
-    } else if (days < 0 && days >= -OVERDUE_WINDOW_DAYS) {
+    } else if (
+      days < 0 &&
+      days >= -OVERDUE_WINDOW_DAYS &&
+      !isInGrace(item.dueOn, item.nonBusinessDue, todayIso)
+    ) {
       const key = `${billKey(item)}${OVERDUE_SUFFIX}`;
       if (!notifiedKeys.has(key)) {
         overdue.push({ item, key, overdue: true, days });
@@ -99,6 +109,52 @@ export function selectBillReminders<T extends BillCandidate>(
   upcoming.sort((a, b) => a.days - b.days);
   overdue.sort((a, b) => b.days - a.days);
   return [...upcoming, ...overdue];
+}
+
+/** Days ahead the preview of "Vencimento em dia não útil" looks. */
+export const NON_BUSINESS_PREVIEW_DAYS = 7;
+
+/**
+ * The bills for today's "Vencimento em dia não útil": due on a non-business
+ * day, from the last business day before it up to the due date itself
+ * (created late, it goes out that day), each once. Leaves out the keys
+ * already notified by this notice and those today's "Contas a vencer"
+ * already named (`coveredToday`): one push per bill a day. Soonest first.
+ * `preview`: every annotated bill from today up to 7 days ahead, without
+ * those filters (Ajustes › Notificações › Ver exemplo).
+ */
+export function selectNonBusinessDueReminders<T extends BillCandidate>(
+  items: readonly T[],
+  {
+    todayIso,
+    notifiedKeys,
+    coveredToday,
+    preview = false,
+  }: {
+    todayIso: string;
+    notifiedKeys: ReadonlySet<string>;
+    coveredToday: ReadonlySet<string>;
+    preview?: boolean;
+  },
+): BillReminder<T>[] {
+  const today = parse(todayIso);
+  const chosen: BillReminder<T>[] = [];
+  for (const item of items) {
+    const nb = item.nonBusinessDue;
+    if (!nb) continue;
+    const days = daysBetween(today, parse(item.dueOn));
+    const key = billKey(item);
+    if (preview) {
+      if (days >= 0 && days <= NON_BUSINESS_PREVIEW_DAYS) {
+        chosen.push({ item, key, overdue: false, days });
+      }
+      continue;
+    }
+    if (nb.previousBusinessDay > todayIso || days < 0) continue;
+    if (notifiedKeys.has(key) || coveredToday.has(key)) continue;
+    chosen.push({ item, key, overdue: false, days });
+  }
+  return chosen.sort((a, b) => a.days - b.days);
 }
 
 /** Days ahead the "Próxima receita" looks for an income. */

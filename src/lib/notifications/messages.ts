@@ -6,6 +6,7 @@ import {
   type AverageComparison,
   type BudgetStatus,
   daysBetween,
+  type NonBusinessDue,
   parse,
 } from "@/lib/finance";
 import {
@@ -152,6 +153,8 @@ export type BillReminderItem = {
   /** Days from today to the due date (negative once overdue). */
   days: number;
   overdue: boolean;
+  /** Due on a non-business day (only with the flag alerta_dia_nao_util). */
+  nonBusinessDue?: NonBusinessDue | null;
 };
 
 /** Names in a notice with several bills before "E mais N." */
@@ -167,7 +170,26 @@ function billGroupLabel(item: BillReminderItem, count: number): string {
   return `${count === 1 ? "Venceu" : "Venceram"} ${word}`;
 }
 
-/** `items` in the order of selectBillReminders (upcoming, then overdue). */
+/** Not yet overdue and due on a non-business day. */
+const nonBusinessOf = (item: BillReminderItem): NonBusinessDue | null =>
+  item.overdue ? null : (item.nonBusinessDue ?? null);
+
+/** "Cai num sábado: o pagamento costuma passar para seg, 16 nov." */
+function fallsOnNote(nb: NonBusinessDue): string {
+  let where = "num dia sem expediente bancário";
+  if (nb.reason === "saturday") where = "num sábado";
+  else if (nb.reason === "sunday") where = "num domingo";
+  else if (nb.reason === "holiday") {
+    where = nb.holidayName ? `num feriado (${nb.holidayName})` : "num feriado";
+  }
+  return `Cai ${where}: o pagamento costuma passar para ${weekdayDateLabel(nb.nextBusinessDay)}.`;
+}
+
+/**
+ * `items` in the order of selectBillReminders (upcoming, then overdue). A
+ * bill due on a non-business day gets a note: one bill, when the payment
+ * usually goes through; several, which of them fall on such a day.
+ */
 export function billsDueMessage(
   items: readonly BillReminderItem[],
   { showAmounts }: MessageOptions,
@@ -176,17 +198,23 @@ export function billsDueMessage(
   if (!first) return null;
 
   if (items.length === 1) {
+    const nb = nonBusinessOf(first);
+    const note = nb ? fallsOnNote(nb) : null;
     let body: string;
     if (first.type === "invoice") {
       body = showAmounts
-        ? `${formatBRL(first.amountCents)} em aberto.`
-        : "Toque para ver a fatura.";
+        ? sentences([`${formatBRL(first.amountCents)} em aberto.`, note])
+        : sentences([note, "Toque para ver a fatura."]);
     } else {
-      body = `${
-        showAmounts
-          ? `${formatBRL(first.amountCents)} · ${first.accountName}`
-          : `Sai da ${first.accountName}`
-      }. Toque para ver e marcar como pago.`;
+      body = sentences([
+        `${
+          showAmounts
+            ? `${formatBRL(first.amountCents)} · ${first.accountName}`
+            : `Sai da ${first.accountName}`
+        }.`,
+        note,
+        "Toque para ver e marcar como pago.",
+      ]);
     }
     return { title: billTitle(first), body };
   }
@@ -212,6 +240,135 @@ export function billsDueMessage(
           `${billGroupLabel(group.first, group.names.length)}: ${joinNames(group.names)}.`,
       ),
       rest > 0 && `E mais ${plural(rest, "conta", "contas")}.`,
+      nonBusinessNames(items),
+    ]),
+  };
+}
+
+/** "Aluguel e Luz vencem em dia não útil."; null when none does. */
+function nonBusinessNames(items: readonly BillReminderItem[]): string | null {
+  const names = items
+    .filter((item) => nonBusinessOf(item))
+    .map((item) => item.title);
+  if (names.length === 0) return null;
+  return `${joinNames(names, BILL_NAMES)} ${
+    names.length === 1 ? "vence" : "vencem"
+  } em dia não útil.`;
+}
+
+// Vencimento em dia não útil -------------------------------------------------
+
+/** "no sábado (14/nov)", "num feriado (20/nov)", "em 31/dez, sem expediente bancário". */
+function nonBusinessWhen(nb: NonBusinessDue, dueOn: string): string {
+  const date = shortDateLabel(dueOn);
+  switch (nb.reason) {
+    case "saturday":
+      return `no sábado (${date})`;
+    case "sunday":
+      return `no domingo (${date})`;
+    case "holiday":
+      return `num feriado (${date})`;
+    case "no_banking":
+      return `em ${date}, sem expediente bancário`;
+  }
+}
+
+/** "hoje, sábado", "hoje, feriado", "hoje, sem expediente bancário". */
+function nonBusinessToday(nb: NonBusinessDue): string {
+  switch (nb.reason) {
+    case "saturday":
+      return "hoje, sábado";
+    case "sunday":
+      return "hoje, domingo";
+    case "holiday":
+      return "hoje, feriado";
+    case "no_banking":
+      return "hoje, sem expediente bancário";
+  }
+}
+
+/** "Dia não útil", "Consciência Negra", "Dia sem expediente bancário". */
+function nonBusinessLead(nb: NonBusinessDue): string {
+  if (nb.reason === "holiday") return nb.holidayName ?? "Feriado";
+  if (nb.reason === "no_banking") return "Dia sem expediente bancário";
+  return "Dia não útil";
+}
+
+/** " (feriado)" after a group's date; nothing on weekends. */
+function groupSuffix(nb: NonBusinessDue): string {
+  if (nb.reason === "holiday") return " (feriado)";
+  if (nb.reason === "no_banking") return " (sem expediente bancário)";
+  return "";
+}
+
+type NonBusinessItem = BillReminderItem & { nonBusinessDue: NonBusinessDue };
+
+/**
+ * "Vencimento em dia não útil": the bills due on a weekend or holiday, sent
+ * on the last business day before (`items` from
+ * selectNonBusinessDueReminders, soonest first; only those with
+ * `nonBusinessDue` count). "Se preferir não esperar, pague hoje." only when
+ * today is that last business day.
+ */
+export function nonBusinessDueMessage(
+  items: readonly BillReminderItem[],
+  { showAmounts, todayIso }: MessageOptions,
+): ReminderMessage | null {
+  const due = items.filter(
+    (item): item is NonBusinessItem => !!item.nonBusinessDue,
+  );
+  const [first] = due;
+  if (!first) return null;
+
+  if (due.length === 1) {
+    const nb = first.nonBusinessDue;
+    const when =
+      first.dueOn === todayIso
+        ? nonBusinessToday(nb)
+        : nonBusinessWhen(nb, first.dueOn);
+    const invoice = first.type === "invoice";
+    let lead: string | null = `Sai da ${first.accountName}.`;
+    if (showAmounts) {
+      lead = invoice
+        ? `${formatBRL(first.amountCents)} em aberto.`
+        : `${formatBRL(first.amountCents)} · ${first.accountName}.`;
+    } else if (invoice) {
+      lead = null;
+    }
+    return {
+      title: `${first.title} vence ${when}`,
+      body: sentences([
+        lead,
+        `${nonBusinessLead(nb)}: o pagamento costuma passar para ${weekdayDateLabel(nb.nextBusinessDay)}.`,
+        nb.previousBusinessDay === todayIso &&
+          "Se preferir não esperar, pague hoje.",
+        invoice && !showAmounts && "Toque para ver a fatura.",
+      ]),
+    };
+  }
+
+  const shown = due.slice(0, BILL_NAMES);
+  const groups: { first: NonBusinessItem; names: string[] }[] = [];
+  for (const item of shown) {
+    const name = showAmounts
+      ? `${item.title} (${formatBRL(item.amountCents)})`
+      : item.title;
+    const group = groups.find((entry) => entry.first.dueOn === item.dueOn);
+    if (group) group.names.push(name);
+    else groups.push({ first: item, names: [name] });
+  }
+  const rest = due.length - shown.length;
+  return {
+    title: `${due.length} contas vencem em dia não útil`,
+    body: sentences([
+      ...groups.map(
+        (group) =>
+          `${capitalize(weekdayDateLabel(group.first.dueOn))}${groupSuffix(
+            group.first.nonBusinessDue,
+          )}: ${joinNames(group.names)}.`,
+      ),
+      rest > 0 && `E mais ${plural(rest, "conta", "contas")}.`,
+      "O pagamento costuma passar para o próximo dia útil.",
     ]),
   };
 }

@@ -38,10 +38,11 @@ export default function NotificacoesPage() {
 async function Notifications() {
   const user = await requireUser();
   if (!(await isFlagEnabled("notificacoes_push", user.id))) notFound();
-  const [ctx, preferences, devices] = await Promise.all([
+  const [ctx, preferences, devices, nonBusinessDue] = await Promise.all([
     getUserContext(user.id),
     getNotificationPreferences(user.id),
     countPushDevices(user.id),
+    isFlagEnabled("alerta_dia_nao_util", user.id),
   ]);
   // Only the public half reaches the browser.
   const publicKey = vapidKeys()?.publicKey ?? null;
@@ -53,6 +54,7 @@ async function Notifications() {
         initial={preferences}
         monthStartDay={ctx.monthStartDay}
         devices={devices}
+        nonBusinessDue={nonBusinessDue}
       />
     </>
   );
@@ -63,9 +65,11 @@ function NotificationsSkeleton() {
     <LoadingRegion className="flex flex-col gap-7">
       {/* Neste aparelho: 36 + 64 + the note below the card */}
       <Skeleton className="h-35 rounded-2xl" />
-      {/* Avisos: 36 + 5 rows, the lead time of Contas a vencer (on by
-          default) and the note: between 360 and 430 px, and the desktop */}
-      <Skeleton className="h-136 rounded-2xl sm:h-117" />
+      {/* Avisos: 36 + 6 rows (Vencimento em dia não útil included: the
+          flag needs the session, which a fallback cannot wait for), the
+          lead time of Contas a vencer (on by default) and the note: between
+          360 and 430 px, and the desktop */}
+      <Skeleton className="h-162 rounded-2xl sm:h-133" />
       {/* Privacidade: 36 + one row with a long hint */}
       <Skeleton className="h-37 rounded-2xl sm:h-25" />
     </LoadingRegion>
