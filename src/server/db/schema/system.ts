@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   check,
   integer,
@@ -21,6 +22,7 @@ import {
   userIdColumn,
 } from "./columns";
 import {
+  HOLIDAY_SOURCES,
   IMPORT_FORMATS,
   importStatus,
   JOB_RUN_STATUSES,
@@ -71,6 +73,29 @@ export const marketRates = pgTable(
   },
   (t) => [
     primaryKey({ name: "market_rates_pkey", columns: [t.index, t.refDate] }),
+  ],
+);
+
+/**
+ * National holidays from BrasilAPI, global (no user_id), cached by year by the
+ * daily job (syncHolidays). The app reads them united with the calendar it
+ * computes (src/lib/finance/business-days.ts), so a stored row only adds a
+ * date. `scope` is "BR" for now; state and city holidays would use "BR-SP"
+ * and "BR-SP-<IBGE code>".
+ */
+export const holidays = pgTable(
+  "holidays",
+  {
+    scope: text("scope").notNull(),
+    date: localDate("date").notNull(),
+    name: text("name").notNull(),
+    source: text("source", { enum: HOLIDAY_SOURCES }).notNull(),
+    fetchedAt: timestamptz("fetched_at").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ name: "holidays_pkey", columns: [t.scope, t.date] }),
+    check("holidays_source_check", oneOf(t.source, HOLIDAY_SOURCES)),
+    check("holidays_name_check", sql`char_length(${t.name}) between 1 and 80`),
   ],
 );
 

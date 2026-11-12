@@ -93,7 +93,10 @@ export type NotificationPayload =
       title: string;
       body: string;
       url: string;
-      /** bills_due: the bills it announced (see selectBillReminders). */
+      /**
+       * bills_due and non_business_due: the bills it announced (see
+       * selectBillReminders and selectNonBusinessDueReminders).
+       */
       itemKeys?: string[];
     };
 

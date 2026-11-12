@@ -71,6 +71,10 @@ export type ImportFormat = (typeof IMPORT_FORMATS)[number];
 export const SNAPSHOT_SOURCES = ["auto", "manual"] as const;
 export type SnapshotSource = (typeof SNAPSHOT_SOURCES)[number];
 
+/** holidays.source: where a stored holiday came from (the computed calendar is not stored). */
+export const HOLIDAY_SOURCES = ["brasilapi"] as const;
+export type HolidaySource = (typeof HOLIDAY_SOURCES)[number];
+
 /** access_links.purpose: first password of a new account, or a new one. */
 export const ACCESS_LINK_PURPOSES = ["invite", "reset"] as const;
 export type AccessLinkPurpose = (typeof ACCESS_LINK_PURPOSES)[number];
@@ -106,6 +110,7 @@ export type JobRunStatus = (typeof JOB_RUN_STATUSES)[number];
 export const REMINDER_NOTIFICATION_TYPES = [
   "daily_summary",
   "bills_due",
+  "non_business_due",
   "income_countdown",
   "weekly_summary",
   "monthly_summary",
