@@ -59,3 +59,63 @@ describe("visibleNotificationTypes", () => {
     ]);
   });
 });
+
+describe("the notices of a group", () => {
+  const invite = {
+    type: "share_invite",
+    groupId: "g1",
+    memberId: "m1",
+    groupName: "Casa",
+    inviterName: "Ana",
+    inviterEmail: "ana@exemplo.com",
+  } as const;
+  const settled = {
+    type: "share_settled",
+    groupId: "g1",
+    groupName: "Casa",
+    actorName: "Ana",
+    settlementId: "s1",
+    amountCents: 12_000,
+    direction: "paid_you",
+    date: "2026-11-12",
+  } as const;
+
+  it("exist only with financas_compartilhadas", () => {
+    const on = visibleNotificationTypes({
+      ...defaultFlags(),
+      financas_compartilhadas: true,
+    });
+    expect(on).toContain("share_invite");
+    expect(on).toContain("shared_activity");
+    expect(visibleNotificationTypes(defaultFlags())).not.toContain(
+      "share_invite",
+    );
+  });
+
+  it("offer Aceitar and Recusar on an invite, and Lançar no extrato on a settlement", () => {
+    expect(renderNotice(invite, { discreet: false })).toMatchObject({
+      title: "Convite para dividir",
+      href: "/compartilhado",
+      actions: [
+        { id: "accept_share", label: "Aceitar" },
+        { id: "decline_share", label: "Recusar" },
+      ],
+    });
+    expect(renderNotice(settled, { discreet: false })).toMatchObject({
+      href: "/compartilhado/g1",
+      actions: [
+        { id: "record_settlement", label: "Lançar no extrato" },
+        { id: "open", label: "Ver grupo" },
+      ],
+    });
+  });
+
+  it("hide the amount of a settlement in the privacy mode, never an invite", () => {
+    expect(payloadHasAmounts(invite)).toBe(false);
+    expect(payloadHasAmounts(settled)).toBe(true);
+    expect(renderNotice(settled, { discreet: true })?.body).toBe(DISCREET_BODY);
+    expect(renderNotice(invite, { discreet: true })?.body).toContain(
+      "convidou você",
+    );
+  });
+});

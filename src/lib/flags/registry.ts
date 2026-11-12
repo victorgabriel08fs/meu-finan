@@ -79,6 +79,15 @@ export const FLAGS = {
     owner: "Notificações",
     since: "2026-11-12",
   },
+  financas_compartilhadas: {
+    label: "Finanças compartilhadas",
+    grammar: { gender: "feminine", plural: true },
+    description:
+      "Grupos com outras pessoas do app para dividir despesas e guardar dinheiro juntos. Quando desligado, a área some, os avisos dela não aparecem e o servidor recusa as ações; os grupos ficam guardados.",
+    defaultValue: false,
+    owner: "Compartilhado",
+    since: "2026-11-12",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAGS;
