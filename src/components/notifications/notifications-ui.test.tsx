@@ -77,8 +77,10 @@ describe("NotificationsNavItem", () => {
     setUnread(2);
     const html = withFlag(true, <NotificationsNavItem />);
     expect(html).toContain("<button");
-    expect(html).toContain('aria-label="Notificações, 2 não lidas"');
-    expect(html).toContain("Notificações");
+    // The name is the visible text plus a hidden ", 2 não lidas".
+    expect(html).not.toContain("aria-label");
+    expect(html).toContain("<span>Notificações</span>");
+    expect(html).toContain('<span class="sr-only">, 2 não lidas</span>');
     expect(html).toContain(">2<");
   });
 
