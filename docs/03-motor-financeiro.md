@@ -13,7 +13,7 @@
 7. [Cálculos reversos](#7-cálculos-reversos)
 8. [Metas](#8-metas)
 9. [Cartão de crédito: fatura e parcelas](#9-cartão-de-crédito-fatura-e-parcelas)
-10. [Recorrência e período financeiro](#10-recorrência-e-período-financeiro)
+10. [Recorrência, período financeiro e dias úteis](#10-recorrência-e-período-financeiro)
 11. [Orçamento: ritmo e "pode gastar por dia"](#11-orçamento-ritmo-e-pode-gastar-por-dia)
 12. [Previsões e indicadores](#12-previsões-e-indicadores)
 13. [Testes](#13-testes)
@@ -442,7 +442,7 @@ Total = − Σ `amount_cents` das compras/estornos da fatura; pago = Σ pagament
 
 ---
 
-## 10. Recorrência e período financeiro
+## 10. Recorrência, período financeiro e dias úteis
 
 ### 10.1 Ocorrências
 
@@ -492,6 +492,44 @@ export function periodContaining(date: LocalDate, startDay: number) {
 ```
 
 No SQL, agrupa-se por `date_trunc('month', occurred_on - (s - 1))` (doc 01 §6.5).
+
+### 10.3 Dias úteis e feriados
+
+`src/lib/finance/business-days.ts` (puro, só importa `dates`) diz se uma data é dia útil no **calendário bancário** brasileiro, para o aviso de conta que vence em dia não útil (doc 02 §6.3, §6.4, §6.8). Um dia é **não útil** se for sábado, domingo ou estiver no calendário de feriados. O calendário é um mapa `YYYY-MM-DD → { name, kind }`, com `kind` `holiday` ou `no_banking`.
+
+**Páscoa** (Meeus/Butcher, calendário gregoriano, válido de 1583 a 9999): $a = y \bmod 19$, $b = \lfloor y/100 \rfloor$, $c = y \bmod 100$, $d = \lfloor b/4 \rfloor$, $e = b \bmod 4$, $f = \lfloor (b+8)/25 \rfloor$, $g = \lfloor (b-f+1)/3 \rfloor$, $h = (19a + b - d - g + 15) \bmod 30$, $i = \lfloor c/4 \rfloor$, $k = c \bmod 4$, $l = (32 + 2e + 2i - h - k) \bmod 7$, $m = \lfloor (a + 11h + 22l)/451 \rfloor$, $n = h + l - 7m + 114$; o mês é $\lfloor n/31 \rfloor$ e o dia, $(n \bmod 31) + 1$. Páscoa 2026 é 05/abr; 2027, 28/mar. Cai sempre num domingo entre 22/mar e 25/abr.
+
+**Lista** (`nationalHolidays(ano)`, por data):
+
+| Dia | Nome | Obs. |
+|---|---|---|
+| 01/01 | Confraternização Universal | |
+| Páscoa − 48 e − 47 | Carnaval (segunda e terça) | ponto facultativo federal; os bancos fecham |
+| Páscoa − 2 | Sexta-feira Santa | |
+| 21/04 | Tiradentes | |
+| 01/05 | Dia do Trabalho | |
+| Páscoa + 60 | Corpus Christi | ponto facultativo federal; os bancos fecham |
+| 07/09 | Independência do Brasil | |
+| 12/10 | Nossa Senhora Aparecida | |
+| 02/11 | Finados | |
+| 15/11 | Proclamação da República | |
+| 20/11 | Consciência Negra | só de 2024 em diante (Lei 14.759/2023) |
+| 25/12 | Natal | |
+| 31/12 | Último dia do ano | `no_banking`: sem expediente bancário, não é feriado |
+
+**Quarta-feira de Cinzas** (os bancos abrem às 12h) e **24/12** são dias úteis. Duas datas iguais ficam com o primeiro nome da ordem acima (fixos, depois os da Páscoa, depois 31/12): o mapa não duplica. Feriados estaduais e municipais **não** entram (os bancos fecham neles, mas as APIs gratuitas só trazem os nacionais).
+
+**Calendário efetivo** (`holidayCalendar(anos, extra)`): o cálculo acima, sempre, **mais** as datas que uma fonte externa trouxe (`extra`, a BrasilAPI em `holidays`, doc 01 §10). A fonte só **acrescenta** datas; numa data que o cálculo já tem, o nome do cálculo vale. Assim o app nunca fica sem calendário e uma lei nova (como a do 20/11) entra pela fonte sem mudar o código.
+
+**Funções** (todas recebem o calendário, nenhuma lê a hora):
+
+- `nonBusinessReason(d)`: `saturday` | `sunday` | `holiday` | `no_banking` | `null`. O dia da semana vem primeiro: 15/11/2026, domingo e feriado, é "domingo".
+- `nextBusinessDay(d)` e `previousBusinessDay(d)`: o primeiro dia útil **estritamente** depois e o último estritamente antes (laço de até 10 passos; `RangeError` se passar). Nunca mais de 4 dias não úteis seguidos (Carnaval: sábado a terça).
+- `nonBusinessDue(vencimento)`: `null` num dia útil; senão `{ reason, holidayName, nextBusinessDay, previousBusinessDay }`. O pagamento de um boleto ou de uma fatura costuma passar para o **próximo dia útil** sem encargos; "pague até" é o dia útil **anterior**.
+- `calendarYearsFor(datas)`: os anos das datas e os vizinhos (31/12 passa para janeiro; 01/01 volta a dezembro).
+- `isInGrace(vencimento, nb, hoje)`: $vencimento < hoje \le nb.nextBusinessDay$. Nesses dias o app mostra "Prazo até seg, 16 nov" no lugar de "Venceu" e o aviso de conta vencida espera. É só apresentação: o estado gravado da fatura (§9.3), a previsão e o fluxo de caixa não mudam.
+
+Exemplo (2026): vencimento sáb 14/11 → próximo dia útil seg 16/11 (o domingo 15 é feriado e fim de semana), último antes sex 13/11; vencimento sex 20/11 (Consciência Negra) → seg 23/11 e qui 19/11; vencimento 31/12 → seg 04/01/2027 e qua 30/12.
 
 ---
 
@@ -620,3 +658,4 @@ Ferramentas: Vitest 5 + fast-check 4. Cobertura mínima de 95% em `lib/finance`.
 - `invoiceFor`: o vencimento é sempre posterior ao fechamento; faturas de compras em datas crescentes nunca retrocedem.
 - `occurrencesBetween`: datas estritamente crescentes; nenhuma fora de `[from, to]` ou depois de `end`.
 - `periodContaining(d).start ≤ d ≤ end`, e períodos consecutivos não se sobrepõem nem deixam buraco.
+- Dias úteis (1900–2199): a Páscoa é sempre domingo entre 22/mar e 25/abr; `nextBusinessDay(d)` é posterior, útil e todo dia entre os dois é não útil (simétrico em `previousBusinessDay`); `nonBusinessDue(d) === null` se e só se `d` é útil; as datas de feriado de um ano são únicas e ordenadas; nenhuma sequência de dias não úteis passa de 4; `calendarYearsFor` cobre 31/12 e 01/01. Casos exatos: feriados de 2026 e 2027, Carnaval, Sexta-feira Santa, Corpus Christi, 31/12, 20/11 só desde 2024 e Quarta-feira de Cinzas e 24/12 úteis.

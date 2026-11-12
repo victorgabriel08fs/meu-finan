@@ -2,15 +2,6 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## 11. Alerta de conta que vence em dia não útil
-
-**Pedido do dono (11/11/2026), a próxima.** Avisar quando uma conta vence num dia não útil (sábado, domingo ou feriado), no app e por push.
-
-- **No app**: um sinal visual junto da conta (próximas contas do Início, Extrato, detalhe da transação, fatura do cartão) dizendo que o vencimento cai em dia não útil, e o que costuma acontecer (o pagamento passa para o próximo dia útil, ou é preciso pagar antes). O plano decide onde e com que texto (doc 02 §10).
-- **Push**: entra nos avisos do cron diário (doc 01 §6.3, README › Notificações), com preferência própria e o prazo de antecedência definido no plano; respeita as preferências e o número no ícone.
-- **Feriados por API pública**: planejar a consulta (por exemplo BrasilAPI `/api/feriados/v1/{ano}` ou Nager.Date), com cache no banco por ano, atualização pelo cron, tempo limite e um cálculo próprio dos feriados nacionais (fixos e móveis, a partir da Páscoa) como reserva quando a API falhar. Nada de chamada externa durante o render ou o prerender. Decidir também feriados estaduais e municipais (a maioria das APIs só tem os nacionais).
-- Lógica de dia útil pura em `src/lib/finance` (ou `src/lib`), com Vitest e fast-check; variáveis novas em `src/server/env.ts` e `.env.example`; flag nova enquanto estiver em teste; dica ou novidade com `when: { flag }`.
-
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
@@ -68,6 +59,26 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Alerta de conta que vence em dia não útil — 12/11/2026
+
+Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendário bancário; "Venceu" só depois do próximo dia útil (D2); aviso push com interruptor próprio, ligado por padrão, no último dia útil antes, uma vez por conta; só feriados nacionais por enquanto.
+
+- [x] **Calendário de dias úteis** puro (`src/lib/finance/business-days.ts`): Páscoa, feriados nacionais fixos e móveis, Carnaval (segunda e terça), Sexta-feira Santa, Corpus Christi, 31/12 sem expediente bancário; Quarta-feira de Cinzas e 24/12 são úteis. Próximo e anterior dia útil, `nonBusinessDue`, `isInGrace` (doc 03 §10.3).
+- [x] **Feriados da BrasilAPI** no cron diário (passo `syncHolidays`, tabela `holidays`, migração `0009_feriados`): anos atual e seguinte, a cada 30 dias, tempo limite de 5 s e uma nova tentativa, mínimo de 9 feriados válidos, nada é apagado com resposta ruim. O calendário efetivo é sempre o cálculo próprio somado ao que a API trouxe; nenhuma chamada externa em render.
+- [x] **Flag `alerta_dia_nao_util`** (desligada por padrão; a demo liga para a Ana, com um "Condomínio" no próximo sábado) e a novidade "Vencimento em dia não útil".
+- [x] **Nota no app**: Início › Próximas contas, Extrato (linha, nome acessível e folha de detalhe) e fatura do cartão, em texto de informação (`fg-3`), sem valores. A texto grande ou em linha estreita a nota desce para baixo da linha toda (`placement`, container query `@max-tight`).
+- [x] **"Prazo até seg, 16 nov"** (âmbar) no lugar de "Venceu" entre o vencimento e o próximo dia útil: Início, Extrato, detalhe e fatura ("Fechada"); o aviso de conta vencida espera esse dia. Só apresentação.
+- [x] **Aviso "Vencimento em dia não útil"** (interruptor com ícone `CalendarX` em Ajustes › Notificações, só com a flag): no último dia útil antes, uma vez por conta; o "Contas a vencer" do mesmo dia leva a nota e o aviso novo não repete a conta. Conta na Rotina, na prévia dos administradores e no número do ícone. Com a flag desligada, o valor salvo do interruptor fica guardado.
+- [x] Testes: unidade e fast-check (`business-days`, `due-day`, `brasilapi-holidays`, seleção e mensagens dos avisos, preferências, Rotina, dicas, componentes), integração contra o PGlite (`holidays`, `reminders-non-business`, Início, preferências, `job-runs`) e e2e (`e2e/dia-nao-util.spec.ts`, `notificacoes.spec.ts`, `novidades-flags.spec.ts`, axe nos dois temas, 360 px a 200%). O estado âmbar "Prazo até …" só nos testes de unidade e integração, com data fixa (o relógio do e2e é o real).
+
+**Ficou para depois:**
+
+- **Feriados estaduais e municipais** (os bancos fecham neles): escolher a cidade dos pagamentos em Ajustes e usar uma API com token (Invertexto ou Feriados API), com variável de ambiente nova e `scope` "BR-UF-IBGE" na mesma tabela `holidays`. Nager.Date cobre alguns estaduais.
+- A nota no **detalhe da conta** (`/contas/[id]`) e nos lançamentos da fatura: o campo opcional já serve, só falta anotar na página.
+- **Receita (salário) em dia não útil** e "Próxima receita" ajustada.
+- O **status gravado da fatura** e a previsão por dia útil: hoje só a apresentação muda.
+- A central do sino (doc 02 §6.15) não tem o aviso.
 
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 
