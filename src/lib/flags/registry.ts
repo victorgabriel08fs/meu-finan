@@ -61,6 +61,15 @@ export const FLAGS = {
     owner: "Início",
     since: "2026-11-02",
   },
+  alerta_dia_nao_util: {
+    label: "Vencimento em dia não útil",
+    grammar: { gender: "masculine", plural: false },
+    description:
+      "Avisa quando uma conta vence no fim de semana ou num feriado: nota no Início, no Extrato e na fatura, e o aviso por push para quem tem notificações. Quando desligado, a nota some, o aviso não sai e a escolha dele fica guardada.",
+    defaultValue: false,
+    owner: "Contas",
+    since: "2026-11-12",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAGS;

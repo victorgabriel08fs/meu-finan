@@ -24,6 +24,7 @@ describe("useFlag", () => {
       importar_extrato: false,
       notificacoes_push: false,
       inicio_personalizavel: false,
+      alerta_dia_nao_util: false,
     };
     expect(
       renderToStaticMarkup(
@@ -39,6 +40,7 @@ describe("useFlag", () => {
       importar_extrato: false,
       notificacoes_push: false,
       inicio_personalizavel: false,
+      alerta_dia_nao_util: false,
     });
     const html = await prerenderToString(
       <FlagsProvider flags={flags}>
