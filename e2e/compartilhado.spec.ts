@@ -622,3 +622,27 @@ test("criar um grupo leva para a tela dele", async ({ page }) => {
   });
   await expect(page.locator("h1:visible")).toHaveText(`Rota ${RUN}`);
 });
+
+// Last: the group's notices in Ana's bell are dismissed, so the specs that
+// count the demo's three notices (sino.spec.ts) find them as they were.
+test("a Ana dispensa os avisos de grupo do sino", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await expect(bellOf(page)).toBeVisible({ timeout: 30_000 });
+  await expect(async () => {
+    await bellOf(page).click();
+    await expect(dialog(page, "Notificações")).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  const sheet = dialog(page, "Notificações");
+  await expect(sheet.getByText("Carregando notificações…")).toHaveCount(0, {
+    timeout: 30_000,
+  });
+  const group = sheet
+    .locator("li")
+    .filter({ hasText: /grupo|acerto|Apartamento|Casa/ });
+  while ((await group.count()) > 0) {
+    const before = await group.count();
+    await group.first().getByRole("button", { name: "Dispensar" }).click();
+    await expect(group).toHaveCount(before - 1, { timeout: 15_000 });
+  }
+});
