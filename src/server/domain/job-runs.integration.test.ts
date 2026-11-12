@@ -7,10 +7,16 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
-// runDailyJob also syncs the market rates: no network in the tests.
+// runDailyJob also syncs the market rates and the holidays: no network in the tests.
 vi.mock("../jobs/bcb-sgs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../jobs/bcb-sgs")>()),
   fetchSgsSeries: async () => {
+    throw new Error("offline");
+  },
+}));
+vi.mock("../jobs/brasilapi-holidays", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../jobs/brasilapi-holidays")>()),
+  fetchHolidays: async () => {
     throw new Error("offline");
   },
 }));
@@ -157,6 +163,12 @@ describe("runDailyNow", () => {
     expect(row?.id).toBe(result.runId);
     expect(row?.report?.trigger).toBe("admin");
     expect(row?.status).toBe(result.status);
+    // The holiday sync is a step of the daily job (offline here: it fails, the rest runs).
+    const names = (row?.report?.steps ?? []).map((step) => step.name);
+    expect(names).toContain("syncHolidays");
+    expect(names.indexOf("syncHolidays")).toBeLessThan(
+      names.indexOf("sendReminders"),
+    );
 
     const audit = await m.db.select().from(m.schema.auditLog);
     expect(audit).toHaveLength(1);

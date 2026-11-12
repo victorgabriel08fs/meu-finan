@@ -21,10 +21,16 @@ vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
   updateTag: vi.fn(),
 }));
-// runDailyJob also syncs the market rates: no network in the tests.
+// runDailyJob also syncs the market rates and the holidays: no network in the tests.
 vi.mock("./jobs/bcb-sgs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./jobs/bcb-sgs")>()),
   fetchSgsSeries: async () => {
+    throw new Error("offline");
+  },
+}));
+vi.mock("./jobs/brasilapi-holidays", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./jobs/brasilapi-holidays")>()),
+  fetchHolidays: async () => {
     throw new Error("offline");
   },
 }));

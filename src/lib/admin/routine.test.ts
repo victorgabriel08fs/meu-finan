@@ -40,6 +40,7 @@ describe("describeReminders", () => {
     sent: {
       daily_summary: 1,
       bills_due: 2,
+      non_business_due: 1,
       income_countdown: 0,
       weekly_summary: 1,
       monthly_summary: 0,
@@ -57,6 +58,7 @@ describe("describeReminders", () => {
       "2 pessoas com avisos ligados",
       "1 Resumo do dia enviado",
       "2 Contas a vencer enviadas",
+      "1 Aviso de dia não útil enviado",
       "1 Resumo semanal enviado",
       "1 aviso já tinha saído hoje",
       "3 sem nada a dizer hoje",
@@ -156,6 +158,54 @@ describe("describeStep", () => {
     ]);
     expect(notes("rollInvoices", { rows: 3, nested: { a: 1 } })).toEqual([]);
     expect(notes("syncMarketRates", { changedRows: "x" })).toEqual([]);
+  });
+
+  it("describes the holiday sync by year", () => {
+    const notes = (details?: Record<string, unknown>) =>
+      describeStep({
+        name: "syncHolidays",
+        status: "ok",
+        durationMs: 5,
+        details,
+      }).notes;
+    expect(
+      describeStep({ name: "syncHolidays", status: "ok", durationMs: 5 }).label,
+    ).toBe("Feriados (BrasilAPI)");
+    expect(
+      notes({
+        years: [
+          { year: 2026, status: "fresh" },
+          { year: 2027, status: "fresh" },
+        ],
+      }),
+    ).toEqual(["Feriados de 2026 e 2027 em dia"]);
+    expect(
+      notes({
+        years: [
+          { year: 2026, status: "fresh" },
+          {
+            year: 2027,
+            status: "updated",
+            holidays: 13,
+            changed: 13,
+            rejected: 0,
+          },
+        ],
+      }),
+    ).toEqual(["Feriados de 2026 em dia", "Feriados de 2027 atualizados (13)"]);
+    expect(
+      notes({
+        years: [
+          { year: 2026, status: "fresh" },
+          { year: 2027, status: "error", error: "x" },
+        ],
+      }),
+    ).toEqual([
+      "Feriados de 2026 em dia",
+      "Feriados de 2027: não deu para buscar",
+    ]);
+    expect(notes({ years: "x" })).toEqual([]);
+    expect(notes(undefined)).toEqual([]);
   });
 });
 

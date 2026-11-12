@@ -10,6 +10,7 @@ import { rollInvoices, snapshotBalances } from "./steps/later-phases";
 import { materializeRecurrences } from "./steps/materialize-recurrences";
 import { purgeDeleted } from "./steps/purge-deleted";
 import { sendReminders } from "./steps/send-reminders";
+import { syncHolidays } from "./steps/sync-holidays";
 import { syncMarketRates } from "./steps/sync-market-rates";
 
 export const DAILY_JOB = "daily";
@@ -25,6 +26,7 @@ export const dailySteps: readonly JobStep[] = [
   materializeRecurrences,
   rollInvoices,
   syncMarketRates,
+  syncHolidays,
   snapshotBalances,
   sendReminders,
   purgeDeleted,
