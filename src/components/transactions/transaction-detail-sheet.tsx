@@ -15,7 +15,9 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { categoryLabel } from "@/lib/categories/hierarchy";
+import { isInGrace } from "@/lib/finance/business-days";
 import { fullDateLabel, relativeDayLabel } from "@/lib/format/date";
+import { graceLabel, nonBusinessDetail } from "@/lib/format/due-day";
 import {
   type EditScope,
   editScopeOptions,
@@ -51,7 +53,11 @@ const KIND_LABEL: Record<StatementItem["kind"], string> = {
   adjustment: "Ajuste de saldo",
 };
 
-/** "Pago", "Agendado", "Vence hoje", "Vencido" (expenses) or "Pendente". */
+/**
+ * "Pago", "Agendado", "Vence hoje", "Vencido" (expenses) or "Pendente"; an
+ * expense due on a non-business day reads "Prazo até seg, 16 nov" up to the
+ * next business day, instead of "Vencido".
+ */
 export function statusOf(
   item: StatementItem,
   today: string,
@@ -59,6 +65,12 @@ export function statusOf(
   if (item.status === "paid") return { label: "Pago", tone: "primary" };
   if (item.occurredOn > today) return { label: "Agendado", tone: "neutral" };
   if (item.kind !== "expense") return { label: "Pendente", tone: "warning" };
+  if (isInGrace(item.occurredOn, item.nonBusinessDue, today)) {
+    return {
+      label: graceLabel(item.nonBusinessDue.nextBusinessDay, today),
+      tone: "warning",
+    };
+  }
   return item.occurredOn === today
     ? { label: "Vence hoje", tone: "warning" }
     : { label: "Vencido", tone: "danger" };
@@ -128,6 +140,8 @@ export function TransactionDetailSheet({
   const transfer = item.kind === "transfer";
   const adjustment = item.kind === "adjustment";
   const status = statusOf(item, today);
+  const nonBusiness =
+    pending && item.kind === "expense" ? (item.nonBusinessDue ?? null) : null;
 
   function requestDelete(target: StatementItem) {
     if (target.installment || target.recurring) setMode("delete");
@@ -345,6 +359,11 @@ export function TransactionDetailSheet({
                   · {relativeDayLabel(item.occurredOn, today)}
                 </span>
               </Fact>
+              {nonBusiness ? (
+                <Fact label="Dia não útil" stacked>
+                  {nonBusinessDetail(nonBusiness, item.occurredOn, today)}
+                </Fact>
+              ) : null}
               <Fact label="Status">{status.label}</Fact>
               {item.installment ? (
                 <Fact label="Parcela">

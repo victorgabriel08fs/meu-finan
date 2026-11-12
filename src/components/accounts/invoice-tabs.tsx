@@ -14,6 +14,10 @@ export type InvoiceTab = {
   label: string;
   href: string;
   selected: boolean;
+  /**
+   * The status shown (shownInvoiceStatus): "Fechada", not "Vencida", in the
+   * grace days of a due date on a non-business day.
+   */
   status: InvoiceStatus;
   /** Invoices after the current one show their amount instead of a status. */
   future: boolean;

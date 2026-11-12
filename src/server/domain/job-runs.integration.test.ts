@@ -7,10 +7,16 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
-// runDailyJob also syncs the market rates: no network in the tests.
+// runDailyJob also syncs the market rates and the holidays: no network in the tests.
 vi.mock("../jobs/bcb-sgs", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../jobs/bcb-sgs")>()),
   fetchSgsSeries: async () => {
+    throw new Error("offline");
+  },
+}));
+vi.mock("../jobs/brasilapi-holidays", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../jobs/brasilapi-holidays")>()),
+  fetchHolidays: async () => {
     throw new Error("offline");
   },
 }));
@@ -142,6 +148,50 @@ describe("routineConfig", () => {
   });
 });
 
+describe("routineConfig recipients and alerta_dia_nao_util", () => {
+  it("does not count someone whose only notice left on needs the flag they lack", async () => {
+    const onlyNonBusiness = {
+      events: {
+        daily_summary: false,
+        bills_due: false,
+        non_business_due: true,
+        income_countdown: false,
+        weekly_summary: false,
+        monthly_summary: false,
+      },
+      billsLeadDays: 1,
+      showAmounts: false,
+    };
+    await m.db
+      .insert(m.schema.userSettings)
+      .values({ userId: "ana", notificationPrefs: onlyNonBusiness });
+    await m.db.insert(m.schema.featureFlagOverrides).values({
+      userId: "ana",
+      key: "notificacoes_push",
+      enabled: true,
+    });
+    await m.db.insert(m.schema.pushSubscriptions).values({
+      userId: "ana",
+      endpoint: "https://push.example/ana",
+      p256dh: "x",
+      auth: "y",
+    });
+    try {
+      expect((await m.jobRuns.routineConfig()).recipients).toBe(0);
+      await m.db.insert(m.schema.featureFlagOverrides).values({
+        userId: "ana",
+        key: "alerta_dia_nao_util",
+        enabled: true,
+      });
+      expect((await m.jobRuns.routineConfig()).recipients).toBe(1);
+    } finally {
+      await m.db.delete(m.schema.pushSubscriptions);
+      await m.db.delete(m.schema.featureFlagOverrides);
+      await m.db.delete(m.schema.userSettings);
+    }
+  });
+});
+
 describe("runDailyNow", () => {
   it("refuses a non-administrator without writing anything", async () => {
     await expect(m.jobRuns.runDailyNow("bruno")).rejects.toThrow(NOT_ALLOWED);
@@ -157,6 +207,12 @@ describe("runDailyNow", () => {
     expect(row?.id).toBe(result.runId);
     expect(row?.report?.trigger).toBe("admin");
     expect(row?.status).toBe(result.status);
+    // The holiday sync is a step of the daily job (offline here: it fails, the rest runs).
+    const names = (row?.report?.steps ?? []).map((step) => step.name);
+    expect(names).toContain("syncHolidays");
+    expect(names.indexOf("syncHolidays")).toBeLessThan(
+      names.indexOf("sendReminders"),
+    );
 
     const audit = await m.db.select().from(m.schema.auditLog);
     expect(audit).toHaveLength(1);

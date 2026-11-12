@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { holidayCalendar, nonBusinessDue } from "@/lib/finance";
 import type { BudgetPace } from "@/lib/finance/budget";
 import type { AccountListItem } from "@/server/domain/accounts";
 import type { UpcomingItem } from "@/server/domain/dashboard";
@@ -230,6 +231,53 @@ describe("UpcomingBills", () => {
     expect(visible).toContain("Vence 20/out · Conta principal");
     expect(html).toContain('href="/cartoes/card-1"');
     expect(html).toContain('aria-label="Pagar Aluguel"');
+  });
+
+  describe("due on a non-business day", () => {
+    const sat = nonBusinessDue("2026-11-14", holidayCalendar([2026]));
+    const render = (today: string, overrides: Partial<UpcomingItem> = {}) =>
+      renderToStaticMarkup(
+        <UpcomingBills
+          today={today}
+          items={[
+            bill({
+              id: "c1",
+              title: "Condomínio",
+              dueOn: "2026-11-14",
+              nonBusinessDue: sat,
+              ...overrides,
+            }),
+          ]}
+        />,
+      );
+
+    it("adds the note to a bill and to an invoice, never a value", () => {
+      const html = render("2026-11-12");
+      expect(text(html)).toContain("Dia não útil · passa para seg, 16 nov");
+      expect(html.match(/data-slot="non-business-hint"/g)).toHaveLength(2);
+      const invoice = render("2026-11-12", {
+        id: "i1",
+        type: "invoice",
+        title: "Fatura Nubank",
+        accountId: "card-1",
+      });
+      expect(text(invoice)).toContain("Dia não útil · passa para seg, 16 nov");
+      expect(invoice).toContain('href="/cartoes/card-1"');
+    });
+
+    it("has no note without the annotation", () => {
+      expect(
+        render("2026-11-12", { nonBusinessDue: null }).includes(
+          "non-business-hint",
+        ),
+      ).toBe(false);
+    });
+
+    it("reads Prazo during the grace days, not Venceu", () => {
+      const html = render("2026-11-15");
+      expect(text(html)).toContain("Prazo até amanhã");
+      expect(text(html)).not.toContain("Venceu");
+    });
   });
 
   it("is reassuring when nothing is due", () => {

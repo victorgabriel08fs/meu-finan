@@ -436,6 +436,7 @@ const DEFAULT_NOTICES = {
   events: {
     daily_summary: false,
     bills_due: true,
+    non_business_due: true,
     income_countdown: false,
     weekly_summary: true,
     monthly_summary: true,
@@ -448,6 +449,7 @@ const ALL_NOTICES = {
   events: {
     daily_summary: true,
     bills_due: true,
+    non_business_due: true,
     income_countdown: true,
     weekly_summary: true,
     monthly_summary: true,
@@ -533,6 +535,39 @@ describe("saveNotificationPreferencesAction", () => {
     expect(result.validationErrors).toBeUndefined();
     expect(await storedNotices("owner")).toEqual(ALL_NOTICES);
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the stored 'Vencimento em dia não útil' while alerta_dia_nao_util is off, and saves it with the flag on", async () => {
+    await enableNotices("owner");
+    const off = {
+      ...ALL_NOTICES,
+      events: { ...ALL_NOTICES.events, non_business_due: false },
+    };
+    await m.saveNotices(off);
+    // The first save kept the stored (default, on) value: the screen hides the row.
+    expect((await storedNotices("owner"))?.events?.non_business_due).toBe(true);
+
+    await m.db.insert(m.schema.featureFlagOverrides).values({
+      userId: "owner",
+      key: "alerta_dia_nao_util",
+      enabled: true,
+    });
+    await m.saveNotices(off);
+    expect((await storedNotices("owner"))?.events?.non_business_due).toBe(
+      false,
+    );
+
+    // Turned off again: a save with the row "on" cannot overwrite the stored off.
+    await m.db
+      .update(m.schema.featureFlagOverrides)
+      .set({ enabled: false })
+      .where(m.eq(m.schema.featureFlagOverrides.key, "alerta_dia_nao_util"));
+    await m.saveNotices(ALL_NOTICES);
+    const kept = await storedNotices("owner");
+    expect(kept?.events?.non_business_due).toBe(false);
+    // Everything else of that save was applied.
+    expect(kept?.billsLeadDays).toBe(3);
+    expect(kept?.events?.daily_summary).toBe(true);
   });
 
   it("takes only the whole, valid choice", async () => {

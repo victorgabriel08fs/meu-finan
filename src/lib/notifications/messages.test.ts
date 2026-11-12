@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { holidayCalendar, nonBusinessDue } from "@/lib/finance";
 import {
   type BillReminderItem,
   billsDueMessage,
@@ -11,6 +12,7 @@ import {
   joinNames,
   type MonthlySummaryInput,
   monthlySummaryMessage,
+  nonBusinessDueMessage,
   type ReminderMessage,
   type WeeklySummaryInput,
   weeklySummaryMessage,
@@ -494,5 +496,211 @@ describe("Resumo mensal", () => {
         WITH,
       ),
     ).toBeNull();
+  });
+});
+
+describe("Vencimento em dia não útil", () => {
+  const calendar = holidayCalendar([2026, 2027]);
+  const item = (
+    title: string,
+    dueOn: string,
+    amountCents: number,
+    extra: Partial<BillReminderItem> = {},
+  ): BillReminderItem => ({
+    type: "transaction",
+    title,
+    amountCents,
+    accountName: "Conta Principal",
+    dueOn,
+    days: 0,
+    overdue: false,
+    nonBusinessDue: nonBusinessDue(dueOn, calendar),
+    ...extra,
+  });
+  // Friday 13/nov/2026: the last business day before the weekend.
+  const FRIDAY = { showAmounts: true, todayIso: "2026-11-13" };
+  const FRIDAY_HIDDEN = { showAmounts: false, todayIso: "2026-11-13" };
+  const rent = item("Aluguel", "2026-11-14", 210_000);
+
+  it("one bill on a weekend, with and without amounts", () => {
+    expect(plain(nonBusinessDueMessage([rent], FRIDAY))).toEqual({
+      title: "Aluguel vence no sábado (14/nov)",
+      body: "R$ 2.100,00 · Conta Principal. Dia não útil: o pagamento costuma passar para seg, 16 nov. Se preferir não esperar, pague hoje.",
+    });
+    const hidden = nonBusinessDueMessage([rent], FRIDAY_HIDDEN);
+    expectNoAmounts(hidden);
+    expect(hidden).toEqual({
+      title: "Aluguel vence no sábado (14/nov)",
+      body: "Sai da Conta Principal. Dia não útil: o pagamento costuma passar para seg, 16 nov. Se preferir não esperar, pague hoje.",
+    });
+  });
+
+  it("one bill on a holiday, named", () => {
+    const light = item("Luz", "2026-11-20", 18_980);
+    const message = nonBusinessDueMessage([light], {
+      showAmounts: true,
+      todayIso: "2026-11-19",
+    });
+    expect(plain(message)).toEqual({
+      title: "Luz vence num feriado (20/nov)",
+      body: "R$ 189,80 · Conta Principal. Consciência Negra: o pagamento costuma passar para seg, 23 nov. Se preferir não esperar, pague hoje.",
+    });
+  });
+
+  it("one bill on 31/dez", () => {
+    const light = item("Luz", "2026-12-31", 18_980);
+    const message = nonBusinessDueMessage([light], {
+      showAmounts: false,
+      todayIso: "2026-12-30",
+    });
+    expectNoAmounts(message);
+    expect(message).toEqual({
+      title: "Luz vence em 31/dez, sem expediente bancário",
+      body: "Sai da Conta Principal. Dia sem expediente bancário: o pagamento costuma passar para seg, 4 jan. Se preferir não esperar, pague hoje.",
+    });
+  });
+
+  it("due today (created late): says the day and leaves out 'pague hoje'", () => {
+    const message = nonBusinessDueMessage([rent], {
+      showAmounts: true,
+      todayIso: "2026-11-14",
+    });
+    expect(message?.title).toBe("Aluguel vence hoje, sábado");
+    expect(message?.body).not.toMatch(/pague hoje/);
+  });
+
+  it("does not say 'pague hoje' ahead of the last business day", () => {
+    const message = nonBusinessDueMessage([item("Luz", "2026-11-20", 100)], {
+      showAmounts: true,
+      todayIso: "2026-11-18",
+    });
+    expect(message?.body).not.toMatch(/pague hoje/);
+  });
+
+  it("an invoice, with and without amounts", () => {
+    const invoice = item("Fatura Nubank", "2026-11-14", 138_042, {
+      type: "invoice",
+      accountName: "Nubank",
+    });
+    expect(plain(nonBusinessDueMessage([invoice], FRIDAY))).toEqual({
+      title: "Fatura Nubank vence no sábado (14/nov)",
+      body: "R$ 1.380,42 em aberto. Dia não útil: o pagamento costuma passar para seg, 16 nov. Se preferir não esperar, pague hoje.",
+    });
+    const hidden = nonBusinessDueMessage([invoice], FRIDAY_HIDDEN);
+    expectNoAmounts(hidden);
+    expect(hidden?.body).toBe(
+      "Dia não útil: o pagamento costuma passar para seg, 16 nov. Se preferir não esperar, pague hoje. Toque para ver a fatura.",
+    );
+  });
+
+  it("several bills, grouped by day", () => {
+    const items = [
+      rent,
+      item("Luz", "2026-11-14", 18_980),
+      item("Internet", "2026-11-20", 9_990),
+    ];
+    const message = nonBusinessDueMessage(items, FRIDAY);
+    expect(message?.title).toBe("3 contas vencem em dia não útil");
+    expect(plain(message)?.body).toBe(
+      "Sáb, 14 nov: Aluguel (R$ 2.100,00) e Luz (R$ 189,80). Sex, 20 nov (feriado): Internet (R$ 99,90). O pagamento costuma passar para o próximo dia útil.",
+    );
+    const hidden = nonBusinessDueMessage(items, FRIDAY_HIDDEN);
+    expectNoAmounts(hidden);
+    expect(hidden?.body).toBe(
+      "Sáb, 14 nov: Aluguel e Luz. Sex, 20 nov (feriado): Internet. O pagamento costuma passar para o próximo dia útil.",
+    );
+  });
+
+  it("cuts past 4 names with 'E mais N contas.'", () => {
+    const items = Array.from({ length: 6 }, (_, i) =>
+      item(`Conta ${i + 1}`, "2026-11-14", 1_000),
+    );
+    const message = nonBusinessDueMessage(items, FRIDAY_HIDDEN);
+    expect(message?.title).toBe("6 contas vencem em dia não útil");
+    expect(message?.body).toContain("E mais 2 contas.");
+    expect(message?.body).not.toContain("Conta 5");
+  });
+
+  it("ignores items without the annotation; nothing to say is null", () => {
+    expect(nonBusinessDueMessage([], FRIDAY)).toBeNull();
+    expect(
+      nonBusinessDueMessage([{ ...rent, nonBusinessDue: null }], FRIDAY),
+    ).toBeNull();
+  });
+});
+
+describe("Contas a vencer: note for a due date on a non-business day", () => {
+  const calendar = holidayCalendar([2026]);
+  const withNote = (
+    title: string,
+    dueOn: string,
+    extra: Partial<BillReminderItem> = {},
+  ): BillReminderItem => ({
+    type: "transaction",
+    title,
+    amountCents: 210_000,
+    accountName: "Conta Principal",
+    dueOn,
+    days: 3,
+    overdue: false,
+    nonBusinessDue: nonBusinessDue(dueOn, calendar),
+    ...extra,
+  });
+  const plainDay = (title: string) =>
+    withNote(title, "2026-11-12", { nonBusinessDue: null });
+
+  it("one bill: the note goes before 'Toque para…'", () => {
+    expect(
+      plain(billsDueMessage([withNote("Aluguel", "2026-11-14")], WITH))?.body,
+    ).toBe(
+      "R$ 2.100,00 · Conta Principal. Cai num sábado: o pagamento costuma passar para seg, 16 nov. Toque para ver e marcar como pago.",
+    );
+    expect(
+      billsDueMessage([withNote("Luz", "2026-11-20")], WITHOUT)?.body,
+    ).toBe(
+      "Sai da Conta Principal. Cai num feriado (Consciência Negra): o pagamento costuma passar para seg, 23 nov. Toque para ver e marcar como pago.",
+    );
+    expect(
+      billsDueMessage([withNote("Luz", "2026-12-31")], WITHOUT)?.body,
+    ).toContain("Cai num dia sem expediente bancário:");
+  });
+
+  it("an invoice carries the note too", () => {
+    const invoice = withNote("Fatura Nubank", "2026-11-15", {
+      type: "invoice",
+      amountCents: 138_042,
+    });
+    expect(billsDueMessage([invoice], WITHOUT)?.body).toBe(
+      "Cai num domingo: o pagamento costuma passar para seg, 16 nov. Toque para ver a fatura.",
+    );
+  });
+
+  it("several bills: a closing sentence names those that fall on such a day", () => {
+    const items = [
+      withNote("Aluguel", "2026-11-14"),
+      withNote("Luz", "2026-11-14"),
+      plainDay("Gás"),
+    ];
+    expect(billsDueMessage(items, WITHOUT)?.body).toMatch(
+      /Aluguel e Luz vencem em dia não útil\.$/,
+    );
+    expect(
+      billsDueMessage(
+        [withNote("Aluguel", "2026-11-14"), plainDay("Gás")],
+        WITHOUT,
+      )?.body,
+    ).toMatch(/Aluguel vence em dia não útil\.$/);
+  });
+
+  it("no note on an overdue bill or without the annotation", () => {
+    const overdue = withNote("Aluguel", "2026-11-14", {
+      days: -1,
+      overdue: true,
+    });
+    expect(billsDueMessage([overdue], WITHOUT)?.body).not.toMatch(/Cai num/);
+    const none = withNote("Aluguel", "2026-11-14", {
+      nonBusinessDue: undefined,
+    });
+    expect(billsDueMessage([none], WITHOUT)?.body).not.toMatch(/Cai num/);
   });
 });

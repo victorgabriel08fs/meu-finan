@@ -70,6 +70,8 @@ test("o service worker abre sem sessão e sem cache", async ({ request }) => {
 const NOTICES = [
   ["Resumo do dia", false],
   ["Contas a vencer", true],
+  // The demo turns alerta_dia_nao_util on for Ana: the row shows, on by default.
+  ["Vencimento em dia não útil", true],
   ["Próxima receita", false],
   ["Resumo semanal", true],
   ["Resumo mensal", true],
@@ -160,6 +162,38 @@ test("Avisos: os padrões, e cada toque fica salvo na conta", async ({
   await saveWith(page, '"daily_summary":false', () =>
     switchOf(page, "Resumo do dia").click(),
   );
+});
+
+test("Vencimento em dia não útil: logo depois de Contas a vencer, com descrição, e a escolha fica salva", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openNotices(page);
+  const row = page.locator('li[data-event="non_business_due"]');
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(
+    "No último dia útil antes, quando uma conta vence no fim de semana ou num feriado.",
+  );
+  // Right after Contas a vencer in the list.
+  const order = await page
+    .locator("li[data-event]")
+    .evaluateAll((items) =>
+      items.map((item) => item.getAttribute("data-event")),
+    );
+  expect(order.indexOf("non_business_due")).toBe(
+    order.indexOf("bills_due") + 1,
+  );
+  const toggle = switchOf(page, "Vencimento em dia não útil");
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+  await saveWith(page, '"non_business_due":false', () => toggle.click());
+  await page.reload();
+  await expect(toggle).toHaveAttribute("aria-checked", "false", {
+    timeout: 30_000,
+  });
+  // Back to the default.
+  await saveWith(page, '"non_business_due":true', () => toggle.click());
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
 });
 
 test("sem conexão, o aviso volta ao que estava e o toast oferece Tentar de novo", async ({

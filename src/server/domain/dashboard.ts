@@ -9,8 +9,10 @@ import {
   forecastBalance,
   invoiceFor,
   isCountedSavingsBox,
+  isInGrace,
   iso,
   isoMonth,
+  type NonBusinessDue,
   parse,
   shiftPeriod,
   spendablePerDayByDay,
@@ -19,6 +21,7 @@ import { db } from "@/server/db/client";
 import { categories, transactions } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
 import { type PeriodRange, resolvePeriod, type UserContext } from "./context";
+import { pendingNonBusinessDue } from "./holidays";
 import {
   cashFlowReport,
   categoryRootId,
@@ -44,6 +47,8 @@ export type UpcomingItem = {
   accountName: string;
   /** Invoice: the card account, for the link. */
   accountId: string;
+  /** Due on a non-business day (flag alerta_dia_nao_util; see withNonBusinessDue). */
+  nonBusinessDue?: NonBusinessDue | null;
 };
 
 export type Insight = {
@@ -185,6 +190,32 @@ export async function getUpcoming(ctx: UserContext): Promise<UpcomingItem[]> {
         })),
     ),
   ].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+}
+
+/**
+ * Próximas contas with the non-business day note (flag alerta_dia_nao_util):
+ * a bill due on a weekend or holiday gets `nonBusinessDue` while it still
+ * matters, and is not overdue in the grace days up to the next business day
+ * (it neither goes to the top nor turns red). The caller checks the flag.
+ */
+export async function withNonBusinessDue(
+  items: UpcomingItem[],
+  today: string,
+): Promise<UpcomingItem[]> {
+  const found = await pendingNonBusinessDue(
+    items.map((item) => item.dueOn),
+    today,
+  );
+  if (found.size === 0) return items;
+  return items.map((item) => {
+    const nb = found.get(item.dueOn);
+    if (!nb) return item;
+    return {
+      ...item,
+      nonBusinessDue: nb,
+      overdue: item.overdue && !isInGrace(item.dueOn, nb, today),
+    };
+  });
 }
 
 export type SpendablePerDay = {

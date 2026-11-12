@@ -4,14 +4,17 @@ import type { ReactNode } from "react";
 import { Money, spokenAmount } from "@/components/money/money";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { CLAMP_TEXT, CLAMP_TITLE } from "@/components/ui/clamp";
+import { isInGrace, type NonBusinessDue } from "@/lib/finance/business-days";
 import {
   relativeDayLabel,
   shortDateLabel,
   todayInTimeZone,
 } from "@/lib/format/date";
+import { graceLabel, nonBusinessSpoken } from "@/lib/format/due-day";
 import { brlParts } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "./category-icon";
+import { NonBusinessHint } from "./non-business-hint";
 
 export type TransactionRowData = {
   id: string;
@@ -31,6 +34,11 @@ export type TransactionRowData = {
   subtitle?: string;
   /** Part of a recurrence: shows the ↻ mark. */
   recurring?: boolean;
+  /**
+   * A pending expense due on a non-business day (flag alerta_dia_nao_util):
+   * a third line says when the payment usually goes through.
+   */
+  nonBusinessDue?: NonBusinessDue | null;
 };
 
 type TransactionRowProps = {
@@ -57,7 +65,9 @@ const KIND_LABEL: Record<TransactionRowData["kind"], string> = {
  * dashed icon, the amount in --text-2 and a due badge (amber within 3 days);
  * transfers show the arrows icon and an unsigned amount. The amount is never
  * cut (§8): when it does not fit beside the title (large text), it moves to
- * a line of its own, still on the right.
+ * a line of its own, still on the right. A pending expense due on a
+ * non-business day gets a third line ("Dia não útil · passa para seg, 16
+ * nov"), which moves under the whole row when the text is large.
  */
 export function TransactionRow({
   txn,
@@ -80,6 +90,8 @@ export function TransactionRow({
   const subtitle = txn.subtitle ?? `${categoryText} · ${txn.accountName}`;
   const todayIso = today ?? todayInTimeZone();
   const due = pending ? dueBadge(txn, todayIso) : null;
+  const nonBusiness =
+    pending && txn.kind === "expense" ? (txn.nonBusinessDue ?? null) : null;
 
   const label = [
     txn.description,
@@ -94,6 +106,7 @@ export function TransactionRow({
       : null,
     txn.recurring ? "recorrente" : null,
     due?.text.toLowerCase() ?? null,
+    nonBusiness ? nonBusinessSpoken(nonBusiness) : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -138,6 +151,7 @@ export function TransactionRow({
               </Badge>
             ) : null}
           </p>
+          {nonBusiness ? <NonBusinessHint nb={nonBusiness} /> : null}
         </div>
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-3">
@@ -159,11 +173,18 @@ export function TransactionRow({
           <div className="relative z-10 shrink-0">{trailing}</div>
         ) : null}
       </div>
+      {nonBusiness ? (
+        <NonBusinessHint nb={nonBusiness} placement="below" />
+      ) : null}
     </div>
   );
 }
 
-/** "Vence amanhã" (amber within 3 days), "Venceu ontem" (red), "Agendado · 15/out". */
+/**
+ * "Vence amanhã" (amber within 3 days), "Venceu ontem" (red), "Agendado ·
+ * 15/out"; "Prazo até seg, 16 nov" (amber) after a non-business due date,
+ * up to the next business day.
+ */
 function dueBadge(
   txn: TransactionRowData,
   today: string,
@@ -173,6 +194,12 @@ function dueBadge(
     tone: "neutral" as const,
   };
   if (txn.kind !== "expense") return scheduled;
+  if (isInGrace(txn.occurredOn, txn.nonBusinessDue, today)) {
+    return {
+      text: graceLabel(txn.nonBusinessDue.nextBusinessDay, today),
+      tone: "warning",
+    };
+  }
 
   const days = daysFrom(today, txn.occurredOn);
   if (days < -1) return { text: `Venceu há ${-days} dias`, tone: "danger" };

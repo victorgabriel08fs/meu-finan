@@ -22,6 +22,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   events: {
     daily_summary: false,
     bills_due: true,
+    // On by default (owner, 12/11/2026); sent only with alerta_dia_nao_util.
+    non_business_due: true,
     income_countdown: false,
     weekly_summary: true,
     monthly_summary: true,
@@ -85,4 +87,18 @@ export function enabledReminderEvents(
   preferences: NotificationPreferences,
 ): ReminderEvent[] {
   return REMINDER_EVENTS.filter((event) => preferences.events[event]);
+}
+
+/**
+ * The events the person gets: those left on, without the ones whose flag is
+ * off for them (`non_business_due` needs alerta_dia_nao_util). What the job
+ * sends, the preview shows and the Rotina counts.
+ */
+export function availableReminderEvents(
+  preferences: NotificationPreferences,
+  flags: { nonBusinessDue: boolean },
+): ReminderEvent[] {
+  return enabledReminderEvents(preferences).filter(
+    (event) => event !== "non_business_due" || flags.nonBusinessDue,
+  );
 }

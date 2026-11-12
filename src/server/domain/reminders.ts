@@ -49,7 +49,12 @@ import {
 
 export { periodMonthOf };
 
-import { forecastUntil, getUpcoming, type UpcomingItem } from "./dashboard";
+import {
+  forecastUntil,
+  getUpcoming,
+  type UpcomingItem,
+  withNonBusinessDue,
+} from "./dashboard";
 import { categoryBreakdown } from "./reports";
 import { accountsOf, pendingUntil, spendableAccountsOf } from "./request-reads";
 import { periodTotals } from "./transactions";
@@ -119,9 +124,18 @@ export async function loadDailySummary(
   };
 }
 
-/** Contas a vencer: the Próximas contas of the Início (overdue included). */
-export function loadBillCandidates(ctx: UserContext): Promise<UpcomingItem[]> {
-  return getUpcoming(ctx);
+/**
+ * Contas a vencer and Vencimento em dia não útil: the Próximas contas of the
+ * Início (overdue included). With `nonBusiness` (the person's flag
+ * alerta_dia_nao_util), the bills due on a non-business day carry
+ * `nonBusinessDue`.
+ */
+export async function loadBillCandidates(
+  ctx: UserContext,
+  { nonBusiness = false }: { nonBusiness?: boolean } = {},
+): Promise<UpcomingItem[]> {
+  const items = await getUpcoming(ctx);
+  return nonBusiness ? withNonBusinessDue(items, ctx.todayIso) : items;
 }
 
 /**

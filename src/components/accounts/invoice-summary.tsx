@@ -6,10 +6,12 @@ import {
   Lock,
 } from "lucide-react";
 import Link from "next/link";
+import { NonBusinessHint } from "@/components/finance/non-business-hint";
 import { Money } from "@/components/money/money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { NonBusinessDue } from "@/lib/finance/business-days";
 import type { InvoiceStatus } from "@/lib/finance/invoices";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import { cn } from "@/lib/utils";
@@ -17,6 +19,7 @@ import {
   INVOICE_STATUS,
   type InvoiceView,
   invoiceTiming,
+  shownInvoiceStatus,
 } from "./invoice-meta";
 import { PayInvoiceSheet, type PaymentAccount } from "./pay-invoice-sheet";
 
@@ -40,12 +43,18 @@ type InvoiceSummaryCardProps = {
   /** Owed in single payments and in installments, when there are both. */
   split: { cashCents: number; installmentCents: number } | null;
   paymentAccounts: PaymentAccount[];
+  /**
+   * Due on a non-business day with an amount still open (flag
+   * alerta_dia_nao_util): a note under the dates and, up to the next
+   * business day, "Fechada" with "Prazo até …" instead of "Vencida".
+   */
+  nonBusinessDue?: NonBusinessDue | null;
 };
 
 /**
  * The invoice on screen (doc 02 §6.8): status badge with icon (Aberta ·
  * Fechada · Paga · Vencida) and how far the next date is, total, closing and
- * due dates, and "Pagar fatura".
+ * due dates, the non-business day note, and "Pagar fatura".
  */
 export function InvoiceSummaryCard({
   invoice,
@@ -53,8 +62,11 @@ export function InvoiceSummaryCard({
   cardName,
   split,
   paymentAccounts,
+  nonBusinessDue = null,
 }: InvoiceSummaryCardProps) {
-  const meta = INVOICE_STATUS[invoice.status];
+  const nb = invoice.outstandingCents > 0 ? nonBusinessDue : null;
+  const status = shownInvoiceStatus(invoice, today, nb);
+  const meta = INVOICE_STATUS[status];
   const month = monthLabel(invoice.referenceMonth).split(" de ")[0];
 
   return (
@@ -67,11 +79,11 @@ export function InvoiceSummaryCard({
           tone={meta.tone}
           className="min-h-6.5 gap-1.5 rounded-full px-2.5 py-0.5 font-bold"
         >
-          <StatusIcon status={invoice.status} />
+          <StatusIcon status={status} />
           {meta.label}
         </Badge>
         <span className="text-caption font-semibold text-fg-2">
-          {invoiceTiming(invoice, today)}
+          {invoiceTiming(invoice, today, nb)}
         </span>
       </div>
 
@@ -86,6 +98,14 @@ export function InvoiceSummaryCard({
         Fecha {shortDateLabel(invoice.closingDate)} · Vence{" "}
         {shortDateLabel(invoice.dueDate)}
       </p>
+      {nb ? (
+        <NonBusinessHint
+          nb={nb}
+          variant="detail"
+          dueOn={invoice.dueDate}
+          today={today}
+        />
+      ) : null}
       {invoice.paidCents > 0 ? (
         <p className="text-callout text-fg-2">
           Pago{" "}

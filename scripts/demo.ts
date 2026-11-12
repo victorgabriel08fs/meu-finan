@@ -24,6 +24,7 @@ import {
   addMonths,
   atDay,
   compare,
+  dayOfWeek,
   iso,
   type LocalDate,
   monthEnd,
@@ -467,6 +468,11 @@ async function main(): Promise<void> {
     installments: 6,
   });
 
+  // A bill due next Saturday (1 to 7 days ahead): the non-business day note
+  // of the Início, the Extrato and the detail (the flag is on for Ana).
+  const saturday = addDays(today, (6 - dayOfWeek(today) + 7) % 7 || 7);
+  await expense("Condomínio", "Moradia", 68_000, saturday);
+
   // Card invoices paid on their due date (the current one stays open).
   for (const invoice of await listInvoices(ctx, card)) {
     if (invoice.dueDate <= ctx.todayIso && invoice.outstandingCents > 0) {
@@ -713,8 +719,8 @@ async function seedPeople(
     });
   }
   // Importar extrato turned off for Bruno only (a per-person flag), and the
-  // notifications and the customizable Início (off by default) on for Ana,
-  // so the demo shows them.
+  // notifications, the customizable Início and the non-business day alert
+  // (off by default) on for Ana, so the demo shows them.
   await db.insert(featureFlagOverrides).values([
     {
       userId: brunoId,
@@ -733,6 +739,13 @@ async function seedPeople(
     {
       userId: admin.id,
       key: "inicio_personalizavel",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
+    {
+      userId: admin.id,
+      key: "alerta_dia_nao_util",
       enabled: true,
       updatedBy: admin.id,
       updatedAt: ago(0),

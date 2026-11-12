@@ -3,7 +3,10 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { notificationPreferencesSchema } from "@/lib/notifications/preferences";
-import { setNotificationPreferences } from "@/server/domain/preferences";
+import {
+  getNotificationPreferences,
+  setNotificationPreferences,
+} from "@/server/domain/preferences";
 import { isFlagEnabled } from "@/server/flags";
 import { previewReminders } from "@/server/reminders";
 import { ActionError, adminAction, flaggedAction } from "@/server/safe-action";
@@ -14,7 +17,9 @@ const FLAG_OFF = "As notificações não estão disponíveis.";
 /**
  * The notices of Ajustes › Notificações › Avisos (doc 02 §6.14), behind the
  * notificacoes_push flag. The screen sends the whole choice on every change,
- * so the last one saved always wins as a whole.
+ * so the last one saved always wins as a whole. With alerta_dia_nao_util off
+ * the screen hides "Vencimento em dia não útil", so its stored choice is
+ * kept, whatever came in.
  */
 export const saveNotificationPreferencesAction = flaggedAction(
   "notificacoes_push",
@@ -22,7 +27,18 @@ export const saveNotificationPreferencesAction = flaggedAction(
 )
   .inputSchema(notificationPreferencesSchema)
   .action(async ({ parsedInput, ctx: { user } }) => {
-    await setNotificationPreferences(user.id, parsedInput);
+    let preferences = parsedInput;
+    if (!(await isFlagEnabled("alerta_dia_nao_util", user.id))) {
+      const stored = await getNotificationPreferences(user.id);
+      preferences = {
+        ...parsedInput,
+        events: {
+          ...parsedInput.events,
+          non_business_due: stored.events.non_business_due,
+        },
+      };
+    }
+    await setNotificationPreferences(user.id, preferences);
     refresh();
   });
 

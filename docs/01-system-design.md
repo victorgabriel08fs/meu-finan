@@ -67,7 +67,7 @@
 | RF-11 | Simulador | Juros compostos com valor inicial, aporte mensal (com reajuste anual), taxa (a.m., a.a., % do CDI, IPCA+), prazo, IR regressivo, inflação; modos "quanto terei", "quanto investir", "em quanto tempo"; comparar até 3 cenários; salvar e compartilhar |
 | RF-12 | Relatórios | Visão geral (receitas × despesas, taxa de poupança), por categoria (com drill-down), fluxo de caixa com projeção, patrimônio líquido, calendário de gastos; regime de competência ou caixa; exportar CSV/PDF |
 | RF-13 | Importação | Upload de OFX/CSV, pré-visualização, deduplicação, categorização sugerida por regras aprendidas |
-| RF-14 | Notificações | Via Web Push, uma vez por dia pelo cron: Resumo do dia, Contas a vencer, Próxima receita, Resumo semanal e Resumo mensal, cada um ligado ou desligado pela pessoa (05/11/2026). Depois: fatura fechando, orçamento a 80%/100%, meta atingida (resumo por e-mail opcional, em fase posterior) |
+| RF-14 | Notificações | Via Web Push, uma vez por dia pelo cron: Resumo do dia, Contas a vencer, Vencimento em dia não útil (flag `alerta_dia_nao_util`, 12/11/2026), Próxima receita, Resumo semanal e Resumo mensal, cada um ligado ou desligado pela pessoa (05/11/2026). Depois: fatura fechando, orçamento a 80%/100%, meta atingida (resumo por e-mail opcional, em fase posterior) |
 | RF-15 | Insights | Cartões de observação automáticos (ex.: gasto atípico em uma categoria) |
 | RF-16 | Privacidade e dados | Modo discreto (oculta valores), exportar todos os dados (backup), apagar todos os dados (recomeçar do zero) |
 | RF-17 | Ajustes | Categorias (criar, editar, mesclar, reordenar), tema, dia de início do mês, notificações, segurança (passkeys, senha, sessões) |
@@ -123,6 +123,7 @@ flowchart TB
 
   subgraph Ext["Externos"]
     BCB["API SGS do Banco Central<br/>CDI · Selic · IPCA"]
+    BRAPI["BrasilAPI<br/>feriados nacionais"]
     RESEND["Resend<br/>e-mail (opcional)"]
     PUSH["Web Push<br/>(FCM / APNs / Mozilla)"]
     SENTRY["Sentry (opcional)"]
@@ -135,6 +136,7 @@ flowchart TB
   RH --> BLOB
   CRONS -- "Bearer CRON_SECRET" --> CRON
   CRON --> BCB
+  CRON --> BRAPI
   CRON --> RESEND
   CRON --> PUSH
   FN -.-> SENTRY
@@ -377,8 +379,8 @@ create table user_settings (
   home_layout          jsonb check (home_layout is null or jsonb_typeof(home_layout) = 'array'),
                        -- blocos do Início escolhidos (doc 02 §6.3): [{ id, visible }], sem o Saldo; null = padrão do app
   notification_prefs   jsonb check (notification_prefs is null or jsonb_typeof(notification_prefs) = 'object'),
-                       -- avisos do cron (doc 02 §6.14): { events: { daily_summary, bills_due, income_countdown,
-                       -- weekly_summary, monthly_summary }, billsLeadDays: 0|1|3, showAmounts }; null = padrão;
+                       -- avisos do cron (doc 02 §6.14): { events: { daily_summary, bills_due, non_business_due,
+                       -- income_countdown, weekly_summary, monthly_summary }, billsLeadDays: 0|1|3, showAmounts }; null = padrão;
                        -- lido campo a campo (campo ausente ou inválido e evento novo ficam no padrão)
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
@@ -600,6 +602,17 @@ create table market_rates (            -- global (sem user_id), alimentada pelo 
   primary key (index, ref_date)
 );
 
+create table holidays (                -- global (sem user_id), alimentada pelo cron (passo syncHolidays)
+  scope      text not null,            -- 'BR' (nacionais); depois 'BR-SP', 'BR-SP-3550308' (UF, IBGE)
+  date       date not null,
+  name       text not null check (char_length(name) between 1 and 80),
+  source     text not null check (source in ('brasilapi')),
+  fetched_at timestamptz not null default now(),   -- quando o ano foi buscado; base dos 30 dias
+  primary key (scope, date)
+);
+-- Cache da BrasilAPI. O calendário que o app usa é o cálculo próprio (src/lib/finance/business-days.ts,
+-- doc 03 §10.3) somado a estas linhas, que só acrescentam datas. O cálculo não é gravado.
+
 create table simulations (
   id         uuid primary key,
   user_id    text not null references "user"(id) on delete cascade,
@@ -633,12 +646,12 @@ create table push_subscriptions (
 create table notifications (
   id          uuid primary key,
   user_id     text not null references "user"(id) on delete cascade,
-  type        text not null,           -- avisos do cron: daily_summary | bills_due | income_countdown | weekly_summary
-                                       -- | monthly_summary; reservados: bill_due | invoice_closing | budget_80
+  type        text not null,           -- avisos do cron: daily_summary | bills_due | non_business_due | income_countdown
+                                       -- | weekly_summary | monthly_summary; reservados: bill_due | invoice_closing | budget_80
                                        -- | budget_100 | goal_reached | insight
   dedupe_key  text not null,           -- '{tipo}:{data local}', ex.: 'weekly_summary:2026-11-09' (um por dia)
-  payload     jsonb not null,          -- o texto como foi enviado (título, corpo, link); bills_due guarda
-                                       -- itemKeys ('t:{id}:{vencimento}', 'f:{id}:{vencimento}', '…:vencida')
+  payload     jsonb not null,          -- o texto como foi enviado (título, corpo, link); bills_due e non_business_due
+                                       -- guardam itemKeys ('t:{id}:{vencimento}', 'f:{id}:{vencimento}', '…:vencida')
   read_at     timestamptz,
   created_at  timestamptz not null default now(),
   unique (user_id, dedupe_key)
@@ -946,6 +959,7 @@ Dados financeiros são **por usuário** e mudam a cada lançamento, então o cac
 | `u:{id}:cards` | lançamento em cartão, pagamento de fatura, cron de fechamento |
 | `u:{id}:goals` | aportes, alteração de meta, saldo da conta vinculada |
 | `rates` | cron diário (índices do BCB) |
+| `holidays` | cron diário (feriados da BrasilAPI). Revalidada (`revalidateTag('holidays', 'max')`) quando um ano muda; a leitura de hoje não usa `'use cache'` (por requisição, com `cache()` do React), a tag fica para quando houver cache |
 
 O extrato paginado **não** é cacheado no servidor (muda demais); no cliente, TanStack Query mantém as páginas e é invalidado após mutações.
 
@@ -989,8 +1003,9 @@ export async function GET(req: Request) {
 | 1. `materializeRecurrences` | gera lançamentos `pending` até hoje + 60 dias; avança `generated_until` | chave única (`recurrence_id`, `occurred_on`) |
 | 2. `rollInvoices` | cria a fatura do próximo ciclo quando a atual fecha; marca fechadas | `unique (account_id, reference_month)` |
 | 3. `syncMarketRates` | busca CDI, Selic e IPCA no SGS/BCB; `upsert` em `market_rates`; `updateTag('rates')` | PK (`index`, `ref_date`) |
+| 3b. `syncHolidays` | feriados nacionais do ano atual e do seguinte na BrasilAPI → `holidays`, cada ano no máximo a cada 30 dias; resposta com menos de 9 feriados válidos é erro e não apaga nada; `revalidateTag('holidays', 'max')` | PK (`scope`, `date`); diff em memória dentro de uma transação por ano |
 | 4. `snapshotBalances` | no 1º dia do mês, grava saldo de fim de mês de cada conta | PK (`account_id`, `on_date`) |
-| 5. `sendReminders` | os avisos ligados por cada pessoa (doc 02 §6.14) → Web Push: Resumo do dia, Contas a vencer, Próxima receita, Resumo semanal (segunda) e Resumo mensal (1º dia do mês financeiro) | `unique (user_id, dedupe_key)` com `'{tipo}:{data local}'`, reservado antes de enviar |
+| 5. `sendReminders` | os avisos ligados por cada pessoa (doc 02 §6.14) → Web Push: Resumo do dia, Contas a vencer, Vencimento em dia não útil, Próxima receita, Resumo semanal (segunda) e Resumo mensal (1º dia do mês financeiro) | `unique (user_id, dedupe_key)` com `'{tipo}:{data local}'`, reservado antes de enviar |
 | 6. `purge` | apaga lançamentos com `deleted_at` > 30 dias e avisos lidos há mais de 90 dias (importações e blobs órfãos > 7 dias, quando entrarem) | naturalmente idempotente |
 
 Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e retoma no dia seguinte, registrando no `job_runs`). Com poucas contas (uso pessoal ou familiar) o volume é pequeno; o orçamento de tempo é só uma proteção.
@@ -1002,7 +1017,8 @@ Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e 
 - **Quem recebe**: quem tem pelo menos um aparelho inscrito, a conta não bloqueada (`banned`), a flag `notificacoes_push` (`loadFlagsForUsers`, e o `sendPush` confere de novo) e pelo menos um aviso ligado em `user_settings.notification_prefs`. Sem as chaves VAPID, o passo fica `skipped`.
 - **Sem sessão**: cada pessoa ganha um `UserContext` novo (`getUserContext(id, { now: startedAt })`), com a data e o mês financeiro dela; as leituras do Início (`request-reads.ts`) usam esse contexto como chave. Só os aparelhos da própria pessoa recebem.
 - **Uma vez por dia**: para cada aviso, monta o texto (nada a dizer, nada enviado), reserva a linha em `notifications` (`INSERT … ON CONFLICT DO NOTHING`; sem linha, outra execução já enviou), envia e, se nenhum aparelho recebeu, apaga a reserva para a próxima execução tentar. Duas execuções ao mesmo tempo enviam cada aviso uma vez.
-- **Contas a vencer**: cada conta é avisada uma vez antes do vencimento (de hoje até a antecedência escolhida) e uma vez vencida (até 7 dias depois). As chaves avisadas ficam em `payload.itemKeys` dos últimos 14 dias.
+- **Contas a vencer**: cada conta é avisada uma vez antes do vencimento (de hoje até a antecedência escolhida) e uma vez vencida (até 7 dias depois). As chaves avisadas ficam em `payload.itemKeys` dos últimos 14 dias. Com a flag `alerta_dia_nao_util`, a conta que vence em dia não útil leva uma nota ("Cai num sábado: o pagamento costuma passar para seg, 16 nov.") e o aviso de vencida espera o próximo dia útil.
+- **Vencimento em dia não útil** (`non_business_due`, 12/11/2026): só para quem tem a flag `alerta_dia_nao_util` (`availableReminderEvents` em `sendDailyReminders`, na prévia e na contagem da Rotina; o interruptor é ligado por padrão). Candidatas: as Próximas contas (despesas pendentes fora do cartão e faturas com saldo em aberto) até hoje + 7, com `nonBusinessDue`; entra a conta cujo **último dia útil antes** do vencimento é hoje ou já passou, sem passar do vencimento (`selectNonBusinessDueReminders`). Uma vez por conta (`itemKeys` dos últimos 14 dias). `REMINDER_EVENTS` põe o aviso depois de `bills_due`: ele lê o `itemKeys` do Contas a vencer **de hoje** (`coveredToday`) e deixa essas contas de fora, porque o Contas a vencer já leva a nota (um push por conta por dia). Sem sobra, "nada a dizer". Nenhum valor na URL; o toque abre a mesma tela do Contas a vencer.
 - **Lotes e prazo**: 4 pessoas por vez; nenhuma pessoa começa depois de 200 s do início do job. Quem ficou de fora conta como `notReached`, o passo termina `partial` e a execução seguinte completa.
 - **`job_runs` só com contagens**: `recipients`, `processed`, `notReached`, `sent` por aviso, `alreadySent`, `nothingToSend`, `undelivered`, `devicesRemoved`, `errors`. Nada de ids, nomes ou valores; erros nos logs só pelo `describeError`. O texto com valores fica só em `notifications.payload` da própria pessoa.
 - **Prévia** (administradores): Ajustes › Notificações › "Enviar prévia dos avisos" (`previewRemindersAction`: `adminAction`, a flag do administrador e 3 por minuto) envia os avisos ligados, com os dados de hoje, só para o aparelho que pediu. Ignora o dia do disparo e o que já foi enviado, e não grava nada.
@@ -1015,6 +1031,7 @@ Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e 
 | Serviço | Uso | Detalhes |
 |---|---|---|
 | **BCB — SGS** | taxas para simulador, metas e rendimento de contas | `https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/{n}?formato=json` — séries: **432** (meta Selic, % a.a.), **4389** (CDI anualizado base 252, % a.a.), **12** (CDI diário), **433** (IPCA mensal, %). Respostas com data `dd/MM/yyyy` e valor com ponto decimal em string. Cache no banco; o app nunca chama o BCB em tempo de requisição |
+| **BrasilAPI — feriados** | feriados nacionais para o aviso de conta que vence em dia não útil | `GET https://brasilapi.com.br/api/feriados/v1/{ano}`, sem chave (só o ano vai na URL); resposta `[{ date, name, type: "national", weekday }]`, anos de 1900 a 2199 (fora: 404). Só o passo `syncHolidays` do cron chama (tempo limite de 5 s, uma nova tentativa em rede, 429 e 5xx; cabeçalho `user-agent: meu-finan-cron/1.0`), nunca em tempo de requisição nem de prerender. A resposta é validada (data real no ano, nome de 1 a 80 caracteres, tipo nacional, mínimo de 9 feriados) e guardada em `holidays`. O CSP não muda (a chamada é do servidor). Estaduais e municipais não vêm daqui: ficam para depois (Invertexto ou Feriados API, com token) |
 | BCB — Focus (opcional) | expectativa de IPCA/Selic para cenários default | API Olinda de expectativas de mercado |
 | Resend (opcional, fase posterior) | resumo semanal e alertas por e-mail | domínio próprio com SPF/DKIM/DMARC; templates React Email. O login e a recuperação não dependem de e-mail |
 | **Web Push** | lembretes e o número no ícone do app | VAPID, com `web-push` (`aes128gcm`); no iOS funciona apenas com o PWA instalado na tela de início (iOS 16.4+), e a permissão só pode ser pedida num toque. O service worker (`public/sw.js`, sem cache offline por enquanto) mostra a notificação e põe no ícone o número de avisos não lidos (`notifications.read_at` nulo, Badging API). Abrir o app marca os avisos da pessoa como lidos (`markNotificationsRead` em `syncPushDeviceAction`) e zera o número, até existir a central do sino (doc 02 §6.15). O servidor só envia para endpoints https dos serviços de push (Apple, Google, Mozilla, Microsoft); 404/410 apagam a inscrição. Um aparelho tem uma inscrição só: ela é de quem ativou por último, quem entra no aparelho a toma de quem estava antes, e sair da conta desliga as notificações dele. Atrás da flag `notificacoes_push` |
@@ -1186,6 +1203,7 @@ As flags existem no código (`src/lib/flags/registry.ts`: chave `snake_case`, r�
 - **Primeira flag**: `importar_extrato` (ligada por padrão). Desligada, some de Ajustes › Dados e de Ajustes › Novidades, `/importar` responde com a página 404 e as três actions da importação recusam.
 - **Segunda flag**: `notificacoes_push` (desligada por padrão). Desligada, some de Ajustes e de Ajustes › Novidades, `/ajustes/notificacoes` responde com a página 404, as actions de ativar, de testar, de salvar os avisos e de prévia recusam, e o servidor não envia push nem avisos do cron (desligar e sincronizar o aparelho funcionam sempre, §7). A escolha dos avisos fica guardada e volta se a flag for ligada de novo.
 - **Terceira flag**: `inicio_personalizavel` (desligada por padrão). Desligada, o Início fica no padrão do app (a página nem lê a escolha), o botão "Personalizar o Início" e a seção Início de Preferências somem, a dica e a novidade não aparecem e `saveHomeLayoutAction` recusa. A escolha salva continua guardada e volta se a flag for ligada de novo.
+- **Quarta flag**: `alerta_dia_nao_util` (desligada por padrão). Desligada, a nota de dia não útil e o "Prazo até …" somem do Início, do Extrato, do detalhe e da fatura (a leitura dos feriados nem acontece), o Contas a vencer não leva a nota, o aviso Vencimento em dia não útil não sai (nem conta na Rotina) e a linha dele some de Ajustes › Notificações; `saveNotificationPreferencesAction` mantém o valor salvo do interruptor enquanto a flag está desligada, e a novidade não chega. O servidor lê a flag em `UpcomingBillsBlock`, no Extrato, na página do cartão, em Ajustes › Notificações e, por pessoa, em `sendDailyReminders` e `previewReminders`.
 - **Dicas e novidades**: uma dica ou novidade sobre uma funcionalidade atrás de flag declara `when: { flag }` (doc 02 §6.16) e só chega a quem tem a flag ligada, para nenhum balão ou link levar a uma tela recusada.
 
 ---

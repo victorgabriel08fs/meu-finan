@@ -5,7 +5,7 @@
 // the server: only whether it is set.
 import { and, desc, eq, gt } from "drizzle-orm";
 import { hasAdminRole } from "@/lib/admin/roles";
-import { enabledReminderEvents } from "@/lib/notifications/preferences";
+import { availableReminderEvents } from "@/lib/notifications/preferences";
 import { db } from "@/server/db/client";
 import { jobRuns, user } from "@/server/db/schema";
 import { readServerEnv } from "@/server/env";
@@ -73,7 +73,10 @@ export async function routineConfig(): Promise<RoutineConfig> {
   const recipients = candidates.filter(
     (candidate) =>
       flags.get(candidate.userId)?.notificacoes_push &&
-      enabledReminderEvents(candidate.preferences).length > 0,
+      availableReminderEvents(candidate.preferences, {
+        nonBusinessDue:
+          flags.get(candidate.userId)?.alerta_dia_nao_util ?? false,
+      }).length > 0,
   ).length;
   return {
     cronSecretSet: isSet(() => readServerEnv("CRON_SECRET")),

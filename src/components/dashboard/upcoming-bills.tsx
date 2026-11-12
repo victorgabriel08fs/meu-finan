@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/components/finance/category-icon";
+import { NonBusinessHint } from "@/components/finance/non-business-hint";
 import { Money } from "@/components/money/money";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,7 +34,9 @@ type UpcomingBillsProps = {
 /**
  * "Próximas contas" (doc 02 §6.3): pending bills of the next 7 days and
  * invoices, overdue ones first in red. "Pagar" marks a bill as paid with a
- * "Desfazer" toast; an invoice opens its card.
+ * "Desfazer" toast; an invoice opens its card. A bill due on a non-business
+ * day (flag alerta_dia_nao_util) gets a line saying when the payment usually
+ * goes through.
  */
 export function UpcomingBills({ items, today }: UpcomingBillsProps) {
   const [hidden, setHidden] = useState<ReadonlySet<string>>(() => new Set());
@@ -103,7 +106,7 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
     <Card className="px-4 py-1">
       <ul className="[&>li+li]:border-t [&>li+li]:border-border">
         {visible.map((item) => {
-          const due = dueLabel(item.dueOn, today);
+          const due = dueLabel(item.dueOn, today, item.nonBusinessDue);
           const tone = item.overdue ? "danger" : due.tone;
           const subtitle =
             tone === "neutral" && item.type === "transaction"
@@ -137,6 +140,12 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
                       >
                         {subtitle}
                       </span>
+                      {item.nonBusinessDue ? (
+                        <NonBusinessHint
+                          nb={item.nonBusinessDue}
+                          className="mt-0.5"
+                        />
+                      ) : null}
                     </span>
                   </span>
                   <span className="ml-auto flex shrink-0 items-center gap-3">
@@ -151,6 +160,12 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
                       className="-mr-1 size-5 shrink-0 text-fg-3"
                     />
                   </span>
+                  {item.nonBusinessDue ? (
+                    <NonBusinessHint
+                      nb={item.nonBusinessDue}
+                      placement="below"
+                    />
+                  ) : null}
                 </Link>
               </li>
             );
@@ -177,6 +192,12 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
                   >
                     {subtitle}
                   </span>
+                  {item.nonBusinessDue ? (
+                    <NonBusinessHint
+                      nb={item.nonBusinessDue}
+                      className="mt-0.5"
+                    />
+                  ) : null}
                 </div>
               </div>
               <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
@@ -197,6 +218,9 @@ export function UpcomingBills({ items, today }: UpcomingBillsProps) {
                   Pagar
                 </Button>
               </div>
+              {item.nonBusinessDue ? (
+                <NonBusinessHint nb={item.nonBusinessDue} placement="below" />
+              ) : null}
             </li>
           );
         })}

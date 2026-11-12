@@ -3,6 +3,7 @@
  * and the accent-free search of choice lists.
  */
 export * from "./date";
+export * from "./due-day";
 export * from "./money";
 export * from "./number";
 export * from "./search";

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { NOTIFICATION_TYPES } from "@/server/db/schema/enums";
 import { REMINDER_EVENTS } from "./events";
 import {
+  availableReminderEvents,
   DEFAULT_NOTIFICATION_PREFERENCES,
   enabledReminderEvents,
   notificationPreferencesSchema,
@@ -12,6 +13,7 @@ const ALL_ON = {
   events: {
     daily_summary: true,
     bills_due: true,
+    non_business_due: true,
     income_countdown: true,
     weekly_summary: true,
     monthly_summary: true,
@@ -35,6 +37,7 @@ describe("notification preferences", () => {
     }
     expect(enabledReminderEvents(DEFAULT_NOTIFICATION_PREFERENCES)).toEqual([
       "bills_due",
+      "non_business_due",
       "weekly_summary",
       "monthly_summary",
     ]);
@@ -101,5 +104,47 @@ describe("notification preferences", () => {
         false,
       );
     }
+  });
+});
+
+describe("non_business_due preference", () => {
+  it("is on by default, also for preferences saved before it existed", () => {
+    expect(DEFAULT_NOTIFICATION_PREFERENCES.events.non_business_due).toBe(true);
+    const { non_business_due: _omitted, ...before } = ALL_ON.events;
+    const resolved = resolveNotificationPreferences({
+      ...ALL_ON,
+      events: { ...before, bills_due: false },
+    });
+    expect(resolved.events.non_business_due).toBe(true);
+    expect(resolved.events.bills_due).toBe(false);
+  });
+
+  it("keeps an off choice", () => {
+    const resolved = resolveNotificationPreferences({
+      ...ALL_ON,
+      events: { ...ALL_ON.events, non_business_due: false },
+    });
+    expect(resolved.events.non_business_due).toBe(false);
+  });
+
+  it("availableReminderEvents drops it without the flag, and only it", () => {
+    expect(availableReminderEvents(ALL_ON, { nonBusinessDue: false })).toEqual(
+      REMINDER_EVENTS.filter((event) => event !== "non_business_due"),
+    );
+    expect(availableReminderEvents(ALL_ON, { nonBusinessDue: true })).toEqual([
+      ...REMINDER_EVENTS,
+    ]);
+    expect(
+      availableReminderEvents(
+        { ...ALL_ON, events: { ...ALL_ON.events, non_business_due: false } },
+        { nonBusinessDue: true },
+      ),
+    ).not.toContain("non_business_due");
+  });
+
+  it("is sent right after bills_due, so it can leave out what that one named", () => {
+    expect(REMINDER_EVENTS.indexOf("non_business_due")).toBe(
+      REMINDER_EVENTS.indexOf("bills_due") + 1,
+    );
   });
 });

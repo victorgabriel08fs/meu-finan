@@ -79,10 +79,17 @@ export async function todaysReminderKeys(
   return new Set(rows.map((row) => row.dedupeKey));
 }
 
-/** The bills announced by "Contas a vencer" since `since`. */
+/** The notices that list the bills they announced (`itemKeys`). */
+export type BillNoticeType = "bills_due" | "non_business_due";
+
+/**
+ * The bills announced since `since` by "Contas a vencer" or, with `type`,
+ * by "Vencimento em dia não útil".
+ */
 export async function recentBillKeys(
   userId: string,
   since: Date,
+  type: BillNoticeType = "bills_due",
   executor: Executor = db,
 ): Promise<Set<string>> {
   const rows = await executor
@@ -91,13 +98,39 @@ export async function recentBillKeys(
     .where(
       and(
         eq(notifications.userId, userId),
-        eq(notifications.type, "bills_due"),
+        eq(notifications.type, type),
         gte(notifications.createdAt, since),
       ),
     );
+  return itemKeysOf(rows, type);
+}
+
+/** The bills today's (`date`) notice of `type` announced; empty when none went out. */
+export async function noticeItemKeys(
+  userId: string,
+  type: BillNoticeType,
+  date: string,
+  executor: Executor = db,
+): Promise<Set<string>> {
+  const rows = await executor
+    .select({ payload: notifications.payload })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.userId, userId),
+        eq(notifications.dedupeKey, reminderDedupeKey(type, date)),
+      ),
+    );
+  return itemKeysOf(rows, type);
+}
+
+function itemKeysOf(
+  rows: readonly { payload: NotificationPayload }[],
+  type: BillNoticeType,
+): Set<string> {
   const keys = new Set<string>();
   for (const { payload } of rows) {
-    if (payload.type !== "bills_due") continue;
+    if (payload.type !== type) continue;
     for (const key of payload.itemKeys ?? []) keys.add(key);
   }
   return keys;

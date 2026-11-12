@@ -5,7 +5,8 @@ import { BRUNO_EMAIL, BRUNO_PASSWORD } from "./demo";
 // importar_extrato off for Bruno only, and notificacoes_push and
 // inicio_personalizavel (off by default) on for Ana only, so his Ajustes ›
 // Novidades must announce neither the import, nor the notifications, nor the
-// customizable Início, nor link to /importar or /ajustes/notificacoes, which
+// customizable Início, nor the non-business day alert, nor link to /importar or
+// /ajustes/notificacoes, which
 // he cannot open; and his Início stays the app's, with no way to change it.
 // Runs as Bruno, signed in once (the sign-in rate limit is 5 per minute).
 // Opening the list marks his novidades read; no other test reads them.
@@ -40,6 +41,13 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   await expect(page.getByText("Monte o seu Início")).toHaveCount(0);
   await expect(page.getByText("Mais blocos para o Início")).toHaveCount(0);
   await expect(page.getByText("Quanto dá para gastar por dia")).toHaveCount(0);
+  // Nor the non-business day alert (alerta_dia_nao_util, on for Ana only).
+  await expect(
+    page.getByRole("heading", { name: "Vencimento em dia não útil" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("fim de semana ou num feriado", { exact: false }),
+  ).toHaveCount(0);
 
   // Without notificacoes_push, no Notificações: neither the screen nor its
   // notices (nor the administrators' preview, which he would not get anyway).

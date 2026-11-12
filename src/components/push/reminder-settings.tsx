@@ -3,6 +3,7 @@
 import {
   CalendarCheck,
   CalendarClock,
+  CalendarX,
   ChartColumn,
   Eye,
   HandCoins,
@@ -33,7 +34,10 @@ type ReminderRow = {
   description: (monthStartDay: number) => string;
 };
 
-/** The five notices, in the order of doc 02 §6.14. */
+/**
+ * The notices, in the order of doc 02 §6.14. "Vencimento em dia não útil"
+ * shows only with the flag alerta_dia_nao_util.
+ */
 export const REMINDER_ROWS: readonly ReminderRow[] = [
   {
     event: "daily_summary",
@@ -46,6 +50,13 @@ export const REMINDER_ROWS: readonly ReminderRow[] = [
     icon: CalendarClock,
     label: "Contas a vencer",
     description: () => "Pendentes e faturas, e as que venceram sem pagar.",
+  },
+  {
+    event: "non_business_due",
+    icon: CalendarX,
+    label: "Vencimento em dia não útil",
+    description: () =>
+      "No último dia útil antes, quando uma conta vence no fim de semana ou num feriado.",
   },
   {
     event: "income_countdown",
@@ -77,12 +88,23 @@ const LEAD_OPTIONS: { value: `${BillsLeadDays}`; label: string }[] = [
 
 const WHEN = "Chegam uma vez por dia, entre 6h e 7h (horário de Brasília)";
 
-/** The note below the notices: when they arrive, and on how many devices. */
+/** The rows on screen: without "Vencimento em dia não útil" when its flag is off. */
+export function visibleReminderRows(nonBusinessDue: boolean): ReminderRow[] {
+  return REMINDER_ROWS.filter(
+    (row) => nonBusinessDue || row.event !== "non_business_due",
+  );
+}
+
+/**
+ * The note below the notices: when they arrive, and on how many devices.
+ * Only the rows on screen (`events`) count as on.
+ */
 export function devicesNote(
   devices: number,
   preferences: NotificationPreferences,
+  events: readonly ReminderEvent[] = REMINDER_ROWS.map((row) => row.event),
 ): string {
-  if (!Object.values(preferences.events).some(Boolean)) {
+  if (!events.some((event) => preferences.events[event])) {
     return "Todos os avisos estão desligados.";
   }
   if (devices === 0) {
@@ -121,6 +143,8 @@ type ReminderListProps = {
   monthStartDay: number;
   /** Devices of the person that receive notifications. */
   devices: number;
+  /** The flag alerta_dia_nao_util, read on the server: shows its row. */
+  nonBusinessDue?: boolean;
   onChange: (next: NotificationPreferences) => void;
 };
 
@@ -129,9 +153,11 @@ export function ReminderList({
   preferences,
   monthStartDay,
   devices,
+  nonBusinessDue = false,
   onChange,
 }: ReminderListProps) {
   const ids = useId();
+  const rows = visibleReminderRows(nonBusinessDue);
   const setEvent = (event: ReminderEvent, on: boolean) =>
     onChange({
       ...preferences,
@@ -146,7 +172,7 @@ export function ReminderList({
           aria-labelledby="notificacoes-avisos"
           className="overflow-hidden rounded-2xl bg-surface shadow-card"
         >
-          {REMINDER_ROWS.map(({ event, icon: Icon, label, description }) => {
+          {rows.map(({ event, icon: Icon, label, description }) => {
             const on = preferences.events[event];
             const id = `${ids}-${event}`;
             return (
@@ -192,7 +218,11 @@ export function ReminderList({
           })}
         </ul>
         <p className="mt-3 px-4 text-caption text-fg-3">
-          {devicesNote(devices, preferences)}
+          {devicesNote(
+            devices,
+            preferences,
+            rows.map((row) => row.event),
+          )}
         </p>
       </section>
 
@@ -230,10 +260,13 @@ export function ReminderSettings({
   initial,
   monthStartDay,
   devices,
+  nonBusinessDue = false,
 }: {
   initial: NotificationPreferences;
   monthStartDay: number;
   devices: number;
+  /** The flag alerta_dia_nao_util, read on the server. */
+  nonBusinessDue?: boolean;
 }) {
   const [preferences, setPreferences] = useState(initial);
   const saved = useRef(initial);
@@ -255,6 +288,7 @@ export function ReminderSettings({
       preferences={preferences}
       monthStartDay={monthStartDay}
       devices={devices}
+      nonBusinessDue={nonBusinessDue}
       onChange={(next) => void change(next)}
     />
   );

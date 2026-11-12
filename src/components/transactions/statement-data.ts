@@ -1,4 +1,5 @@
 import type { TransactionRowData } from "@/components/finance/transaction-row";
+import type { NonBusinessDue } from "@/lib/finance/business-days";
 import { dayOfWeek, parse } from "@/lib/finance/dates";
 import { fullDateLabel, shortDateLabel } from "@/lib/format/date";
 import type {
@@ -12,7 +13,13 @@ import type {
  * summary of what the filters show.
  */
 
-export type StatementItem = TransactionListItem;
+export type StatementItem = TransactionListItem & {
+  /**
+   * A pending expense due on a non-business day (flag alerta_dia_nao_util),
+   * annotated by the page while it still matters.
+   */
+  nonBusinessDue?: NonBusinessDue | null;
+};
 
 export type DayGroup = {
   /** `YYYY-MM-DD`. */
@@ -109,6 +116,7 @@ export function toRowData(item: StatementItem): TransactionRowData {
     accountName: item.accountName,
     installment: item.installment,
     recurring: item.recurring,
+    nonBusinessDue: item.nonBusinessDue ?? null,
   };
   if (item.kind === "transfer") {
     row.subtitle =

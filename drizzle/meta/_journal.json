@@ -64,6 +64,13 @@
       "when": 1793986125282,
       "tag": "0008_caixinha",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794479324296,
+      "tag": "0009_feriados",
+      "breakpoints": true
     }
   ]
 }

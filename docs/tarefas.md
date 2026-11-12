@@ -60,6 +60,26 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ## Entregue
 
+### Alerta de conta que vence em dia não útil — 12/11/2026
+
+Tarefa 11, com as decisões do dono (12/11/2026): dias não úteis pelo calendário bancário; "Venceu" só depois do próximo dia útil (D2); aviso push com interruptor próprio, ligado por padrão, no último dia útil antes, uma vez por conta; só feriados nacionais por enquanto.
+
+- [x] **Calendário de dias úteis** puro (`src/lib/finance/business-days.ts`): Páscoa, feriados nacionais fixos e móveis, Carnaval (segunda e terça), Sexta-feira Santa, Corpus Christi, 31/12 sem expediente bancário; Quarta-feira de Cinzas e 24/12 são úteis. Próximo e anterior dia útil, `nonBusinessDue`, `isInGrace` (doc 03 §10.3).
+- [x] **Feriados da BrasilAPI** no cron diário (passo `syncHolidays`, tabela `holidays`, migração `0009_feriados`): anos atual e seguinte, a cada 30 dias, tempo limite de 5 s e uma nova tentativa, mínimo de 9 feriados válidos, nada é apagado com resposta ruim. O calendário efetivo é sempre o cálculo próprio somado ao que a API trouxe; nenhuma chamada externa em render.
+- [x] **Flag `alerta_dia_nao_util`** (desligada por padrão; a demo liga para a Ana, com um "Condomínio" no próximo sábado) e a novidade "Vencimento em dia não útil".
+- [x] **Nota no app**: Início › Próximas contas, Extrato (linha, nome acessível e folha de detalhe) e fatura do cartão, em texto de informação (`fg-3`), sem valores. A texto grande ou em linha estreita a nota desce para baixo da linha toda (`placement`, container query `@max-tight`).
+- [x] **"Prazo até seg, 16 nov"** (âmbar) no lugar de "Venceu" entre o vencimento e o próximo dia útil: Início, Extrato, detalhe e fatura ("Fechada"); o aviso de conta vencida espera esse dia. Só apresentação.
+- [x] **Aviso "Vencimento em dia não útil"** (interruptor com ícone `CalendarX` em Ajustes › Notificações, só com a flag): no último dia útil antes, uma vez por conta; o "Contas a vencer" do mesmo dia leva a nota e o aviso novo não repete a conta. Conta na Rotina, na prévia dos administradores e no número do ícone. Com a flag desligada, o valor salvo do interruptor fica guardado.
+- [x] Testes: unidade e fast-check (`business-days`, `due-day`, `brasilapi-holidays`, seleção e mensagens dos avisos, preferências, Rotina, dicas, componentes), integração contra o PGlite (`holidays`, `reminders-non-business`, Início, preferências, `job-runs`) e e2e (`e2e/dia-nao-util.spec.ts`, `notificacoes.spec.ts`, `novidades-flags.spec.ts`, axe nos dois temas, 360 px a 200%). O estado âmbar "Prazo até …" só nos testes de unidade e integração, com data fixa (o relógio do e2e é o real).
+
+**Ficou para depois:**
+
+- **Feriados estaduais e municipais** (os bancos fecham neles): escolher a cidade dos pagamentos em Ajustes e usar uma API com token (Invertexto ou Feriados API), com variável de ambiente nova e `scope` "BR-UF-IBGE" na mesma tabela `holidays`. Nager.Date cobre alguns estaduais.
+- A nota no **detalhe da conta** (`/contas/[id]`) e nos lançamentos da fatura: o campo opcional já serve, só falta anotar na página.
+- **Receita (salário) em dia não útil** e "Próxima receita" ajustada.
+- O **status gravado da fatura** e a previsão por dia útil: hoje só a apresentação muda.
+- A central do sino (doc 02 §6.15) não tem o aviso.
+
 ### Bloco "Quanto dá para gastar por dia" — 10/11/2026
 
 Bloco novo do catálogo do Início (largo, fora do padrão, com "Novo"): para cada um dos próximos 14 dias (até o fim do mês financeiro), o menor saldo previsto das contas para gastar dividido pelos dias que faltam, em cartões lado a lado numa faixa que rola dentro do bloco (hoje primeiro, com destaque e `aria-current="date"`; região focusável para o teclado). O orçamento não entra na conta: vale o saldo de hoje mais as despesas e receitas agendadas, com as faturas de cartão como despesa agendada. Estados: não sobra (com a falta, ou sem saldo), sem contas para gastar, último dia do mês (1 cartão). Decisões do dono: dias até o fim do mês financeiro, 14 dias; em 11/11/2026, sem o teto do orçamento (a nota do card Orçamento "O saldo previsto não cobre o mês" também saiu) e na horizontal em vez da lista com barras (tarefa 10, mesma branch e PR #12). Novidade "Quanto dá para gastar por dia" (`when: { flag: "inicio_personalizavel" }`).

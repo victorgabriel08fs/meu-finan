@@ -16,6 +16,7 @@ import {
   invoiceTabLabel,
   invoiceTabMonths,
   shiftReferenceMonth,
+  shownInvoiceStatus,
 } from "@/components/accounts/invoice-meta";
 import {
   BestDayCard,
@@ -28,11 +29,14 @@ import { SectionHeader } from "@/components/app/section-header";
 import { monthName } from "@/components/dashboard/labels";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
+import type { NonBusinessDue } from "@/lib/finance/business-days";
 import { requireUser } from "@/server/dal";
 import { listAccounts } from "@/server/domain/accounts";
 import { getCardOverview, listInvoiceEntries } from "@/server/domain/cards";
 import { getUserContext } from "@/server/domain/context";
 import { DomainError } from "@/server/domain/errors";
+import { pendingNonBusinessDue } from "@/server/domain/holidays";
+import { isFlagEnabled } from "@/server/flags";
 
 export const metadata: Metadata = { title: "Cartão" };
 
@@ -124,7 +128,10 @@ async function CardDetail({
     ctx.today,
   );
 
-  const entries = invoice.id ? await listInvoiceEntries(ctx, invoice.id) : [];
+  const [entries, nonBusiness] = await Promise.all([
+    invoice.id ? listInvoiceEntries(ctx, invoice.id) : [],
+    nonBusinessDueOfInvoices(ctx.userId, overview.invoices, ctx.todayIso),
+  ]);
   const purchases = entries.filter((entry) => entry.kind !== "transfer");
   const payments = entries.filter((entry) => entry.kind === "transfer");
   const views: InvoiceEntryView[] = purchases.map((entry) => ({
@@ -173,7 +180,11 @@ async function CardDetail({
           ? `/cartoes/${account.id}`
           : `/cartoes/${account.id}?fatura=${month}`,
       selected: month === selectedMonth,
-      status: view.status,
+      status: shownInvoiceStatus(
+        view,
+        ctx.todayIso,
+        view.outstandingCents > 0 ? nonBusiness.get(view.dueDate) : null,
+      ),
       future: month > currentMonth,
       totalCents: view.totalCents,
     };
@@ -223,6 +234,7 @@ async function CardDetail({
         cardName={account.name}
         split={split}
         paymentAccounts={paymentAccounts}
+        nonBusinessDue={nonBusiness.get(invoice.dueDate) ?? null}
       />
       <BestDayCard
         closingDay={overview.cycle.closingDay}
@@ -261,6 +273,24 @@ async function CardDetail({
         </section>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Due dates on a non-business day of the invoices with an amount open (flag
+ * alerta_dia_nao_util), while they still matter; empty with the flag off.
+ */
+async function nonBusinessDueOfInvoices(
+  userId: string,
+  invoices: readonly { dueDate: string; outstandingCents: number }[],
+  today: string,
+): Promise<Map<string, NonBusinessDue>> {
+  if (!(await isFlagEnabled("alerta_dia_nao_util", userId))) return new Map();
+  return pendingNonBusinessDue(
+    invoices
+      .filter((invoice) => invoice.outstandingCents > 0)
+      .map((invoice) => invoice.dueDate),
+    today,
   );
 }
 

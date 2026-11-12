@@ -32,6 +32,7 @@ export const STEP_LABELS: Record<string, string> = {
   materializeRecurrences: "Lançamentos recorrentes",
   rollInvoices: "Faturas",
   syncMarketRates: "Índices do Banco Central",
+  syncHolidays: "Feriados (BrasilAPI)",
   snapshotBalances: "Saldos de fim de mês",
   sendReminders: "Avisos por push",
   purgeDeleted: "Limpeza de excluídos",
@@ -108,6 +109,11 @@ function numberOf(source: Loose | undefined, key: string): number {
 const SENT_LABELS: [key: string, one: string, many: string][] = [
   ["daily_summary", "Resumo do dia enviado", "Resumos do dia enviados"],
   ["bills_due", "Contas a vencer enviadas", "Contas a vencer enviadas"],
+  [
+    "non_business_due",
+    "Aviso de dia não útil enviado",
+    "Avisos de dia não útil enviados",
+  ],
   ["income_countdown", "Próxima receita enviada", "Próximas receitas enviadas"],
   ["weekly_summary", "Resumo semanal enviado", "Resumos semanais enviados"],
   ["monthly_summary", "Resumo mensal enviado", "Resumos mensais enviados"],
@@ -175,6 +181,32 @@ const plural = (n: number, one: string, many: string) =>
 const kept = (days: number) =>
   days > 0 ? ` (guardados por ${plural(days, "dia", "dias")})` : "";
 
+const joinYears = (years: number[]) =>
+  years.length <= 1
+    ? years.join("")
+    : `${years.slice(0, -1).join(", ")} e ${years.at(-1)}`;
+
+/** "Feriados de 2026 e 2027 em dia", "Feriados de 2027 atualizados (13)", "Feriados de 2027: não deu para buscar". */
+function describeHolidayYears(years: unknown[]): string[] {
+  const fresh: number[] = [];
+  const notes: string[] = [];
+  for (const item of years) {
+    const entry = asRecord(item);
+    const year = entry?.year;
+    if (typeof year !== "number") continue;
+    if (entry?.status === "fresh") fresh.push(year);
+    else if (entry?.status === "updated") {
+      notes.push(
+        `Feriados de ${year} atualizados (${numberOf(entry, "holidays")})`,
+      );
+    } else if (entry?.status === "error") {
+      notes.push(`Feriados de ${year}: não deu para buscar`);
+    }
+  }
+  if (fresh.length > 0) notes.unshift(`Feriados de ${joinYears(fresh)} em dia`);
+  return notes;
+}
+
 /** The numbers of the other steps in words; what is not known is left out. */
 function describeCounters(name: string, details: unknown): string[] {
   const source = asRecord(details);
@@ -200,6 +232,9 @@ function describeCounters(name: string, details: unknown): string[] {
         ? "Nenhum índice mudou"
         : plural(n, "índice atualizado", "índices atualizados"),
     );
+  }
+  if (name === "syncHolidays" && Array.isArray(source.years)) {
+    notes.push(...describeHolidayYears(source.years));
   }
   if (name === "purgeDeleted") {
     if (has("purgedTransactions")) {
