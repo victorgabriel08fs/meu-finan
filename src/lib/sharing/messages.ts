@@ -6,7 +6,7 @@ import type { NotificationPayload } from "@/server/db/schema/types";
 
 export type ShareMessage = { title: string; body: string };
 
-type SharePayload = Extract<
+export type SharePayload = Extract<
   NotificationPayload,
   {
     type:
@@ -16,7 +16,9 @@ type SharePayload = Extract<
       | "share_left"
       | "share_removed"
       | "shared_activity"
-      | "share_settled";
+      | "share_settled"
+      | "box_activity"
+      | "box_reached";
   }
 >;
 
@@ -28,6 +30,8 @@ const SHARE_TYPES = new Set<string>([
   "share_removed",
   "shared_activity",
   "share_settled",
+  "box_activity",
+  "box_reached",
 ]);
 
 export function isSharePayload(
@@ -82,6 +86,27 @@ function activityBody(
   return `${addedText}${share}${rest}`;
 }
 
+function boxActivityBody(
+  payload: Extract<SharePayload, { type: "box_activity" }>,
+  showAmounts: boolean,
+): string {
+  const { actorName, boxName, saved, savedCents, withdrawn, withdrawnCents } =
+    payload;
+  if (saved > 0 && withdrawn > 0) {
+    return showAmounts
+      ? `${actorName} guardou ${formatBRL(savedCents)} e resgatou ${formatBRL(withdrawnCents)} na caixinha ${boxName}.`
+      : `${actorName} guardou e resgatou dinheiro na caixinha ${boxName}.`;
+  }
+  if (withdrawn > 0) {
+    return showAmounts
+      ? `${actorName} resgatou ${formatBRL(withdrawnCents)} da caixinha ${boxName}.`
+      : `${actorName} resgatou dinheiro da caixinha ${boxName}.`;
+  }
+  return showAmounts
+    ? `${actorName} guardou ${formatBRL(savedCents)} na caixinha ${boxName}.`
+    : `${actorName} guardou dinheiro na caixinha ${boxName}.`;
+}
+
 /** Title and body of a group's notice; `showAmounts` false leaves money out. */
 export function shareMessage(
   payload: SharePayload,
@@ -125,12 +150,24 @@ export function shareMessage(
         body: `${payload.actorName} marcou um acerto${amount} com você em ${payload.groupName}.`,
       };
     }
+    case "box_activity":
+      return {
+        title: payload.groupName,
+        body: boxActivityBody(payload, showAmounts),
+      };
+    case "box_reached":
+      return {
+        title: payload.groupName,
+        body: `A caixinha ${payload.boxName} chegou ao objetivo. Que tal a próxima?`,
+      };
   }
 }
 
 /** Whether the body of `shareMessage(payload, true)` carries money. */
 export function shareMessageHasAmounts(payload: SharePayload): boolean {
-  if (payload.type === "share_settled") return true;
+  if (payload.type === "share_settled" || payload.type === "box_activity") {
+    return true;
+  }
   if (payload.type !== "shared_activity") return false;
   return payload.added > 0;
 }

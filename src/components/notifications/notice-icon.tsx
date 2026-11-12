@@ -5,8 +5,10 @@ import {
   CalendarDays,
   ChartColumn,
   Handshake,
+  PiggyBank,
   ReceiptText,
   Sun,
+  Trophy,
   UserMinus,
   UserPlus,
   Users,
@@ -27,6 +29,8 @@ const ICONS: Record<NoticeIconName, ComponentType<{ className?: string }>> = {
   "user-plus": UserPlus,
   "user-minus": UserMinus,
   handshake: Handshake,
+  "piggy-bank": PiggyBank,
+  trophy: Trophy,
 };
 
 // Whole class names, so Tailwind sees them (doc 02 §3.1 tokens, both themes).

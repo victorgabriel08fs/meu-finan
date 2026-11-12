@@ -7,6 +7,7 @@
 import type { FlagKey, Flags } from "@/lib/flags/registry";
 import {
   isSharePayload,
+  type SharePayload,
   shareMessage,
   shareMessageHasAmounts,
 } from "@/lib/sharing/messages";
@@ -30,6 +31,8 @@ export const NOTICE_ICONS = [
   "user-plus",
   "user-minus",
   "handshake",
+  "piggy-bank",
+  "trophy",
 ] as const;
 export type NoticeIconName = (typeof NOTICE_ICONS)[number];
 
@@ -160,7 +163,8 @@ function shareKind(
   icon: NoticeIconName,
   tone: NoticeTone,
   actions: NoticeAction[],
-  href: (groupId: string) => string = (groupId) => `/compartilhado/${groupId}`,
+  href: (payload: SharePayload) => string = (payload) =>
+    `/compartilhado/${payload.groupId}`,
 ): NoticeKind {
   return {
     icon,
@@ -178,7 +182,7 @@ function shareKind(
           discreet && shareMessageHasAmounts(payload)
             ? DISCREET_BODY
             : message.body,
-        href: href(payload.groupId),
+        href: href(payload),
         actions,
       };
     },
@@ -187,6 +191,11 @@ function shareKind(
 
 const SEE_GROUP: NoticeAction = { id: "open", label: "Ver grupo" };
 const toSharing = () => "/compartilhado";
+const toBox = (payload: SharePayload) =>
+  "boxId" in payload
+    ? `/compartilhado/${payload.groupId}/caixinhas/${payload.boxId}`
+    : `/compartilhado/${payload.groupId}`;
+const SEE_BOX: NoticeAction = { id: "open", label: "Ver caixinha" };
 
 /** Kinds by `notifications.type`; a type without an entry is never listed. */
 export const NOTICE_KINDS: Partial<Record<NotificationType, NoticeKind>> = {
@@ -229,6 +238,8 @@ export const NOTICE_KINDS: Partial<Record<NotificationType, NoticeKind>> = {
     { id: "record_settlement", label: "Lançar no extrato" },
     SEE_GROUP,
   ]),
+  box_activity: shareKind("piggy-bank", "cat-3", [SEE_BOX], toBox),
+  box_reached: shareKind("trophy", "primary", [SEE_BOX], toBox),
 };
 
 /** A notice as the sheet and the route see it, rendered by its kind. */

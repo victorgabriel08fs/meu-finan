@@ -2,7 +2,7 @@
 // a real (in-memory) Postgres: the flag refused on the server, the two invite
 // limits, and deliverPushes honoring each person's flag and "Mostrar valores
 // nas notificações" (push service mocked).
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -25,7 +25,10 @@ vi.mock("@/server/dal", () => ({
   getSession: async () => null,
 }));
 const pushService = vi.hoisted(() => ({
-  sent: [] as { endpoint: string; body: { body: string; url: string } }[],
+  sent: [] as {
+    endpoint: string;
+    body: { body: string; url: string; tag?: string };
+  }[],
 }));
 vi.mock("web-push", () => ({
   WebPushError: class extends Error {},
@@ -254,5 +257,87 @@ describe("deliverPushes", () => {
     };
     expect(await bodyWith(false)).not.toContain("120,00");
     expect(await bodyWith(true)).toContain("120,00");
+  });
+});
+
+describe("shared boxes", () => {
+  async function groupWithBruno() {
+    const created = await m.actions.createGroupAction({
+      id: uuid(),
+      name: "Casa",
+      emails: ["bruno@exemplo.com"],
+    });
+    const groupId = created?.data?.groupId ?? "";
+    const [invite] = await m.db
+      .select({ id: m.schema.shareMembers.id })
+      .from(m.schema.shareMembers)
+      .where(
+        and(
+          eq(m.schema.shareMembers.userId, "bruno"),
+          eq(m.schema.shareMembers.groupId, groupId),
+        ),
+      );
+    signedIn.id = "bruno";
+    await m.actions.respondToInviteAction({
+      memberId: invite?.id ?? "",
+      answer: "accept",
+    });
+    signedIn.id = "ana";
+    return groupId;
+  }
+
+  it("refuses the box actions with the flag off", async () => {
+    const groupId = await groupWithBruno();
+    await setFlags(false, true);
+    const result = await m.actions.createBoxAction({
+      id: uuid(),
+      groupId,
+      name: "Viagem",
+      icon: "plane",
+      color: "cat-3",
+      targetCents: null,
+      targetDate: null,
+      expectedRate: null,
+    });
+    expect(result?.serverError).toBe("O compartilhamento não está disponível.");
+    expect(await m.db.select().from(m.schema.sharedBoxes)).toHaveLength(0);
+  });
+
+  it("pushes an entry to the other member with the box's tag, opening the box", async () => {
+    const groupId = await groupWithBruno();
+    const boxId = uuid();
+    await m.actions.createBoxAction({
+      id: boxId,
+      groupId,
+      name: "Viagem",
+      icon: "plane",
+      color: "cat-3",
+      targetCents: 100_000,
+      targetDate: null,
+      expectedRate: null,
+    });
+    await m.push.savePushSubscription(
+      "bruno",
+      { endpoint: BRUNO_PHONE, keys: KEYS },
+      null,
+    );
+    await Promise.all(afterTasks.splice(0));
+    pushService.sent = [];
+    const saved = await m.actions.contributeAction({
+      id: uuid(),
+      boxId,
+      amountCents: 50_000,
+      occurredOn: new Date().toISOString().slice(0, 10),
+    });
+    expect(saved?.serverError).toBeUndefined();
+    await Promise.all(afterTasks.splice(0));
+    expect(pushService.sent).toHaveLength(1);
+    expect(pushService.sent[0]?.body.tag).toBe(`caixinha-${boxId}`);
+    expect(pushService.sent[0]?.body.url).toContain(
+      `/compartilhado/${groupId}/caixinhas/${boxId}`,
+    );
+    expect(pushService.sent[0]?.body.body).toMatch(
+      /^Ana guardou .+ na caixinha Viagem\.$/,
+    );
   });
 });

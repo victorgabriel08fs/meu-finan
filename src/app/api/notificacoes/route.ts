@@ -6,6 +6,7 @@ import {
   renderNotice,
   visibleNotificationTypes,
 } from "@/lib/notifications/kinds";
+import { isSharePayload } from "@/lib/sharing/messages";
 import { getSession } from "@/server/dal";
 import {
   countUnreadNotifications,
@@ -89,8 +90,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     const groupIds = new Set<string>();
     const inviteIds: string[] = [];
     for (const row of rows) {
-      if (!row.type.startsWith("share") || !("groupId" in row.payload))
-        continue;
+      if (!isSharePayload(row.payload)) continue;
       groupIds.add(row.payload.groupId);
       if (row.payload.type === "share_invite")
         inviteIds.push(row.payload.memberId);
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest): Promise<Response> {
         const open = sharing.openInvites.has(payload.memberId);
         rendered.actions = open ? rendered.actions : [];
         if (open) shareExtras = { inviteId: payload.memberId };
-      } else if ("groupId" in payload && row.type.startsWith("share")) {
+      } else if (isSharePayload(payload)) {
         if (!sharing.activeGroups.has(payload.groupId)) {
           rendered.href = "/compartilhado";
           rendered.actions = [];
