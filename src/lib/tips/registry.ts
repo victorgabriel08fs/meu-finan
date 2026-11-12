@@ -380,6 +380,21 @@ export const TIPS: readonly Tip[] = [
     icon: "users",
     link: { href: "/compartilhado", label: "Ver Compartilhado" },
   },
+  {
+    id: "novidade-caixinha-compartilhada",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like the one above: the boxes live inside
+    // each group.
+    routes: [],
+    anchor: null,
+    title: "Guardem dinheiro juntos",
+    body: "Uma caixinha do grupo, com quanto cada um já guardou e quando vocês chegam no objetivo.",
+    since: "2026-11-12",
+    order: 19,
+    when: { flag: "financas_compartilhadas" },
+    icon: "vault",
+    link: { href: "/compartilhado", label: "Ver Compartilhado" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
