@@ -65,6 +65,7 @@ import {
   getBalanceSummary,
   getSpendablePerDay,
   getUpcoming,
+  withNonBusinessDue,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
 import {
@@ -77,6 +78,7 @@ import {
 } from "@/server/domain/reports";
 import { firstRecordOn } from "@/server/domain/request-reads";
 import { periodTotals } from "@/server/domain/transactions";
+import { isFlagEnabled } from "@/server/flags";
 
 type HomeBlockProps = {
   ctx: UserContext;
@@ -212,7 +214,13 @@ async function BudgetBlock({ ctx, range }: HomeBlockProps) {
  * says so, since the rest of the Início shows that month.
  */
 async function UpcomingBillsBlock({ ctx, range }: HomeBlockProps) {
-  const upcoming = await getUpcoming(ctx);
+  const [items, nonBusiness] = await Promise.all([
+    getUpcoming(ctx),
+    isFlagEnabled("alerta_dia_nao_util", ctx.userId),
+  ]);
+  const upcoming = nonBusiness
+    ? await withNonBusinessDue(items, ctx.todayIso)
+    : items;
   return (
     <section
       aria-labelledby="proximas-contas"

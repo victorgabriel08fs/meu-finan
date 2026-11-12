@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { holidayCalendar, nonBusinessDue } from "@/lib/finance/business-days";
 import {
   dueLabel,
   firstName,
@@ -83,6 +84,37 @@ describe("dueLabel", () => {
       tone: "neutral",
       days: 6,
     });
+  });
+});
+
+describe("dueLabel: non-business due date (D2)", () => {
+  const nb = nonBusinessDue("2026-11-14", holidayCalendar([2026]));
+
+  it("is a warning-toned deadline from the day after to the next business day", () => {
+    expect(dueLabel("2026-11-14", "2026-11-14", nb).text).toBe("Vence hoje");
+    expect(dueLabel("2026-11-14", "2026-11-15", nb)).toEqual({
+      text: "Prazo até amanhã",
+      tone: "warning",
+      days: -1,
+    });
+    expect(dueLabel("2026-11-14", "2026-11-16", nb).text).toBe(
+      "Prazo até hoje",
+    );
+  });
+
+  it("is overdue again after the grace, and a plain due label ahead of the date", () => {
+    expect(dueLabel("2026-11-14", "2026-11-17", nb)).toEqual({
+      text: "Venceu há 3 dias",
+      tone: "danger",
+      days: -3,
+    });
+    expect(dueLabel("2026-11-14", "2026-11-12", nb).text).toBe(
+      "Vence em 2 dias",
+    );
+  });
+
+  it("is untouched without the annotation", () => {
+    expect(dueLabel("2026-11-14", "2026-11-15").text).toBe("Venceu ontem");
   });
 });
 

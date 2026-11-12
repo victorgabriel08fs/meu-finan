@@ -1,4 +1,5 @@
 import type { BadgeTone } from "@/components/ui/badge";
+import { isInGrace, type NonBusinessDue } from "@/lib/finance/business-days";
 import {
   addMonths,
   daysBetween,
@@ -15,6 +16,7 @@ import {
   invoiceStatus,
 } from "@/lib/finance/invoices";
 import { shortMonthLabel } from "@/lib/format/date";
+import { graceLabel } from "@/lib/format/due-day";
 import type { InvoiceSummary } from "@/server/domain/cards";
 
 /** Invoice states (doc 02 §6.8): label, badge tone and the tab dot. */
@@ -107,12 +109,36 @@ export function invoiceForMonth(
   };
 }
 
-/** "Fecha em 3 dias", "Vence amanhã", "Fatura paga", "Venceu há 2 dias". */
+/**
+ * The status shown: an overdue invoice due on a non-business day (`nb`, flag
+ * alerta_dia_nao_util) is still "Fechada" up to the next business day, when
+ * the payment usually goes through. Only the screen changes, not the stored
+ * status.
+ */
+export function shownInvoiceStatus(
+  invoice: { status: InvoiceStatus; dueDate: string },
+  today: string,
+  nb?: NonBusinessDue | null,
+): InvoiceStatus {
+  return invoice.status === "overdue" && isInGrace(invoice.dueDate, nb, today)
+    ? "closed"
+    : invoice.status;
+}
+
+/**
+ * "Fecha em 3 dias", "Vence amanhã", "Fatura paga", "Venceu há 2 dias";
+ * "Prazo até seg, 16 nov" after a non-business due date (`nb`), up to the
+ * next business day.
+ */
 export function invoiceTiming(
   invoice: { status: InvoiceStatus; closingDate: string; dueDate: string },
   today: string,
+  nb?: NonBusinessDue | null,
 ): string {
   const now = parse(today);
+  if (invoice.status !== "paid" && isInGrace(invoice.dueDate, nb, today)) {
+    return graceLabel(nb.nextBusinessDay, today);
+  }
   switch (invoice.status) {
     case "open": {
       const days = daysBetween(now, parse(invoice.closingDate));

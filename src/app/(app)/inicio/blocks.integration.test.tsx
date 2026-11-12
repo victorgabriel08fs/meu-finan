@@ -575,3 +575,97 @@ describe("Quanto dá para gastar por dia", () => {
     }
   });
 });
+
+describe("Próximas contas: vencimento em dia não útil", () => {
+  // Today is Wednesday 14/out/2026: the Condomínio falls on Saturday 17/out.
+  type Item = import("@/server/domain/dashboard").UpcomingItem;
+  let dani: UserContext;
+  let eli: UserContext;
+
+  beforeAll(async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    const { ensureOwnerDefaults } = await import("@/server/db/seed-defaults");
+    const { listCategories } = await import("@/server/domain/categories");
+    await db.insert(schema.user).values([
+      { id: "dani", name: "Dani", email: "dani@exemplo.com" },
+      { id: "eli", name: "Eli", email: "eli@exemplo.com" },
+    ]);
+    // Dani has the flag; Eli does not.
+    await db.insert(schema.featureFlagOverrides).values({
+      userId: "dani",
+      key: "alerta_dia_nao_util",
+      enabled: true,
+    });
+    dani = await context.getUserContext("dani", { now: NOW });
+    eli = await context.getUserContext("eli", { now: NOW });
+    for (const [id, ctx] of [
+      ["dani", dani],
+      ["eli", eli],
+    ] as const) {
+      await ensureOwnerDefaults(id);
+      const accountId = await accounts.createAccount(id, {
+        name: "Conta principal",
+        type: "checking",
+        initialBalanceCents: 100_000,
+      });
+      const category = (await listCategories(id)).find(
+        (item) => item.name === "Moradia",
+      );
+      if (!category) throw new Error("categoria Moradia");
+      for (const [description, occurredOn] of [
+        ["Condomínio", "2026-10-17"],
+        ["Escola", "2026-10-16"],
+      ] as const) {
+        await transactions.createTransaction(ctx, {
+          kind: "expense",
+          amountCents: 68_000,
+          accountId,
+          categoryId: category.id,
+          description,
+          occurredOn,
+          paid: false,
+        });
+      }
+    }
+  });
+
+  async function upcoming(ctx: UserContext): Promise<Item[]> {
+    for (const store of memo.stores) store.clear();
+    const range = context.resolvePeriod(ctx, "2026-10");
+    const element = (await blocks.HOME_BLOCK_LOADERS["upcoming-bills"]({
+      ctx,
+      range,
+    })) as ReactElement<{ children: ReactElement<{ items: Item[] }>[] }>;
+    const list = [element.props.children].flat().at(-1);
+    return list?.props.items ?? [];
+  }
+
+  it("annotates the Saturday bill with the next business day when the flag is on", async () => {
+    const items = await upcoming(dani);
+    const condo = items.find((item) => item.title === "Condomínio");
+    expect(condo?.nonBusinessDue).toMatchObject({
+      reason: "saturday",
+      nextBusinessDay: "2026-10-19",
+      previousBusinessDay: "2026-10-16",
+    });
+    // A Friday bill is a business day: no note.
+    expect(
+      items.find((item) => item.title === "Escola")?.nonBusinessDue,
+    ).toBeUndefined();
+  });
+
+  it("annotates nothing when the flag is off, and never reads another person's bills", async () => {
+    const items = await upcoming(eli);
+    expect(items.map((item) => item.title).sort()).toEqual([
+      "Condomínio",
+      "Escola",
+    ]);
+    expect(items.every((item) => item.nonBusinessDue === undefined)).toBe(true);
+    const danis = await upcoming(dani);
+    expect(danis.map((item) => item.title).sort()).toEqual([
+      "Condomínio",
+      "Escola",
+    ]);
+  });
+});

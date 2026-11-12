@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { holidayCalendar, nonBusinessDue } from "@/lib/finance/business-days";
 import type { AccountListItem } from "@/server/domain/accounts";
 import type { TransactionListItem } from "@/server/domain/transactions";
 import { AccountForm } from "./account-form";
@@ -244,6 +245,47 @@ describe("InvoiceSummaryCard", () => {
     expect(visible).toContain("Fecha 17/out · Vence 25/out");
     expect(visible).toContain("Compras à vista");
     expect(visible).toContain("Pagar fatura");
+  });
+
+  it("adds the non-business day note and the grace, only with an open amount", () => {
+    const nb = nonBusinessDue("2026-11-14", holidayCalendar([2026]));
+    const render = (
+      today: string,
+      overrides: Partial<typeof invoice> = {},
+      annotation: typeof nb = nb,
+    ) =>
+      text(
+        renderToStaticMarkup(
+          <InvoiceSummaryCard
+            invoice={{
+              ...invoice,
+              referenceMonth: "2026-11",
+              closingDate: "2026-11-07",
+              dueDate: "2026-11-14",
+              status: "closed" as never,
+              ...overrides,
+            }}
+            today={today}
+            cardName="Cartão principal"
+            split={null}
+            paymentAccounts={[]}
+            nonBusinessDue={annotation}
+          />,
+        ),
+      );
+    expect(render("2026-11-11")).toContain(
+      "Vence num sábado, dia não útil. O pagamento costuma passar para o próximo dia útil, segunda, 16 de novembro. Se preferir não esperar, pague até sexta, 13 de novembro.",
+    );
+    // Grace: still Fechada, "Prazo até", never Vencida.
+    const grace = render("2026-11-15", { status: "overdue" as never });
+    expect(grace).toContain("Fechada");
+    expect(grace).toContain("Prazo até amanhã");
+    expect(grace).not.toContain("Vencida");
+    // Nothing open: no note.
+    expect(
+      render("2026-11-11", { outstandingCents: 0, status: "paid" as never }),
+    ).not.toContain("dia não útil");
+    expect(render("2026-11-11", {}, null)).not.toContain("dia não útil");
   });
 
   it("explains why there is nothing to pay", () => {

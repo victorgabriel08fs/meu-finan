@@ -1,5 +1,7 @@
+import { isInGrace, type NonBusinessDue } from "@/lib/finance/business-days";
 import { dayOfWeek, daysBetween, parse } from "@/lib/finance/dates";
 import { fullDateLabel, monthLabel, shortDateLabel } from "@/lib/format/date";
+import { graceLabel } from "@/lib/format/due-day";
 
 /**
  * Pure pt-BR labels for the Início (doc 02 §6.3, §10). "Today" and "now" are
@@ -60,13 +62,23 @@ export type DueTone = "danger" | "warning" | "neutral";
 /**
  * Due label of a pending bill (doc 02 §5.7, §6.3): "Venceu ontem" and "Venceu
  * há 3 dias" in --danger, "Vence hoje/amanhã/em 3 dias" in amber up to 3 days
- * ahead, then "Vence 20/out" in neutral.
+ * ahead, then "Vence 20/out" in neutral. A bill due on a non-business day
+ * (`nb`, flag alerta_dia_nao_util) reads "Prazo até seg, 16 nov" in amber
+ * until the next business day, instead of "Venceu".
  */
 export function dueLabel(
   dueOn: string,
   today: string,
+  nb?: NonBusinessDue | null,
 ): { text: string; tone: DueTone; days: number } {
   const days = daysBetween(parse(today), parse(dueOn));
+  if (isInGrace(dueOn, nb, today)) {
+    return {
+      text: graceLabel(nb.nextBusinessDay, today),
+      tone: "warning",
+      days,
+    };
+  }
   if (days < -1)
     return { text: `Venceu há ${-days} dias`, tone: "danger", days };
   if (days === -1) return { text: "Venceu ontem", tone: "danger", days };

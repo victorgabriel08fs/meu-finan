@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { holidayCalendar, nonBusinessDue } from "@/lib/finance/business-days";
 import { parse } from "@/lib/finance/dates";
 import type { InvoiceSummary } from "@/server/domain/cards";
 import {
@@ -7,6 +8,7 @@ import {
   invoiceTabMonths,
   invoiceTiming,
   shiftReferenceMonth,
+  shownInvoiceStatus,
 } from "./invoice-meta";
 
 const today = "2026-10-14";
@@ -80,6 +82,37 @@ describe("invoiceForMonth", () => {
     );
     expect(view.closingDate).toBe("2026-10-28");
     expect(view.dueDate).toBe("2026-11-05");
+  });
+});
+
+describe("invoice due on a non-business day (D2, fixed today)", () => {
+  // Saturday 14/11/2026; the next business day is Monday 16/11.
+  const nb = nonBusinessDue("2026-11-14", holidayCalendar([2026]));
+  const invoice = {
+    status: "overdue" as const,
+    closingDate: "2026-11-07",
+    dueDate: "2026-11-14",
+  };
+
+  it("stays Fechada, with Prazo até, until the next business day", () => {
+    expect(shownInvoiceStatus(invoice, "2026-11-15", nb)).toBe("closed");
+    expect(shownInvoiceStatus(invoice, "2026-11-16", nb)).toBe("closed");
+    expect(invoiceTiming(invoice, "2026-11-15", nb)).toBe("Prazo até amanhã");
+    expect(invoiceTiming(invoice, "2026-11-16", nb)).toBe("Prazo até hoje");
+    expect(invoiceTiming(invoice, "2026-11-14", nb)).not.toMatch(/Prazo/);
+  });
+
+  it("is Vencida again after the grace", () => {
+    expect(shownInvoiceStatus(invoice, "2026-11-17", nb)).toBe("overdue");
+    expect(invoiceTiming(invoice, "2026-11-17", nb)).toBe("Venceu há 3 dias");
+  });
+
+  it("changes nothing without the annotation, and never for a paid invoice", () => {
+    expect(shownInvoiceStatus(invoice, "2026-11-15")).toBe("overdue");
+    expect(invoiceTiming(invoice, "2026-11-15")).toBe("Venceu ontem");
+    expect(
+      invoiceTiming({ ...invoice, status: "paid" }, "2026-11-15", nb),
+    ).toBe("Fatura paga");
   });
 });
 

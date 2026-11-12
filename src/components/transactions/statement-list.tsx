@@ -19,6 +19,7 @@ import { QuickAddButton } from "@/components/quick-add/quick-add-trigger";
 import { Button } from "@/components/ui/button";
 import { toastWithUndo } from "@/components/ui/toast";
 import { dayHeaderLabel, relativeDayLabel } from "@/lib/format/date";
+import { nonBusinessSpoken } from "@/lib/format/due-day";
 import { formatBRL } from "@/lib/format/money";
 import {
   deleteTransactionAction,
@@ -354,6 +355,9 @@ function rowLabel(item: StatementItem, today: string): string {
       ? `parcela ${item.installment.number} de ${item.installment.count}`
       : null,
     item.recurring ? "recorrente" : null,
+    item.nonBusinessDue && item.status === "pending" && item.kind === "expense"
+      ? nonBusinessSpoken(item.nonBusinessDue)
+      : null,
   ]
     .filter(Boolean)
     .join(", ");

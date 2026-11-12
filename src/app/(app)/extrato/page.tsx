@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MonthSwitcher, shiftMonth } from "@/components/app/month-switcher";
 import { PageHeader } from "@/components/app/page-header";
-import { summarize } from "@/components/transactions/statement-data";
+import {
+  type StatementItem,
+  summarize,
+} from "@/components/transactions/statement-data";
 import {
   type FilterAccount,
   type FilterCategory,
@@ -24,7 +27,13 @@ import { requireUser } from "@/server/dal";
 import { ACCOUNT_TYPE_LABELS, listAccounts } from "@/server/domain/accounts";
 import { listCategoriesForAdmin } from "@/server/domain/category-admin";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
-import { listTransactions, periodTotals } from "@/server/domain/transactions";
+import { pendingNonBusinessDue } from "@/server/domain/holidays";
+import {
+  listTransactions,
+  periodTotals,
+  type TransactionListItem,
+} from "@/server/domain/transactions";
+import { isFlagEnabled } from "@/server/flags";
 
 export const metadata: Metadata = { title: "Extrato" };
 
@@ -85,7 +94,7 @@ async function Statement({
     categoryId || filters.kind || filters.status || filters.q,
   );
 
-  const [list, totals] = await Promise.all([
+  const [list, totals, nonBusiness] = await Promise.all([
     listTransactions(ctx, {
       start: range.start,
       end: range.end,
@@ -100,7 +109,11 @@ async function Statement({
     totalsFromList
       ? null
       : periodTotals(ctx, range.start, range.end, accountId ?? undefined),
+    isFlagEnabled("alerta_dia_nao_util", ctx.userId),
   ]);
+  const items = nonBusiness
+    ? await withNonBusinessDue(list.items, ctx.todayIso)
+    : list.items;
 
   const summary = totals
     ? { ...totals, transferCents: 0 }
@@ -163,7 +176,7 @@ async function Statement({
           />
         ) : null}
         <StatementList
-          items={list.items}
+          items={items}
           hasMore={list.hasMore}
           today={ctx.todayIso}
           monthName={monthName}
@@ -177,6 +190,31 @@ async function Statement({
         />
       </div>
     </>
+  );
+}
+
+/**
+ * Pending expenses outside the cards due on a non-business day get the note
+ * (flag alerta_dia_nao_util), while it still matters: due today or ahead, or
+ * in the grace days up to the next business day.
+ */
+async function withNonBusinessDue(
+  items: TransactionListItem[],
+  today: string,
+): Promise<StatementItem[]> {
+  const isBill = (item: TransactionListItem) =>
+    item.status === "pending" &&
+    item.kind === "expense" &&
+    item.accountType !== "credit_card";
+  const found = await pendingNonBusinessDue(
+    items.filter(isBill).map((item) => item.occurredOn),
+    today,
+  );
+  if (found.size === 0) return items;
+  return items.map((item) =>
+    isBill(item) && found.has(item.occurredOn)
+      ? { ...item, nonBusinessDue: found.get(item.occurredOn) }
+      : item,
   );
 }
 
