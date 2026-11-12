@@ -669,3 +669,231 @@ describe("Próximas contas: vencimento em dia não útil", () => {
     ]);
   });
 });
+
+describe("Quanto dá para gastar por conta", () => {
+  // Gil: a checking account and a wallet to spend from, a caixinha, card A
+  // paid from the checking account and card B with no paying account.
+  type Spendable = import("@/server/domain/dashboard").SpendablePerDay;
+  let gil: UserContext;
+  const gilIds = {} as Record<
+    "checking" | "wallet" | "box" | "cardA" | "cardB" | "theirs",
+    string
+  >;
+
+  async function spendableOf(ctx: UserContext): Promise<Spendable> {
+    for (const store of memo.stores) store.clear();
+    const element = (await blocks.HOME_BLOCK_LOADERS["daily-spend"]({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return element.props.spendable as Spendable;
+  }
+
+  beforeAll(async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    const { ensureOwnerDefaults } = await import("@/server/db/seed-defaults");
+    const { listInvoices, payInvoice } = await import("@/server/domain/cards");
+    await db.insert(schema.user).values([
+      { id: "gil", name: "Gil", email: "gil@exemplo.com" },
+      { id: "hal", name: "Hal", email: "hal@exemplo.com" },
+    ]);
+    await ensureOwnerDefaults("gil");
+    gil = await context.getUserContext("gil", { now: NOW });
+    const account = (
+      name: string,
+      type: "checking" | "cash" | "savings_box",
+      initialBalanceCents: number,
+    ) => accounts.createAccount("gil", { name, type, initialBalanceCents });
+    gilIds.checking = await account("Conta principal", "checking", 300_000);
+    gilIds.wallet = await account("Carteira", "cash", 50_000);
+    gilIds.box = await account("Caixinha", "savings_box", 100_000);
+    const card = (name: string, paymentAccountId?: string) =>
+      accounts.createAccount("gil", {
+        name,
+        type: "credit_card",
+        initialBalanceCents: 0,
+        card: {
+          limitCents: 500_000,
+          closingDay: 17,
+          dueDay: 25,
+          paymentAccountId,
+        },
+      });
+    gilIds.cardA = await card("Cartão A", gilIds.checking);
+    gilIds.cardB = await card("Cartão B");
+    gilIds.theirs = await accounts.createAccount("hal", {
+      name: "Conta do Hal",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    // Both invoices are due on 25/out.
+    for (const [accountId, amountCents] of [
+      [gilIds.cardA, 40_000],
+      [gilIds.cardB, 20_000],
+    ] as const) {
+      await transactions.createTransaction(gil, {
+        kind: "expense",
+        amountCents,
+        accountId,
+        categoryId: null,
+        description: "Compra",
+        occurredOn: "2026-10-10",
+      });
+    }
+    // From the checking account to the wallet on 20/out.
+    await transactions.createTransfer(gil, {
+      fromAccountId: gilIds.checking,
+      toAccountId: gilIds.wallet,
+      amountCents: 10_000,
+      occurredOn: "2026-10-20",
+    });
+    // Part of card B's invoice scheduled from the caixinha.
+    const [invoiceB] = await listInvoices(gil, gilIds.cardB);
+    if (!invoiceB) throw new Error("fatura do cartão B");
+    await payInvoice(gil, {
+      invoiceId: invoiceB.id,
+      fromAccountId: gilIds.box,
+      amountCents: 5_000,
+      occurredOn: "2026-10-22",
+    });
+  });
+
+  it("adds up, account by account, to the forecast of the Fluxo", async () => {
+    for (const store of memo.stores) store.clear();
+    const { spendableAccountInputs } = await import(
+      "@/server/domain/dashboard"
+    );
+    const { spendableAccountSeries, parse } = await import("@/lib/finance");
+    const current = context.resolvePeriod(gil, null);
+    const inputs = await spendableAccountInputs(gil, current);
+    const series = spendableAccountSeries({
+      ...inputs,
+      today: gil.today,
+      until: parse(current.end),
+    });
+    const { cashFlowReport } = await import("@/server/domain/reports");
+    const report = await cashFlowReport(gil, current);
+    const ahead = report.days.filter((day) => day.date >= gil.todayIso);
+    expect(ahead).toHaveLength(series.unassignedDays.length);
+    ahead.forEach((day, k) => {
+      const sum =
+        series.accounts.reduce(
+          (total, item) => total + (item.days[k]?.projectedCents ?? 0),
+          0,
+        ) + (series.unassignedDays[k]?.projectedCents ?? 0);
+      expect(sum, day.date).toBe(day.projectedCents);
+    });
+    // Card B: the 5.000 scheduled from the caixinha and the 15.000 nobody pays.
+    expect(series.unassignedDays.at(-1)?.projectedCents).toBe(-20_000);
+  });
+
+  it("charges card A to the checking account and moves the transfer", async () => {
+    const spendable = await spendableOf(gil);
+    expect(spendable.accounts.map((item) => [item.name, item.shown])).toEqual([
+      ["Conta principal", true],
+      ["Carteira", true],
+    ]);
+    // 14/out to 31/out: 18 days. The total counts both invoices.
+    const [today] = spendable.rows;
+    expect(today?.perDayCents).toBe(Math.floor(290_000 / 18));
+    expect(today?.byAccount).toEqual([
+      // 300.000 − 10.000 to the wallet − the 40.000 of card A.
+      { accountId: gilIds.checking, perDayCents: Math.floor(250_000 / 18) },
+      // Its lowest is before the transfer comes in.
+      { accountId: gilIds.wallet, perDayCents: Math.floor(50_000 / 18) },
+    ]);
+    // From 20/out on (12 days), the wallet has the transfer too.
+    const twentieth = spendable.rows.find((row) => row.date === "2026-10-20");
+    expect(twentieth?.byAccount[1]?.perDayCents).toBe(Math.floor(60_000 / 12));
+    expect(spendable.unassignedCards).toEqual([
+      { id: gilIds.cardB, name: "Cartão B" },
+    ]);
+  });
+
+  it("keeps the caixinha and the cards out of the lines", async () => {
+    const spendable = await spendableOf(gil);
+    const listed = spendable.accounts.map((item) => item.id);
+    expect(listed).not.toContain(gilIds.box);
+    expect(listed).not.toContain(gilIds.cardA);
+  });
+
+  it("leaves the hidden accounts out of the lines, the total as it was", async () => {
+    const { setDailySpendHidden } = await import("@/server/domain/preferences");
+    const before = await spendableOf(gil);
+    await setDailySpendHidden("gil", [gilIds.wallet]);
+    try {
+      const spendable = await spendableOf(gil);
+      expect(spendable.accounts.map((item) => [item.id, item.shown])).toEqual([
+        [gilIds.checking, true],
+        [gilIds.wallet, false],
+      ]);
+      expect(
+        spendable.rows[0]?.byAccount.map((item) => item.accountId),
+      ).toEqual([gilIds.checking]);
+      expect(spendable.rows.map((row) => row.perDayCents)).toEqual(
+        before.rows.map((row) => row.perDayCents),
+      );
+    } finally {
+      await setDailySpendHidden("gil", []);
+    }
+  });
+
+  it("ignores an account of another person in what was saved", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .update(schema.userSettings)
+      .set({
+        homeBlockSettings: {
+          "daily-spend": { hiddenAccountIds: [gilIds.theirs] },
+        },
+      })
+      .where(eq(schema.userSettings.userId, "gil"));
+    try {
+      const spendable = await spendableOf(gil);
+      expect(spendable.accounts.every((item) => item.shown)).toBe(true);
+      expect(spendable.accounts.map((item) => item.id)).not.toContain(
+        gilIds.theirs,
+      );
+    } finally {
+      await db
+        .update(schema.userSettings)
+        .set({ homeBlockSettings: null })
+        .where(eq(schema.userSettings.userId, "gil"));
+    }
+  });
+
+  it("has no lines with a single account to spend from", async () => {
+    const spendable = await spendableOf(ana);
+    expect(spendable.accounts).toEqual([]);
+    expect(spendable.unassignedCards).toEqual([]);
+    expect(spendable.rows.every((row) => row.byAccount.length === 0)).toBe(
+      true,
+    );
+  });
+
+  // Last: it pays part of the invoice of card B.
+  it("charges a card with no paying account to the one that paid it last", async () => {
+    const { listInvoices, payInvoice } = await import("@/server/domain/cards");
+    const [invoiceB] = await listInvoices(gil, gilIds.cardB);
+    if (!invoiceB) throw new Error("fatura do cartão B");
+    await payInvoice(gil, {
+      invoiceId: invoiceB.id,
+      fromAccountId: gilIds.wallet,
+      amountCents: 1_000,
+      occurredOn: "2026-10-12",
+    });
+    const spendable = await spendableOf(gil);
+    // The wallet: 49.000, + 10.000 on 20/out, − the 14.000 left of card B
+    // (19.000 owed, 5.000 of it scheduled from the caixinha) on 25/out.
+    expect(spendable.rows[0]?.byAccount[1]).toEqual({
+      accountId: gilIds.wallet,
+      perDayCents: Math.floor(45_000 / 18),
+    });
+    // The part of the caixinha still counts only in the total.
+    expect(spendable.unassignedCards.map((item) => item.id)).toEqual([
+      gilIds.cardB,
+    ]);
+  });
+});

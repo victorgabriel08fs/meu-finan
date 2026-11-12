@@ -8,8 +8,10 @@ import { daysBetween, parse } from "@/lib/finance/dates";
 import { shortDateLabel, weekdayDateLabel } from "@/lib/format/date";
 import { cn } from "@/lib/utils";
 import type { SpendablePerDay } from "@/server/domain/dashboard";
+import { ACCOUNT_DOT } from "./account-dot";
 import { BlockInvite } from "./block-invite";
 import { BlockLink } from "./block-link";
+import { SpendableAccountsButton } from "./spendable-accounts-sheet";
 
 type SpendablePerDayBlockProps = {
   spendable: SpendablePerDay;
@@ -38,8 +40,11 @@ function dayLabels(
 /**
  * Quanto dá para gastar por dia on the Início (doc 02 §6.3): one card per day
  * from today, side by side in a strip that scrolls on its own, the forecast
- * balance of the day-to-day accounts spread over the days left. The cards are
- * their own text equivalent (§9.5).
+ * balance of the day-to-day accounts spread over the days left. With two or
+ * more accounts, each card also has a line per account the person shows
+ * ("Escolher contas"), by the same rule over that account alone. The cards
+ * are their own text equivalent (§9.5): "Hoje, 12 nov: R$ 85,00 por dia no
+ * total; Conta principal: R$ 50,00; Reserva: Não sobra;".
  */
 export function SpendablePerDayBlock({
   spendable,
@@ -47,9 +52,18 @@ export function SpendablePerDayBlock({
   isCurrent,
   reportHref = "/relatorios/fluxo",
 }: SpendablePerDayBlockProps) {
-  const { rows, shortfallCents, until, balanceTodayCents } = spendable;
+  const {
+    rows,
+    shortfallCents,
+    until,
+    balanceTodayCents,
+    accounts,
+    unassignedCards,
+  } = spendable;
   const untilLabel = shortDateLabel(until);
   const nothingLeft = rows.every((row) => row.perDayCents === 0);
+  const shown = accounts.filter((account) => account.shown);
+  const lines = shown.length > 0;
 
   return (
     <Card asChild className="flex flex-col gap-3">
@@ -97,7 +111,8 @@ export function SpendablePerDayBlock({
                     >
                       <div
                         className={cn(
-                          "flex w-[6.25rem] flex-col gap-0.5 rounded-card p-3",
+                          "flex h-full flex-col gap-0.5 rounded-card p-3",
+                          lines ? "w-34" : "w-25",
                           isToday ? "bg-primary-soft" : "bg-surface-2",
                         )}
                       >
@@ -118,8 +133,19 @@ export function SpendablePerDayBlock({
                           )}
                         >
                           {labels.date}
+                          <span className="sr-only">:</span>
                         </span>
                         <span>
+                          {lines ? (
+                            <span
+                              className={cn(
+                                "block text-caption",
+                                isToday ? "text-on-primary-soft" : "text-fg-3",
+                              )}
+                            >
+                              Total
+                            </span>
+                          ) : null}
                           <Money
                             cents={row.perDayCents}
                             variant="callout"
@@ -127,8 +153,17 @@ export function SpendablePerDayBlock({
                             fit
                             className="font-bold"
                           />
-                          <span className="sr-only"> por dia</span>
+                          <span className="sr-only">
+                            {lines ? " por dia;" : " por dia"}
+                          </span>
                         </span>
+                        {lines ? (
+                          <AccountLines
+                            accounts={shown}
+                            byAccount={row.byAccount}
+                            isToday={isToday}
+                          />
+                        ) : null}
                       </div>
                     </li>
                   );
@@ -138,11 +173,103 @@ export function SpendablePerDayBlock({
             <p className="text-caption text-fg-3">
               Pelo saldo e pelo agendado, sem o orçamento, dividido pelos dias
               que faltam.
+              {lines
+                ? " Em cada conta, o saldo e o agendado dela, com as faturas que ela paga."
+                : null}
             </p>
+            {lines && unassignedCards.length > 0 ? (
+              <UnassignedCardsNote cards={unassignedCards} />
+            ) : null}
+            {accounts.length >= 2 ? (
+              <SpendableAccountsButton accounts={accounts} />
+            ) : null}
           </>
         )}
       </section>
     </Card>
+  );
+}
+
+/** The lines of a day card: each shown account and what it has for the day. */
+function AccountLines({
+  accounts,
+  byAccount,
+  isToday,
+}: {
+  accounts: SpendablePerDay["accounts"];
+  byAccount: SpendablePerDay["rows"][number]["byAccount"];
+  isToday: boolean;
+}) {
+  const perDay = new Map(
+    byAccount.map((item) => [item.accountId, item.perDayCents]),
+  );
+  const muted = isToday ? "text-on-primary-soft" : "text-fg-3";
+  return (
+    <span className="mt-1.5 flex flex-col gap-1.5 border-t border-border pt-1.5">
+      {accounts.map((account) => {
+        const cents = perDay.get(account.id) ?? 0;
+        return (
+          <span key={account.id} className="flex min-w-0 flex-col">
+            <span className="flex min-w-0 items-start gap-1">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "mt-1.25 size-2 shrink-0 rounded-full",
+                  ACCOUNT_DOT[account.color],
+                )}
+              />
+              <span className={cn("min-w-0 text-caption", CLAMP_TEXT, muted)}>
+                {account.name}
+                <span className="sr-only">:</span>
+              </span>
+            </span>
+            <span className="text-caption">
+              {cents > 0 ? (
+                <Money
+                  cents={cents}
+                  variant="caption"
+                  tone="neutral"
+                  fit
+                  className="font-semibold"
+                />
+              ) : (
+                <span className={cn("text-caption", muted)}>Não sobra</span>
+              )}
+              <span className="sr-only">;</span>
+            </span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** Invoices no account to spend from pays: they count only in the total. */
+function UnassignedCardsNote({
+  cards,
+}: {
+  cards: SpendablePerDay["unassignedCards"];
+}) {
+  const [only] = cards;
+  const link = "font-semibold text-primary underline-offset-2 hover:underline";
+  return (
+    <p className="text-caption text-pretty text-fg-3">
+      {cards.length === 1 && only ? (
+        <>
+          A fatura do {only.name} entra só no total.{" "}
+          <Link href={`/cartoes/${only.id}`} className={link}>
+            Escolher a conta que paga
+          </Link>
+        </>
+      ) : (
+        <>
+          As faturas de {cards.length} cartões entram só no total.{" "}
+          <Link href="/contas" className={link}>
+            Ver contas
+          </Link>
+        </>
+      )}
+    </p>
   );
 }
 

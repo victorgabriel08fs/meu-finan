@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type ReactNode, Suspense } from "react";
+import { type CSSProperties, type ReactNode, Suspense } from "react";
 import { PrivacyToggle } from "@/components/app/privacy-toggle";
 import { ThemeToggle } from "@/components/app/theme-toggle";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -191,16 +191,23 @@ function HomeBlockSlot({
 export function HomeBlockFrame({
   id,
   phase,
+  dailySpend,
   children,
 }: {
   id: HomeBlockId;
   /** Where the month on screen stands: some blocks change shape with it. */
   phase?: ReportPhase;
+  /** Quanto dá para gastar por dia: its lines per account and its button. */
+  dailySpend?: DailySpendShape;
   children: ReactNode;
 }) {
   return (
     <HomeBlockBoundary title={HOME_BLOCKS[id].errorTitle}>
-      <Suspense fallback={<HomeBlockSkeleton id={id} phase={phase} />}>
+      <Suspense
+        fallback={
+          <HomeBlockSkeleton id={id} phase={phase} dailySpend={dailySpend} />
+        }
+      >
         {children}
       </Suspense>
     </HomeBlockBoundary>
@@ -299,14 +306,44 @@ function SectionSkeleton({
   );
 }
 
+/**
+ * What changes the height of Quanto dá para gastar por dia besides its slot:
+ * the lines per account under each day and "Escolher contas" (two or more
+ * accounts to spend from).
+ */
+export type DailySpendShape = { lines: number; chooser: boolean };
+
+/*
+ * Quanto dá para gastar por dia with lines: each line is the account's name
+ * and its amount, two caption lines (2 × 18px), 6px apart, under a divider
+ * (6px + 1px + 6px, and the card's 2px gap): 42px a line + 9px, plus the
+ * "Total" caption over the big number (18px + the 2px gap): 29px. The button
+ * is 44px plus the block's 12px gap. In rem, so it grows with the text. The
+ * footnote gets a sentence more with lines: two lines more under 21rem, one
+ * up to 57rem (wide slots on the desktop), none from there.
+ */
+const DAILY_SPEND_EXTRA =
+  "h-[calc(16.375rem+var(--daily-spend-extra))] rounded-card @min-[19rem]:h-[calc(15.25rem+var(--daily-spend-extra))] @min-[21rem]:h-[calc(13.875rem+var(--daily-spend-extra))] @min-[31.25rem]:h-[calc(12.75rem+var(--daily-spend-extra))]";
+const DAILY_SPEND_LINES =
+  "h-[calc(18.625rem+var(--daily-spend-extra))] rounded-card @min-[19rem]:h-[calc(17.5rem+var(--daily-spend-extra))] @min-[21rem]:h-[calc(15rem+var(--daily-spend-extra))] @min-[31.25rem]:h-[calc(13.875rem+var(--daily-spend-extra))] @min-[57rem]:h-[calc(12.75rem+var(--daily-spend-extra))]";
+
+/** Extra height of the lines and the button, in rem. */
+export function dailySpendExtraRem({ lines, chooser }: DailySpendShape) {
+  const px = (lines > 0 ? 29 + 42 * lines : 0) + (chooser ? 56 : 0);
+  return px / 16;
+}
+
 /** Same shape, same height as the loaded block (zero layout shift, §5.17). */
 export function HomeBlockSkeleton({
   id,
   phase = "current",
+  dailySpend,
 }: {
   id: HomeBlockId;
   /** The month on screen: past, current (the default) or ahead. */
   phase?: ReportPhase;
+  /** Quanto dá para gastar por dia: its lines per account and its button. */
+  dailySpend?: DailySpendShape;
 }) {
   switch (id) {
     // Shows only with a group or an invite: no placeholder, so a person
@@ -406,12 +443,30 @@ export function HomeBlockSkeleton({
     // 222px from 21rem, 204px from 31.25rem. The states
     // with no strip ("não sobra", the invite without accounts, the error
     // card) are shorter: the shift when they load is accepted.
-    case "daily-spend":
+    // With lines per account and the button, the same plus their height
+    // (DAILY_SPEND_EXTRA, DAILY_SPEND_LINES).
+    case "daily-spend": {
+      const extra = dailySpend ? dailySpendExtraRem(dailySpend) : 0;
+      if (extra === 0) {
+        return (
+          <div className="@container">
+            <Skeleton className="h-65.5 rounded-card @min-[19rem]:h-61 @min-[21rem]:h-55.5 @min-[31.25rem]:h-51" />
+          </div>
+        );
+      }
       return (
         <div className="@container">
-          <Skeleton className="h-65.5 rounded-card @min-[19rem]:h-61 @min-[21rem]:h-55.5 @min-[31.25rem]:h-51" />
+          <Skeleton
+            style={{ "--daily-spend-extra": `${extra}rem` } as CSSProperties}
+            className={
+              dailySpend && dailySpend.lines > 0
+                ? DAILY_SPEND_LINES
+                : DAILY_SPEND_EXTRA
+            }
+          />
         </div>
       );
+    }
   }
 }
 

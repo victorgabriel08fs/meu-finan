@@ -12,7 +12,9 @@ import {
 import { FirstRunChecklist } from "@/components/dashboard/first-run-checklist";
 import { greetingFor, weekdayDateLabel } from "@/components/dashboard/labels";
 import { DEFAULT_TIME_ZONE } from "@/lib/finance/dates";
+import { isSpendableAccount } from "@/lib/finance/spendable";
 import { monthLabel, todayInTimeZone } from "@/lib/format/date";
+import { dailySpendLineIds } from "@/lib/home/block-settings";
 import {
   defaultHomeLayout,
   packHomeLayout,
@@ -22,7 +24,7 @@ import { requireUser } from "@/server/dal";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { getHomeLayout } from "@/server/domain/preferences";
 import { reportPhase } from "@/server/domain/reports";
-import { accountsOf } from "@/server/domain/request-reads";
+import { accountsOf, homeBlockSettingsOf } from "@/server/domain/request-reads";
 import { sharingCounts } from "@/server/domain/sharing/groups";
 import { isFlagEnabled } from "@/server/flags";
 import { HomeBlock } from "./blocks";
@@ -76,10 +78,15 @@ async function Summary({
     typeof params.mes === "string" ? params.mes : null,
   );
   // With the flag off the Início is the app's default, whatever was saved.
-  const [accounts, layout, sharing] = await Promise.all([
+  const [accounts, custom, sharing] = await Promise.all([
     accountsOf(ctx),
     isFlagEnabled("inicio_personalizavel", user.id).then((enabled) =>
-      enabled ? getHomeLayout(user.id, { today: ctx.todayIso }) : null,
+      enabled
+        ? Promise.all([
+            getHomeLayout(user.id, { today: ctx.todayIso }),
+            homeBlockSettingsOf(ctx),
+          ])
+        : null,
     ),
     // Compartilhado only takes a place with the flag and a group or invite,
     // so the desktop columns stay as they were for everyone else.
@@ -88,6 +95,15 @@ async function Summary({
     ),
   ]);
   if (accounts.length === 0) return <FirstRunChecklist />;
+  const [layout, blockSettings] = custom ?? [null, null];
+  // The skeleton of Quanto dá para gastar por dia, as tall as its lines.
+  const spendableIds = accounts
+    .filter(isSpendableAccount)
+    .map((account) => account.id);
+  const dailySpend = {
+    lines: dailySpendLineIds(blockSettings, spendableIds).length,
+    chooser: spendableIds.length >= 2,
+  };
 
   const showShared = sharing !== null && sharing.groups + sharing.invites > 0;
   const sections = packHomeLayout(
@@ -119,7 +135,11 @@ async function Summary({
       <HomeGrid
         sections={sections}
         renderBlock={(id) => (
-          <HomeBlockFrame id={id} phase={phase}>
+          <HomeBlockFrame
+            id={id}
+            phase={phase}
+            dailySpend={id === "daily-spend" ? dailySpend : undefined}
+          >
             <HomeBlock id={id} ctx={ctx} range={range} />
           </HomeBlockFrame>
         )}
