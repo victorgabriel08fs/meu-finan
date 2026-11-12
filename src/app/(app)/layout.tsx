@@ -4,6 +4,8 @@ import { BottomNav, BottomNavView } from "@/components/app/bottom-nav";
 import { SideNav, SideNavView } from "@/components/app/side-nav";
 import { ThemeAccount } from "@/components/app/theme-account";
 import { FlagsProvider } from "@/components/flags/flags-provider";
+import { NotificationsLoader } from "@/components/notifications/notifications-loader";
+import { NotificationsNavItem } from "@/components/notifications/notifications-nav-item";
 import { PushLoader } from "@/components/push/push-loader";
 import { QuickAddLoader } from "@/components/quick-add/quick-add-loader";
 import {
@@ -24,7 +26,9 @@ import { getViewerFlags } from "@/server/flags";
  * through QuickAddLoader, which checks the session inside its own boundary.
  * ThemeAccount does the same for the account's theme (§6.14).
  * Tips (§6.16) stream in the same way, through TipsLoader, and so does the
- * device's notifications sync and app icon number (PushLoader).
+ * device's notifications sync and app icon number (PushLoader) and the
+ * notification center (NotificationsLoader; its bell and sidebar item only
+ * flip a client store, like the quick-add triggers).
  *
  * Feature flags (doc 01 §11.10): the promise starts here without being
  * awaited, so the shell still prerenders; Client Components unwrap it with
@@ -37,6 +41,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const adminItem = (
     <Suspense fallback={null}>
       <AdminNavItem />
+    </Suspense>
+  );
+
+  // "Notificações" in the sidebar (central_notificacoes): the flag decides,
+  // in its own boundary.
+  const noticesItem = (
+    <Suspense fallback={null}>
+      <NotificationsNavItem />
     </Suspense>
   );
 
@@ -55,10 +67,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               pathname={null}
               addButton={sidebarButton}
               extraItem={adminItem}
+              noticesItem={noticesItem}
             />
           }
         >
-          <SideNav addButton={sidebarButton} extraItem={adminItem} />
+          <SideNav
+            addButton={sidebarButton}
+            extraItem={adminItem}
+            noticesItem={noticesItem}
+          />
         </Suspense>
         <main
           id="conteudo"
@@ -81,6 +98,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </Suspense>
         <Suspense fallback={null}>
           <PushLoader />
+        </Suspense>
+        <Suspense fallback={null}>
+          <NotificationsLoader />
         </Suspense>
       </div>
     </FlagsProvider>

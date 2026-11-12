@@ -33,6 +33,12 @@ type SideNavProps = {
    * <AdminSideNavLink> inside its own <Suspense>, or nothing.
    */
   extraItem?: ReactNode;
+  /**
+   * "Notificações" (the bell), decided by the central_notificacoes flag: a
+   * <NotificationsNavItem> inside its own <Suspense>, or nothing. Sits above
+   * Administração.
+   */
+  noticesItem?: ReactNode;
 };
 
 /**
@@ -41,12 +47,13 @@ type SideNavProps = {
  * the theme switch sits at the foot. Reads the pathname, so render it inside
  * <Suspense> with <SideNavView pathname={null} /> as the fallback.
  */
-export function SideNav({ addButton, extraItem }: SideNavProps) {
+export function SideNav({ addButton, extraItem, noticesItem }: SideNavProps) {
   return (
     <SideNavView
       pathname={usePathname()}
       addButton={addButton}
       extraItem={extraItem}
+      noticesItem={noticesItem}
     />
   );
 }
@@ -63,6 +70,7 @@ export function SideNavView({
   pathname,
   addButton,
   extraItem,
+  noticesItem,
 }: SideNavProps & { pathname: string | null }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-62 shrink-0 flex-col border-r border-border bg-surface px-3 pt-6 pb-4 lg:flex">
@@ -82,7 +90,10 @@ export function SideNavView({
         </ul>
         {/* Apart from Ajustes: when Administração arrives (it is decided on the
             server), nothing below it moves (§4.5). */}
-        <ul className="mt-auto flex flex-col gap-1">{extraItem}</ul>
+        <ul className="mt-auto flex flex-col gap-1">
+          {noticesItem}
+          {extraItem}
+        </ul>
         <ul className="flex flex-col gap-1 border-t border-border pt-3">
           <SideNavLink
             item={SETTINGS_NAV}

@@ -38,11 +38,12 @@ export default function NotificacoesPage() {
 async function Notifications() {
   const user = await requireUser();
   if (!(await isFlagEnabled("notificacoes_push", user.id))) notFound();
-  const [ctx, preferences, devices, nonBusinessDue] = await Promise.all([
+  const [ctx, preferences, devices, nonBusinessDue, bell] = await Promise.all([
     getUserContext(user.id),
     getNotificationPreferences(user.id),
     countPushDevices(user.id),
     isFlagEnabled("alerta_dia_nao_util", user.id),
+    isFlagEnabled("central_notificacoes", user.id),
   ]);
   // Only the public half reaches the browser.
   const publicKey = vapidKeys()?.publicKey ?? null;
@@ -55,6 +56,7 @@ async function Notifications() {
         monthStartDay={ctx.monthStartDay}
         devices={devices}
         nonBusinessDue={nonBusinessDue}
+        bell={bell}
       />
     </>
   );

@@ -97,20 +97,29 @@ export function visibleReminderRows(nonBusinessDue: boolean): ReminderRow[] {
 
 /**
  * The note below the notices: when they arrive, and on how many devices.
- * Only the rows on screen (`events`) count as on.
+ * Only the rows on screen (`events`) count as on. With the bell
+ * (central_notificacoes) they also stay in the notification center, devices
+ * or not.
  */
 export function devicesNote(
   devices: number,
   preferences: NotificationPreferences,
   events: readonly ReminderEvent[] = REMINDER_ROWS.map((row) => row.event),
+  bell = false,
 ): string {
   if (!events.some((event) => preferences.events[event])) {
     return "Todos os avisos estão desligados.";
   }
+  const devicesText = `${devices} ${devices === 1 ? "aparelho" : "aparelhos"}`;
+  if (bell) {
+    return devices === 0
+      ? `${WHEN}, no sino do app. Para receber também no celular, ligue “Receber notificações” acima.`
+      : `${WHEN}, no sino e em ${devicesText}.`;
+  }
   if (devices === 0) {
     return `${WHEN}. Nenhum aparelho recebe ainda: ligue “Receber notificações” acima.`;
   }
-  return `${WHEN}, em ${devices} ${devices === 1 ? "aparelho" : "aparelhos"}.`;
+  return `${WHEN}, em ${devicesText}.`;
 }
 
 /**
@@ -145,6 +154,8 @@ type ReminderListProps = {
   devices: number;
   /** The flag alerta_dia_nao_util, read on the server: shows its row. */
   nonBusinessDue?: boolean;
+  /** The flag central_notificacoes, read on the server: the notices reach the bell. */
+  bell?: boolean;
   onChange: (next: NotificationPreferences) => void;
 };
 
@@ -154,6 +165,7 @@ export function ReminderList({
   monthStartDay,
   devices,
   nonBusinessDue = false,
+  bell = false,
   onChange,
 }: ReminderListProps) {
   const ids = useId();
@@ -222,6 +234,7 @@ export function ReminderList({
             devices,
             preferences,
             rows.map((row) => row.event),
+            bell,
           )}
         </p>
       </section>
@@ -261,12 +274,15 @@ export function ReminderSettings({
   monthStartDay,
   devices,
   nonBusinessDue = false,
+  bell = false,
 }: {
   initial: NotificationPreferences;
   monthStartDay: number;
   devices: number;
   /** The flag alerta_dia_nao_util, read on the server. */
   nonBusinessDue?: boolean;
+  /** The flag central_notificacoes, read on the server. */
+  bell?: boolean;
 }) {
   const [preferences, setPreferences] = useState(initial);
   const saved = useRef(initial);
@@ -289,6 +305,7 @@ export function ReminderSettings({
       monthStartDay={monthStartDay}
       devices={devices}
       nonBusinessDue={nonBusinessDue}
+      bell={bell}
       onChange={(next) => void change(next)}
     />
   );

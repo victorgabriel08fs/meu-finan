@@ -2,6 +2,7 @@ import Link from "next/link";
 import { type ReactNode, Suspense } from "react";
 import { PrivacyToggle } from "@/components/app/privacy-toggle";
 import { ThemeToggle } from "@/components/app/theme-toggle";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NewsDot } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { HOME_BLOCKS, type HomeBlockId } from "@/lib/home/blocks";
@@ -26,8 +27,10 @@ type HomeHeaderProps = {
 
 /**
  * Top bar of the Início (doc 02 §4.2): avatar, greeting and date; on the
- * right the theme toggle (below lg, where the sidebar has its own) and the
- * privacy eye. The avatar leads to Ajustes and carries the dot of unread
+ * right the notification bell (with the central_notificacoes flag), the
+ * theme toggle (below lg, where the sidebar has its own) and the privacy
+ * eye. The bell comes first, so when it shows up after hydration the others
+ * stay where they are. The avatar leads to Ajustes and carries the dot of unread
  * novidades.
  */
 export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
@@ -41,13 +44,14 @@ export function HomeHeader({ name, greeting, dateLabel }: HomeHeaderProps) {
         <span className="sr-only">Perfil e ajustes</span>
         <NewsDot className="-top-0.5 -right-0.5" />
       </Link>
-      <div className="min-w-0 flex-[1_1_10rem]">
-        <h1 className="text-title-3 text-fg">
+      <div className="min-w-0 flex-[1_1_6rem]">
+        <h1 className="truncate text-title-3 text-fg">
           {greeting}, {firstName(name)}
         </h1>
-        <p className="text-caption text-fg-3">{dateLabel}</p>
+        <p className="truncate text-caption text-fg-3">{dateLabel}</p>
       </div>
       <div className="-mr-2 ml-auto flex items-center">
+        <NotificationBell />
         <ThemeToggle className="lg:hidden" />
         <PrivacyToggle />
       </div>
