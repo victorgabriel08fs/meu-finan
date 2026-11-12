@@ -23,9 +23,13 @@ export type PendingPush = {
   /** Where the push opens. */
   url: string;
   groupId: string;
+  /** Pushes with the same tag replace each other; the group's by default. */
+  tag?: string;
 };
 
 export const groupHref = (groupId: string) => `/compartilhado/${groupId}`;
+export const boxHref = (groupId: string, boxId: string) =>
+  `/compartilhado/${groupId}/caixinhas/${boxId}`;
 
 /**
  * Records (or brings back to the top, unread) a notice of the group, and
@@ -42,7 +46,14 @@ export async function notifyMember(
     url,
     once = false,
     sum,
-  }: { push: boolean; url: string; once?: boolean; sum?: readonly string[] },
+    tag,
+  }: {
+    push: boolean;
+    url: string;
+    once?: boolean;
+    sum?: readonly string[];
+    tag?: string;
+  },
 ): Promise<PendingPush | null> {
   if (once) {
     const created = await recordNotification(
@@ -70,6 +81,7 @@ export async function notifyMember(
         payload,
         url,
         groupId: payload.groupId,
+        ...(tag ? { tag } : {}),
       }
     : null;
 }

@@ -3,7 +3,7 @@
 // (member, expense, settlement) has to belong to that group. To anyone who is
 // not an active member a group answers exactly like an id that does not
 // exist.
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "@/server/db/client";
 import {
   type ShareDefaultSplit,
@@ -108,6 +108,20 @@ export async function groupMembers(
   return rows.map((row) => ({ ...row, deleted: isDeletedAccount(row) }));
 }
 
+/** Every member of several groups, in the order invited (see groupMembers). */
+export async function membersOfGroups(
+  executor: Executor,
+  groupIds: readonly string[],
+): Promise<(MemberRow & { deleted: boolean })[]> {
+  if (groupIds.length === 0) return [];
+  const rows = await executor
+    .select(memberColumns)
+    .from(shareMembers)
+    .where(inArray(shareMembers.groupId, [...groupIds]))
+    .orderBy(asc(shareMembers.invitedAt), asc(shareMembers.id));
+  return rows.map((row) => ({ ...row, deleted: isDeletedAccount(row) }));
+}
+
 /** A member who had joined (left, removed) and whose account no longer exists. */
 export function isDeletedAccount(member: {
   userId: string | null;
@@ -118,6 +132,19 @@ export function isDeletedAccount(member: {
     member.status !== "invited" &&
     member.status !== "declined"
   );
+}
+
+/** The name shown in the history: "(saiu)", "(conta excluída)" once gone. */
+export function historyName(member: {
+  displayName: string;
+  status: ShareMemberStatus;
+  deleted: boolean;
+}): string {
+  if (member.deleted) return `${member.displayName} (conta excluída)`;
+  if (member.status === "left" || member.status === "removed") {
+    return `${member.displayName} (saiu)`;
+  }
+  return member.displayName;
 }
 
 /** The name and e-mail of an account, read inside the caller's transaction. */

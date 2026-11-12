@@ -173,6 +173,32 @@ export type NotificationPayload =
       direction: "paid_you" | "you_paid";
       date: string;
       amounts?: true;
+    }
+  | {
+      /**
+       * One a day per member who put money in or took it out of a shared
+       * box: the counts and sums add up (bumpNotification).
+       */
+      type: "box_activity";
+      groupId: string;
+      groupName: string;
+      boxId: string;
+      boxName: string;
+      actorName: string;
+      saved: number;
+      savedCents: number;
+      withdrawn: number;
+      withdrawnCents: number;
+      amounts?: true;
+    }
+  | {
+      /** Once per box and person: the total reached the target. */
+      type: "box_reached";
+      groupId: string;
+      groupName: string;
+      boxId: string;
+      boxName: string;
+      amounts?: false;
     };
 
 export type JsonValue =

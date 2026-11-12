@@ -42,11 +42,13 @@ import { recordAudit } from "../audit";
 import type { UserContext } from "../context";
 import { DomainError } from "../errors";
 import { groupNets, netsForGroups } from "./balances";
+import { hasBoxHistory, resetBoxTargets } from "./boxes";
 import {
   accountOf,
   GROUP_NOT_FOUND,
   type GroupRow,
   groupMembers,
+  historyName,
   isDeletedAccount,
   isUniqueViolation,
   type MemberRow,
@@ -146,19 +148,6 @@ function transfersFor(
     name: names.get(memberId) ?? "",
     amountCents: transferBetween(plan, myMemberId, memberId),
   }));
-}
-
-/** The name shown in the history: "(saiu)", "(conta excluída)" once gone. */
-function historyName(member: {
-  displayName: string;
-  status: ShareMemberStatus;
-  deleted: boolean;
-}): string {
-  if (member.deleted) return `${member.displayName} (conta excluída)`;
-  if (member.status === "left" || member.status === "removed") {
-    return `${member.displayName} (saiu)`;
-  }
-  return member.displayName;
 }
 
 /**
@@ -670,6 +659,8 @@ export async function respondToInvite(
           : { status: "declined", respondedAt: now },
       )
       .where(eq(shareMembers.id, memberId));
+    // A new member: percentages of a box target no longer cover everyone.
+    if (answer === "accept") await resetBoxTargets(tx, group.id);
     await tx
       .update(notifications)
       .set({ readAt: now })
@@ -772,6 +763,7 @@ async function afterDeparture(
     await tx.delete(shareGroups).where(eq(shareGroups.id, groupId));
     return true;
   }
+  await resetBoxTargets(tx, groupId);
   if (departed.role === "owner") {
     await tx
       .update(shareMembers)
@@ -830,9 +822,9 @@ export async function leaveGroup(
   });
 }
 
-/** Whether any expense, part or settlement points at the member. */
+/** Whether any expense, part, settlement or shared box points at the member. */
 async function hasHistory(tx: Executor, memberId: string): Promise<boolean> {
-  const [paid, part, settled] = await Promise.all([
+  const [paid, part, settled, box] = await Promise.all([
     tx
       .select({ id: sharedExpenses.id })
       .from(sharedExpenses)
@@ -859,8 +851,9 @@ async function hasHistory(tx: Executor, memberId: string): Promise<boolean> {
         ),
       )
       .limit(1),
+    hasBoxHistory(tx, memberId),
   ]);
-  return paid.length + part.length + settled.length > 0;
+  return paid.length + part.length + settled.length > 0 || box;
 }
 
 /**
@@ -917,6 +910,7 @@ export async function removeMember(
       .update(shareMembers)
       .set({ status: "removed", leftAt: now })
       .where(eq(shareMembers.id, target.id));
+    await resetBoxTargets(tx, groupId);
     const pending: PendingPush[] = [];
     let auditTarget: Actor | null = null;
     if (target.userId) {

@@ -102,6 +102,13 @@ export const SHARE_SPLIT_METHODS = [
 ] as const;
 export type ShareSplitMethod = (typeof SHARE_SPLIT_METHODS)[number];
 
+/**
+ * shared_boxes.target_split: each active member's part of the box's target,
+ * equal (the default) or by the percentages in shared_box_members.target_weight.
+ */
+export const SHARE_BOX_TARGET_SPLITS = ["equal", "percent"] as const;
+export type ShareBoxTargetSplit = (typeof SHARE_BOX_TARGET_SPLITS)[number];
+
 /** access_links.purpose: first password of a new account, or a new one. */
 export const ACCESS_LINK_PURPOSES = ["invite", "reset"] as const;
 export type AccessLinkPurpose = (typeof ACCESS_LINK_PURPOSES)[number];
@@ -159,6 +166,8 @@ export const SHARE_NOTIFICATION_TYPES = [
   "share_removed",
   "shared_activity",
   "share_settled",
+  "box_activity",
+  "box_reached",
 ] as const;
 export type ShareNotificationType = (typeof SHARE_NOTIFICATION_TYPES)[number];
 
