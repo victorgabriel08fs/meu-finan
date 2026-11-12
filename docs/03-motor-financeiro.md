@@ -658,4 +658,52 @@ Ferramentas: Vitest 5 + fast-check 4. Cobertura mínima de 95% em `lib/finance`.
 - `invoiceFor`: o vencimento é sempre posterior ao fechamento; faturas de compras em datas crescentes nunca retrocedem.
 - `occurrencesBetween`: datas estritamente crescentes; nenhuma fora de `[from, to]` ou depois de `end`.
 - `periodContaining(d).start ≤ d ≤ end`, e períodos consecutivos não se sobrepõem nem deixam buraco.
+- Divisão (`allocate`, `splitExpense`): Σ das partes = o total; nenhuma parte negativa; cada parte difere em menos de 1 centavo da exata; partes iguais diferem em no máximo 1 centavo; 100% para um só dá o total a ele; aumentar o peso de alguém nunca diminui a parte dele; empates dão o centavo ao menor índice.
+- Acerto (`netFromTotals`, `settleUpPlan`): Σ dos saldos = 0; o plano zera todos os saldos com no máximo n − 1 pagamentos; `netFromTotals` ≡ `groupBalances`.
 - Dias úteis (1900–2199): a Páscoa é sempre domingo entre 22/mar e 25/abr; `nextBusinessDay(d)` é posterior, útil e todo dia entre os dois é não útil (simétrico em `previousBusinessDay`); `nonBusinessDue(d) === null` se e só se `d` é útil; as datas de feriado de um ano são únicas e ordenadas; nenhuma sequência de dias não úteis passa de 4; `calendarYearsFor` cobre 31/12 e 01/01. Casos exatos: feriados de 2026 e 2027, Carnaval, Sexta-feira Santa, Corpus Christi, 31/12, 20/11 só desde 2024 e Quarta-feira de Cinzas e 24/12 úteis.
+
+---
+
+## 14. Divisão e acerto de despesas compartilhadas
+
+Código: `src/lib/finance/split.ts` e `settle.ts` (puros). O servidor refaz a conta em toda gravação; a tela só mostra a prévia (doc 02 §6.18). Dinheiro em centavos inteiros.
+
+### 14.1 Maior resto
+
+`allocate(total, pesos)` reparte `total` entre os pesos sem perder nem criar centavo:
+
+```
+soma    = Σ pesos          (erro se soma = 0 ou algum peso < 0)
+exata_i = total · peso_i / soma
+parte_i = ⌊exata_i⌋
+sobra   = total − Σ parte_i              (0 ≤ sobra < n)
+os `sobra` maiores restos (exata_i − parte_i) ganham +1 centavo;
+empate de resto: ganha o índice menor (a ordem estável é a de entrada no grupo)
+```
+
+A conta é toda em inteiros, nunca em ponto flutuante; se `total × maior peso` passar de 2⁵³, a função recusa em vez de arredondar. Exemplo: R$ 100,01 em 2 partes iguais → 50,01 e 50,00 (o centavo vai para o primeiro).
+
+### 14.2 As quatro formas de dividir
+
+`splitExpense(total, método, entradas[{ memberId, valor }])`:
+
+| Forma | Entrada de cada pessoa | Parte |
+|---|---|---|
+| `equal` (Iguais) | 1 (participa) ou 0 | `allocate(total, [1…])` entre quem participa |
+| `shares` (Cotas) | peso inteiro (a tela e a action limitam a 0–9) | `allocate(total, pesos)` |
+| `percent` (Percentual) | pontos-base (6000 = 60%) | `allocate(total, pontos)`; a soma precisa ser exatamente 10 000 |
+| `amounts` (Valores) | centavos | a própria entrada; a soma precisa ser o total |
+
+Erros, em vez de ajuste silencioso: `no_participant` (ninguém participa), `amounts_short` / `amounts_over` (com a diferença em centavos: "Faltam R$ 12,00…", "Passou R$ 3,00…") e `percent_sum` (com a soma: "Os percentuais somam 90%…").
+
+### 14.3 Saldo e plano de acerto
+
+Por pessoa, **desde sempre**:
+
+```
+net = pago − parte + acertos enviados − acertos recebidos
+```
+
+`pago` é a soma das despesas que a pessoa pagou; `parte`, a soma das partes dela; um acerto de A para B (A pagou B fora do app) soma ao net de A e subtrai do de B. Net positivo: o grupo deve a essa pessoa. `Σ net = 0` sempre. `netFromTotals` calcula a partir dos totais agrupados (3 consultas com GROUP BY); `groupBalances` é a versão expandida, usada nos testes para conferir a primeira.
+
+`settleUpPlan(nets)`, guloso: o maior devedor paga ao maior credor o menor dos dois valores, e repete até zerar. Resulta em no máximo n − 1 pagamentos. Com 2 pessoas é um só ("Bruno te deve R$ 120,00"). `settleUp` só aceita acertar a transferência que o plano manda entre as duas pessoas (confere `expectedCents` dentro da transação) e até o valor da dívida; o acerto parcial vale.
