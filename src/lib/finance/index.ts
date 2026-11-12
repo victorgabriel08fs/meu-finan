@@ -21,6 +21,7 @@ export * from "./settle";
 export * from "./shared-box";
 export * from "./solve";
 export * from "./spendable";
+export * from "./spendable-by-account";
 export * from "./spendable-by-day";
 export * from "./split";
 export * from "./tax";
