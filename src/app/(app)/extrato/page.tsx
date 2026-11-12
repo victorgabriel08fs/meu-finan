@@ -28,12 +28,14 @@ import { ACCOUNT_TYPE_LABELS, listAccounts } from "@/server/domain/accounts";
 import { listCategoriesForAdmin } from "@/server/domain/category-admin";
 import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { pendingNonBusinessDue } from "@/server/domain/holidays";
+import { transactionShares } from "@/server/domain/sharing/expenses";
+import { listShareTargets } from "@/server/domain/sharing/groups";
 import {
   listTransactions,
   periodTotals,
   type TransactionListItem,
 } from "@/server/domain/transactions";
-import { isFlagEnabled } from "@/server/flags";
+import { getFlags } from "@/server/flags";
 
 export const metadata: Metadata = { title: "Extrato" };
 
@@ -94,7 +96,7 @@ async function Statement({
     categoryId || filters.kind || filters.status || filters.q,
   );
 
-  const [list, totals, nonBusiness] = await Promise.all([
+  const [list, totals, flags] = await Promise.all([
     listTransactions(ctx, {
       start: range.start,
       end: range.end,
@@ -109,11 +111,32 @@ async function Statement({
     totalsFromList
       ? null
       : periodTotals(ctx, range.start, range.end, accountId ?? undefined),
-    isFlagEnabled("alerta_dia_nao_util", ctx.userId),
+    getFlags(ctx.userId),
   ]);
-  const items = nonBusiness
-    ? await withNonBusinessDue(list.items, ctx.todayIso)
-    : list.items;
+  // "Dividir" and "Dividida em Casa" (financas_compartilhadas): the groups
+  // the person is in, read only with the flag on.
+  const [annotated, sharing] = await Promise.all([
+    flags.alerta_dia_nao_util
+      ? withNonBusinessDue(list.items, ctx.todayIso)
+      : list.items,
+    flags.financas_compartilhadas
+      ? Promise.all([
+          listShareTargets(ctx.userId),
+          transactionShares(
+            ctx.userId,
+            list.items
+              .filter((item) => item.kind === "expense")
+              .map((item) => item.id),
+          ),
+        ])
+      : null,
+  ]);
+  const items: StatementItem[] = sharing
+    ? annotated.map((item) => ({
+        ...item,
+        sharedIn: sharing[1].get(item.id) ?? null,
+      }))
+    : annotated;
 
   const summary = totals
     ? { ...totals, transferCents: 0 }
@@ -187,6 +210,7 @@ async function Statement({
           filtered={hasActiveFilters(filters)}
           query={filters.q}
           categories={filterCategories}
+          sharing={sharing ? sharing[0] : null}
         />
       </div>
     </>

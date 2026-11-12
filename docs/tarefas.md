@@ -23,24 +23,6 @@ A tarefa foi entregue em 06/11/2026 (ver "Entregue"). Fica para depois:
 - **Texto vazio do bloco Fluxo** ("Nenhuma conta para o dia a dia") não foi verificado visualmente.
 - Renomear `liquidPendingFlows` e `liquidIds` (hoje significam "para gastar").
 
-## 8. Despesas compartilhadas
-
-**Pedido do dono (10/11/2026).** A pessoa adiciona outra pessoa para dividir despesas em comum e vê, de forma clara, quanto cada um paga dentre as despesas compartilhadas selecionadas. Tela bem funcional e bonita, fácil de detalhar.
-
-- **Divisão**: valor livre (digitado por pessoa) ou proporcional (percentual); propor também outras formas, por exemplo partes iguais, pesos/cotas (ex.: 2 para 1), proporcional à renda de cada um, por item da despesa e "quem pagou" com acerto de contas (saldo entre as pessoas: "Bruno te deve R$ 120" e "Marcar como acertado").
-- **Seleção**: escolher as despesas que entram (por lançamento, por categoria ou por período) e ver o detalhe por despesa e o total por pessoa.
-- **Decidido pelo dono (10/11/2026): a outra pessoa tem login próprio** (outra conta do app) e o convite para dividir vai **pelo app, com notificação** (push). Vale também para a tarefa 9.
-- **Com quem**: decidir se a outra pessoa é outra conta do app (convidada, cada uma com o próprio login) ou só um nome cadastrado por quem divide. Se for outra conta, **isso muda a regra de isolamento entre contas** (CLAUDE.md: "nothing reads another account's financial rows") e precisa de um ADR (doc 01 §17, a fase F4 já prevê "finanças compartilhadas entre contas"): o que cada um vê da despesa do outro, consentimento, como sair, o que acontece ao excluir a conta.
-- Atrás de uma flag nova enquanto estiver em teste.
-
-## 9. Saldo compartilhado (caixinha em conjunto)
-
-**Pedido do dono (10/11/2026).** Uma espécie de caixinha compartilhada: cada pessoa diz quanto está aportando ou pretende aportar, e a tela mostra o saldo total, quanto cada um já colocou e a projeção (quando chega no objetivo, quanto falta por pessoa).
-
-- Partir da Caixinha (tarefa entregue em 06/11/2026) e das Metas (projeção, aportes): decidir se é uma caixinha com participantes, uma meta compartilhada ou os dois.
-- Aportes: realizados (transferência de uma conta da pessoa para a caixinha) e planejados (valor por mês por pessoa); projeção por pessoa e total.
-- Mesma decisão de isolamento da tarefa 8 (participantes como outras contas do app ou só nomes) — as duas tarefas devem compartilhar o mesmo modelo de "participantes" e o mesmo ADR.
-
 ## 12. Quanto dá para gastar, por conta
 
 **Pedido do dono (12/11/2026).** O bloco "Quanto dá para gastar por dia" (Início) passa a ser por conta: hoje ele soma todas as contas para gastar num saldo só; a pessoa quer ver quanto dá para gastar em cada conta.
@@ -68,6 +50,34 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Caixinha compartilhada (tarefa 9) — 12/11/2026
+
+Pedido do dono (10/11/2026), etapa C do compartilhado; decisões aprovadas em 12/11/2026: a caixinha é do grupo, cada pessoa resgata no máximo o que guardou, a parte no objetivo é igual por padrão e ajustável em percentual, e o lançamento nas contas de cada um é opcional ("Lançar no meu extrato").
+
+- [x] **Lib** `src/lib/finance/shared-box.ts` (`projectSharedBox`, doc 03 §8.1) com fast-check: a soma das partes é o objetivo, quem não planeja fica sem data, coerência com `projectGoal` para uma pessoa só. Correção em `projectGoal`: a previsão além do ano 9999 virou "sem data" em vez de erro (planos de centavos quebravam a tela; vale para as metas próprias).
+- [x] **Dados** (migração `0012_caixinha_compartilhada`): `shared_boxes` (com `target_split`), `shared_box_members`, `shared_box_entries`; avisos `box_activity` e `box_reached`.
+- [x] **Domínio** `src/server/domain/sharing/boxes.ts` e `insertTransfer` extraído de `createTransfer`: criar, editar, arquivar, plano próprio, partes (criadora do grupo), guardar e resgatar com transferência opcional para a caixinha própria, Desfazer (as duas pernas) e limite do resgate sob trava.
+- [x] **Telas**: abas Despesas · Caixinhas, `/compartilhado/[grupo]/caixinhas` e a caixinha (anel, projeção no plural, "Quem guarda", histórico), folhas Nova caixinha, Guardar, Resgatar, Mudar meu plano, Partes do objetivo e Desfazer; seção "Caixinhas compartilhadas" em Planejar › Metas; avisos no sino e no push; novidade "Guardem dinheiro juntos"; demo com "Viagem para Salvador" na Casa.
+- [x] Testes: unidade e fast-check, componente (modelo de textos), integração (isolamento com a Carla, contas alheias recusadas, resgate acima do guardado, dois resgates ao mesmo tempo, Desfazer, `box_reached` uma vez, saída e conta excluída com dinheiro na caixinha, actions e push) e e2e (`e2e/caixinha-compartilhada.spec.ts`: criar com objetivo e prazo, plano, guardar com e sem transferência, o Bruno sem caixinha própria, limite do resgate, percentual, Desfazer pelo aviso e pela linha, arquivar e desarquivar, Metas, flag desligada, axe nos dois temas, 360 px a 200%).
+
+Decisões além do plano: `target_split` (`equal` | `percent`) na caixinha; quem sai mantém o histórico ("Bruno (saiu)") mas deixa de contar no total e na projeção; não dá para desfazer um aporte já resgatado em parte; sem datas no futuro; "Chegou ao objetivo" no sino de todos e push só para os outros; a caixinha arquivada ainda abre, com Desarquivar; sem auditoria e sem tags de cache (as actions terminam com `refresh()`).
+
+**Ficou para depois:** o campo de rendimento esperado (a coluna `expected_rate` existe, sem uso na tela); "guardar todo mês" automático (depende da recorrência de transferência); desfazer um aporte não corrige o aviso agregado do dia que os outros já receberam; dinheiro guardado na conta de outra pessoa.
+
+### Despesas compartilhadas (grupos, ADR-13) — 12/11/2026
+
+Tarefa 8 (etapa B). Decisões do dono (12/11/2026): grupo de até 6 pessoas com convite pelo e-mail e resposta neutra, o outro vê só o que alguém pôs no grupo, formas de divisão Iguais · Valores · Percentual · Cotas, saída livre com aviso, conta excluída vira "conta excluída" no grupo.
+
+- [x] **ADR-13** (doc 01 §17 e §11.11) e a regra nova do CLAUDE.md: as tabelas compartilhadas são a única exceção ao isolamento, lidas só por membros ativos.
+- [x] **Flag `financas_compartilhadas`** (desligada por padrão; a demo liga para a Ana e o Bruno) e a novidade "Divida despesas com outra pessoa".
+- [x] **Dados** (migração `0011_compartilhado`): `share_groups`, `share_members` (`user_id` com `ON DELETE SET NULL`, a única FK sem cascade), `shared_expenses`, `shared_expense_shares` e `share_settlements`; auditoria `share.*` e sete tipos de aviso.
+- [x] **Motor** (doc 03 §14): divisão pelo maior resto (`split.ts`) e saldo e plano de acerto (`settle.ts`), com fast-check.
+- [x] **Domínio e actions**: grupos, convites (limites por pessoa e por par, 6 pessoas), aceitar e recusar, sair e tirar, despesas (retrato do lançamento próprio, edição, tirar e desfazer, "Atualizar"), acertos (conferidos na transação, parciais valem, Desfazer) e `deliverPushes` depois do commit.
+- [x] **Telas**: `/compartilhado` (convites, grupos, vazio, Novo grupo), `/compartilhado/[grupo]` (saldo, mês, lista por dia, Pessoas, Adicionar despesas do extrato em lote ou nova, detalhe, editor de divisão, Marcar como acertado, Acertar contas), "Dividir" no detalhe do lançamento, bloco "Compartilhado" no Início, item na barra lateral e linha em Ajustes › Organização; avisos de grupo no sino (Aceitar e Recusar) e no push.
+- [x] Testes: unidade e fast-check (`split`, `settle`, rótulos e textos, editor de divisão, frase do saldo), integração contra o PGlite (isolamento com uma terceira conta em toda função, convites neutros e vencidos, concorrência de aceites e de acertos, saída e exclusão de conta, notificações agregadas; `sharing-actions.integration.test.ts` com a flag, os limites de convite e `deliverPushes`; rota `/api/notificacoes` com avisos de grupo) e e2e (`e2e/compartilhado.spec.ts`: Ana e Bruno, cada forma de dividir, lote com busca de categoria, o que o Bruno não vê, aviso ao sair, acerto, flag desligada, axe nos dois temas, 360 px a 200%).
+
+**Ficou para depois:** dividir **por renda** (percentual sugerido pela renda que cada um digita no grupo) e **por item**; **regra automática** ("toda despesa de Mercado entra"); **compra parcelada inteira** de uma vez (hoje cada parcela entra como lançamento); sincronizar a despesa do grupo quando o lançamento muda (hoje só a nota "Desatualizada" com "Atualizar"); moedas e anexos; tempo real (a caixinha compartilhada, tarefa 9, foi entregue em 12/11/2026).
 
 ### Sino de notificações — 12/11/2026
 

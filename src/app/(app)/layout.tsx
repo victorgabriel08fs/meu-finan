@@ -12,6 +12,7 @@ import {
   QuickAddFab,
   QuickAddSidebarButton,
 } from "@/components/quick-add/quick-add-trigger";
+import { SharedNavItem } from "@/components/sharing/shared-nav-item";
 import { TipsLoader } from "@/components/tips/tips-loader";
 import { getViewerFlags } from "@/server/flags";
 
@@ -52,6 +53,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </Suspense>
   );
 
+  // "Compartilhado" in the sidebar (financas_compartilhadas): decided on the
+  // server, in its own boundary.
+  const sharedItem = (
+    <Suspense fallback={null}>
+      <SharedNavItem />
+    </Suspense>
+  );
+
   return (
     <FlagsProvider flags={getViewerFlags()}>
       <div className="min-h-dvh lg:flex">
@@ -68,6 +77,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               addButton={sidebarButton}
               extraItem={adminItem}
               noticesItem={noticesItem}
+              sharedItem={sharedItem}
             />
           }
         >
@@ -75,6 +85,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             addButton={sidebarButton}
             extraItem={adminItem}
             noticesItem={noticesItem}
+            sharedItem={sharedItem}
           />
         </Suspense>
         <main

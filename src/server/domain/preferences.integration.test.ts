@@ -209,7 +209,7 @@ describe("home layout", () => {
     for (const userId of ["owner", "outro"]) {
       const layout = await m.preferences.getHomeLayout(userId);
       expect(layout.customized).toBe(false);
-      expect(layout.entries.filter((entry) => entry.visible)).toHaveLength(7);
+      expect(layout.entries.filter((entry) => entry.visible)).toHaveLength(8);
     }
   });
 

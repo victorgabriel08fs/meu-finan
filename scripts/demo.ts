@@ -19,6 +19,7 @@ import { loadEnvConfig } from "@next/env";
 import { hashPassword } from "better-auth/crypto";
 import { and, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { uuidv7 } from "uuidv7";
 import {
   addDays,
   addMonths,
@@ -44,10 +45,12 @@ import {
   auditLog,
   categories,
   featureFlagOverrides,
+  finAccounts,
   goals,
   marketRates,
   notifications,
   session,
+  shareMembers,
   transactions,
   user,
   userSettings,
@@ -59,6 +62,19 @@ import { listInvoices, payInvoice } from "../src/server/domain/cards";
 import { createCategory } from "../src/server/domain/categories";
 import { setCategoryArchived } from "../src/server/domain/category-admin";
 import { getUserContext } from "../src/server/domain/context";
+import {
+  contribute,
+  createBox,
+  setMyPlan,
+} from "../src/server/domain/sharing/boxes";
+import { addSharedExpenses } from "../src/server/domain/sharing/expenses";
+import {
+  createGroup,
+  getGroup,
+  inviteToGroup,
+  respondToInvite,
+} from "../src/server/domain/sharing/groups";
+import { settleUp } from "../src/server/domain/sharing/settlements";
 import { setTipsOff } from "../src/server/domain/tips";
 import {
   createTransaction,
@@ -859,6 +875,21 @@ async function seedPeople(
       updatedBy: admin.id,
       updatedAt: ago(0),
     },
+    // Finanças compartilhadas, for the two of them (the group "Casa").
+    {
+      userId: admin.id,
+      key: "financas_compartilhadas",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
+    {
+      userId: brunoId,
+      key: "financas_compartilhadas",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
   ]);
   await seedNotifications(admin.id, ago);
 
@@ -942,7 +973,208 @@ async function seedPeople(
   ];
   for (const entry of entries) await db.insert(auditLog).values(entry);
 
+  await seedSharing(admin.id, brunoId, carla.email);
+
   return accessLinkUrl(origin, carlaInvite.token);
+}
+
+/**
+ * Finanças compartilhadas (ADR-13), through the domain as the screens would:
+ * "Casa" (Ana owns it, Bruno accepted) with 8 expenses over this month and
+ * the last, one in each way to divide, and a settlement last month; an
+ * invite from Ana to Carla still open; "Viagem", Bruno's, inviting Ana
+ * (her "Convites para você"); and in "Casa" the shared box "Viagem para
+ * Salvador" (see seedSharedBox).
+ */
+async function seedSharing(
+  anaId: string,
+  brunoId: string,
+  carlaEmail: string,
+): Promise<void> {
+  const ana = await getUserContext(anaId);
+  const bruno = await getUserContext(brunoId);
+  const casa = uuidv7();
+  await createGroup(ana, { id: casa, name: "Casa", emails: [BRUNO_EMAIL] });
+  const [brunoMember] = await db
+    .select({ id: shareMembers.id })
+    .from(shareMembers)
+    .where(
+      and(eq(shareMembers.groupId, casa), eq(shareMembers.userId, brunoId)),
+    );
+  if (!brunoMember) throw new Error("Convite do Bruno ausente.");
+  await respondToInvite(bruno, brunoMember.id, "accept");
+  const group = await getGroup(ana, casa);
+  const a = group.me.id;
+  const b = brunoMember.id;
+
+  const today = ana.today;
+  const month = toYearMonth(today);
+  const last = addMonths(month, -1);
+  const on = (ym: { year: number; month: number }, day: number) =>
+    iso(atDay(ym.year, ym.month, Math.min(day, ym === month ? today.day : 28)));
+  const expensesOf = (ym: { year: number; month: number }) => [
+    {
+      id: uuidv7(),
+      description: "Aluguel",
+      amountCents: 250_000,
+      occurredOn: on(ym, 5),
+      paidByMemberId: a,
+      method: "percent" as const,
+      inputs: [
+        { memberId: a, value: 6_000 },
+        { memberId: b, value: 4_000 },
+      ],
+    },
+    {
+      id: uuidv7(),
+      description: "Mercado do mês",
+      amountCents: 61_840,
+      occurredOn: on(ym, 8),
+      paidByMemberId: b,
+      method: "equal" as const,
+      inputs: [
+        { memberId: a, value: 1 },
+        { memberId: b, value: 1 },
+      ],
+    },
+    {
+      id: uuidv7(),
+      description: "Internet",
+      amountCents: 12_000,
+      occurredOn: on(ym, 10),
+      paidByMemberId: b,
+      method: "amounts" as const,
+      inputs: [
+        { memberId: a, value: 8_000 },
+        { memberId: b, value: 4_000 },
+      ],
+    },
+    {
+      id: uuidv7(),
+      description: "Luz",
+      amountCents: 21_330,
+      occurredOn: on(ym, 2),
+      paidByMemberId: a,
+      method: "shares" as const,
+      inputs: [
+        { memberId: a, value: 2 },
+        { memberId: b, value: 1 },
+      ],
+    },
+  ];
+  await addSharedExpenses(ana, casa, expensesOf(last));
+  // Bruno settled what he owed last month.
+  const owed = (await getGroup(bruno, casa)).transfers[0];
+  if (owed && owed.amountCents < 0) {
+    await settleUp(bruno, casa, {
+      id: uuidv7(),
+      withMemberId: a,
+      amountCents: -owed.amountCents,
+      expectedCents: owed.amountCents,
+      occurredOn: iso(atDay(last.year, last.month, 28)),
+    });
+  }
+  await addSharedExpenses(ana, casa, expensesOf(month));
+
+  await seedSharedBox(ana, bruno, casa);
+  await inviteToGroup(ana, casa, [carlaEmail]);
+  await createGroup(bruno, {
+    id: uuidv7(),
+    name: "Viagem",
+    emails: [
+      (
+        await db
+          .select({ email: user.email })
+          .from(user)
+          .where(eq(user.id, anaId))
+      )[0]?.email ?? "",
+    ],
+  });
+  // Ana's bell keeps only the 3 notices of seedNotifications (the specs of
+  // the bell count them): what the group wrote to her is dismissed, and so
+  // is what the shared box wrote to Bruno. The invite itself still shows in
+  // Compartilhado.
+  const now = new Date();
+  const mine = await db
+    .select({
+      id: notifications.id,
+      type: notifications.type,
+      userId: notifications.userId,
+    })
+    .from(notifications);
+  for (const row of mine) {
+    const fromGroup =
+      row.userId === anaId &&
+      (row.type.startsWith("share") || row.type.startsWith("box_"));
+    const fromBox = row.userId === brunoId && row.type.startsWith("box_");
+    if (!fromGroup && !fromBox) continue;
+    await db
+      .update(notifications)
+      .set({ readAt: now, dismissedAt: now })
+      .where(eq(notifications.id, row.id));
+  }
+}
+
+/**
+ * "Viagem para Salvador" in "Casa": R$ 8.000 until jun/2027; Ana saved
+ * R$ 1.800 (R$ 400/mês), each time also moving it from her checking account
+ * to a caixinha of her own; Bruno R$ 1.100 (R$ 300/mês), only in the group.
+ */
+async function seedSharedBox(
+  ana: Awaited<ReturnType<typeof getUserContext>>,
+  bruno: Awaited<ReturnType<typeof getUserContext>>,
+  groupId: string,
+): Promise<void> {
+  const [checking] = await db
+    .select({ id: finAccounts.id })
+    .from(finAccounts)
+    .where(
+      and(eq(finAccounts.userId, ana.userId), eq(finAccounts.type, "checking")),
+    )
+    .limit(1);
+  if (!checking) throw new Error("Conta corrente da Ana ausente.");
+  const anaBox = await createAccount(ana.userId, {
+    name: "Caixinha Viagem",
+    type: "savings_box",
+    initialBalanceCents: 0,
+  });
+  const boxId = uuidv7();
+  await createBox(ana, groupId, {
+    id: boxId,
+    name: "Viagem para Salvador",
+    icon: "plane",
+    color: "cat-6",
+    targetCents: 800_000,
+    targetDate: `${ana.today.year + 1}-06-30`,
+    expectedRate: null,
+  });
+  const month = toYearMonth(ana.today);
+  const dayIn = (offset: number, day: number) => {
+    const ym = addMonths(month, offset);
+    const date = atDay(ym.year, ym.month, day);
+    return iso(compare(date, ana.today) > 0 ? ana.today : date);
+  };
+  for (const offset of [-2, -1, 0]) {
+    await contribute(ana, boxId, {
+      id: uuidv7(),
+      amountCents: 60_000,
+      occurredOn: dayIn(offset, 5),
+      fromAccountId: checking.id,
+      toBoxAccountId: anaBox,
+    });
+  }
+  for (const [offset, cents] of [
+    [-1, 50_000],
+    [0, 60_000],
+  ] as const) {
+    await contribute(bruno, boxId, {
+      id: uuidv7(),
+      amountCents: cents,
+      occurredOn: dayIn(offset, 10),
+    });
+  }
+  await setMyPlan(ana, boxId, 40_000);
+  await setMyPlan(bruno, boxId, 30_000);
 }
 
 main().catch(async (error: unknown) => {

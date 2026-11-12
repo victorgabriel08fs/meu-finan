@@ -43,6 +43,7 @@ const VIEWER: TipViewer = {
     inicio_personalizavel: false,
     alerta_dia_nao_util: false,
     central_notificacoes: false,
+    financas_compartilhadas: false,
   },
 };
 
@@ -73,6 +74,7 @@ describe("tips per user", () => {
         inicio_personalizavel: false,
         alerta_dia_nao_util: false,
         central_notificacoes: false,
+        financas_compartilhadas: false,
       },
     });
     expect(admin.context.role).toBe("admin");

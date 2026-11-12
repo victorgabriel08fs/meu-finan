@@ -75,6 +75,40 @@ export type SnapshotSource = (typeof SNAPSHOT_SOURCES)[number];
 export const HOLIDAY_SOURCES = ["brasilapi"] as const;
 export type HolidaySource = (typeof HOLIDAY_SOURCES)[number];
 
+/** share_members.role: who created the group (or got it after them) and everyone else. */
+export const SHARE_MEMBER_ROLES = ["owner", "member"] as const;
+export type ShareMemberRole = (typeof SHARE_MEMBER_ROLES)[number];
+
+/**
+ * share_members.status: invited (until accepted, declined or expired),
+ * active, declined, left (also an account deleted while in the group) or
+ * removed by the owner.
+ */
+export const SHARE_MEMBER_STATUSES = [
+  "invited",
+  "active",
+  "declined",
+  "left",
+  "removed",
+] as const;
+export type ShareMemberStatus = (typeof SHARE_MEMBER_STATUSES)[number];
+
+/** shared_expenses.split_method; the same list as SPLIT_METHODS (src/lib/finance/split.ts). */
+export const SHARE_SPLIT_METHODS = [
+  "equal",
+  "amounts",
+  "percent",
+  "shares",
+] as const;
+export type ShareSplitMethod = (typeof SHARE_SPLIT_METHODS)[number];
+
+/**
+ * shared_boxes.target_split: each active member's part of the box's target,
+ * equal (the default) or by the percentages in shared_box_members.target_weight.
+ */
+export const SHARE_BOX_TARGET_SPLITS = ["equal", "percent"] as const;
+export type ShareBoxTargetSplit = (typeof SHARE_BOX_TARGET_SPLITS)[number];
+
 /** access_links.purpose: first password of a new account, or a new one. */
 export const ACCESS_LINK_PURPOSES = ["invite", "reset"] as const;
 export type AccessLinkPurpose = (typeof ACCESS_LINK_PURPOSES)[number];
@@ -97,6 +131,11 @@ export const AUDIT_ACTIONS = [
   "flag.global_set",
   "flag.user_set",
   "job.run_manual",
+  "share.invited",
+  "share.accepted",
+  "share.declined",
+  "share.left",
+  "share.removed",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -118,6 +157,20 @@ export const REMINDER_NOTIFICATION_TYPES = [
 export type ReminderNotificationType =
   (typeof REMINDER_NOTIFICATION_TYPES)[number];
 
+/** What a group (ADR-13, doc 01 §11.11) tells its members. */
+export const SHARE_NOTIFICATION_TYPES = [
+  "share_invite",
+  "share_joined",
+  "share_declined",
+  "share_left",
+  "share_removed",
+  "shared_activity",
+  "share_settled",
+  "box_activity",
+  "box_reached",
+] as const;
+export type ShareNotificationType = (typeof SHARE_NOTIFICATION_TYPES)[number];
+
 export const NOTIFICATION_TYPES = [
   "bill_due",
   "invoice_closing",
@@ -126,6 +179,7 @@ export const NOTIFICATION_TYPES = [
   "goal_reached",
   "insight",
   ...REMINDER_NOTIFICATION_TYPES,
+  ...SHARE_NOTIFICATION_TYPES,
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

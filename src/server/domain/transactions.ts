@@ -313,70 +313,74 @@ export async function createTransfer(
   ctx: UserContext,
   input: TransferInput,
 ): Promise<{ transferId: string }> {
+  return db.transaction((tx) => insertTransfer(tx, ctx, input));
+}
+
+/**
+ * The two legs of a transfer between two of the user's accounts, inside the
+ * caller's transaction (only `tx` from here on): checks the amount, that the
+ * accounts differ and are the user's (not archived), and a resubmitted client
+ * id returns the transfer it already created.
+ */
+export async function insertTransfer(
+  tx: Executor,
+  ctx: UserContext,
+  input: TransferInput,
+): Promise<{ transferId: string }> {
   assertAmount(input.amountCents);
   if (input.fromAccountId === input.toAccountId) {
     throw new DomainError("Escolha contas diferentes para a transferência.");
   }
   const date = parse(input.occurredOn);
-  return db.transaction(async (tx) => {
-    if (input.id) {
-      // Idempotent replay of the same client id: the transfer already exists.
-      const [existing] = await tx
-        .select({ transferId: transactions.transferId })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.id, input.id),
-            eq(transactions.userId, ctx.userId),
-          ),
-        )
-        .limit(1);
-      if (existing?.transferId) return { transferId: existing.transferId };
-      if (existing) throw new DomainError("Este lançamento já existe.");
-    }
-    const from = await requireAccount(tx, ctx.userId, input.fromAccountId);
-    const to = await requireAccount(tx, ctx.userId, input.toAccountId);
-    const status = statusFor(date, ctx.today, input.paid);
-    const paidAt = status === "paid" ? new Date() : null;
-    const transferId = uuidv7();
-    // Into a card: the payment counts for the invoice that is due next.
-    const invoiceId = to.cycle
-      ? await ensureInvoice(
-          tx,
-          ctx.userId,
-          to.id,
-          invoiceDueNext(date, to.cycle),
-        )
-      : null;
-    await tx.insert(transactions).values([
-      {
-        id: input.id ?? uuidv7(),
-        userId: ctx.userId,
-        accountId: from.id,
-        kind: "transfer",
-        status,
-        amountCents: -input.amountCents,
-        description: input.description?.trim() || `Para ${to.name}`,
-        occurredOn: input.occurredOn,
-        paidAt,
-        transferId,
-      },
-      {
-        id: uuidv7(),
-        userId: ctx.userId,
-        accountId: to.id,
-        kind: "transfer",
-        status,
-        amountCents: input.amountCents,
-        description: input.description?.trim() || `De ${from.name}`,
-        occurredOn: input.occurredOn,
-        paidAt,
-        transferId,
-        invoiceId,
-      },
-    ]);
-    return { transferId };
-  });
+  if (input.id) {
+    // Idempotent replay of the same client id: the transfer already exists.
+    const [existing] = await tx
+      .select({ transferId: transactions.transferId })
+      .from(transactions)
+      .where(
+        and(eq(transactions.id, input.id), eq(transactions.userId, ctx.userId)),
+      )
+      .limit(1);
+    if (existing?.transferId) return { transferId: existing.transferId };
+    if (existing) throw new DomainError("Este lançamento já existe.");
+  }
+  const from = await requireAccount(tx, ctx.userId, input.fromAccountId);
+  const to = await requireAccount(tx, ctx.userId, input.toAccountId);
+  const status = statusFor(date, ctx.today, input.paid);
+  const paidAt = status === "paid" ? new Date() : null;
+  const transferId = uuidv7();
+  // Into a card: the payment counts for the invoice that is due next.
+  const invoiceId = to.cycle
+    ? await ensureInvoice(tx, ctx.userId, to.id, invoiceDueNext(date, to.cycle))
+    : null;
+  await tx.insert(transactions).values([
+    {
+      id: input.id ?? uuidv7(),
+      userId: ctx.userId,
+      accountId: from.id,
+      kind: "transfer",
+      status,
+      amountCents: -input.amountCents,
+      description: input.description?.trim() || `Para ${to.name}`,
+      occurredOn: input.occurredOn,
+      paidAt,
+      transferId,
+    },
+    {
+      id: uuidv7(),
+      userId: ctx.userId,
+      accountId: to.id,
+      kind: "transfer",
+      status,
+      amountCents: input.amountCents,
+      description: input.description?.trim() || `De ${from.name}`,
+      occurredOn: input.occurredOn,
+      paidAt,
+      transferId,
+      invoiceId,
+    },
+  ]);
+  return { transferId };
 }
 
 export type TransactionFilters = {

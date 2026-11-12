@@ -4,8 +4,14 @@ import {
   CalendarClock,
   CalendarDays,
   ChartColumn,
+  Handshake,
+  PiggyBank,
   ReceiptText,
   Sun,
+  Trophy,
+  UserMinus,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import type { NoticeIconName, NoticeTone } from "@/lib/notifications/kinds";
@@ -19,6 +25,12 @@ const ICONS: Record<NoticeIconName, ComponentType<{ className?: string }>> = {
   "calendar-days": CalendarDays,
   chart: ChartColumn,
   bell: Bell,
+  users: Users,
+  "user-plus": UserPlus,
+  "user-minus": UserMinus,
+  handshake: Handshake,
+  "piggy-bank": PiggyBank,
+  trophy: Trophy,
 };
 
 // Whole class names, so Tailwind sees them (doc 02 §3.1 tokens, both themes).

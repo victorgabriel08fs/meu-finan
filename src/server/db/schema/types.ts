@@ -1,6 +1,6 @@
 // Shapes stored in jsonb columns. Writers validate them with Zod before saving;
 // these types only describe what is persisted. Rates are decimals (0.1 = 10%).
-import type { ReminderNotificationType } from "./enums";
+import type { ReminderNotificationType, ShareSplitMethod } from "./enums";
 
 /** goals.expected_rate; null means the goal has no yield ("sem rendimento"). */
 export type GoalExpectedRate =
@@ -38,6 +38,17 @@ export type SimulationParams = {
   mode: SimulationMode;
   /** Target amount in reais, used by the reverse modes. */
   target?: number;
+};
+
+/**
+ * share_groups.default_split: how a new expense of the group is divided until
+ * someone changes it. `inputs` maps share_members.id to the input of the
+ * method (see SplitInput in src/lib/finance/split.ts); members missing from
+ * it take part with the method's default.
+ */
+export type ShareDefaultSplit = {
+  method: ShareSplitMethod;
+  inputs: { [memberId: string]: number };
 };
 
 /** imports.stats */
@@ -103,6 +114,91 @@ export type NotificationPayload =
        * without it count as "may carry amounts".
        */
       amounts?: boolean;
+    }
+  // What a group tells its members (ADR-13). Names are snapshots taken when
+  // the notice is recorded; `amounts` says whether the body carries money.
+  | {
+      type: "share_invite";
+      groupId: string;
+      /** share_members.id of the invite: Aceitar and Recusar answer it. */
+      memberId: string;
+      groupName: string;
+      inviterName: string;
+      inviterEmail: string;
+      amounts?: false;
+    }
+  | {
+      type: "share_joined" | "share_declined" | "share_left";
+      groupId: string;
+      groupName: string;
+      /** Who joined, declined or left. */
+      memberName: string;
+      amounts?: false;
+    }
+  | {
+      type: "share_removed";
+      groupId: string;
+      groupName: string;
+      /** The owner who took the person out. */
+      actorName: string;
+      amounts?: false;
+    }
+  | {
+      /**
+       * One a day per member who changed the group's expenses: the counts
+       * and sums add up (bumpNotification). `description` is the last one
+       * added, shown only when it is the single change of the day.
+       */
+      type: "shared_activity";
+      groupId: string;
+      groupName: string;
+      actorName: string;
+      added: number;
+      addedCents: number;
+      /** The recipient's parts of what was added. */
+      myShareCents: number;
+      changed: number;
+      removed: number;
+      description?: string;
+      amounts?: true;
+    }
+  | {
+      type: "share_settled";
+      groupId: string;
+      groupName: string;
+      actorName: string;
+      settlementId: string;
+      amountCents: number;
+      /** Seen from the recipient: the actor paid them, or they paid the actor. */
+      direction: "paid_you" | "you_paid";
+      date: string;
+      amounts?: true;
+    }
+  | {
+      /**
+       * One a day per member who put money in or took it out of a shared
+       * box: the counts and sums add up (bumpNotification).
+       */
+      type: "box_activity";
+      groupId: string;
+      groupName: string;
+      boxId: string;
+      boxName: string;
+      actorName: string;
+      saved: number;
+      savedCents: number;
+      withdrawn: number;
+      withdrawnCents: number;
+      amounts?: true;
+    }
+  | {
+      /** Once per box and person: the total reached the target. */
+      type: "box_reached";
+      groupId: string;
+      groupName: string;
+      boxId: string;
+      boxName: string;
+      amounts?: false;
     };
 
 export type JsonValue =
@@ -161,4 +257,6 @@ export type AuditMetadata = {
   value?: boolean | null;
   /** job.run_manual: which job. */
   job?: string;
+  /** share.invited: the e-mail has no account (kept out of the entry). */
+  unresolved?: boolean;
 };

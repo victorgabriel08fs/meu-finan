@@ -28,7 +28,11 @@ describe("HomeGrid", () => {
   it("lays the default Início out in its three columns, in order", () => {
     const html = renderToStaticMarkup(
       <HomeGrid
-        sections={packHomeLayout(visibleHomeBlocks(defaultHomeLayout()))}
+        sections={packHomeLayout(
+          visibleHomeBlocks(defaultHomeLayout()).filter(
+            (id) => id !== "shared",
+          ),
+        )}
         renderBlock={(id) => <p>{id}</p>}
       />,
     );

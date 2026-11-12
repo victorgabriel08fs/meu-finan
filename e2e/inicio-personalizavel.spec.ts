@@ -18,6 +18,7 @@ const DEFAULT_ORDER = [
   "upcoming-bills",
   "accounts",
   "goals",
+  "shared",
 ];
 const CALENDAR_SECOND = [
   "balance",
@@ -27,6 +28,7 @@ const CALENDAR_SECOND = [
   "upcoming-bills",
   "accounts",
   "goals",
+  "shared",
 ];
 
 /**
@@ -132,16 +134,16 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   // that moved the row, disabled (not removed from the tab order) at the top.
   const up = sheet.getByRole("button", { name: "Subir Calendário de gastos" });
   await up.focus();
-  for (let step = 0; step < 6; step++) await page.keyboard.press("Enter");
+  for (let step = 0; step < 7; step++) await page.keyboard.press("Enter");
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 13.",
+    "Calendário de gastos na posição 2 de 14.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 13.",
+    "Calendário de gastos na posição 2 de 14.",
   );
 
   const saved = homeSaved(page);

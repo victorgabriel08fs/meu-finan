@@ -309,6 +309,10 @@ export function HomeBlockSkeleton({
   phase?: ReportPhase;
 }) {
   switch (id) {
+    // Shows only with a group or an invite: no placeholder, so a person
+    // without either never sees a gap open and close.
+    case "shared":
+      return null;
     // Heights measured in the app (Ana of the demo, 360 to 1440px). Narrow
     // blocks (small phones, the xl columns) wrap a line more in the tiles'
     // support text and in the budget: measured by the block's own width (an

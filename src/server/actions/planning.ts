@@ -30,6 +30,7 @@ import { authAction } from "@/server/safe-action";
 import {
   amountCents,
   colorToken,
+  expectedRate,
   iconName,
   idSchema,
   isoDate,
@@ -183,17 +184,7 @@ const goalSchema = z.object({
   accountId: idSchema.nullable(),
   savedCents: z.number().int().min(0),
   monthlyPlanCents: z.number().int().min(0),
-  expectedRate: z
-    .discriminatedUnion("index", [
-      z.object({ index: z.literal("fixed"), annual: z.number().min(0).max(1) }),
-      z.object({ index: z.literal("cdi"), pct: z.number().min(0).max(3) }),
-      z.object({ index: z.literal("selic"), pct: z.number().min(0).max(3) }),
-      z.object({
-        index: z.literal("ipca"),
-        spread: z.number().min(-0.1).max(0.5),
-      }),
-    ])
-    .nullable(),
+  expectedRate: expectedRate.nullable(),
 });
 
 export const createGoalAction = authAction

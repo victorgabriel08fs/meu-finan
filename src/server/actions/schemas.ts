@@ -26,3 +26,13 @@ export const colorToken = z.enum(COLOR_TOKENS);
 export const iconName = z
   .string()
   .regex(/^[a-z0-9-]{1,40}$/, { error: "Ícone inválido." });
+/** goals.expected_rate and shared_boxes.expected_rate (decimals: 1.02 = 102% do CDI). */
+export const expectedRate = z.discriminatedUnion("index", [
+  z.object({ index: z.literal("fixed"), annual: z.number().min(0).max(1) }),
+  z.object({ index: z.literal("cdi"), pct: z.number().min(0).max(3) }),
+  z.object({ index: z.literal("selic"), pct: z.number().min(0).max(3) }),
+  z.object({
+    index: z.literal("ipca"),
+    spread: z.number().min(-0.1).max(0.5),
+  }),
+]);

@@ -47,6 +47,7 @@ describe("defaultHomeLayout", () => {
       { id: "accounts", visible: true },
       { id: "goals", visible: true },
       { id: "insight", visible: true },
+      { id: "shared", visible: true },
       { id: "spending-calendar", visible: false },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
@@ -96,6 +97,7 @@ describe("resolveHomeLayout", () => {
       { id: "category-breakdown", visible: true },
       { id: "income-expense", visible: false },
       { id: "daily-spend", visible: false, isNew: true },
+      { id: "shared", visible: false, isNew: true },
     ]);
   });
 
@@ -139,6 +141,7 @@ describe("resolveHomeLayout", () => {
       "income-expense",
       "net-worth",
       "daily-spend",
+      "shared",
     ]);
     for (const entry of entries.slice(3)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
@@ -193,8 +196,8 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-5)).toEqual([...reports, "daily-spend"]);
-    for (const entry of saved.slice(-5)) {
+    expect(ids(saved).slice(-6)).toEqual([...reports, "daily-spend", "shared"]);
+    for (const entry of saved.slice(-6)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -250,6 +253,7 @@ describe("toStoredLayout", () => {
       { id: "accounts", visible: true },
       { id: "goals", visible: true },
       { id: "insight", visible: true },
+      { id: "shared", visible: true },
       { id: "spending-calendar", visible: false },
       { id: "cash-flow", visible: false },
       { id: "category-breakdown", visible: false },
@@ -263,7 +267,7 @@ describe("toStoredLayout", () => {
 describe("moveHomeBlock", () => {
   it("swaps a block with its neighbour", () => {
     const moved = moveHomeBlock(defaultHomeLayout(), "spending-calendar", "up");
-    expect(ids(moved).slice(6, 8)).toEqual(["spending-calendar", "insight"]);
+    expect(ids(moved).slice(7, 9)).toEqual(["spending-calendar", "shared"]);
     const back = moveHomeBlock(moved, "spending-calendar", "down");
     expect(back).toEqual(defaultHomeLayout());
   });
@@ -358,13 +362,19 @@ describe("visibleHomeBlocks", () => {
       "accounts",
       "goals",
       "insight",
+      "shared",
     ]);
   });
 });
 
 describe("packHomeLayout", () => {
   it("gives the default Início the three columns of today", () => {
-    expect(packHomeLayout(visibleHomeBlocks(defaultHomeLayout()))).toEqual([
+    // Without Compartilhado (flag off, or no group nor invite) the page
+    // leaves the block out before packing.
+    const today = visibleHomeBlocks(defaultHomeLayout()).filter(
+      (id) => id !== "shared",
+    );
+    expect(packHomeLayout(today)).toEqual([
       {
         kind: "columns",
         groups: [

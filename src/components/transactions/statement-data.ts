@@ -19,6 +19,11 @@ export type StatementItem = TransactionListItem & {
    * annotated by the page while it still matters.
    */
   nonBusinessDue?: NonBusinessDue | null;
+  /**
+   * The group the expense is divided in (financas_compartilhadas), when the
+   * person is still in it: "Dividida em Casa".
+   */
+  sharedIn?: { groupId: string; groupName: string } | null;
 };
 
 export type DayGroup = {

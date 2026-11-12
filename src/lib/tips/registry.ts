@@ -365,6 +365,36 @@ export const TIPS: readonly Tip[] = [
     icon: "bell",
     link: { href: "/inicio", label: "Ver no Início" },
   },
+  {
+    id: "novidade-compartilhado",
+    kind: "novidade",
+    // Only in Ajustes › Novidades: the area has no fixed place on the phone
+    // (the Início block shows up once there is a group or an invite).
+    routes: [],
+    anchor: null,
+    title: "Divida despesas com outra pessoa",
+    body: "Crie um grupo, convide pelo e-mail e veja quem deve quanto, com o acerto num toque.",
+    since: "2026-11-12",
+    order: 18,
+    when: { flag: "financas_compartilhadas" },
+    icon: "users",
+    link: { href: "/compartilhado", label: "Ver Compartilhado" },
+  },
+  {
+    id: "novidade-caixinha-compartilhada",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like the one above: the boxes live inside
+    // each group.
+    routes: [],
+    anchor: null,
+    title: "Guardem dinheiro juntos",
+    body: "Uma caixinha do grupo, com quanto cada um já guardou e quando vocês chegam no objetivo.",
+    since: "2026-11-12",
+    order: 19,
+    when: { flag: "financas_compartilhadas" },
+    icon: "vault",
+    link: { href: "/compartilhado", label: "Ver Compartilhado" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

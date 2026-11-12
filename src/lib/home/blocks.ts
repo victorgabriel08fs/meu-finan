@@ -151,6 +151,17 @@ export const HOME_BLOCKS = {
     weight: 190,
     since: "2026-11-10",
   },
+  // Only with financas_compartilhadas and a group or an invite: otherwise the
+  // block renders nothing and its place closes up.
+  shared: {
+    label: "Compartilhado",
+    description: "Quem deve quanto nos seus grupos, e os convites para você.",
+    errorTitle: "Não deu para carregar o Compartilhado",
+    size: "narrow",
+    inDefault: true,
+    weight: 172,
+    since: "2026-11-12",
+  },
 } as const satisfies Record<string, HomeBlockDefinition>;
 
 export type HomeBlockId = keyof typeof HOME_BLOCKS;
@@ -175,6 +186,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "income-expense",
   "net-worth",
   "daily-spend",
+  "shared",
 ] as const satisfies readonly HomeBlockId[];
 
 export type MovableHomeBlockId = (typeof MOVABLE_HOME_BLOCK_IDS)[number];
