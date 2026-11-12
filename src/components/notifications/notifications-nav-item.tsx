@@ -28,8 +28,8 @@ export function NotificationsNavItem() {
       >
         <Bell aria-hidden="true" className="size-5" strokeWidth={1.75} />
         {/* The name comes from the visible text (WCAG 2.5.3): "Notificações, 2 não lidas".
-            The count sits inside the label's span: as a sibling flex item it
-            would get a space before the comma. */}
+            Chrome still adds a space before the sr-only (absolute) count,
+            "Notificações , 1 não lida", which screen readers don't voice. */}
         <span>
           Notificações
           {unread > 0 ? (
