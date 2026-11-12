@@ -1,12 +1,14 @@
 // The daily notices (doc 01 §9, step sendReminders; doc 02 §6.14): for each
-// person with the notificacoes_push flag and a device, the events they left
-// on that are due today, at most once a day each ("Vencimento em dia não
+// person with the notificacoes_push flag and a device (or the bell, the
+// central_notificacoes flag, which keeps the notice without one), the events
+// they left on that are due today, at most once a day each ("Vencimento em dia não
 // útil" also needs the person's alerta_dia_nao_util flag). The job has no session:
 // each person gets a context of their own, and only their own devices.
 //
 // Order per notice: build it (null: nothing to say), claim it in the
 // notifications table (the unique key turns away a second run), send it,
-// and give the claim back when no device got it, so the next run retries.
+// and give the claim back when no device got it and the bell did not keep
+// it, so the next run retries.
 // The report carries counts only: no ids, names or amounts.
 import "server-only";
 import { periodViewHref } from "@/components/reports/views";
@@ -47,6 +49,7 @@ import {
 } from "@/server/domain/notifications";
 import { getNotificationPreferences } from "@/server/domain/preferences";
 import {
+  isReminderRecipient,
   listReminderRecipients,
   loadBillCandidates,
   loadDailySummary,
@@ -84,7 +87,11 @@ const PUSH_OPTIONS: Record<ReminderEvent, { tag: string; ttlSeconds: number }> =
 export type Reminder = ReminderMessage & { url: string; itemKeys?: string[] };
 
 /** The person's flags that shape the notices. */
-type ReminderFlags = { nonBusinessDue: boolean };
+type ReminderFlags = {
+  nonBusinessDue: boolean;
+  /** central_notificacoes: the notice is kept in the bell too. */
+  bell: boolean;
+};
 
 /** The weekly summary only on Mondays, the monthly one on the first day. */
 function isDueToday(event: ReminderEvent, ctx: UserContext): boolean {
@@ -291,7 +298,7 @@ async function buildReminder(
 
 /** job_runs details of the step: counts only. */
 export type RemindersReport = {
-  /** People with the flag, a device and at least one notice on. */
+  /** People with the flag and at least one notice on, a device or the bell. */
   recipients: number;
   processed: number;
   /** Left for the next run: the deadline came first. */
@@ -301,7 +308,9 @@ export type RemindersReport = {
   alreadySent: number;
   /** Nothing to say (no bills, no income ahead, an empty week…). */
   nothingToSend: number;
-  /** No device got it; given back for the next run. */
+  /** Kept only in the bell: no device got it (or there is none). */
+  bellOnly: number;
+  /** No device got it and the bell did not keep it; given back for the next run. */
   undelivered: number;
   /** Devices the push service said were gone (forgotten). */
   devicesRemoved: number;
@@ -323,13 +332,17 @@ function emptyReport(): RemindersReport {
     },
     alreadySent: 0,
     nothingToSend: 0,
+    bellOnly: 0,
     undelivered: 0,
     devicesRemoved: 0,
     errors: 0,
   };
 }
 
-/** One event for one person: build, claim, send, give back if undelivered. */
+/**
+ * One event for one person: build, claim (the row is also the bell's notice),
+ * send, give back if no device got it and the bell is off.
+ */
 async function sendOne(
   ctx: UserContext,
   event: ReminderEvent,
@@ -346,6 +359,7 @@ async function sendOne(
   const id = await claimNotification(ctx.userId, {
     type: event,
     date: ctx.todayIso,
+    amounts: preferences.showAmounts,
     ...reminder,
   });
   if (!id) {
@@ -358,14 +372,15 @@ async function sendOne(
     const outcome = await sendPush(
       ctx.userId,
       { title: reminder.title, body: reminder.body, url: reminder.url, tag },
-      { ttlSeconds },
+      { ttlSeconds, noticeId: flags.bell ? id : undefined },
     );
     report.devicesRemoved += outcome.removed;
     delivered = outcome.sent > 0;
   } finally {
-    if (!delivered) await releaseNotification(id, ctx.userId);
+    if (!delivered && !flags.bell) await releaseNotification(id, ctx.userId);
   }
   if (delivered) report.sent[event] += 1;
+  else if (flags.bell) report.bellOnly += 1;
   else report.undelivered += 1;
 }
 
@@ -433,14 +448,10 @@ export async function sendDailyReminders({
   );
   const reminderFlags = (userId: string): ReminderFlags => ({
     nonBusinessDue: flags.get(userId)?.alerta_dia_nao_util ?? false,
+    bell: flags.get(userId)?.central_notificacoes ?? false,
   });
-  const recipients = candidates.filter(
-    (candidate) =>
-      flags.get(candidate.userId)?.notificacoes_push &&
-      availableReminderEvents(
-        candidate.preferences,
-        reminderFlags(candidate.userId),
-      ).length > 0,
+  const recipients = candidates.filter((candidate) =>
+    isReminderRecipient(candidate, flags.get(candidate.userId)),
   );
   report.recipients = recipients.length;
 
@@ -485,7 +496,10 @@ export async function previewReminders(
     getNotificationPreferences(userId),
     getFlags(userId),
   ]);
-  const flags = { nonBusinessDue: userFlags.alerta_dia_nao_util };
+  const flags = {
+    nonBusinessDue: userFlags.alerta_dia_nao_util,
+    bell: userFlags.central_notificacoes,
+  };
   const outcome: PreviewOutcome = { built: 0, sent: 0, removed: false };
   for (const event of availableReminderEvents(preferences, flags)) {
     const reminder = await buildReminder(

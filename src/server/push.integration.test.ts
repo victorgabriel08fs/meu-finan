@@ -119,14 +119,22 @@ beforeEach(async () => {
 const unread = (userId: string, dedupeKey: string) =>
   m.db.insert(m.schema.notifications).values({
     userId,
-    type: "goal_reached",
+    type: "daily_summary",
     dedupeKey,
     payload: {
-      type: "goal_reached",
-      goalId: "00000000-0000-0000-0000-000000000000",
-      goalName: "Reserva",
-    } as never,
+      type: "daily_summary",
+      date: "2026-11-09",
+      title: "Resumo do dia",
+      body: "Tudo certo.",
+      url: "/inicio",
+    },
   });
+
+const unreadCount = async (userId: string) =>
+  (await import("./domain/notifications")).countUnreadNotifications(
+    userId,
+    (await import("@/lib/notifications/kinds")).visibleNotificationTypes({}),
+  );
 
 describe("subscriptions", () => {
   it("keeps one row per device and lists only the person's own", async () => {
@@ -174,7 +182,7 @@ describe("subscriptions", () => {
     await unread("bruno", "a");
     await unread("bruno", "b");
     await unread("ana", "a");
-    expect(await m.domain.countUnreadNotifications("bruno")).toBe(2);
+    expect(await unreadCount("bruno")).toBe(2);
   });
 });
 
@@ -292,8 +300,22 @@ describe("actions", () => {
     await unread("ana", "a");
     const synced = await m.actions.syncPushDeviceAction({ endpoint: IPHONE });
     expect(synced.data).toEqual({ on: true, badge: 0 });
-    expect(await m.domain.countUnreadNotifications("bruno")).toBe(0);
-    expect(await m.domain.countUnreadNotifications("ana")).toBe(1);
+    expect(await unreadCount("bruno")).toBe(0);
+    expect(await unreadCount("ana")).toBe(1);
+  });
+
+  it("with the bell on, opening the app leaves the notices unread", async () => {
+    await m.db.insert(m.schema.featureFlagOverrides).values({
+      userId: "bruno",
+      key: "central_notificacoes",
+      enabled: true,
+    });
+    await m.domain.savePushSubscription("bruno", device(IPHONE), null);
+    await unread("bruno", "a");
+    await unread("bruno", "b");
+    const synced = await m.actions.syncPushDeviceAction({ endpoint: IPHONE });
+    expect(synced.data).toEqual({ on: true, badge: 2 });
+    expect(await unreadCount("bruno")).toBe(2);
   });
 
   it("sends a test to this device with one more than the unread count", async () => {

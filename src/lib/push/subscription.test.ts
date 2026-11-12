@@ -90,3 +90,24 @@ describe("badgeNumber", () => {
     expect(badgeNumber(250)).toBe(99);
   });
 });
+
+describe("withNoticeParam", () => {
+  it("adds the notice to a path, keeping its query and fragment", async () => {
+    const { withNoticeParam } = await import("./subscription");
+    expect(withNoticeParam("/inicio", "abc")).toBe("/inicio?aviso=abc");
+    expect(withNoticeParam("/extrato?status=pending", "abc")).toBe(
+      "/extrato?status=pending&aviso=abc",
+    );
+    expect(withNoticeParam("/extrato?aviso=old#topo", "abc")).toBe(
+      "/extrato?aviso=abc#topo",
+    );
+  });
+
+  it("leaves anything that is not a path of the app alone", async () => {
+    const { withNoticeParam } = await import("./subscription");
+    expect(withNoticeParam("https://evil.example", "abc")).toBe(
+      "https://evil.example",
+    );
+    expect(withNoticeParam("//evil.example", "abc")).toBe("//evil.example");
+  });
+});

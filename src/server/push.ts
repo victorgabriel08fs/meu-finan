@@ -4,16 +4,15 @@
 // sets the number on the app icon.
 import "server-only";
 import webpush, { WebPushError } from "web-push";
+import { visibleNotificationTypes } from "@/lib/notifications/kinds";
 import {
   badgeNumber,
   isAppPath,
   type PushMessage,
+  withNoticeParam,
 } from "@/lib/push/subscription";
-import {
-  countUnreadNotifications,
-  dropPushTarget,
-  listPushTargets,
-} from "@/server/domain/push";
+import { countUnreadNotifications } from "@/server/domain/notifications";
+import { dropPushTarget, listPushTargets } from "@/server/domain/push";
 import { appOrigin, readServerEnv } from "@/server/env";
 import { loadFlags } from "@/server/flags";
 
@@ -51,6 +50,11 @@ type SendOptions = {
   endpoint?: string;
   /** Icon number to show; defaults to the person's unread notices. */
   badge?: number;
+  /**
+   * The notice in the bell this push announces: the page it opens gets
+   * `?aviso={id}`, so opening it there marks the notice as read.
+   */
+  noticeId?: string;
   /** How long the push service keeps it for an offline device, in seconds. */
   ttlSeconds?: number;
 };
@@ -64,19 +68,26 @@ type SendOptions = {
 export async function sendPush(
   userId: string,
   message: Omit<PushMessage, "badge">,
-  { endpoint, badge, ttlSeconds = 24 * 60 * 60 }: SendOptions = {},
+  { endpoint, badge, noticeId, ttlSeconds = 24 * 60 * 60 }: SendOptions = {},
 ): Promise<PushOutcome> {
   const keys = vapidKeys();
-  if (!keys || !(await loadFlags(userId)).notificacoes_push) {
-    return NOTHING_SENT;
-  }
+  if (!keys) return NOTHING_SENT;
+  const flags = await loadFlags(userId);
+  if (!flags.notificacoes_push) return NOTHING_SENT;
   const targets = await listPushTargets(userId, { endpoint });
   if (targets.length === 0) return NOTHING_SENT;
 
+  const url = isAppPath(message.url) ? message.url : "/inicio";
   const payload: PushMessage = {
     ...message,
-    url: isAppPath(message.url) ? message.url : "/inicio",
-    badge: badgeNumber(badge ?? (await countUnreadNotifications(userId))),
+    url: noticeId ? withNoticeParam(url, noticeId) : url,
+    badge: badgeNumber(
+      badge ??
+        (await countUnreadNotifications(
+          userId,
+          visibleNotificationTypes(flags),
+        )),
+    ),
   };
   const body = JSON.stringify(payload);
   const vapidDetails = { subject: vapidSubject(), ...keys };

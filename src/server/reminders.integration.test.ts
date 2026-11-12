@@ -823,18 +823,73 @@ describe("each notice once, whatever happens", () => {
     }
   });
 
+  it("keeps the notices in the bell when the push fails or there is no device", async () => {
+    const { and, eq } = await import("drizzle-orm");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await resetNotices();
+    await m.db.insert(m.schema.featureFlagOverrides).values({
+      userId: "bruno",
+      key: "central_notificacoes",
+      enabled: true,
+    });
+    try {
+      // The device refuses: the notices stay (and are not given back).
+      pushService.status.set(endpointOf("bruno"), 500);
+      const failed = await run();
+      expect(failed).toMatchObject({ bellOnly: 2, errors: 0 });
+      expect(failed.undelivered).toBe(0);
+      const rows = await noticesOf("bruno");
+      expect(rows).toHaveLength(2);
+      for (const row of rows) {
+        expect((row.payload as { amounts?: boolean }).amounts).toBe(false);
+      }
+      expect((await run()).bellOnly).toBe(0);
+
+      // No device at all: still recorded, nothing to push.
+      pushService.status.clear();
+      await resetNotices();
+      await m.db
+        .delete(m.schema.pushSubscriptions)
+        .where(eq(m.schema.pushSubscriptions.userId, "bruno"));
+      const bellOnly = await run();
+      expect(bellOnly).toMatchObject({ bellOnly: 2, errors: 0 });
+      expect(sentTo("bruno")).toEqual([]);
+      expect(await noticesOf("bruno")).toHaveLength(2);
+    } finally {
+      pushService.status.clear();
+      await m.db.insert(m.schema.pushSubscriptions).values({
+        userId: "bruno",
+        endpoint: endpointOf("bruno"),
+        ...KEYS,
+      });
+      await m.db
+        .delete(m.schema.featureFlagOverrides)
+        .where(
+          and(
+            eq(m.schema.featureFlagOverrides.userId, "bruno"),
+            eq(m.schema.featureFlagOverrides.key, "central_notificacoes"),
+          ),
+        );
+      await resetNotices();
+    }
+  });
+
   it("counts the unread notices on the icon until the app is opened", async () => {
     const { markNotificationsRead, countUnreadNotifications } = await import(
-      "./domain/push"
+      "./domain/notifications"
     );
+    const { visibleNotificationTypes } = await import(
+      "@/lib/notifications/kinds"
+    );
+    const types = visibleNotificationTypes({});
     await run();
     expect(sentTo("ana").map((push) => push.badge)).toEqual([1, 2, 3, 4, 5]);
     expect(sentTo("bruno").map((push) => push.badge)).toEqual([1, 2]);
 
     // Ana opens the app: hers go to zero, Bruno's stay.
-    await markNotificationsRead("ana");
-    expect(await countUnreadNotifications("ana")).toBe(0);
-    expect(await countUnreadNotifications("bruno")).toBe(2);
+    await markNotificationsRead("ana", { until: new Date() }, types);
+    expect(await countUnreadNotifications("ana", types)).toBe(0);
+    expect(await countUnreadNotifications("bruno", types)).toBe(2);
 
     // Tuesday: the number starts over from what is new.
     pushService.sent = [];

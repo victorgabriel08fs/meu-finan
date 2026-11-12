@@ -87,3 +87,20 @@ export function badgeNumber(count: number): number {
   if (!Number.isFinite(count) || count <= 0) return 0;
   return Math.min(99, Math.floor(count));
 }
+
+/**
+ * The page a push opens, with the id of its notice in the bell (`aviso`):
+ * the app marks it as read when it opens there. The query that was already
+ * on the path stays; anything that is not a path of the app is left alone.
+ */
+export function withNoticeParam(url: string, noticeId: string): string {
+  if (!isAppPath(url)) return url;
+  const hash = url.indexOf("#");
+  const base = hash === -1 ? url : url.slice(0, hash);
+  const fragment = hash === -1 ? "" : url.slice(hash);
+  const query = base.indexOf("?");
+  const path = query === -1 ? base : base.slice(0, query);
+  const params = new URLSearchParams(query === -1 ? "" : base.slice(query + 1));
+  params.set("aviso", noticeId);
+  return `${path}?${params.toString()}${fragment}`;
+}

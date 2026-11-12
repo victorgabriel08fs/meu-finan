@@ -127,7 +127,7 @@ export function describeReminders(details: unknown): string[] {
   const recipients = numberOf(source, "recipients");
   lines.push(
     recipients === 0
-      ? "Ninguém tinha aviso ligado e aparelho inscrito."
+      ? "Ninguém tinha aviso ligado."
       : `${count(recipients, "pessoa", "pessoas")} com avisos ligados`,
   );
 
@@ -150,6 +150,8 @@ export function describeReminders(details: unknown): string[] {
   }
   const nothing = numberOf(source, "nothingToSend");
   if (nothing > 0) lines.push(`${nothing} sem nada a dizer hoje`);
+  const bellOnly = numberOf(source, "bellOnly");
+  if (bellOnly > 0) lines.push(`${bellOnly} só no sino`);
   const undelivered = numberOf(source, "undelivered");
   if (undelivered > 0) {
     lines.push(
