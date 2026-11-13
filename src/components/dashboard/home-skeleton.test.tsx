@@ -159,7 +159,11 @@ describe("HomeBlockSkeleton", () => {
 });
 
 describe("HomeBlockSkeleton of Quanto dá para gastar por dia", () => {
-  const of = (dailySpend?: { lines: number; chooser: boolean }) =>
+  const of = (dailySpend?: {
+    lines: number;
+    benefitLines?: number;
+    chooser: boolean;
+  }) =>
     renderToStaticMarkup(
       <HomeBlockSkeleton id="daily-spend" dailySpend={dailySpend} />,
     );
@@ -188,5 +192,46 @@ describe("HomeBlockSkeleton of Quanto dá para gastar por dia", () => {
       "@min-[57rem]:h-[calc(12.75rem+var(--daily-spend-extra))]",
     );
     expect(html).toMatch(/^<div class="@container">/);
+  });
+
+  it("adds the benefícios' section, after the accounts' or alone", () => {
+    // 29 + 3 × 42 + 33 + 56 = 244px.
+    const after = of({ lines: 2, benefitLines: 1, chooser: true });
+    expect(after).toContain(`--daily-spend-extra:${244 / 16}rem`);
+    // 29 + 42 + 22 + 56 = 149px.
+    const alone = of({ lines: 0, benefitLines: 1, chooser: true });
+    expect(alone).toContain(`--daily-spend-extra:${149 / 16}rem`);
+    for (const html of [after, alone]) {
+      expect(html).toMatch(/^<div class="@container">/);
+      expect(html).toContain(
+        "h-[calc(14.125rem+var(--daily-spend-extra)+var(--daily-spend-foot))] rounded-card",
+      );
+      expect(html).toContain(
+        "@min-[21rem]:h-[calc(11.625rem+var(--daily-spend-extra)+var(--daily-spend-foot))]",
+      );
+    }
+  });
+
+  it("gives each footnote its own lines", () => {
+    // Alone, one benefício: three lines, two from 22.6875rem, one from 42.125rem.
+    expect(of({ lines: 0, benefitLines: 1, chooser: true })).toContain(
+      "[--daily-spend-foot:3.375rem] @min-[22.6875rem]:[--daily-spend-foot:2.25rem] @min-[42.125rem]:[--daily-spend-foot:1.125rem]",
+    );
+    expect(of({ lines: 0, benefitLines: 2, chooser: true })).toContain(
+      "[--daily-spend-foot:4.5rem] @min-[17.3125rem]:",
+    );
+    expect(of({ lines: 2, benefitLines: 1, chooser: true })).toContain(
+      "@min-[69.1875rem]:[--daily-spend-foot:1.125rem]",
+    );
+    expect(of({ lines: 2, benefitLines: 2, chooser: true })).toContain(
+      "@min-[70.75rem]:[--daily-spend-foot:1.125rem]",
+    );
+  });
+
+  it("keeps the old shapes when the benefícios are hidden", () => {
+    expect(of({ lines: 3, benefitLines: 0, chooser: true })).toBe(
+      of({ lines: 3, chooser: true }),
+    );
+    expect(of({ lines: 0, benefitLines: 0, chooser: false })).toBe(of());
   });
 });

@@ -15,6 +15,7 @@ const account = (id: string, type: string): QuickAddAccount => ({
 const checking = account("conta", "checking");
 const card = account("cartao", "credit_card");
 const box = account("caixinha", "savings_box");
+const vr = account("vr", "benefit");
 
 describe("defaultAccountFor", () => {
   it("never starts an expense or income on a caixinha", () => {
@@ -35,6 +36,14 @@ describe("defaultAccountFor", () => {
     expect(defaultAccountFor("transfer", accounts, "caixinha")).toBe("conta");
     expect(defaultAccountFor("transfer", accounts, "cartao")).toBe("conta");
     expect(defaultAccountFor("transfer", accounts, "conta")).toBe("conta");
+  });
+
+  it("never starts on a benefício, even the last one used", () => {
+    const accounts = [vr, box, card, checking];
+    expect(defaultAccountFor("expense", accounts, "vr")).toBe("conta");
+    expect(defaultAccountFor("income", accounts, "vr")).toBe("conta");
+    expect(defaultAccountFor("transfer", accounts, "vr")).toBe("conta");
+    expect(defaultAccountFor("expense", accounts, null)).toBe("conta");
   });
 
   it("falls back to the first account when none is spendable", () => {

@@ -897,3 +897,55 @@ describe("Quanto dá para gastar por conta", () => {
     ]);
   });
 });
+
+describe("Quanto dá para gastar por dia com benefício", () => {
+  // Ivo: one checking account and a vale-refeição out of the net worth.
+  type Spendable = import("@/server/domain/dashboard").SpendablePerDay;
+  let ivo: UserContext;
+  const ivoIds = {} as Record<"checking" | "vr", string>;
+
+  async function spendableOf(ctx: UserContext): Promise<Spendable> {
+    for (const store of memo.stores) store.clear();
+    const element = (await blocks.HOME_BLOCK_LOADERS["daily-spend"]({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return element.props.spendable as Spendable;
+  }
+
+  beforeAll(async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "ivo", name: "Ivo", email: "ivo@exemplo.com" });
+    ivo = await context.getUserContext("ivo", { now: NOW });
+    ivoIds.checking = await accounts.createAccount("ivo", {
+      name: "Conta principal",
+      type: "checking",
+      initialBalanceCents: 90_000,
+    });
+  });
+
+  it("gives the benefício its own line, the total as it was", async () => {
+    const before = await spendableOf(ivo);
+    expect(before.accounts).toEqual([]);
+    ivoIds.vr = await accounts.createAccount("ivo", {
+      name: "Vale-refeição",
+      type: "benefit",
+      initialBalanceCents: 36_000,
+    });
+    const after = await spendableOf(ivo);
+    expect(after.rows.map((row) => row.perDayCents)).toEqual(
+      before.rows.map((row) => row.perDayCents),
+    );
+    expect(after.shortfallCents).toBe(before.shortfallCents);
+    expect(after.accounts.map((item) => [item.name, item.shown])).toEqual([
+      ["Vale-refeição", true],
+    ]);
+    // 36.000 over the 18 days left.
+    expect(after.rows[0]?.byAccount).toEqual([
+      { accountId: ivoIds.vr, perDayCents: 2_000 },
+    ]);
+  });
+});

@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { finAccountType } from "@/server/db/schema";
 import {
+  ACCOUNT_GROUPS,
   ACCOUNT_TYPE_OPTIONS,
   accountGroupOf,
   accountHref,
   accountTypeFromParam,
+  accountTypeLabel,
   allowsNegativeBalance,
   cardCycleError,
   cardCycleSummary,
   cardUsage,
   defaultColorFor,
+  defaultIncludeInNetWorth,
   MONTH_DAYS,
   netWorthDescription,
 } from "./account-meta";
@@ -128,6 +131,53 @@ describe("the caixinha type", () => {
     );
     expect(netWorthDescription("checking", false)).toBe(
       "O saldo fica fora do total das contas e do patrimônio.",
+    );
+  });
+});
+
+describe("the benefício type", () => {
+  it("is offered after Dinheiro, with the crossed utensils and a suggested name", () => {
+    const values = ACCOUNT_TYPE_OPTIONS.map((option) => option.value);
+    expect(values.indexOf("benefit")).toBe(values.indexOf("cash") + 1);
+    expect(
+      ACCOUNT_TYPE_OPTIONS.find((option) => option.value === "benefit"),
+    ).toEqual({
+      value: "benefit",
+      label: "Benefício",
+      icon: "utensils-crossed",
+      defaultName: "Vale-refeição",
+    });
+    expect(accountTypeLabel("benefit")).toBe("Benefício");
+    expect(accountTypeFromParam("beneficio")).toBe("benefit");
+    expect(accountTypeFromParam("benefit")).toBe("benefit");
+  });
+
+  it("has its own group, right after Disponível", () => {
+    expect(accountGroupOf("benefit")).toBe("benefits");
+    expect(ACCOUNT_GROUPS.map((group) => group.label)).toEqual([
+      "Disponível",
+      "Benefícios",
+      "Caixinhas",
+      "Investimentos",
+      "Cartões de crédito",
+    ]);
+  });
+
+  it("is yellow, never negative, out of the net worth when created", () => {
+    expect(defaultColorFor("benefit")).toBe("cat-4");
+    expect(allowsNegativeBalance("benefit")).toBe(false);
+    expect(defaultIncludeInNetWorth("benefit")).toBe(false);
+    for (const type of finAccountType.enumValues) {
+      if (type !== "benefit") expect(defaultIncludeInNetWorth(type)).toBe(true);
+    }
+  });
+
+  it("says it stays out of the Saldo, like a caixinha", () => {
+    expect(netWorthDescription("benefit")).toBe(
+      "O saldo entra no patrimônio, mas não no Saldo em contas.",
+    );
+    expect(netWorthDescription("benefit", false)).toBe(
+      "O saldo não entra no patrimônio nem no Saldo em contas.",
     );
   });
 });

@@ -300,6 +300,177 @@ describe("SpendablePerDayBlock by account", () => {
   });
 });
 
+describe("SpendablePerDayBlock with benefícios", () => {
+  const checking = {
+    id: "checking",
+    name: "Conta principal",
+    color: "cat-1",
+    icon: "landmark",
+    type: "checking",
+    shown: true,
+  } as const;
+  const vr = {
+    id: "vr",
+    name: "Vale-refeição",
+    color: "cat-5",
+    icon: "utensils-crossed",
+    type: "benefit",
+    shown: true,
+  } as const;
+  const va = { ...vr, id: "va", name: "Vale-alimentação" } as const;
+  const reserve = {
+    ...checking,
+    id: "reserve",
+    name: "Reserva",
+    type: "investment",
+  } as const;
+  const rows = (
+    total: number,
+    byAccount: SpendablePerDay["rows"][number]["byAccount"],
+  ) => base.rows.map((row) => ({ ...row, perDayCents: total, byAccount }));
+  // One account to spend from and the vale-refeição.
+  const oneAndVr: SpendablePerDay = {
+    ...base,
+    rows: rows(8_500, [{ accountId: "vr", perDayCents: 3_200 }]),
+    accounts: [vr],
+  };
+  const twoAndVr: SpendablePerDay = {
+    ...base,
+    rows: rows(8_500, [
+      { accountId: "checking", perDayCents: 5_000 },
+      { accountId: "reserve", perDayCents: 3_500 },
+      { accountId: "vr", perDayCents: 3_200 },
+    ]),
+    accounts: [checking, reserve, vr],
+  };
+
+  it("puts the benefício under 'Fora do total', after the accounts", () => {
+    const html = render(twoAndVr);
+    expect(html.match(/>Fora do total</g)).toHaveLength(14);
+    expect(html.match(/>Vale-refeição</g)).toHaveLength(14);
+    expect(html).toContain("R$ 32,00");
+    // Two sections per card, each under its own divider.
+    expect(
+      html.match(/mt-1.5 flex flex-col gap-1.5 border-t border-border pt-1.5/g),
+    ).toHaveLength(28);
+    expect(html.indexOf(">Reserva<")).toBeLessThan(
+      html.indexOf(">Fora do total<"),
+    );
+    expect(html.indexOf(">Fora do total<")).toBeLessThan(
+      html.indexOf(">Vale-refeição<"),
+    );
+    // The total stays what it was.
+    expect(html).toContain("R$ 85,00");
+  });
+
+  it("reads the benefício after the total and the accounts", () => {
+    const html = render(twoAndVr);
+    // Today's card as text, the amounts once (no spoken copy, no mask).
+    const card = html
+      .slice(html.indexOf("<li "), html.indexOf("</li>"))
+      .replace(/<span[^>]*data-privacy-mask[^>]*>.*?<\/span>/g, "")
+      .replace(/<span class="sr-only">\d+ reais<\/span>/g, "")
+      .replace(/<[^>]+>/g, "");
+    expect(card).toContain(
+      "Hoje10 nov:TotalR$ 85,00 por dia;Conta principal:R$ 50,00;Reserva:R$ 35,00;Fora do total:Vale-refeição:R$ 32,00;",
+    );
+  });
+
+  it("shows the benefício with a single account to spend from", () => {
+    const html = render(oneAndVr);
+    expect(html.match(/>Vale-refeição</g)).toHaveLength(14);
+    expect(html.match(/>Fora do total</g)).toHaveLength(14);
+    expect(html).toContain(">Total<");
+    expect(html).toContain("w-34");
+    // Only the benefícios' section, and the button to hide it.
+    expect(
+      html.match(/mt-1.5 flex flex-col gap-1.5 border-t border-border pt-1.5/g),
+    ).toHaveLength(14);
+    expect(html).toContain("Escolher contas");
+  });
+
+  it("has four footnotes: accounts or not, one benefício or more", () => {
+    const BASE =
+      "Pelo saldo e pelo agendado, sem o orçamento, dividido pelos dias que faltam.";
+    const ACCOUNTS =
+      " Em cada conta, o saldo e o agendado dela, com as faturas que ela paga.";
+    const ONE = " O benefício fica fora do total.";
+    const MANY = " Os benefícios ficam fora do total.";
+    const both: SpendablePerDay = {
+      ...twoAndVr,
+      rows: rows(8_500, [
+        { accountId: "checking", perDayCents: 5_000 },
+        { accountId: "reserve", perDayCents: 3_500 },
+        { accountId: "vr", perDayCents: 3_200 },
+        { accountId: "va", perDayCents: 1_000 },
+      ]),
+      accounts: [checking, reserve, vr, va],
+    };
+    expect(render(oneAndVr)).toContain(`${BASE}${ONE}</p>`);
+    expect(render(twoAndVr)).toContain(`${BASE}${ACCOUNTS}${ONE}</p>`);
+    expect(render(both)).toContain(`${BASE}${ACCOUNTS}${MANY}</p>`);
+    expect(
+      render({
+        ...oneAndVr,
+        accounts: [vr, va],
+        rows: rows(8_500, [
+          { accountId: "vr", perDayCents: 3_200 },
+          { accountId: "va", perDayCents: 1_000 },
+        ]),
+      }),
+    ).toContain(`${BASE}${MANY}</p>`);
+  });
+
+  it("leaves a hidden benefício out, keeping the button", () => {
+    const html = render({
+      ...oneAndVr,
+      rows: base.rows,
+      accounts: [{ ...vr, shown: false }],
+    });
+    expect(html).not.toContain("Fora do total");
+    expect(html).not.toContain(">Vale-refeição<");
+    expect(html).toContain("w-25");
+    expect(html).toContain("Escolher contas");
+    expect(html).not.toContain("benefício fica fora");
+  });
+
+  it("names unpaid invoices only with lines of accounts to spend from", () => {
+    const card = [{ id: "card-1", name: "Cartão Principal" }];
+    expect(render({ ...oneAndVr, unassignedCards: card })).not.toContain(
+      "entra só no total",
+    );
+    expect(render({ ...twoAndVr, unassignedCards: card })).toContain(
+      "A fatura do Cartão Principal entra só no total.",
+    );
+  });
+
+  it("with the total at zero, says so and still shows the benefício's days", () => {
+    const html = render({
+      ...oneAndVr,
+      shortfallCents: 12_000,
+      rows: rows(0, [{ accountId: "vr", perDayCents: 3_200 }]),
+    });
+    expect(html).toContain("Não sobra para gastar até 30/nov");
+    expect(html).toContain("Faltam");
+    expect(html.match(/>Vale-refeição</g)).toHaveLength(14);
+    expect(html).toContain("O benefício fica fora do total.");
+    expect(html).toContain("Escolher contas");
+    expect(html.indexOf("Não sobra para gastar")).toBeLessThan(
+      html.indexOf(">Vale-refeição<"),
+    );
+  });
+
+  it("with the total and the benefício at zero, only says so", () => {
+    const html = render({
+      ...oneAndVr,
+      rows: rows(0, [{ accountId: "vr", perDayCents: 0 }]),
+    });
+    expect(html).toContain("Não sobra para gastar até 30/nov");
+    expect(html).not.toContain("Vale-refeição");
+    expect(html).not.toContain("Escolher contas");
+  });
+});
+
 describe("SpendablePerDayNoAccountsInvite", () => {
   it("invites to the accounts, saying cards and caixinhas do not count", () => {
     const html = renderToStaticMarkup(<SpendablePerDayNoAccountsInvite />);
