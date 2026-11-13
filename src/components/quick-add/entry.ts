@@ -2,6 +2,7 @@ import {
   addDays,
   type CardCycle,
   invoiceFor,
+  isDefaultEntryType,
   iso,
   isoMonth,
   isSpendableType,
@@ -270,7 +271,8 @@ export function buildEntry(
 
 /**
  * The account a new entry starts on. An expense or income never defaults to a
- * caixinha (money set aside); a transfer leaves a spendable account, not a
+ * caixinha (money set aside) or a benefício (it only pays for some things),
+ * even when it was the last one used; a transfer leaves a spendable account, not a
  * card or a caixinha. Falls back to the first spendable one, then the first.
  */
 export function defaultAccountFor(
@@ -283,7 +285,7 @@ export function defaultAccountFor(
     isSpendableType(account.type),
   );
   if (kind !== "transfer") {
-    if (last && last.type !== "savings_box") return last.id;
+    if (last && isDefaultEntryType(last.type)) return last.id;
     return firstSpendable?.id ?? accounts[0]?.id ?? null;
   }
   if (last && isSpendableType(last.type)) return last.id;

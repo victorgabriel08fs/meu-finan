@@ -47,6 +47,7 @@ import {
   TrendingUp,
   Tv,
   Utensils,
+  UtensilsCrossed,
   Vault,
   Wallet,
   Wifi,
@@ -93,6 +94,7 @@ export const CATEGORY_ICONS = {
   vault: Vault,
   wallet: Wallet,
   "credit-card": CreditCard,
+  "utensils-crossed": UtensilsCrossed,
   // Extras for custom categories
   baby: Baby,
   banknote: Banknote,

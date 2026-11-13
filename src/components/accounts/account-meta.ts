@@ -48,6 +48,12 @@ export const ACCOUNT_TYPE_OPTIONS: readonly {
   },
   { value: "cash", label: "Dinheiro", icon: "wallet", defaultName: "Carteira" },
   {
+    value: "benefit",
+    label: "Benefício",
+    icon: "utensils-crossed",
+    defaultName: "Vale-refeição",
+  },
+  {
     value: "investment",
     label: "Investimento",
     icon: "trending-up",
@@ -89,6 +95,7 @@ const TYPE_SLUGS: Record<string, AccountType> = {
   corrente: "checking",
   poupanca: "savings",
   dinheiro: "cash",
+  beneficio: "benefit",
   investimento: "investment",
   caixinha: "savings_box",
   cartao: "credit_card",
@@ -111,16 +118,21 @@ export function allowsNegativeBalance(type: AccountType): boolean {
 
 export type AccountGroup =
   | "available"
+  | "benefits"
   | "savings_boxes"
   | "investments"
   | "cards";
 
-/** Groups of the Contas screen: Disponível · Caixinhas · Investimentos · Cartões de crédito. */
+/**
+ * Groups of the Contas screen: Disponível · Benefícios · Caixinhas ·
+ * Investimentos · Cartões de crédito.
+ */
 export const ACCOUNT_GROUPS: readonly {
   value: AccountGroup;
   label: string;
 }[] = [
   { value: "available", label: "Disponível" },
+  { value: "benefits", label: "Benefícios" },
   { value: "savings_boxes", label: "Caixinhas" },
   { value: "investments", label: "Investimentos" },
   { value: "cards", label: "Cartões de crédito" },
@@ -129,6 +141,7 @@ export const ACCOUNT_GROUPS: readonly {
 export function accountGroupOf(type: AccountType): AccountGroup {
   if (type === "credit_card") return "cards";
   if (type === "savings_box") return "savings_boxes";
+  if (type === "benefit") return "benefits";
   if (type === "investment" || type === "savings") return "investments";
   return "available";
 }
@@ -161,9 +174,13 @@ export function isAccountColor(value: unknown): value is AccountColor {
   return ACCOUNT_COLOR_OPTIONS.some((option) => option.value === value);
 }
 
-/** Default color by type, as the server picks it (cards violet, caixinhas green, the rest blue). */
+/**
+ * Default color by type, as the server picks it (cards violet, caixinhas
+ * green, benefícios yellow, the rest blue).
+ */
 export function defaultColorFor(type: AccountType): AccountColor {
   if (type === "credit_card") return "cat-7";
+  if (type === "benefit") return "cat-4";
   return type === "savings_box" ? "cat-6" : "cat-1";
 }
 
@@ -172,15 +189,29 @@ export function netWorthDescription(
   type: AccountType,
   included = true,
 ): string {
+  // A benefício, like a caixinha, never enters the Saldo em contas.
+  const setAside = type === "savings_box" || type === "benefit";
   if (!included) {
-    return type === "savings_box"
+    return setAside
       ? "O saldo não entra no patrimônio nem no Saldo em contas."
       : "O saldo fica fora do total das contas e do patrimônio.";
   }
-  return type === "savings_box"
+  return setAside
     ? "O saldo entra no patrimônio, mas não no Saldo em contas."
     : "O saldo entra no total das contas e no patrimônio.";
 }
+
+/**
+ * "Incluir no patrimônio" when an account is created: on, but off for a
+ * benefício (it only pays for some things).
+ */
+export function defaultIncludeInNetWorth(type: AccountType): boolean {
+  return type !== "benefit";
+}
+
+/** The note under the type chips of a benefício (Nova conta and Editar). */
+export const BENEFIT_TYPE_NOTE =
+  "Para vale-refeição ou vale-alimentação. Fica fora do Saldo em contas e não paga fatura de cartão.";
 
 /**
  * Limit use of a card from its list item (same math as getCardOverview):
