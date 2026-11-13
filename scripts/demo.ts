@@ -244,6 +244,15 @@ async function main(): Promise<void> {
     initialBalanceCents: 15_000,
     color: "cat-4",
   });
+  // A vale-refeição: out of the total and the net worth, its own line in
+  // Quanto dá para gastar por dia.
+  await createAccount(userId, {
+    name: "Vale-refeição",
+    type: "benefit",
+    initialBalanceCents: 48_000,
+    color: "cat-5",
+    includeInNetWorth: false,
+  });
   const card = await createAccount(userId, {
     name: "Cartão Principal",
     type: "credit_card",
