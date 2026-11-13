@@ -237,7 +237,7 @@ test("o detalhe da categoria e a folha de ordem a 200% não rolam para o lado ne
   await save.click({ trial: true });
 });
 
-test("Quanto dá para gastar, por conta, a 200% em 360 px com quatro linhas não corta valores nem rola para o lado", async ({
+test("Quanto dá para gastar, por conta, a 200% em 360 px com quatro linhas e o benefício não corta valores nem rola para o lado", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -288,6 +288,9 @@ test("Quanto dá para gastar, por conta, a 200% em 360 px com quatro linhas não
     for (const account of ["Conta principal", "Reserva", ...extras]) {
       await expect(today).toContainText(account);
     }
+    // The demo's vale-refeição sits under "Fora do total", off the total.
+    await expect(today.getByText("Fora do total")).toBeVisible();
+    await expect(today).toContainText("Vale-refeição");
     await expectNoHorizontalScroll(page, "Gasto por conta a 200%");
     expect(await clippedValues(page)).toEqual([]);
 

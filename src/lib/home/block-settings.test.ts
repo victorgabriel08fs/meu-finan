@@ -1,5 +1,7 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  dailySpendChooserIds,
   dailySpendLineIds,
   MAX_HIDDEN_ACCOUNTS,
   resolveDailySpendHidden,
@@ -65,5 +67,69 @@ describe("dailySpendLineIds", () => {
   it("ignores unknown ids, and can hide them all", () => {
     expect(dailySpendLineIds(stored(["zz"]), ["a", "b"])).toEqual(["a", "b"]);
     expect(dailySpendLineIds(stored(["a", "b"]), ["a", "b"])).toEqual([]);
+  });
+});
+
+describe("benefícios in Quanto dá para gastar por dia", () => {
+  it("lists the benefícios in the chooser, after two or more accounts", () => {
+    expect(dailySpendChooserIds([], [])).toEqual([]);
+    expect(dailySpendChooserIds(["a"], [])).toEqual([]);
+    expect(dailySpendChooserIds(["a"], ["vr"])).toEqual(["vr"]);
+    expect(dailySpendChooserIds(["a", "b"], ["vr", "va"])).toEqual([
+      "a",
+      "b",
+      "vr",
+      "va",
+    ]);
+  });
+
+  it("gives a benefício a line even with one account to spend from", () => {
+    expect(dailySpendLineIds(null, ["a"], ["vr"])).toEqual(["vr"]);
+    expect(dailySpendLineIds(null, ["a", "b"], ["vr"])).toEqual([
+      "a",
+      "b",
+      "vr",
+    ]);
+  });
+
+  it("leaves a hidden benefício out", () => {
+    expect(dailySpendLineIds(stored(["vr"]), ["a"], ["vr"])).toEqual([]);
+    expect(dailySpendLineIds(stored(["vr", "a"]), ["a", "b"], ["vr"])).toEqual([
+      "b",
+    ]);
+  });
+
+  const ids = (prefix: string, max: number) =>
+    fc
+      .integer({ min: 0, max })
+      .map((n) => Array.from({ length: n }, (_, k) => `${prefix}${k}`));
+
+  it("only gives lines to the chooser's accounts, in its order, never the hidden ones", () => {
+    fc.assert(
+      fc.property(
+        ids("a", 5),
+        ids("b", 3),
+        fc.array(fc.constantFrom<string>("a0", "a1", "a2", "b0", "b1", "zz")),
+        (spendable, benefits, hidden) => {
+          const chooser = dailySpendChooserIds(spendable, benefits);
+          const lines = dailySpendLineIds(stored(hidden), spendable, benefits);
+          // A subsequence of the chooser: same order, nothing else.
+          expect(lines).toEqual(chooser.filter((id) => lines.includes(id)));
+          for (const id of benefits) expect(chooser).toContain(id);
+          for (const id of hidden) expect(lines).not.toContain(id);
+          expect(lines).toEqual(chooser.filter((id) => !hidden.includes(id)));
+          if (spendable.length < 2) {
+            for (const id of spendable) expect(lines).not.toContain(id);
+          }
+          // Benefícios always come after the accounts.
+          const firstBenefit = lines.findIndex((id) => id.startsWith("b"));
+          if (firstBenefit >= 0) {
+            expect(
+              lines.slice(firstBenefit).every((id) => id.startsWith("b")),
+            ).toBe(true);
+          }
+        },
+      ),
+    );
   });
 });

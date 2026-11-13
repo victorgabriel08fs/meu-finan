@@ -622,6 +622,9 @@ test("Quanto dá para gastar, por conta: uma linha por conta, esconder uma, tota
       await expect(today()).toContainText(account);
     }
     await expect(today().getByText("Total", { exact: true })).toBeVisible();
+    // Ana's vale-refeição has its own line, outside the total.
+    await expect(today().getByText("Fora do total")).toBeVisible();
+    await expect(today()).toContainText("Vale-refeição");
     await expect(
       block.getByText("Em cada conta, o saldo e o agendado dela", {
         exact: false,

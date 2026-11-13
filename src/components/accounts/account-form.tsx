@@ -16,8 +16,10 @@ import {
   type AccountType,
   accountHref,
   allowsNegativeBalance,
+  BENEFIT_TYPE_NOTE,
   cardCycleError,
   defaultColorFor,
+  defaultIncludeInNetWorth,
   netWorthDescription,
 } from "./account-meta";
 import {
@@ -54,18 +56,23 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
   const [limit, setLimit] = useState<number | null>(null);
   const [closingDay, setClosingDay] = useState<number | null>(null);
   const [dueDay, setDueDay] = useState<number | null>(null);
-  const [includeInNetWorth, setIncludeInNetWorth] = useState(true);
+  const [includeInNetWorth, setIncludeInNetWorth] = useState(
+    defaultIncludeInNetWorth(initialType),
+  );
+  const [netWorthEdited, setNetWorthEdited] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const { executeAsync, isPending } = useAction(createAccountAction);
 
   const isCard = type === "credit_card";
   const isSavingsBox = type === "savings_box";
+  const isBenefit = type === "benefit";
   const option = optionOf(type);
 
   function changeType(next: AccountType) {
     setType(next);
     if (!nameEdited) setName(optionOf(next).defaultName);
     if (!colorEdited) setColor(defaultColorFor(next));
+    if (!netWorthEdited) setIncludeInNetWorth(defaultIncludeInNetWorth(next));
     setErrors({});
   }
 
@@ -138,7 +145,9 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
           ? "Cartão criado"
           : isSavingsBox
             ? "Caixinha criada"
-            : "Conta criada",
+            : isBenefit
+              ? "Benefício criado"
+              : "Conta criada",
       );
       router.replace(accountHref({ id: result.data.id, type }));
       return;
@@ -169,12 +178,18 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
           name={`${id}-type`}
           value={type}
           onChange={changeType}
-          describedBy={isSavingsBox ? `${id}-type-note` : undefined}
+          describedBy={
+            isSavingsBox || isBenefit ? `${id}-type-note` : undefined
+          }
         />
         {isSavingsBox ? (
           <p id={`${id}-type-note`} className="text-caption text-fg-3">
             Para guardar dinheiro à parte. Conta no patrimônio, mas fica fora do
             Saldo em contas e do que dá para gastar.
+          </p>
+        ) : isBenefit ? (
+          <p id={`${id}-type-note`} className="text-caption text-fg-3">
+            {BENEFIT_TYPE_NOTE}
           </p>
         ) : null}
       </div>
@@ -274,7 +289,10 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
       <CheckboxRow
         id={`${id}-net-worth`}
         checked={includeInNetWorth}
-        onChange={setIncludeInNetWorth}
+        onChange={(next) => {
+          setIncludeInNetWorth(next);
+          setNetWorthEdited(true);
+        }}
         label="Incluir no patrimônio"
         description={
           isCard
@@ -290,7 +308,9 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
             ? "Criar cartão"
             : isSavingsBox
               ? "Criar caixinha"
-              : "Criar conta"}
+              : isBenefit
+                ? "Criar benefício"
+                : "Criar conta"}
         </Button>
       </div>
     </form>

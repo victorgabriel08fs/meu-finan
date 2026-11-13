@@ -3,6 +3,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import {
+  canPayInvoice,
   compare,
   type InvoiceDates,
   type InvoiceStatus,
@@ -21,7 +22,11 @@ import {
   installmentPlans,
   transactions,
 } from "@/server/db/schema";
-import { listAccounts, requireAccount } from "./accounts";
+import {
+  BENEFIT_PAYS_NO_INVOICE,
+  listAccounts,
+  requireAccount,
+} from "./accounts";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 
@@ -274,9 +279,11 @@ export async function payInvoice(
     if (!invoice) throw notFound("Fatura");
     const card = await requireAccount(tx, ctx.userId, invoice.accountId);
     const from = await requireAccount(tx, ctx.userId, input.fromAccountId);
-    if (from.type === "credit_card") {
+    if (!canPayInvoice(from.type)) {
       throw new DomainError(
-        "Pague a fatura a partir de uma conta, não de outro cartão.",
+        from.type === "credit_card"
+          ? "Pague a fatura a partir de uma conta, não de outro cartão."
+          : BENEFIT_PAYS_NO_INVOICE,
       );
     }
     const date = parse(input.occurredOn);

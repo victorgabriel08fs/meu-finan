@@ -327,8 +327,8 @@ describe("novidades feed", () => {
     expect(unreadNewsIds({ ...old, context: CONTEXT })).not.toContain(
       "novidade-importar-extrato",
     );
-    // Of the ones without a flag, only the subcategories (5/nov) and the
-    // categories news (6/nov) are newer.
+    // Of the ones without a flag, only the subcategories (5/nov), the
+    // categories news (6/nov) and the benefício (13/nov) are newer.
     expect(
       unreadNewsIds({
         seen: new Set(),
@@ -336,6 +336,7 @@ describe("novidades feed", () => {
         context: withImport,
       }),
     ).toEqual([
+      "novidade-conta-beneficio",
       "novidade-categorias-organizar",
       "novidade-caixinhas",
       "novidade-subcategorias",

@@ -410,6 +410,18 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-conta-beneficio",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Conta de benefício",
+    body: "Cadastre o vale-refeição ou o vale-alimentação como Benefício: o saldo fica fora do Saldo em contas e, por padrão, do patrimônio.",
+    since: "2026-11-12",
+    order: 21,
+    icon: "utensils",
+    link: { href: "/contas/nova?tipo=beneficio", label: "Criar benefício" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

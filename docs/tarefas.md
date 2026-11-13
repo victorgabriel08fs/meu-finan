@@ -36,6 +36,21 @@ A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
 - **Cor das contas novas**: todas recebem a mesma cor padrão, e os pontos do bloco ficam iguais; variar a cor ao criar.
 - **"Não sobra" por conta no modo discreto**: continua visível (o total e os valores são mascarados). Perguntar ao dono se deve mascarar.
 
+## 13. Conta de benefício: o que ficou de fora
+
+A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Texto do Fluxo** citando benefícios (hoje diz "sem cartões e caixinhas").
+- **Avisos por conta**: os valores "por dia" dos avisos seguem sem o benefício.
+- **Série do benefício no relatório Fluxo.**
+- **Cartão cujo pagador virou benefício**: limpar `payment_account_id` ao converter a conta (o `invoicePayer` já ignora; a fatura entra só no total, com a nota).
+- **Nova transação**: tirar os cartões do destino da transferência quando a origem é benefício (o servidor já recusa).
+- **"Vale-alimentação" cortado** nos cartões do dia a 100% (aparece inteiro a 200% e para o leitor de tela).
+- **"Benefício · fora do patrimônio"** cortado na linha de /contas a 360 px.
+- **Skeleton a 200%** do gasto por dia mais baixo que o conteúdo (já era assim).
+- **Saldo atual negativo**: o campo ignora o sinal de menos, então "Benefício não fica com saldo negativo." não aparece pelo formulário.
+- **Salto de ~52 px** quando o bloco chega com benefício (aceito).
+
 ## Rotina diária: a confirmar
 
 - **Confirmar o `User-Agent` da Vercel no primeiro cron real** (`vercel-cron/1.0` é suposição): ver em Administração › Rotina se a execução das 06:00 aparece como "Automática (Vercel)". Se aparecer "Manual (curl)", ajustar o prefixo em `src/app/api/cron/daily/route.ts`.
@@ -54,6 +69,20 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Conta de benefício (vale-refeição e vale-alimentação) — 12/11/2026
+
+Pedido do dono (12/11/2026): tipo novo "Benefício", fora do patrimônio por padrão, com linha própria no "Quanto dá para gastar por dia", fora do total.
+
+- [x] **Tipo `benefit`** (migração `0014_conta_beneficio`, só o `ADD VALUE`; ícone `utensils-crossed`, cor `cat-4`, grupo "Benefícios", `?tipo=beneficio`). D1: "Incluir no patrimônio" começa desligado e é editável; Mudar o tipo não mexe nele.
+- [x] **Regra única**: `benefit` em `NON_SPENDABLE_ACCOUNT_TYPES`; `isBenefitAccount`, `canPayInvoice`, `isDefaultEntryType` e `benefitPerDay` em `src/lib/finance`. Doc 03 §12.
+- [x] **D2** nunca é a conta padrão da Nova transação; **D3** nunca paga fatura (`payInvoice`, `checkPaymentAccount`, `insertTransfer` e as listas de pagador); **D4** os avisos "Ontem você gastou", "Contas que vencem hoje" e Próximas contas incluem as despesas dele.
+- [x] **Início**: linha por benefício em "Fora do total" (**D5** só benefício mantém o convite; **D6** total zerado com dinheiro no benefício mostra "Não sobra" e a faixa; **D7** sem linha "Em benefícios" no Saldo), "Contas no bloco" lista o benefício, skeleton com `BENEFITS_AFTER_ACCOUNTS_PX` = 33 e `BENEFITS_ALONE_PX` = 22 (24 dava 2 px a menos) e rodapé em `--daily-spend-foot`. Descrição da folha encurtada: "Escolha as contas que aparecem em cada dia. Esconder uma não muda o total."
+- [x] **Contas**: nota no formulário e em Editar, "Criar benefício", selo no carrossel, legenda no detalhe, "Benefício · fora do patrimônio". **D8** a demo ganha "Vale-refeição" na Ana (R$ 480,00, fora do patrimônio).
+- [x] **Dicas**: novidade `novidade-conta-beneficio` (`since` 12/11/2026).
+- [x] Testes: unidade e fast-check (`spendable`, `spendable-by-account`, `block-settings`), componentes, integração (`benefit.integration.test.ts`, `blocks.integration.test.tsx`) e e2e (`beneficio.spec.ts`, `texto-grande.spec.ts`, `inicio-personalizavel.spec.ts`, `tips.spec.ts`). Corrigido de passagem: `sharing-actions.integration.test.ts` usava a data em UTC e falhava depois das 21h em Brasília.
+
+Sem a flag: vale para todos. O que ficou de fora está na seção 13 acima.
 
 ### Quanto dá para gastar, por conta (tarefa 12) — 12/11/2026
 

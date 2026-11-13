@@ -6,6 +6,7 @@ import type { InvoiceObligation, PendingEntry } from "./forecast";
 import { invoiceOutstandingCents } from "./invoices";
 import {
   attributeInvoices,
+  benefitPerDay,
   type InvoiceToAttribute,
   invoicePayer,
   type SpendableAccountInput,
@@ -705,6 +706,137 @@ describe("spendable by account properties", () => {
           );
         },
       ),
+    );
+  });
+});
+
+describe("benefitPerDay", () => {
+  it("spreads a balance with nothing scheduled over the days left", () => {
+    const [vr] = benefitPerDay({
+      accounts: [account("vr", 48_000)],
+      today: TODAY,
+      until: UNTIL,
+    });
+    // 10 to 30 nov: 21 days.
+    expect(vr?.rows[0]?.perDayCents).toBe(Math.floor(48_000 / 21));
+    expect(vr?.rows[0]?.daysLeft).toBe(21);
+    expect(vr?.shortfallCents).toBe(0);
+  });
+
+  it("counts a scheduled invoice payment left on it as money leaving", () => {
+    const pay: PendingEntry = {
+      amountCents: -21_000,
+      occurredOn: D("2026-11-15"),
+      paysInvoice: true,
+    };
+    const [vr] = benefitPerDay({
+      accounts: [account("vr", 42_000, { pending: [pay] })],
+      today: TODAY,
+      until: UNTIL,
+    });
+    // The lowest point, 21.000 from the 15th, over the 21 days left.
+    expect(vr?.rows[0]?.perDayCents).toBe(1_000);
+  });
+
+  it("rejects repeated ids", () => {
+    expect(() =>
+      benefitPerDay({
+        accounts: [account("vr", 0), account("vr", 0)],
+        today: TODAY,
+        until: UNTIL,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  const benefitScenario = fc
+    .record({
+      startOffset: fc.integer({ min: 0, max: 400 }),
+      length: fc.integer({ min: 1, max: 31 }),
+      balances: fc.array(fc.integer({ min: -50_000, max: 200_000 }), {
+        minLength: 1,
+        maxLength: 3,
+      }),
+      pending: fc.array(
+        fc.record({
+          who: fc.nat(),
+          offset: fc.nat({ max: 40 }),
+          amountCents: fc.integer({ min: -30_000, max: 30_000 }),
+          paysInvoice: fc.boolean(),
+        }),
+        { maxLength: 6 },
+      ),
+    })
+    .map((raw) => {
+      const today = addDays(D("2026-01-01"), raw.startOffset);
+      const until = addDays(today, raw.length - 1);
+      const accounts = raw.balances.map((balanceCents, index) =>
+        account(`b${index}`, balanceCents, {
+          pending: raw.pending
+            .filter((item) => item.who % raw.balances.length === index)
+            .map((item) => ({
+              amountCents: item.amountCents,
+              occurredOn: addDays(today, item.offset),
+              paysInvoice: item.paysInvoice,
+            })),
+        }),
+      );
+      return { accounts, today, until };
+    });
+
+  it("treats a scheduled invoice payment like any other outflow", () => {
+    fc.assert(
+      fc.property(benefitScenario, (input) => {
+        const flagged = benefitPerDay(input);
+        const plain = benefitPerDay({
+          ...input,
+          accounts: input.accounts.map((item) => ({
+            ...item,
+            pending: item.pending.map((entry) => ({
+              ...entry,
+              paysInvoice: !entry.paysInvoice,
+            })),
+          })),
+        });
+        expect(plain).toEqual(flagged);
+      }),
+    );
+  });
+
+  it("gives amounts of zero or more, at most 14 rows, one series per benefício", () => {
+    fc.assert(
+      fc.property(benefitScenario, (input) => {
+        const series = benefitPerDay(input);
+        expect(series.map((item) => item.id)).toEqual(
+          input.accounts.map((item) => item.id),
+        );
+        for (const item of series) {
+          expect(item.rows.length).toBeGreaterThan(0);
+          expect(item.rows.length).toBeLessThanOrEqual(14);
+          expect(item.shortfallCents).toBeGreaterThanOrEqual(0);
+          for (const row of item.rows) {
+            expect(row.perDayCents).toBeGreaterThanOrEqual(0);
+            expect(Number.isInteger(row.perDayCents)).toBe(true);
+          }
+        }
+      }),
+    );
+  });
+
+  it("is the per-account rule of a spendable account with no invoice", () => {
+    fc.assert(
+      fc.property(benefitScenario, (input) => {
+        const asSpendable = run({
+          ...input,
+          accounts: input.accounts.map((item) => ({
+            ...item,
+            pending: item.pending.map((entry) => ({
+              ...entry,
+              paysInvoice: false,
+            })),
+          })),
+        });
+        expect(benefitPerDay(input)).toEqual(asSpendable.accounts);
+      }),
     );
   });
 });

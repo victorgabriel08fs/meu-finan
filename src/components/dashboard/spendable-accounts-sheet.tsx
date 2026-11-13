@@ -45,16 +45,17 @@ const shownOf = (accounts: Accounts) =>
   Object.fromEntries(accounts.map((account) => [account.id, account.shown]));
 
 type SpendableAccountsSheetProps = {
-  /** Every account to spend from, `shown` as saved. */
+  /** The accounts of the block, `shown` as saved. */
   accounts: Accounts;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 /**
- * "Contas no bloco" (doc 02 §6.3, §5.14): a switch per account to spend from,
- * on for those with a line under each day of Quanto dá para gastar por dia.
- * The total counts them all either way. Edits stay here until "Salvar".
+ * "Contas no bloco" (doc 02 §6.3, §5.14): a switch per account of the block
+ * (the accounts to spend from, then the benefícios), on for those with a
+ * line under each day of Quanto dá para gastar por dia. Hiding one never
+ * changes the total, which no benefício is part of. Edits stay here until "Salvar".
  */
 export function SpendableAccountsSheet({
   accounts,
@@ -88,7 +89,7 @@ export function SpendableAccountsSheet({
       <SheetContent
         flowFooter
         title="Contas no bloco"
-        description="Escolha as contas que aparecem em cada dia. O total continua com todas. Vale em todos os seus aparelhos."
+        description="Escolha as contas que aparecem em cada dia. Esconder uma não muda o total."
         footer={
           <Button
             size="lg"
@@ -155,6 +156,7 @@ export function SpendableAccountsList({
                 </span>
                 <span id={type} className="text-caption text-fg-3">
                   {accountTypeLabel(account.type)}
+                  {account.type === "benefit" ? " · fora do total" : null}
                 </span>
               </span>
               <Switch

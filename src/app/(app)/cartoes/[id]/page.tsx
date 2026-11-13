@@ -30,6 +30,7 @@ import { monthName } from "@/components/dashboard/labels";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import type { NonBusinessDue } from "@/lib/finance/business-days";
+import { canPayInvoice } from "@/lib/finance/spendable";
 import { requireUser } from "@/server/dal";
 import { listAccounts } from "@/server/domain/accounts";
 import { getCardOverview, listInvoiceEntries } from "@/server/domain/cards";
@@ -201,7 +202,8 @@ async function CardDetail({
     card: account.card,
   };
   const paymentAccounts = accounts
-    .filter((item) => item.type !== "credit_card" && !item.archived)
+    // Neither a card nor a benefício pays an invoice.
+    .filter((item) => canPayInvoice(item.type) && !item.archived)
     .map(({ id: accountId, name, icon, color, balanceCents }) => ({
       id: accountId,
       name,

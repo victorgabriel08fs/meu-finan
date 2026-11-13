@@ -27,6 +27,7 @@ export type TipIcon =
   | "sparkles"
   | "sun-moon"
   | "users"
+  | "utensils"
   | "vault";
 
 /** Side of the anchor the balloon prefers (it flips when there is no room). */

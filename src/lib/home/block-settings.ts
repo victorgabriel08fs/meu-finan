@@ -37,15 +37,30 @@ export function resolveDailySpendHidden(stored: unknown): string[] {
 }
 
 /**
+ * The accounts listed in "Escolher contas" of "Quanto dá para gastar por
+ * dia": the accounts to spend from when there are two or more (with one, the
+ * total says it all), then the benefícios, which always have a line of their
+ * own.
+ */
+export function dailySpendChooserIds(
+  spendableIds: readonly string[],
+  benefitIds: readonly string[] = [],
+): string[] {
+  return [...(spendableIds.length >= 2 ? spendableIds : []), ...benefitIds];
+}
+
+/**
  * The accounts that get a line under each day of "Quanto dá para gastar por
- * dia", in the order given: none with fewer than two accounts to spend from
- * (the total says it all), otherwise those the person did not hide.
+ * dia", in the order given: the accounts to spend from (none with fewer than
+ * two), then the benefícios, all but those the person hid.
  */
 export function dailySpendLineIds(
   stored: unknown,
   spendableIds: readonly string[],
+  benefitIds: readonly string[] = [],
 ): string[] {
-  if (spendableIds.length < 2) return [];
+  const chooser = dailySpendChooserIds(spendableIds, benefitIds);
+  if (chooser.length === 0) return [];
   const hidden = new Set(resolveDailySpendHidden(stored));
-  return spendableIds.filter((id) => !hidden.has(id));
+  return chooser.filter((id) => !hidden.has(id));
 }

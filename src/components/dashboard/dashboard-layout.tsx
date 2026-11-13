@@ -308,10 +308,15 @@ function SectionSkeleton({
 
 /**
  * What changes the height of Quanto dá para gastar por dia besides its slot:
- * the lines per account under each day and "Escolher contas" (two or more
- * accounts to spend from).
+ * the lines per account to spend from under each day, the lines of the
+ * benefícios (under "Fora do total") and "Escolher contas" (two or more
+ * accounts to spend from, or a benefício).
  */
-export type DailySpendShape = { lines: number; chooser: boolean };
+export type DailySpendShape = {
+  lines: number;
+  benefitLines?: number;
+  chooser: boolean;
+};
 
 /*
  * Quanto dá para gastar por dia with lines: each line is the account's name
@@ -327,9 +332,64 @@ const DAILY_SPEND_EXTRA =
 const DAILY_SPEND_LINES =
   "h-[calc(18.625rem+var(--daily-spend-extra))] rounded-card @min-[19rem]:h-[calc(17.5rem+var(--daily-spend-extra))] @min-[21rem]:h-[calc(15rem+var(--daily-spend-extra))] @min-[31.25rem]:h-[calc(13.875rem+var(--daily-spend-extra))] @min-[57rem]:h-[calc(12.75rem+var(--daily-spend-extra))]";
 
+/*
+ * The benefícios' section under the accounts': the same divider (6px + 1px +
+ * 6px) and the card's 2px gap, then "Fora do total" (18px) and 6px to the
+ * first line: 33px. Alone, it takes the place of the accounts' section and
+ * adds only the caption and its gap: 22px (measured; 24 from the tokens was 2px tall).
+ */
+const BENEFITS_AFTER_ACCOUNTS_PX = 33;
+const BENEFITS_ALONE_PX = 22;
+
+/*
+ * With benefícios the footnote has its own lengths: the strip and the heading
+ * as in DAILY_SPEND_EXTRA (186px from 21rem, 22px more under it, 18px more
+ * under 19rem) plus the footnote's lines (18px each), from
+ * --daily-spend-foot. Its lines by the slot's width, computed in Chromium
+ * with Manrope at the caption's size (the slot less the card's 32px of
+ * padding): one benefício alone 3 · 2 from 22.6875rem · 1 from 42.125rem;
+ * two or more 4 · 3 from 17.3125rem · 2 from 22.9375rem · 1 from 43.6875rem;
+ * after the accounts' sentence, one 6 · 5 from 16.5rem · 4 from 19.5rem · 3
+ * from 24.9375rem · 2 from 36.625rem · 1 from 69.1875rem; two or more 6 · 5
+ * from 16.75rem · 4 from 19.5rem · 3 from 25.4375rem · 2 from 37.0625rem · 1
+ * from 70.75rem.
+ */
+const DAILY_SPEND_BENEFITS =
+  "h-[calc(14.125rem+var(--daily-spend-extra)+var(--daily-spend-foot))] rounded-card @min-[19rem]:h-[calc(13rem+var(--daily-spend-extra)+var(--daily-spend-foot))] @min-[21rem]:h-[calc(11.625rem+var(--daily-spend-extra)+var(--daily-spend-foot))]";
+const DAILY_SPEND_FOOT = {
+  one: "[--daily-spend-foot:3.375rem] @min-[22.6875rem]:[--daily-spend-foot:2.25rem] @min-[42.125rem]:[--daily-spend-foot:1.125rem]",
+  many: "[--daily-spend-foot:4.5rem] @min-[17.3125rem]:[--daily-spend-foot:3.375rem] @min-[22.9375rem]:[--daily-spend-foot:2.25rem] @min-[43.6875rem]:[--daily-spend-foot:1.125rem]",
+  accountsAndOne:
+    "[--daily-spend-foot:6.75rem] @min-[16.5rem]:[--daily-spend-foot:5.625rem] @min-[19.5rem]:[--daily-spend-foot:4.5rem] @min-[24.9375rem]:[--daily-spend-foot:3.375rem] @min-[36.625rem]:[--daily-spend-foot:2.25rem] @min-[69.1875rem]:[--daily-spend-foot:1.125rem]",
+  accountsAndMany:
+    "[--daily-spend-foot:6.75rem] @min-[16.75rem]:[--daily-spend-foot:5.625rem] @min-[19.5rem]:[--daily-spend-foot:4.5rem] @min-[25.4375rem]:[--daily-spend-foot:3.375rem] @min-[37.0625rem]:[--daily-spend-foot:2.25rem] @min-[70.75rem]:[--daily-spend-foot:1.125rem]",
+} as const;
+
+/** The footnote of a block with benefícios shown (DAILY_SPEND_BENEFITS). */
+function dailySpendFoot({ lines, benefitLines = 0 }: DailySpendShape) {
+  if (lines > 0) {
+    return benefitLines > 1
+      ? DAILY_SPEND_FOOT.accountsAndMany
+      : DAILY_SPEND_FOOT.accountsAndOne;
+  }
+  return benefitLines > 1 ? DAILY_SPEND_FOOT.many : DAILY_SPEND_FOOT.one;
+}
+
 /** Extra height of the lines and the button, in rem. */
-export function dailySpendExtraRem({ lines, chooser }: DailySpendShape) {
-  const px = (lines > 0 ? 29 + 42 * lines : 0) + (chooser ? 56 : 0);
+export function dailySpendExtraRem({
+  lines,
+  benefitLines = 0,
+  chooser,
+}: DailySpendShape) {
+  const all = lines + benefitLines;
+  const px =
+    (all > 0 ? 29 + 42 * all : 0) +
+    (benefitLines > 0
+      ? lines > 0
+        ? BENEFITS_AFTER_ACCOUNTS_PX
+        : BENEFITS_ALONE_PX
+      : 0) +
+    (chooser ? 56 : 0);
   return px / 16;
 }
 
@@ -444,7 +504,8 @@ export function HomeBlockSkeleton({
     // with no strip ("não sobra", the invite without accounts, the error
     // card) are shorter: the shift when they load is accepted.
     // With lines per account and the button, the same plus their height
-    // (DAILY_SPEND_EXTRA, DAILY_SPEND_LINES).
+    // (DAILY_SPEND_EXTRA, DAILY_SPEND_LINES); with benefícios, their section
+    // and their footnote (DAILY_SPEND_BENEFITS).
     case "daily-spend": {
       const extra = dailySpend ? dailySpendExtraRem(dailySpend) : 0;
       if (extra === 0) {
@@ -459,9 +520,11 @@ export function HomeBlockSkeleton({
           <Skeleton
             style={{ "--daily-spend-extra": `${extra}rem` } as CSSProperties}
             className={
-              dailySpend && dailySpend.lines > 0
-                ? DAILY_SPEND_LINES
-                : DAILY_SPEND_EXTRA
+              dailySpend?.benefitLines
+                ? `${DAILY_SPEND_BENEFITS} ${dailySpendFoot(dailySpend)}`
+                : dailySpend && dailySpend.lines > 0
+                  ? DAILY_SPEND_LINES
+                  : DAILY_SPEND_EXTRA
             }
           />
         </div>

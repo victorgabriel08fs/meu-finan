@@ -26,6 +26,7 @@ import {
   installmentSchedule,
   invoiceFor,
   invoiceForReferenceMonth,
+  isBenefitType,
   iso,
   type LocalDate,
   maxDate,
@@ -43,7 +44,7 @@ import {
   type TxnStatus,
   transactions,
 } from "@/server/db/schema";
-import { requireAccount } from "./accounts";
+import { BENEFIT_PAYS_NO_INVOICE, requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
 import { requireCategory } from "./categories";
 import type { UserContext } from "./context";
@@ -346,6 +347,10 @@ export async function insertTransfer(
   }
   const from = await requireAccount(tx, ctx.userId, input.fromAccountId);
   const to = await requireAccount(tx, ctx.userId, input.toAccountId);
+  // Into a card is an invoice payment, which a benefício never makes.
+  if (to.type === "credit_card" && isBenefitType(from.type)) {
+    throw new DomainError(BENEFIT_PAYS_NO_INVOICE);
+  }
   const status = statusFor(date, ctx.today, input.paid);
   const paidAt = status === "paid" ? new Date() : null;
   const transferId = uuidv7();

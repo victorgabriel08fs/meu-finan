@@ -99,6 +99,13 @@
       "when": 1794516480754,
       "tag": "0013_gasto_por_conta",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794529140337,
+      "tag": "0014_conta_beneficio",
+      "breakpoints": true
     }
   ]
 }

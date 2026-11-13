@@ -76,6 +76,32 @@ describe("SpendableAccountsList", () => {
     );
   });
 
+  it("says a benefício stays out of the total", () => {
+    const html = renderToStaticMarkup(
+      <SpendableAccountsList
+        accounts={[
+          ...accounts,
+          {
+            id: "vr",
+            name: "Vale-refeição",
+            color: "cat-5",
+            icon: "utensils-crossed",
+            type: "benefit",
+            shown: true,
+          },
+        ]}
+        shown={{ vr: true }}
+        onChange={vi.fn()}
+      />,
+    );
+    const vr = row(html, "vr");
+    const describedBy = /aria-describedby="([^"]+)"/.exec(vr)?.[1];
+    expect(vr).toMatch(
+      new RegExp(`id="${describedBy}"[^>]*>Benefício · fora do total<`),
+    );
+    expect(row(html, "checking")).not.toContain("fora do total");
+  });
+
   it("says that with nothing on each day shows only the total", () => {
     expect(list({ checking: true })).not.toContain("Sem contas marcadas");
     expect(list({ checking: false, reserve: false })).toContain(

@@ -16,6 +16,7 @@ import {
   type AccountColor,
   type AccountSnapshot,
   type AccountType,
+  BENEFIT_TYPE_NOTE,
   cardCycleError,
   defaultColorFor,
   isAccountColor,
@@ -204,12 +205,21 @@ export function AccountEditSheet({
           </div>
 
           {isCard ? null : (
-            <TypePicker
-              name={`${id}-type`}
-              value={type}
-              onChange={setType}
-              withoutCard
-            />
+            <div className="flex flex-col gap-2">
+              <TypePicker
+                name={`${id}-type`}
+                value={type}
+                onChange={setType}
+                withoutCard
+                describedBy={type === "benefit" ? `${id}-type-note` : undefined}
+              />
+              {/* Changing the type never flips "Incluir no patrimônio". */}
+              {type === "benefit" ? (
+                <p id={`${id}-type-note`} className="text-caption text-fg-3">
+                  {BENEFIT_TYPE_NOTE}
+                </p>
+              ) : null}
+            </div>
           )}
 
           {isCard ? (

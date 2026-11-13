@@ -238,3 +238,33 @@ export function spendablePerDayByAccount(
     unassignedCardIds,
   };
 }
+
+/**
+ * "Quanto dá para gastar por dia" in each benefício (doc 03 §12): the rule of
+ * a spendable account over the benefício's own balance and entries, with no
+ * invoice attributed to it (a benefício never pays one). A scheduled invoice
+ * payment left on an account turned into a benefício counts as money leaving
+ * it. Never part of the total.
+ */
+export function benefitPerDay(input: {
+  accounts: readonly SpendableAccountInput[];
+  today: LocalDate;
+  until: LocalDate;
+  maxDays?: number;
+}): SpendableByAccount["accounts"] {
+  const { accounts, today, until, maxDays } = input;
+  return spendablePerDayByAccount({
+    accounts: accounts.map((account) => ({
+      ...account,
+      pending: account.pending.map((entry) => ({
+        ...entry,
+        paysInvoice: false,
+      })),
+    })),
+    invoices: [],
+    payerByCard: new Map(),
+    today,
+    until,
+    maxDays,
+  }).accounts;
+}

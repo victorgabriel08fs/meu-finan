@@ -11,6 +11,7 @@ import {
   SunMoon,
   Target,
   Users,
+  UtensilsCrossed,
   Vault,
 } from "lucide-react";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const ICONS: Record<TipIcon, ReactNode> = {
   sparkles: <Sparkles />,
   "sun-moon": <SunMoon />,
   users: <Users />,
+  utensils: <UtensilsCrossed />,
   vault: <Vault />,
 };
 

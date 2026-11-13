@@ -42,9 +42,11 @@ function dayLabels(
  * from today, side by side in a strip that scrolls on its own, the forecast
  * balance of the day-to-day accounts spread over the days left. With two or
  * more accounts, each card also has a line per account the person shows
- * ("Escolher contas"), by the same rule over that account alone. The cards
- * are their own text equivalent (§9.5): "Hoje, 12 nov: R$ 85,00 por dia no
- * total; Conta principal: R$ 50,00; Reserva: Não sobra;".
+ * ("Escolher contas"), by the same rule over that account alone; each
+ * benefício has one too, with one account or more, under "Fora do total"
+ * (it never counts in the total). The cards are their own text equivalent
+ * (§9.5): "Hoje, 12 nov: Total R$ 85,00 por dia; Conta principal: R$ 50,00;
+ * Fora do total: Vale-refeição: R$ 32,00;".
  */
 export function SpendablePerDayBlock({
   spendable,
@@ -61,9 +63,18 @@ export function SpendablePerDayBlock({
     unassignedCards,
   } = spendable;
   const untilLabel = shortDateLabel(until);
-  const nothingLeft = rows.every((row) => row.perDayCents === 0);
   const shown = accounts.filter((account) => account.shown);
+  const spendableShown = shown.filter((account) => account.type !== "benefit");
+  const benefitShown = shown.filter((account) => account.type === "benefit");
   const lines = shown.length > 0;
+  const totalZero = rows.every((row) => row.perDayCents === 0);
+  // With the total at zero, money left in a benefício still shows its days.
+  const benefitIds = new Set(benefitShown.map((account) => account.id));
+  const benefitMoney = rows.some((row) =>
+    row.byAccount.some(
+      (item) => benefitIds.has(item.accountId) && item.perDayCents > 0,
+    ),
+  );
 
   return (
     <Card asChild className="flex flex-col gap-3">
@@ -84,13 +95,14 @@ export function SpendablePerDayBlock({
           </div>
           <BlockLink href={reportHref}>Ver fluxo</BlockLink>
         </div>
-        {nothingLeft ? (
+        {totalZero ? (
           <NothingLeft
             untilLabel={untilLabel}
             shortfallCents={shortfallCents}
             balanceTodayCents={balanceTodayCents}
           />
-        ) : (
+        ) : null}
+        {totalZero && !benefitMoney ? null : (
           <>
             {/* The strip is focusable so the keyboard can scroll it (WCAG 2.1.1). */}
             <section
@@ -159,7 +171,8 @@ export function SpendablePerDayBlock({
                         </span>
                         {lines ? (
                           <AccountLines
-                            accounts={shown}
+                            accounts={spendableShown}
+                            benefits={benefitShown}
                             byAccount={row.byAccount}
                             isToday={isToday}
                           />
@@ -173,14 +186,19 @@ export function SpendablePerDayBlock({
             <p className="text-caption text-fg-3">
               Pelo saldo e pelo agendado, sem o orçamento, dividido pelos dias
               que faltam.
-              {lines
+              {spendableShown.length > 0
                 ? " Em cada conta, o saldo e o agendado dela, com as faturas que ela paga."
                 : null}
+              {benefitShown.length === 1
+                ? " O benefício fica fora do total."
+                : benefitShown.length > 1
+                  ? " Os benefícios ficam fora do total."
+                  : null}
             </p>
-            {lines && unassignedCards.length > 0 ? (
+            {spendableShown.length > 0 && unassignedCards.length > 0 ? (
               <UnassignedCardsNote cards={unassignedCards} />
             ) : null}
-            {accounts.length >= 2 ? (
+            {accounts.length >= 1 ? (
               <SpendableAccountsButton accounts={accounts} />
             ) : null}
           </>
@@ -190,13 +208,18 @@ export function SpendablePerDayBlock({
   );
 }
 
-/** The lines of a day card: each shown account and what it has for the day. */
+/**
+ * The lines of a day card: each shown account and what it has for the day,
+ * then the benefícios under "Fora do total".
+ */
 function AccountLines({
   accounts,
+  benefits,
   byAccount,
   isToday,
 }: {
   accounts: SpendablePerDay["accounts"];
+  benefits: SpendablePerDay["accounts"];
   byAccount: SpendablePerDay["rows"][number]["byAccount"];
   isToday: boolean;
 }) {
@@ -204,42 +227,80 @@ function AccountLines({
     byAccount.map((item) => [item.accountId, item.perDayCents]),
   );
   const muted = isToday ? "text-on-primary-soft" : "text-fg-3";
+  const section = "mt-1.5 flex flex-col gap-1.5 border-t border-border pt-1.5";
   return (
-    <span className="mt-1.5 flex flex-col gap-1.5 border-t border-border pt-1.5">
-      {accounts.map((account) => {
-        const cents = perDay.get(account.id) ?? 0;
-        return (
-          <span key={account.id} className="flex min-w-0 flex-col">
-            <span className="flex min-w-0 items-start gap-1">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "mt-1.25 size-2 shrink-0 rounded-full",
-                  ACCOUNT_DOT[account.color],
-                )}
-              />
-              <span className={cn("min-w-0 text-caption", CLAMP_TEXT, muted)}>
-                {account.name}
-                <span className="sr-only">:</span>
-              </span>
-            </span>
-            <span className="text-caption">
-              {cents > 0 ? (
-                <Money
-                  cents={cents}
-                  variant="caption"
-                  tone="neutral"
-                  fit
-                  className="font-semibold"
-                />
-              ) : (
-                <span className={cn("text-caption", muted)}>Não sobra</span>
-              )}
-              <span className="sr-only">;</span>
-            </span>
+    <>
+      {accounts.length > 0 ? (
+        <span className={section}>
+          {accounts.map((account) => (
+            <AccountLine
+              key={account.id}
+              account={account}
+              cents={perDay.get(account.id) ?? 0}
+              muted={muted}
+            />
+          ))}
+        </span>
+      ) : null}
+      {benefits.length > 0 ? (
+        <span className={section}>
+          <span className={cn("text-caption", CLAMP_TEXT, muted)}>
+            Fora do total
+            <span className="sr-only">:</span>
           </span>
-        );
-      })}
+          {benefits.map((account) => (
+            <AccountLine
+              key={account.id}
+              account={account}
+              cents={perDay.get(account.id) ?? 0}
+              muted={muted}
+            />
+          ))}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+/** One account of a day card: its dot, its name and what it has for the day. */
+function AccountLine({
+  account,
+  cents,
+  muted,
+}: {
+  account: SpendablePerDay["accounts"][number];
+  cents: number;
+  muted: string;
+}) {
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 items-start gap-1">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mt-1.25 size-2 shrink-0 rounded-full",
+            ACCOUNT_DOT[account.color],
+          )}
+        />
+        <span className={cn("min-w-0 text-caption", CLAMP_TEXT, muted)}>
+          {account.name}
+          <span className="sr-only">:</span>
+        </span>
+      </span>
+      <span className="text-caption">
+        {cents > 0 ? (
+          <Money
+            cents={cents}
+            variant="caption"
+            tone="neutral"
+            fit
+            className="font-semibold"
+          />
+        ) : (
+          <span className={cn("text-caption", muted)}>Não sobra</span>
+        )}
+        <span className="sr-only">;</span>
+      </span>
     </span>
   );
 }

@@ -23,7 +23,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
-import { isCountedSavingsBox, isSpendableAccount } from "@/lib/finance";
+import {
+  isBenefitAccount,
+  isCountedSavingsBox,
+  isSpendableAccount,
+} from "@/lib/finance";
 import { periodLabel } from "@/lib/format/date";
 import { requireUser } from "@/server/dal";
 import { type AccountListItem, listAccounts } from "@/server/domain/accounts";
@@ -219,7 +223,7 @@ function AccountHero({ account }: { account: AccountListItem }) {
         tone="neutral"
         className="mt-3 block"
       />
-      {isCountedSavingsBox(account) ? (
+      {isCountedSavingsBox(account) || isBenefitAccount(account) ? (
         <p className="mt-2 text-caption text-fg-3">
           Não entra no Saldo em contas do Início.
         </p>

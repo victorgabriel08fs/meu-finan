@@ -327,7 +327,10 @@ describe("shared boxes", () => {
       id: uuid(),
       boxId,
       amountCents: 50_000,
-      occurredOn: new Date().toISOString().slice(0, 10),
+      // Today where the person is (São Paulo), not in UTC: after 21h they differ.
+      occurredOn: new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Sao_Paulo",
+      }).format(new Date()),
     });
     expect(saved?.serverError).toBeUndefined();
     await Promise.all(afterTasks.splice(0));

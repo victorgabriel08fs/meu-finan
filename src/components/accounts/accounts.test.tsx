@@ -122,6 +122,40 @@ describe("NetWorthHero and AccountGroupList", () => {
     expect(text(list)).toContain("Caixinha · fora do patrimônio");
   });
 
+  it("lists benefícios in their own group, counted in the net worth only when on", () => {
+    const vr = account({
+      id: "b1",
+      name: "Vale-refeição",
+      type: "benefit",
+      icon: "utensils-crossed",
+      color: "cat-4",
+      balanceCents: 48_000,
+      includeInNetWorth: false,
+    });
+    const off = text(
+      renderToStaticMarkup(<NetWorthHero accounts={[account({}), vr]} />),
+    );
+    expect(off).toContain("R$8.920,15");
+    expect(off).not.toContain("Benefícios");
+    const on = text(
+      renderToStaticMarkup(
+        <NetWorthHero
+          accounts={[account({}), { ...vr, includeInNetWorth: true }]}
+        />,
+      ),
+    );
+    // 8.920,15 + 480,00
+    expect(on).toContain("R$9.400,15");
+    expect(on).toContain("Benefícios");
+    const list = text(
+      renderToStaticMarkup(
+        <AccountGroupList group="benefits" accounts={[vr]} />,
+      ),
+    );
+    expect(list).toContain("Benefícios");
+    expect(list).toContain("Benefício · fora do patrimônio");
+  });
+
   it("shows the available limit of a card and links it to its invoice", () => {
     const html = renderToStaticMarkup(
       <AccountGroupList group="cards" accounts={[card]} />,
@@ -463,6 +497,27 @@ describe("AccountForm", () => {
     expect(visible).toContain("Criar caixinha");
     expect(visible).not.toContain("Fechamento");
     expect(html).toMatch(/<fieldset[^>]*aria-describedby="[^"]+-type-note"/);
+  });
+
+  it("explains the benefício, out of the net worth, and offers to create one", () => {
+    const html = renderToStaticMarkup(<AccountForm initialType="benefit" />);
+    const visible = text(html);
+    expect(visible).toContain(
+      "Para vale-refeição ou vale-alimentação. Fica fora do Saldo em contas e não paga fatura de cartão.",
+    );
+    expect(visible).toContain("Criar benefício");
+    expect(visible).toContain(
+      "O saldo não entra no patrimônio nem no Saldo em contas.",
+    );
+    expect(html).toContain(`value="Vale-refeição"`);
+    expect(html).toMatch(/<fieldset[^>]*aria-describedby="[^"]+-type-note"/);
+    // "Incluir no patrimônio" starts off.
+    expect(html).toMatch(/<input[^>]*id="[^"]+-net-worth"[^>]*>/);
+    expect(html).not.toMatch(/<input[^>]*id="[^"]+-net-worth"[^>]*checked/);
+    // A checking account starts with it on.
+    expect(
+      renderToStaticMarkup(<AccountForm initialType="checking" />),
+    ).toMatch(/<input[^>]*id="[^"]+-net-worth"[^>]*checked/);
   });
 
   it("asks a card for the limit, the cycle and what is owed", () => {
