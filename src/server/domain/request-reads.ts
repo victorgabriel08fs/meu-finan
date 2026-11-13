@@ -17,7 +17,12 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { cache } from "react";
-import { iso, isSpendableAccount, localDateIn } from "@/lib/finance";
+import {
+  isBenefitAccount,
+  iso,
+  isSpendableAccount,
+  localDateIn,
+} from "@/lib/finance";
 import { earliestDate } from "@/lib/reports/coverage";
 import { db } from "@/server/db/client";
 import { finAccounts, transactions } from "@/server/db/schema";
@@ -38,6 +43,14 @@ export const accountsOf = cache(
  */
 export const spendableAccountsOf = cache(async (ctx: UserContext) =>
   (await accountsOf(ctx)).filter(isSpendableAccount),
+);
+
+/**
+ * The benefícios with a line of their own in Quanto dá para gastar por dia:
+ * active, in the net worth or not (`isBenefitAccount`). Never spendable.
+ */
+export const benefitAccountsOf = cache(async (ctx: UserContext) =>
+  (await accountsOf(ctx)).filter(isBenefitAccount),
 );
 
 /** The credit cards and, in the same order, each one's invoices. */
@@ -68,37 +81,62 @@ export type PaidAccountDay = {
   count: number;
 };
 
+/** Paid entries of some accounts from a day on, netted by account and day. */
+async function paidByAccountDay(
+  ctx: UserContext,
+  ids: readonly string[],
+  start: string,
+): Promise<PaidAccountDay[]> {
+  if (ids.length === 0) return [];
+  return db
+    .select({
+      accountId: transactions.accountId,
+      day: transactions.occurredOn,
+      totalCents:
+        sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
+          Number,
+        ),
+      count: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, ctx.userId),
+        inArray(transactions.accountId, [...ids]),
+        isNull(transactions.deletedAt),
+        eq(transactions.status, "paid"),
+        gte(transactions.occurredOn, start),
+      ),
+    )
+    .groupBy(transactions.accountId, transactions.occurredOn);
+}
+
 /**
  * Paid entries of the spendable accounts from a day on, netted by account
  * and day (later ones included): the Fluxo adds them up by day, Quanto dá
- * para gastar keeps them by account. Empty without spendable accounts.
+ * para gastar keeps them by account. Empty without spendable accounts. The
+ * benefícios have a read of their own, which the Fluxo never sees.
  */
 export const paidByAccountDaySince = cache(
-  async (ctx: UserContext, start: string): Promise<PaidAccountDay[]> => {
-    const ids = (await spendableAccountsOf(ctx)).map((account) => account.id);
-    if (ids.length === 0) return [];
-    return db
-      .select({
-        accountId: transactions.accountId,
-        day: transactions.occurredOn,
-        totalCents:
-          sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
-            Number,
-          ),
-        count: sql<number>`count(*)`.mapWith(Number),
-      })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, ctx.userId),
-          inArray(transactions.accountId, ids),
-          isNull(transactions.deletedAt),
-          eq(transactions.status, "paid"),
-          gte(transactions.occurredOn, start),
-        ),
-      )
-      .groupBy(transactions.accountId, transactions.occurredOn);
-  },
+  async (ctx: UserContext, start: string): Promise<PaidAccountDay[]> =>
+    paidByAccountDay(
+      ctx,
+      (await spendableAccountsOf(ctx)).map((account) => account.id),
+      start,
+    ),
+);
+
+/**
+ * The same for the benefícios (`benefitAccountsOf`): each one's line in
+ * Quanto dá para gastar. Empty without benefícios.
+ */
+export const benefitPaidByAccountDaySince = cache(
+  async (ctx: UserContext, start: string): Promise<PaidAccountDay[]> =>
+    paidByAccountDay(
+      ctx,
+      (await benefitAccountsOf(ctx)).map((account) => account.id),
+      start,
+    ),
 );
 
 /** The other leg of a transfer (an invoice payment's, here). */

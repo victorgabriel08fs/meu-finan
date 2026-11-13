@@ -5,6 +5,7 @@ import { and, between, eq, inArray, isNull, sql } from "drizzle-orm";
 import { cache } from "react";
 import {
   addDays,
+  benefitPerDay,
   type Forecast,
   forecastBalance,
   type InvoiceToAttribute,
@@ -14,14 +15,19 @@ import {
   isInGrace,
   iso,
   isoMonth,
+  type LocalDate,
   type NonBusinessDue,
   parse,
   type SpendableAccountInput,
+  type SpendableDay,
   shiftPeriod,
   spendablePerDayByAccount,
   spendablePerDayByDay,
 } from "@/lib/finance";
-import { dailySpendLineIds } from "@/lib/home/block-settings";
+import {
+  dailySpendChooserIds,
+  dailySpendLineIds,
+} from "@/lib/home/block-settings";
 import { db } from "@/server/db/client";
 import {
   type ColorToken,
@@ -40,6 +46,8 @@ import {
 } from "./reports";
 import {
   accountsOf,
+  benefitAccountsOf,
+  benefitPaidByAccountDaySince,
   cardInvoicesOf,
   homeBlockSettingsOf,
   invoicePayersOf,
@@ -232,19 +240,23 @@ export async function withNonBusinessDue(
 }
 
 export type SpendablePerDay = {
-  /** The person has accounts to spend from (no cards or caixinhas). */
+  /** The person has accounts to spend from (no cards, caixinhas or benefícios). */
   hasAccounts: boolean;
   /** Today and the days after it: up to 14, never past `until`. */
   rows: {
     date: string;
     daysLeft: number;
     perDayCents: number;
-    /** The day in each account with a line (`accounts` shown), in their order. */
+    /**
+     * The day in each account with a line (`accounts` shown), in their
+     * order: benefícios last, never part of `perDayCents`.
+     */
     byAccount: { accountId: string; perDayCents: number }[];
   }[];
   /**
-   * Every account to spend from when there are two or more (`shown`: it
-   * has a line under each day, "Contas no bloco"); empty otherwise.
+   * The accounts of "Contas no bloco" (`shown`: it has a line under each
+   * day): every account to spend from when there are two or more, then every
+   * benefício (`type` "benefit"), which never counts in the total.
    */
   accounts: {
     id: string;
@@ -275,9 +287,10 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
   ctx: UserContext,
 ): Promise<SpendablePerDay> {
   const current = resolvePeriod(ctx, null);
-  const [report, spendable] = await Promise.all([
+  const [report, spendable, benefits] = await Promise.all([
     cashFlowReport(ctx, current),
     spendableAccountsOf(ctx),
+    benefitAccountsOf(ctx),
   ]);
   const base = { until: current.end };
   if (!report.hasAccounts) {
@@ -301,27 +314,17 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
     until,
   });
 
-  // One account: the total says it all, and nothing more is read.
+  // One account and no benefício: the total says it all, and nothing more
+  // is read.
+  const spendableIds = spendable.map((account) => account.id);
+  const benefitIds = benefits.map((account) => account.id);
+  const chooserIds = dailySpendChooserIds(spendableIds, benefitIds);
   let accounts: SpendablePerDay["accounts"] = [];
   let unassignedCards: SpendablePerDay["unassignedCards"] = [];
   let shownIds: string[] = [];
   const byDate = new Map<string, Map<string, number>>();
-  if (spendable.length >= 2) {
-    const [inputs, settings, all] = await Promise.all([
-      spendableAccountInputs(ctx, current),
-      homeBlockSettingsOf(ctx),
-      accountsOf(ctx),
-    ]);
-    shownIds = dailySpendLineIds(
-      settings,
-      spendable.map((account) => account.id),
-    );
-    const byAccount = spendablePerDayByAccount({
-      ...inputs,
-      today: ctx.today,
-      until,
-    });
-    for (const account of byAccount.accounts) {
+  const keepRows = (series: { id: string; rows: SpendableDay[] }[]) => {
+    for (const account of series) {
       for (const row of account.rows) {
         const date = iso(row.date);
         const day = byDate.get(date) ?? new Map<string, number>();
@@ -329,19 +332,45 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
         byDate.set(date, day);
       }
     }
-    accounts = spendable.map((account) => ({
-      id: account.id,
-      name: account.name,
-      color: account.color,
-      icon: account.icon,
-      type: account.type,
-      shown: shownIds.includes(account.id),
-    }));
-    const names = new Map(all.map((account) => [account.id, account.name]));
-    unassignedCards = byAccount.unassignedCardIds.map((id) => ({
-      id,
-      name: names.get(id) ?? "",
-    }));
+  };
+  if (chooserIds.length > 0) {
+    const [settings, spendableSeries] = await Promise.all([
+      homeBlockSettingsOf(ctx),
+      spendable.length >= 2 ? spendableSeriesOf(ctx, current, until) : null,
+    ]);
+    shownIds = dailySpendLineIds(settings, spendableIds, benefitIds);
+    // The benefícios' entries are read only when one of them is shown.
+    const benefitSeries = benefits.some((account) =>
+      shownIds.includes(account.id),
+    )
+      ? benefitPerDay({
+          accounts: await benefitAccountInputs(ctx, current),
+          today: ctx.today,
+          until,
+        })
+      : [];
+    if (spendableSeries) {
+      keepRows(spendableSeries.accounts);
+      unassignedCards = spendableSeries.unassignedCards;
+    }
+    keepRows(benefitSeries);
+    const byId = new Map(
+      [...spendable, ...benefits].map((account) => [account.id, account]),
+    );
+    accounts = chooserIds.flatMap((id) => {
+      const account = byId.get(id);
+      if (!account) return [];
+      return [
+        {
+          id: account.id,
+          name: account.name,
+          color: account.color,
+          icon: account.icon,
+          type: account.type,
+          shown: shownIds.includes(account.id),
+        },
+      ];
+    });
   }
 
   return {
@@ -367,6 +396,64 @@ export const getSpendablePerDay = cache(async function getSpendablePerDay(
       null,
   };
 });
+
+/** Each spendable account's days and the cards no account pays (2+ accounts). */
+async function spendableSeriesOf(
+  ctx: UserContext,
+  current: PeriodRange,
+  until: LocalDate,
+): Promise<{
+  accounts: { id: string; rows: SpendableDay[] }[];
+  unassignedCards: SpendablePerDay["unassignedCards"];
+}> {
+  const [inputs, all] = await Promise.all([
+    spendableAccountInputs(ctx, current),
+    accountsOf(ctx),
+  ]);
+  const byAccount = spendablePerDayByAccount({
+    ...inputs,
+    today: ctx.today,
+    until,
+  });
+  const names = new Map(all.map((account) => [account.id, account.name]));
+  return {
+    accounts: byAccount.accounts,
+    unassignedCards: byAccount.unassignedCardIds.map((id) => ({
+      id,
+      name: names.get(id) ?? "",
+    })),
+  };
+}
+
+/**
+ * What each benefício's line takes from the ledger (doc 03 §12): its balance,
+ * its paid entries from today on and its own pending entries (a transfer to
+ * any other account moves money like an expense or an income). No invoice:
+ * a benefício never pays one.
+ */
+async function benefitAccountInputs(
+  ctx: UserContext,
+  current: PeriodRange,
+): Promise<SpendableAccountInput[]> {
+  const [benefits, pending, paid] = await Promise.all([
+    benefitAccountsOf(ctx),
+    pendingUntil(ctx, current.end),
+    benefitPaidByAccountDaySince(ctx, current.start),
+  ]);
+  return benefits.map((account) => ({
+    id: account.id,
+    balanceCents: account.balanceCents,
+    paidFromToday: paid
+      .filter((row) => row.accountId === account.id && row.day >= ctx.todayIso)
+      .map((row) => ({
+        amountCents: row.totalCents,
+        occurredOn: parse(row.day),
+      })),
+    pending: liquidPendingFlows(pending, new Set([account.id])).map(
+      (flow) => flow.entry,
+    ),
+  }));
+}
 
 /**
  * What the per-account Quanto dá para gastar takes from the ledger (doc 03

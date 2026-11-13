@@ -12,9 +12,12 @@ import {
 import { FirstRunChecklist } from "@/components/dashboard/first-run-checklist";
 import { greetingFor, weekdayDateLabel } from "@/components/dashboard/labels";
 import { DEFAULT_TIME_ZONE } from "@/lib/finance/dates";
-import { isSpendableAccount } from "@/lib/finance/spendable";
+import { isBenefitAccount, isSpendableAccount } from "@/lib/finance/spendable";
 import { monthLabel, todayInTimeZone } from "@/lib/format/date";
-import { dailySpendLineIds } from "@/lib/home/block-settings";
+import {
+  dailySpendChooserIds,
+  dailySpendLineIds,
+} from "@/lib/home/block-settings";
 import {
   defaultHomeLayout,
   packHomeLayout,
@@ -100,9 +103,17 @@ async function Summary({
   const spendableIds = accounts
     .filter(isSpendableAccount)
     .map((account) => account.id);
+  // Without an account to spend from the block is an invite, benefícios or not.
+  const benefitIds =
+    spendableIds.length > 0
+      ? accounts.filter(isBenefitAccount).map((account) => account.id)
+      : [];
+  const lineIds = dailySpendLineIds(blockSettings, spendableIds, benefitIds);
+  const benefitLines = lineIds.filter((id) => benefitIds.includes(id)).length;
   const dailySpend = {
-    lines: dailySpendLineIds(blockSettings, spendableIds).length,
-    chooser: spendableIds.length >= 2,
+    lines: lineIds.length - benefitLines,
+    benefitLines,
+    chooser: dailySpendChooserIds(spendableIds, benefitIds).length > 0,
   };
 
   const showShared = sharing !== null && sharing.groups + sharing.invites > 0;
