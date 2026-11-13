@@ -138,12 +138,12 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 14.",
+    "Calendário de gastos na posição 2 de 15.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 14.",
+    "Calendário de gastos na posição 2 de 15.",
   );
 
   const saved = homeSaved(page);
@@ -590,6 +590,81 @@ test("mostra Quanto dá para gastar por dia pela folha, na horizontal, e esconde
   await sheet.getByRole("button", { name: "Salvar" }).click();
   expect((await saved).ok()).toBe(true);
   await expect(blockOf(page, "inicio-gasto-por-dia")).toHaveCount(0);
+});
+
+test("mostra Maior gasto da semana pela folha, com o caminho do Extrato, e esconde de novo", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await customizeButton(page).click();
+  const sheet = sheetOf(page);
+  const name = "Maior gasto da semana";
+  const toggle = sheet.getByRole("switch", { name, exact: true });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(
+    sheet.getByText("Os 3 maiores gastos dos últimos 7 dias."),
+  ).toBeVisible();
+  await toggle.click();
+  const saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(sheet).toBeHidden();
+
+  // The demo's dates are relative to today: the last 7 days may or may not
+  // hold an expense, so the block is the list or its invite, never both.
+  const block = blockOf(page, "inicio-maior-gasto");
+  const invite = page.getByRole("heading", {
+    name: "Nenhum gasto nos últimos 7 dias",
+  });
+  await expect(block.or(invite)).toBeVisible({ timeout: 30_000 });
+  if (await block.isVisible()) {
+    await expect(
+      block.getByRole("heading", { level: 2, name, exact: true }),
+    ).toBeVisible();
+    await expect(block.getByText("Pagas nos últimos 7 dias")).toBeVisible();
+    const rows = block.getByRole("listitem");
+    expect(await rows.count()).toBeLessThanOrEqual(3);
+    await expect(
+      block.getByRole("link", { name: "Ver no Extrato" }),
+    ).toHaveAttribute("href", "/extrato?tipo=despesa");
+    // Each row opens the statement narrowed to its account and kind.
+    await expect(rows.first().getByRole("link").first()).toHaveAttribute(
+      "href",
+      /^\/extrato\?.*tipo=despesa/,
+    );
+    // The day is said once in the row's name.
+    const rowName = await rows
+      .first()
+      .locator("[aria-label]")
+      .first()
+      .getAttribute("aria-label");
+    expect(rowName?.match(/hoje|ontem/gi)?.length ?? 0).toBeLessThanOrEqual(1);
+
+    // Discreet mode masks the amounts of the rows.
+    const hide = page.getByRole("button", { name: "Ocultar valores" });
+    await hide.click();
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
+    await expect(block.locator("[data-privacy-value]").first()).toBeHidden();
+    await expect(block.locator("[data-privacy-mask]").first()).toBeVisible();
+    await hide.click();
+    await expect(hide).toHaveAttribute("aria-pressed", "false");
+
+    await block.getByRole("link", { name: "Ver no Extrato" }).click();
+    await expect(page).toHaveURL(/\/extrato\?tipo=despesa/);
+    await page.goto("/inicio");
+    await expect(blockOf(page, "inicio-maior-gasto")).toBeVisible({
+      timeout: 30_000,
+    });
+  }
+  await expectNoA11yViolations(page);
+
+  await customizeButton(page).click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  const hidden = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await hidden).ok()).toBe(true);
+  await expect(blockOf(page, "inicio-maior-gasto")).toHaveCount(0);
 });
 
 test("Quanto dá para gastar, por conta: uma linha por conta, esconder uma, total igual e vale depois de recarregar", async ({
