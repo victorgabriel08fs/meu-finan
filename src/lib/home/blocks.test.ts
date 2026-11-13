@@ -116,6 +116,22 @@ describe("home blocks catalog", () => {
     expect(novidade?.body.length).toBeLessThanOrEqual(150);
   });
 
+  it("offers the maior gasto da semana as a narrow block, out of the default, with its novidade", () => {
+    const block = HOME_BLOCKS["top-expenses"];
+    expect(block.label).toBe("Maior gasto da semana");
+    expect(block.size).toBe("narrow");
+    expect(block.inDefault).toBe(false);
+    expect(block.since).toBe("2026-11-13");
+    expect(HOME_BLOCK_IDS.at(-1)).toBe("shared");
+    expect(HOME_BLOCK_IDS.at(-2)).toBe("top-expenses");
+    const novidade = tipById("novidade-inicio-maior-gasto-semana");
+    expect(novidade?.kind).toBe("novidade");
+    expect(novidade?.since).toBe(block.since);
+    expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
+    expect(novidade?.link?.href).toBe("/ajustes/preferencias");
+    expect(novidade?.body.length).toBeLessThanOrEqual(150);
+  });
+
   it("knows its own ids only", () => {
     expect(isHomeBlockId("budget")).toBe(true);
     expect(isHomeBlockId("toString")).toBe(false);

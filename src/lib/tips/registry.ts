@@ -422,6 +422,19 @@ export const TIPS: readonly Tip[] = [
     icon: "utensils",
     link: { href: "/contas/nova?tipo=beneficio", label: "Criar benefício" },
   },
+  {
+    id: "novidade-inicio-maior-gasto-semana",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Maior gasto da semana",
+    body: "Traga para o Início os 3 maiores gastos dos últimos 7 dias, com atalho para o Extrato.",
+    since: "2026-11-13",
+    order: 22,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
