@@ -1,7 +1,7 @@
 // Accounts (doc 01 §6): balances are always derived from the ledger.
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
-import { isValidCardCycle } from "@/lib/finance";
+import { isBenefitType, isValidCardCycle } from "@/lib/finance";
 import { db, type Executor } from "@/server/db/client";
 import {
   type ColorToken,
@@ -21,6 +21,7 @@ export const ACCOUNT_TYPE_LABELS: Record<FinAccountType, string> = {
   credit_card: "Cartão de crédito",
   other: "Outra",
   savings_box: "Caixinha",
+  benefit: "Benefício",
 };
 
 export const ACCOUNT_TYPE_ICONS: Record<FinAccountType, string> = {
@@ -31,11 +32,16 @@ export const ACCOUNT_TYPE_ICONS: Record<FinAccountType, string> = {
   credit_card: "credit-card",
   other: "wallet",
   savings_box: "vault",
+  benefit: "utensils-crossed",
 };
 
-/** Default color by type: cards violet, caixinhas green, the rest blue. */
+/**
+ * Default color by type: cards violet, caixinhas green, benefícios cat-4, the
+ * rest blue.
+ */
 function defaultAccountColor(type: FinAccountType): ColorToken {
   if (type === "credit_card") return "cat-7";
+  if (type === "benefit") return "cat-4";
   return type === "savings_box" ? "cat-6" : "cat-1";
 }
 
@@ -200,7 +206,7 @@ export type AccountInput = {
 
 /**
  * Checks the account chosen to pay a card's invoices: the person's own,
- * active, and not a card. Null or undefined pass through.
+ * active, and neither a card nor a benefício. Null or undefined pass through.
  */
 async function checkPaymentAccount(
   tx: Executor,
@@ -212,7 +218,13 @@ async function checkPaymentAccount(
   if (payer.type === "credit_card") {
     throw new DomainError("Escolha uma conta, não um cartão.");
   }
+  if (isBenefitType(payer.type)) {
+    throw new DomainError(BENEFIT_PAYS_NO_INVOICE);
+  }
 }
+
+/** A benefício never pays a card's invoice (doc 03 §12). */
+export const BENEFIT_PAYS_NO_INVOICE = "O benefício não paga fatura de cartão.";
 
 export async function createAccount(
   userId: string,
@@ -241,7 +253,8 @@ export async function createAccount(
       initialBalanceCents: isCard
         ? -Math.abs(input.initialBalanceCents)
         : input.initialBalanceCents,
-      includeInNetWorth: input.includeInNetWorth ?? true,
+      // A benefício stays out of the net worth unless the person says so.
+      includeInNetWorth: input.includeInNetWorth ?? !isBenefitType(input.type),
       sortOrder: count,
     });
     if (isCard && input.card) {

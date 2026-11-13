@@ -1,6 +1,11 @@
 // Data the "Nova transação" sheet needs to open instantly (doc 02 §6.5).
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { addDays, iso, isSpendableType } from "@/lib/finance";
+import {
+  addDays,
+  isDefaultEntryType,
+  iso,
+  isSpendableType,
+} from "@/lib/finance";
 import { db } from "@/server/db/client";
 import { transactions } from "@/server/db/schema";
 import { listAccounts } from "./accounts";
@@ -57,11 +62,12 @@ export async function getQuickAddData(ctx: UserContext): Promise<QuickAddData> {
     expenseCategories,
     incomeCategories,
     lastAccountId:
-      // Never a caixinha: it is where money is set aside, not where it is spent.
+      // Never a caixinha (money set aside) nor a benefício (it only pays for
+      // some things), even when it was the last one used.
       last &&
       accounts.some(
         (account) =>
-          account.id === last.accountId && account.type !== "savings_box",
+          account.id === last.accountId && isDefaultEntryType(account.type),
       )
         ? last.accountId
         : (accounts.find((account) => isSpendableType(account.type))?.id ??
