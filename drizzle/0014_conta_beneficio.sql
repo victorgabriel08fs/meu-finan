@@ -1,0 +1,1 @@
+ALTER TYPE "public"."fin_account_type" ADD VALUE 'benefit';
