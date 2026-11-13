@@ -2,6 +2,51 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
+## Próximas tarefas (14 a 21), nesta ordem
+
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
+
+### 14. Bloco "Maior gasto da semana" — P
+
+- Os 3 maiores lançamentos de despesa dos últimos 7 dias, com atalho para o Extrato filtrado.
+- Primeiro bloco da leva: serve de modelo para os seguintes (consulta, cache por `u:{id}`, skeleton, vazio, modo discreto).
+
+### 15. Bloco "Parcelas a terminar" — P
+
+- Lê `installment_plans`: o que ainda falta pagar em cada compra parcelada, quantas parcelas restam e o mês em que acaba; total que sai do orçamento a cada mês.
+- Atalho para o lançamento no Extrato.
+
+### 16. Bloco "Comparado ao mês passado" — P
+
+- Gasto do mês até hoje contra o mesmo dia do mês anterior (mês financeiro), no total e pelas categorias que mais mudaram (subcategorias somadas na mãe).
+- A comparação vira função pura em `src/lib/finance` (com Vitest e fast-check): as tarefas 19 e 20 a reutilizam.
+
+### 17. Bloco "Assinaturas do mês" — M
+
+- Lista as recorrências de despesa ativas (streaming, academia), o total por mês e o próximo débito de cada uma.
+- Destaca aumento de valor entre ocorrências e permite marcar uma recorrência como assinatura (ou inferir pela repetição mensal; o arquiteto decide).
+
+### 18. Etiquetas — M
+
+- As tabelas `tags` e `transaction_tags` já existem, sem tela. Criar, renomear e arquivar etiquetas (Ajustes), escolher várias no lançamento (Nova transação e detalhe), filtro no Extrato (na URL, como os demais) e um relatório por etiqueta (total e lançamentos do período).
+- Exportação CSV com a coluna de etiquetas.
+- Pré-requisito da tarefa 21 (`#etiqueta` no texto).
+
+### 19. Gasto fora do padrão — M
+
+- Aviso quando uma categoria passa da média dos últimos meses ("Mercado está 40% acima da média"), usando a função da tarefa 16.
+- Novo aviso no cron diário (uma vez por categoria e mês), no sino e no push, ligado ou desligado em Ajustes › Notificações; sem valores na tela bloqueada sem "Mostrar valores". Pode virar também um insight no Início.
+
+### 20. Fechamento do mês — M
+
+- No 1º dia do mês financeiro, uma tela de revisão do mês que acabou: receitas, despesas e o que sobrou; comparação com o anterior (tarefa 16); assinaturas (17) e parcelas que continuam (15); orçamentos estourados com a sugestão pela média; e "Guardar a sobra" (transferência para uma caixinha).
+- Chega pelo Resumo mensal (sino e push) e fica em Relatórios para os meses anteriores.
+
+### 21. Lançamento por texto — M/G (por último)
+
+- Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
+- Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
+
 ## 5. Categorias — pendências pequenas
 
 Mesclar, ordenar, arquivar com mover e o detalhe da categoria estão em **Entregue** (06/11/2026). Ficou:
