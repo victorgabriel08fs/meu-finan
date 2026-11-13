@@ -1,7 +1,17 @@
 // Início (doc 02 §6.3): "quanto tenho?", "como está o mês?", "o que vence logo?".
 // The other blocks read straight from their domains: periodTotals,
 // getBudgets, listGoals.
-import { and, between, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  between,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  sql,
+} from "drizzle-orm";
 import { cache } from "react";
 import {
   addDays,
@@ -33,6 +43,8 @@ import {
   type ColorToken,
   categories,
   type FinAccountType,
+  finAccounts,
+  installmentPlans,
   transactions,
 } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
@@ -685,4 +697,100 @@ export async function categoryInsight(
     };
   }
   return best;
+}
+
+/** Maiores gastos da semana: how many the block shows. */
+export const TOP_EXPENSES_LIMIT = 3;
+
+/** The last 7 days up to and including today, `YYYY-MM-DD`. */
+export function topExpensesWindow(
+  todayIso: string,
+  days = 7,
+): { start: string; end: string } {
+  return { start: iso(addDays(parse(todayIso), -(days - 1))), end: todayIso };
+}
+
+export type TopExpense = {
+  id: string;
+  description: string;
+  /** Negative: an outflow. */
+  amountCents: number;
+  occurredOn: string;
+  accountId: string;
+  accountName: string;
+  categoryName: string | null;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  installment: { number: number; count: number } | null;
+  recurring: boolean;
+};
+
+/**
+ * Maior gasto da semana (doc 02 §6.3): the biggest paid expenses of the last
+ * 7 days, today included, whatever month the Início shows (`?mes=`). Card
+ * purchases and installments (the installment's value) and recurrences count;
+ * transfers (the invoice payment included), adjustments, income, pending and
+ * deleted rows do not. A group's expense counts for what it cost the person,
+ * in full: nothing of the shared tables is read.
+ */
+export async function biggestExpenses(
+  ctx: UserContext,
+  limit = TOP_EXPENSES_LIMIT,
+): Promise<TopExpense[]> {
+  const { start, end } = topExpensesWindow(ctx.todayIso);
+  const rows = await db
+    .select({
+      id: transactions.id,
+      description: transactions.description,
+      amountCents: transactions.amountCents,
+      occurredOn: transactions.occurredOn,
+      accountId: transactions.accountId,
+      accountName: finAccounts.name,
+      categoryName: categories.name,
+      categoryIcon: categories.icon,
+      categoryColor: categories.color,
+      installmentNumber: transactions.installmentNumber,
+      installmentCount: installmentPlans.count,
+      recurrenceId: transactions.recurrenceId,
+    })
+    .from(transactions)
+    .innerJoin(finAccounts, eq(finAccounts.id, transactions.accountId))
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .leftJoin(
+      installmentPlans,
+      eq(installmentPlans.id, transactions.installmentPlanId),
+    )
+    .where(
+      and(
+        eq(transactions.userId, ctx.userId),
+        isNull(transactions.deletedAt),
+        eq(transactions.kind, "expense"),
+        eq(transactions.status, "paid"),
+        lt(transactions.amountCents, 0),
+        between(transactions.occurredOn, start, end),
+      ),
+    )
+    .orderBy(
+      asc(transactions.amountCents),
+      desc(transactions.occurredOn),
+      desc(transactions.createdAt),
+      desc(transactions.id),
+    )
+    .limit(limit);
+  return rows.map((row) => ({
+    id: row.id,
+    description: row.description,
+    amountCents: row.amountCents,
+    occurredOn: row.occurredOn,
+    accountId: row.accountId,
+    accountName: row.accountName,
+    categoryName: row.categoryName,
+    categoryIcon: row.categoryIcon,
+    categoryColor: row.categoryColor,
+    installment:
+      row.installmentNumber !== null && row.installmentCount !== null
+        ? { number: row.installmentNumber, count: row.installmentCount }
+        : null,
+    recurring: row.recurrenceId !== null,
+  }));
 }
