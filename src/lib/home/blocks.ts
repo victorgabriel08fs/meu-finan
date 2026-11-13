@@ -151,6 +151,15 @@ export const HOME_BLOCKS = {
     weight: 190,
     since: "2026-11-10",
   },
+  "top-expenses": {
+    label: "Maior gasto da semana",
+    description: "Os 3 maiores gastos dos últimos 7 dias.",
+    errorTitle: "Não deu para carregar o maior gasto da semana",
+    size: "narrow",
+    inDefault: false,
+    weight: 270,
+    since: "2026-11-13",
+  },
   // Only with financas_compartilhadas and a group or an invite: otherwise the
   // block renders nothing and its place closes up.
   shared: {
@@ -186,6 +195,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "income-expense",
   "net-worth",
   "daily-spend",
+  "top-expenses",
   "shared",
 ] as const satisfies readonly HomeBlockId[];
 

@@ -68,7 +68,7 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-7, -1)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-8, -2)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
