@@ -93,6 +93,7 @@ export function TransactionRow({
   const nonBusiness =
     pending && txn.kind === "expense" ? (txn.nonBusinessDue ?? null) : null;
 
+  const dayLabel = relativeDayLabel(txn.occurredOn, todayIso).toLowerCase();
   const label = [
     txn.description,
     `${KIND_LABEL[txn.kind].toLowerCase()} de ${spokenAmount(
@@ -100,7 +101,8 @@ export function TransactionRow({
       brlParts(txn.amountCents, { sign: "never" }),
     )}`,
     subtitle.replace(" · ", ", "),
-    relativeDayLabel(txn.occurredOn, todayIso).toLowerCase(),
+    // A caller's subtitle may already carry the day.
+    subtitle.toLowerCase().includes(dayLabel) ? null : dayLabel,
     txn.installment
       ? `parcela ${txn.installment.number} de ${txn.installment.count}`
       : null,

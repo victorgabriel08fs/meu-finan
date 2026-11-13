@@ -497,6 +497,16 @@ export function HomeBlockSkeleton({
           <Skeleton className="h-51.25 rounded-card @min-[21.75rem]:h-46.75" />
         </div>
       );
+    // Three rows (demo, Chromium, 360 to 1440px), measured by the block's own
+    // width: 302px under a 19.125rem slot, 292px up to 20rem, 270px from there
+    // (the rows wrap a line more as the slot narrows). Fewer than three
+    // rows or long descriptions shift it: accepted, as in daily-spend.
+    case "top-expenses":
+      return (
+        <div className="@container">
+          <Skeleton className="h-75.5 rounded-card @min-[19.125rem]:h-73 @min-[20rem]:h-67.5" />
+        </div>
+      );
     // The heading, a strip of day cards (they scroll inside the block, so the
     // height does not depend on how many fit) and the footer note, which wraps
     // as the slot narrows. Measured: 262px at a 288px slot, 244px from 19rem,

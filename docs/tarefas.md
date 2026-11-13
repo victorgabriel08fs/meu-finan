@@ -2,14 +2,9 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (14 a 21), nesta ordem
+## Próximas tarefas (15 a 21), nesta ordem
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
-
-### 14. Bloco "Maior gasto da semana" — P
-
-- Os 3 maiores lançamentos de despesa dos últimos 7 dias, com atalho para o Extrato filtrado.
-- Primeiro bloco da leva: serve de modelo para os seguintes (consulta, cache por `u:{id}`, skeleton, vazio, modo discreto).
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). A tarefa 14 (Maior gasto da semana) foi entregue em 13/11/2026 (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ### 15. Bloco "Parcelas a terminar" — P
 
@@ -46,6 +41,14 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 
 - Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
 - Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
+
+## 14. Maior gasto da semana: o que ficou de fora
+
+A tarefa foi entregue em 13/11/2026 (ver "Entregue"). Fica para depois:
+
+- **`?abrir=<id>` no Extrato**: a linha do bloco leva ao mês, à conta, ao tipo e ao começo da descrição, mas não abre o lançamento.
+- **Filtro `desde`/`ate` no Extrato**: para o "Ver no Extrato" mostrar só os 7 dias (hoje mostra as despesas do mês).
+- **`aria-label` do `TransactionRow` no modo discreto**: lê o valor por extenso mesmo com os valores ocultos.
 
 ## 5. Categorias — pendências pequenas
 
@@ -114,6 +117,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Bloco "Maior gasto da semana" (tarefa 14) — 13/11/2026
+
+Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrás de `inicio_personalizavel`): as 3 maiores despesas pagas dos últimos 7 dias, com atalho para o Extrato.
+
+- [x] **Consulta** `biggestExpenses` / `topExpensesWindow` (`src/server/domain/dashboard.ts`): sem cache, sem migração; fatura, transferências, ajustes, receitas, pendentes e apagados ficam fora.
+- [x] **Bloco** `top-expenses-block.tsx` (linhas de `TransactionRow`, convite, modo discreto), skeleton medido (`weight` 270) e loader em `blocks.tsx`.
+- [x] **`TransactionRow`**: o nome acessível não repete o dia quando o `subtitle` já o traz.
+- [x] **Dicas**: novidade `novidade-inicio-maior-gasto-semana` (`since` 13/11/2026).
+- [x] Testes: unidade (`blocks.test.ts`, `layout.test.ts`, `top-expenses-block.test.tsx`, `transaction-row.test.tsx`, `home-skeleton.test.tsx`), integração (`top-expenses.integration.test.ts`, `blocks.integration.test.tsx`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 §8 e doc 02 §6.3. O que ficou: "14. Maior gasto da semana: o que ficou de fora".
 
 ### Conta de benefício (vale-refeição e vale-alimentação) — 12/11/2026
 

@@ -80,6 +80,7 @@ const components = {} as {
   netWorth: typeof import("@/components/dashboard/net-worth-block");
   noRecords: typeof import("@/components/dashboard/block-no-records");
   spendable: typeof import("@/components/dashboard/spendable-per-day-block");
+  topExpenses: typeof import("@/components/dashboard/top-expenses-block");
 };
 
 // 14/out/2026, 12:00 in São Paulo.
@@ -137,6 +138,9 @@ beforeAll(async () => {
   );
   components.spendable = await import(
     "@/components/dashboard/spendable-per-day-block"
+  );
+  components.topExpenses = await import(
+    "@/components/dashboard/top-expenses-block"
   );
   const { listCategories } = await import("@/server/domain/categories");
 
@@ -947,5 +951,85 @@ describe("Quanto dá para gastar por dia com benefício", () => {
     expect(after.rows[0]?.byAccount).toEqual([
       { accountId: ivoIds.vr, perDayCents: 2_000 },
     ]);
+  });
+});
+
+describe("Maior gasto da semana", () => {
+  type Item = import("@/server/domain/dashboard").TopExpense;
+
+  async function loadTop(ctx: UserContext) {
+    const element = (await blocks.HOME_BLOCK_LOADERS["top-expenses"]({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  it("shows the biggest paid expenses of the last 7 days, the header going to the expenses", async () => {
+    const { type, props } = await loadTop(ana);
+    expect(type).toBe(components.topExpenses.TopExpensesBlock);
+    expect(props).toMatchObject({
+      today: "2026-10-14",
+      extractHref: "/extrato?tipo=despesa",
+    });
+    const items = props.items as Item[];
+    // The 14/out entries only: the rent of the 15th is pending, September is out.
+    expect(items.map((item) => item.description)).toEqual([
+      "Supermercado",
+      "Corrida",
+    ]);
+  });
+
+  it("opens each row on the statement of its month, narrowed to the entry", async () => {
+    const { props } = await loadTop(ana);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [first] = props.items as Item[];
+    if (!first) throw new Error("sem item");
+    // The month on screen is October: no `mes` in the link.
+    expect(hrefFor(first)).toBe(
+      `/extrato?conta=${first.accountId}&tipo=despesa&q=Supermercado`,
+    );
+  });
+
+  it("names the month of the entry when the week crosses the turn of the financial month", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "duda", name: "Duda", email: "duda@exemplo.com" });
+    const account = await accounts.createAccount("duda", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const base = await context.getUserContext("duda", { now: NOW });
+    // The financial month starts on the 14th: 13/out belongs to September's.
+    const duda = { ...base, monthStartDay: 14 };
+    for (const [amountCents, occurredOn] of [
+      [9_000, "2026-10-13"],
+      [8_000, "2026-10-14"],
+    ] as const) {
+      await transactions.createTransaction(duda, {
+        kind: "expense",
+        accountId: account,
+        categoryId: null,
+        amountCents,
+        occurredOn,
+        description: "Feira",
+      });
+    }
+    const { props } = await loadTop(duda);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [before, after] = props.items as Item[];
+    if (!before || !after) throw new Error("sem itens");
+    expect(hrefFor(before)).toContain("mes=2026-09");
+    expect(hrefFor(after)).not.toContain("mes=");
+  });
+
+  it("invites without an expense in the 7 days, and never reads another person's", async () => {
+    const empty = await loadTop(bia);
+    expect(empty.type).toBe(components.topExpenses.TopExpensesInvite);
+    const none = await loadTop(caio);
+    expect(none.type).toBe(components.topExpenses.TopExpensesInvite);
   });
 });

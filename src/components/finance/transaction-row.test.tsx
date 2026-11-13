@@ -77,3 +77,21 @@ describe("TransactionRow: grace after a non-business due date (D2)", () => {
     expect(plainText(render(txn(), "2026-11-15"))).toContain("Venceu ontem");
   });
 });
+
+describe("TransactionRow: accessible name and the day", () => {
+  const label = (html: string) => /aria-label="([^"]*)"/.exec(html)?.[1] ?? "";
+  const paid = (extra: Partial<TransactionRowData> = {}) =>
+    txn({ status: "paid", occurredOn: "2026-11-12", ...extra });
+
+  it("says the day once when the caller's subtitle already carries it", () => {
+    const name = label(
+      render(paid({ subtitle: "Mercado · Hoje" }), "2026-11-12"),
+    );
+    expect(name.match(/hoje/gi)).toHaveLength(1);
+  });
+
+  it("adds the day when the subtitle does not carry it", () => {
+    const name = label(render(paid(), "2026-11-12"));
+    expect(name.toLowerCase()).toContain("hoje");
+  });
+});

@@ -40,6 +40,10 @@ import {
   SpendingCalendarBlock,
   SpendingCalendarInvite,
 } from "@/components/dashboard/spending-calendar-block";
+import {
+  TopExpensesBlock,
+  TopExpensesInvite,
+} from "@/components/dashboard/top-expenses-block";
 import { UpcomingBills } from "@/components/dashboard/upcoming-bills";
 import { Money } from "@/components/money/money";
 import { isCashFlowEmpty } from "@/components/reports/cash-flow-model";
@@ -50,6 +54,10 @@ import {
   periodViewHref,
 } from "@/components/reports/views";
 import { SharedBlock } from "@/components/sharing/shared-block";
+import {
+  MAX_QUERY_LENGTH,
+  statementHref,
+} from "@/components/transactions/statement-params";
 import { monthLabel, shortDateLabel } from "@/lib/format/date";
 import type { HomeBlockId } from "@/lib/home/blocks";
 import { isBeforeFirstRecord, trimToFirstRecord } from "@/lib/reports/coverage";
@@ -61,6 +69,7 @@ import {
   type UserContext,
 } from "@/server/domain/context";
 import {
+  biggestExpenses,
   categoryInsight,
   getAccountsStrip,
   getBalanceSummary,
@@ -106,6 +115,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "income-expense": IncomeExpenseBlockLoader,
   "net-worth": NetWorthBlockLoader,
   "daily-spend": DailySpendBlockLoader,
+  "top-expenses": TopExpensesBlockLoader,
   shared: SharedBlockLoader,
 };
 
@@ -452,6 +462,38 @@ async function DailySpendBlockLoader({ ctx, range }: HomeBlockProps) {
       spendable={spendable}
       today={ctx.todayIso}
       isCurrent={range.isCurrent}
+    />
+  );
+}
+
+/**
+ * Maior gasto da semana: always the last 7 days, whatever month the Início
+ * shows. The week can cross the turn of the financial month, so each row
+ * opens the statement of its own entry's month (account, kind and the start
+ * of the description narrow it down); the header goes to the expenses.
+ */
+async function TopExpensesBlockLoader({ ctx }: HomeBlockProps) {
+  const items = await biggestExpenses(ctx);
+  if (items.length === 0) return <TopExpensesInvite />;
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <TopExpensesBlock
+      items={items}
+      today={ctx.todayIso}
+      extractHref="/extrato?tipo=despesa"
+      hrefFor={(item) =>
+        statementHref(
+          {
+            month: periodMonthOf(ctx, item.occurredOn),
+            accountId: item.accountId,
+            categoryId: null,
+            kind: "expense",
+            status: null,
+            q: item.description.slice(0, MAX_QUERY_LENGTH),
+          },
+          currentMonth,
+        )
+      }
     />
   );
 }
