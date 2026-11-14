@@ -70,6 +70,15 @@ export const FLAGS = {
     owner: "Contas",
     since: "2026-11-12",
   },
+  lancamento_por_texto: {
+    label: "Lançamento por texto",
+    grammar: { gender: "masculine", plural: false },
+    description:
+      "Um campo na Nova transação que entende uma frase como “café 12 no nubank ontem #viagem” e preenche o formulário para conferir. Quando desligado, o campo some e o servidor recusa o pedido.",
+    defaultValue: false,
+    owner: "Lançamentos",
+    since: "2026-11-14",
+  },
   central_notificacoes: {
     label: "Central de notificações",
     grammar: { gender: "feminine", plural: false },
