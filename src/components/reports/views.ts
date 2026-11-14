@@ -22,6 +22,7 @@ export type ReportView = {
 
 export const REPORT_VIEWS: readonly ReportView[] = [
   { path: "/relatorios/visao-geral", label: "Visão geral", filter: "period" },
+  { path: "/relatorios/fechamento", label: "Fechamento", filter: "month" },
   { path: "/relatorios/categorias", label: "Categorias", filter: "period" },
   { path: "/relatorios/etiquetas", label: "Etiquetas", filter: "period" },
   { path: "/relatorios/fluxo", label: "Fluxo", filter: "month" },
@@ -58,6 +59,22 @@ export function clampReportMonth(
   currentMonth: string,
 ): string {
   return month && month < currentMonth ? month : currentMonth;
+}
+
+/**
+ * `?mes=` of Fechamento: only a month that already closed, so a missing,
+ * malformed, current or future value means the last closed month. Pure.
+ */
+export function clampClosingMonth(
+  month: string | null,
+  lastClosedMonth: string,
+): string {
+  return month && month <= lastClosedMonth ? month : lastClosedMonth;
+}
+
+/** Link to the Fechamento of a month (always with `?mes=`). */
+export function closingHref(month: string): string {
+  return `/relatorios/fechamento?mes=${month}`;
 }
 
 /**

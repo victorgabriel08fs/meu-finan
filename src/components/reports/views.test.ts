@@ -25,9 +25,10 @@ const view = (label: string) => {
 };
 
 describe("report views", () => {
-  it("lists the six views of doc 02 §6.12 in order", () => {
+  it("lists the seven views of doc 02 §6.12 in order", () => {
     expect(REPORT_VIEWS.map((item) => item.label)).toEqual([
       "Visão geral",
+      "Fechamento",
       "Categorias",
       "Etiquetas",
       "Fluxo",
@@ -38,7 +39,11 @@ describe("report views", () => {
       REPORT_VIEWS.filter((item) => item.filter === "month").map(
         (item) => item.path,
       ),
-    ).toEqual(["/relatorios/fluxo", "/relatorios/calendario"]);
+    ).toEqual([
+      "/relatorios/fechamento",
+      "/relatorios/fluxo",
+      "/relatorios/calendario",
+    ]);
   });
 
   it("finds the view on screen", () => {
