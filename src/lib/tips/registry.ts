@@ -435,6 +435,19 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-inicio-assinaturas",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Assinaturas do mês",
+    body: "Veja no Início as despesas que se repetem todo mês, quanto somam, o próximo débito e quando uma ficou mais cara.",
+    since: "2026-11-14",
+    order: 25,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

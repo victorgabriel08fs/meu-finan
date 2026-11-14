@@ -507,6 +507,16 @@ export function HomeBlockSkeleton({
           <Skeleton className="h-75.5 rounded-card @min-[19.125rem]:h-73 @min-[20rem]:h-67.5" />
         </div>
       );
+    // Heading, caption, five two-line rows and the "e mais N" footer (the
+    // case measured by QA), by the block's own width: 518px at 360px, 467px
+    // at 430px, 439px in the desktop column (470px). Fewer rows or no footer
+    // shift it: accepted, as in top-expenses.
+    case "subscriptions":
+      return (
+        <div className="@container">
+          <Skeleton className="h-129.5 rounded-card @min-[24rem]:h-116.75 @min-[27rem]:h-109.75" />
+        </div>
+      );
     // The heading, a strip of day cards (they scroll inside the block, so the
     // height does not depend on how many fit) and the footer note, which wraps
     // as the slot narrows. Measured: 262px at a 288px slot, 244px from 19rem,
