@@ -28,6 +28,11 @@ import {
 import { InsightCard } from "@/components/dashboard/insight-card";
 import { monthName } from "@/components/dashboard/labels";
 import {
+  MonthComparisonBlock,
+  MonthComparisonFutureInvite,
+  MonthComparisonInvite,
+} from "@/components/dashboard/month-comparison-block";
+import {
   NET_WORTH_BLOCK_POINTS,
   NetWorthBlock,
   NetWorthInvite,
@@ -79,6 +84,10 @@ import {
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
 import {
+  MONTH_COMPARISON_MIN_DIFF_CENTS,
+  monthComparison,
+} from "@/server/domain/month-comparison";
+import {
   cashFlowReport,
   categoryBreakdown,
   dailySpending,
@@ -116,6 +125,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "net-worth": NetWorthBlockLoader,
   "daily-spend": DailySpendBlockLoader,
   "top-expenses": TopExpensesBlockLoader,
+  "month-comparison": MonthComparisonBlockLoader,
   shared: SharedBlockLoader,
 };
 
@@ -462,6 +472,49 @@ async function DailySpendBlockLoader({ ctx, range }: HomeBlockProps) {
       spendable={spendable}
       today={ctx.todayIso}
       isCurrent={range.isCurrent}
+    />
+  );
+}
+
+/**
+ * Comparado ao mês passado: the month on screen up to today (or whole, when
+ * it is over) against the same point of the month before; the report and
+ * each category's detail open on that same month.
+ */
+async function MonthComparisonBlockLoader({ ctx, range }: HomeBlockProps) {
+  const before = await noRecordsBefore(ctx, range);
+  if (before) return before;
+  const comparison = await monthComparison(ctx, range);
+  if (!comparison) {
+    return <MonthComparisonFutureInvite monthName={monthName(range.month)} />;
+  }
+  if (
+    comparison.total.currentCents === 0 &&
+    comparison.total.baselineCents === 0
+  ) {
+    return (
+      <MonthComparisonInvite
+        monthName={monthName(comparison.month)}
+        previousMonthName={monthName(comparison.previousMonth)}
+      />
+    );
+  }
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <MonthComparisonBlock
+      comparison={comparison}
+      monthName={monthName(comparison.month)}
+      previousMonthName={monthName(comparison.previousMonth)}
+      reportHref={periodViewHref(
+        "/relatorios/categorias",
+        1,
+        range.month,
+        currentMonth,
+      )}
+      hrefFor={(categoryId) =>
+        categoryDetailHref(categoryId, 1, range.month, currentMonth)
+      }
+      minDiffCents={MONTH_COMPARISON_MIN_DIFF_CENTS}
     />
   );
 }
