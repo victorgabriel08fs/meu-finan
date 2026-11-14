@@ -27,6 +27,7 @@ import {
   setPaidAction,
 } from "@/server/actions/transactions";
 import type { ShareTarget } from "@/server/domain/sharing/groups";
+import type { TagItem } from "@/server/domain/tags";
 import {
   actionErrorMessage,
   GENERIC_ERROR,
@@ -58,6 +59,8 @@ type StatementListProps = {
   filtered: boolean;
   query: string;
   categories: FilterCategory[];
+  /** Every tag of the person (archived ones too), for the edit form. */
+  tags?: TagItem[];
   /** The groups to divide an expense in; null with financas_compartilhadas off. */
   sharing?: ShareTarget[] | null;
 };
@@ -93,6 +96,7 @@ export function StatementList({
   filtered,
   query,
   categories,
+  tags = [],
   sharing = null,
 }: StatementListProps) {
   const [shown, applyOptimistic] = useOptimistic(items, applyChange);
@@ -199,6 +203,7 @@ export function StatementList({
       onOpenChange={setDetailOpen}
       today={today}
       categories={categories}
+      tags={tags}
       onSetPaid={setPaid}
       onDelete={remove}
       returnFocusRef={returnFocus}

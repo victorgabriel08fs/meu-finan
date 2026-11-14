@@ -248,4 +248,45 @@ describe("buildEntry", () => {
       buildEntry(draft({ kind: "transfer", toAccountId: ACCOUNT }), context),
     ).toMatchObject({ ok: false, field: "toAccount" });
   });
+
+  describe("tags", () => {
+    const TAG_A = "0199e3a0-0000-7000-8000-0000000000a1";
+    const TAG_B = "0199e3a0-0000-7000-8000-0000000000a2";
+
+    it("sends the chosen tags of an expense and of an income", () => {
+      for (const kind of ["expense", "income"] as const) {
+        const result = buildEntry(
+          draft({ kind, tagIds: [TAG_A, TAG_B] }),
+          context,
+        );
+        expect(result).toMatchObject({
+          ok: true,
+          payload: { kind, tagIds: [TAG_A, TAG_B] },
+        });
+      }
+    });
+
+    it("drops the tags the person no longer has", () => {
+      const result = buildEntry(draft({ tagIds: [TAG_A, TAG_B] }), {
+        ...context,
+        tagIds: new Set([TAG_B]),
+      });
+      expect(result).toMatchObject({ ok: true, payload: { tagIds: [TAG_B] } });
+    });
+
+    it("leaves the field out when empty, and out of a transfer", () => {
+      const empty = buildEntry(draft(), context);
+      expect(empty.ok && "tagIds" in empty.payload).toBe(false);
+      const none = buildEntry(draft({ tagIds: [TAG_A] }), {
+        ...context,
+        tagIds: new Set(),
+      });
+      expect(none.ok && "tagIds" in none.payload).toBe(false);
+      const transfer = buildEntry(
+        draft({ kind: "transfer", toAccountId: OTHER, tagIds: [TAG_A] }),
+        context,
+      );
+      expect(transfer.ok && "tagIds" in transfer.payload).toBe(false);
+    });
+  });
 });

@@ -606,6 +606,8 @@ Rollover (opcional por orçamento): sobra (ou excesso) do mês anterior soma ao 
 
 ## 12. Previsões e indicadores
 
+**Relatório por etiqueta** (tarefa 18, `tag-report.ts`): `tagBreakdown` e `tagDetail` somam só lançamentos pagos de despesa e receita, não excluídos, pela data da compra (competência), sem transferências nem ajustes, com `transactions.user_id` e `tags.user_id` iguais ao da pessoa. Um lançamento com duas etiquetas entra no total de cada uma, então a soma das etiquetas pode passar do total do período. Despesas aparecem positivas, receitas à parte. Etiqueta arquivada continua no relatório.
+
 **Subcategorias nos relatórios** (D2, 05/11/2026): todo resumo por categoria soma as subcategorias na mãe: "Para onde foi o dinheiro", Visão geral, Categorias, o bloco do Início, "as categorias que mais pesaram" do resumo semanal, as médias das sugestões de orçamento e os insights (`categoryBreakdown` em `reports.ts` e `spentBy` em `dashboard.ts` agrupam pela raiz, com um JOIN e GROUP BY). A variação de categoria (abaixo) compara a mãe com a mãe. A divisão por subcategoria está no detalhe da categoria (`categoryDetail`, `category-report.ts`): mesmos filtros do ranking (pago, não excluído, competência, tipo da categoria); `bySubcategory` agrupa por `category_id` entre a categoria e as filhas (arquivadas inclusive), com os lançamentos da própria mãe como "Sem subcategoria"; a porcentagem de cada parte é sobre o total da categoria, e a da categoria é sobre o total do tipo na janela; "Mês a mês" usa o mesmo balde de mês financeiro de `monthlySeries`.
 
 | Indicador | Definição |

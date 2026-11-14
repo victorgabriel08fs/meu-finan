@@ -45,6 +45,7 @@ function item(patch: Partial<StatementItem>): StatementItem {
     recurring: false,
     recurrence: null,
     notes: null,
+    tags: [],
     ...patch,
   };
 }
@@ -125,6 +126,27 @@ describe("recurrenceLabel", () => {
   });
 });
 
+describe("tag filter", () => {
+  const TAG = "0199E3A0-0000-7000-8000-0000000000AA";
+
+  it("reads ?etiqueta= as a lowercase uuid and ignores anything else", () => {
+    expect(parseStatementParams({ etiqueta: TAG }).tagId).toBe(
+      TAG.toLowerCase(),
+    );
+    expect(parseStatementParams({ etiqueta: "viagem" }).tagId).toBeNull();
+    expect(parseStatementParams({ etiqueta: ["x", TAG] }).tagId).toBeNull();
+  });
+
+  it("goes back to the URL and counts as an active filter", () => {
+    const filters = parseStatementParams({ etiqueta: TAG });
+    expect(hasActiveFilters(filters)).toBe(true);
+    expect(statementHref(filters, "2026-10")).toBe(
+      `/extrato?etiqueta=${TAG.toLowerCase()}`,
+    );
+    expect(hasActiveFilters(parseStatementParams({}))).toBe(false);
+  });
+});
+
 describe("parseStatementParams", () => {
   it("reads every filter", () => {
     expect(
@@ -140,6 +162,7 @@ describe("parseStatementParams", () => {
       month: "2026-09",
       accountId: ACCOUNT.toLowerCase(),
       categoryId: "0199e3a0-0000-7000-8000-000000000002",
+      tagId: null,
       kind: "expense",
       status: "pending",
       q: "farmácia",
@@ -159,6 +182,7 @@ describe("parseStatementParams", () => {
       month: null,
       accountId: null,
       categoryId: null,
+      tagId: null,
       kind: null,
       status: null,
       q: "x".repeat(60),

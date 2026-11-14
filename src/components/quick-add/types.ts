@@ -37,4 +37,6 @@ export type QuickAddSheetData = {
   incomeCategories: QuickAddCategory[];
   /** Account of the most recent expense: the default of the form. */
   lastAccountId: string | null;
+  /** Active tags, in name order. */
+  tags: { id: string; name: string }[];
 };

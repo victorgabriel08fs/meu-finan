@@ -443,6 +443,7 @@ describe("AccountTransactions", () => {
     recurring: false,
     recurrence: null,
     notes: null,
+    tags: [],
     ...overrides,
   });
 

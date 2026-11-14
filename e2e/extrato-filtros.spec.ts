@@ -378,10 +378,15 @@ test("tocar no próximo chip enquanto a folha anterior fecha abre a folha nova",
         '[data-slot="sheet-content"][data-state="closed"]',
       ),
   );
-  await page.touchscreen.tap(
-    conta.x + conta.width / 2,
-    conta.y + conta.height / 2,
+  // With five chips the row scrolls to the one just chosen (Tipo) and Conta
+  // leaves the screen: bring it back, then measure it again by its markup
+  // (the role is hidden while the sheet is open).
+  const contaChip = page.locator("[data-filter-chip]", { hasText: "Conta:" });
+  await contaChip.evaluate((node) =>
+    node.scrollIntoView({ inline: "nearest", block: "nearest" }),
   );
+  const at = (await contaChip.boundingBox()) ?? conta;
+  await page.touchscreen.tap(at.x + at.width / 2, at.y + at.height / 2);
   await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 });
   await expect(
     page.locator('[data-slot="sheet-content"][data-state="closed"]'),

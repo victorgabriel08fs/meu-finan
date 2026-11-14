@@ -16,6 +16,7 @@ import { recurrences, transactions } from "@/server/db/schema";
 import { requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
 import { getUserContext, type UserContext } from "./context";
+import { recurrenceTagIds, replaceTransactionTags } from "./tags";
 import { RECURRENCE_HORIZON_DAYS } from "./transactions";
 
 export type MaterializeReport = { recurrences: number; created: number };
@@ -121,6 +122,16 @@ export async function materializeRecurrences(
               .onConflictDoNothing()
               .returning({ id: transactions.id })
           : [];
+      if (inserted.length > 0) {
+        const tagIds = await recurrenceTagIds(tx, rule.id);
+        if (tagIds.length > 0) {
+          await replaceTransactionTags(
+            tx,
+            inserted.map((row) => row.id),
+            tagIds,
+          );
+        }
+      }
       await tx
         .update(recurrences)
         .set({ generatedUntil: iso(horizon) })

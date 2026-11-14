@@ -123,6 +123,7 @@ export type EntryPayload =
         freq: "weekly" | "monthly" | "yearly";
         endOn: string | null;
       } | null;
+      tagIds?: string[];
     }
   | {
       kind: "transfer";
@@ -147,6 +148,11 @@ type BuildContext = {
   defaultAccountId: string | null;
   /** Idempotency key for this attempt. */
   requestId: string;
+  /**
+   * The tags the person still has (a tag archived elsewhere since it was
+   * chosen is dropped); absent = keep every chosen tag.
+   */
+  tagIds?: ReadonlySet<string>;
 };
 
 /** Messages of the amount errors (doc 02 §5.5). */
@@ -246,6 +252,11 @@ export function buildEntry(
     };
   }
 
+  const available = context.tagIds;
+  const tagIds = available
+    ? draft.tagIds.filter((id) => available.has(id))
+    : draft.tagIds;
+
   return {
     ok: true,
     amountCents,
@@ -265,6 +276,7 @@ export function buildEntry(
       paid,
       installments,
       recurrence,
+      ...(tagIds.length > 0 ? { tagIds } : {}),
     },
   };
 }

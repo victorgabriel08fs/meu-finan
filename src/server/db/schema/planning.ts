@@ -4,13 +4,14 @@ import {
   check,
   jsonb,
   pgTable,
+  primaryKey,
   smallint,
   text,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
 import { finAccounts } from "./accounts";
-import { categories } from "./categories";
+import { categories, tags } from "./categories";
 import {
   cents,
   createdAt,
@@ -84,6 +85,25 @@ export const recurrences = pgTable(
       "recurrences_by_month_day_check",
       sql`${t.byMonthDay} between 1 and 31`,
     ),
+  ],
+);
+
+/** Tags a recurrence copies to the occurrences the daily job creates. */
+export const recurrenceTags = pgTable(
+  "recurrence_tags",
+  {
+    recurrenceId: uuid("recurrence_id")
+      .notNull()
+      .references(() => recurrences.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({
+      name: "recurrence_tags_pkey",
+      columns: [t.recurrenceId, t.tagId],
+    }),
   ],
 );
 

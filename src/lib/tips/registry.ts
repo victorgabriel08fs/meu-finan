@@ -474,6 +474,18 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-etiquetas",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Etiquetas",
+    body: "Marque lançamentos de categorias diferentes com uma etiqueta, como “viagem”, e veja quanto somam em Relatórios. Dá para filtrar o Extrato por ela.",
+    since: "2026-11-14",
+    order: 26,
+    icon: "tag",
+    link: { href: "/ajustes/etiquetas", label: "Criar etiquetas" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

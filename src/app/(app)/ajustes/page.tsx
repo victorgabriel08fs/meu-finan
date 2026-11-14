@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
   SunMoon,
+  Tag,
   ToggleRight,
   Users,
   UsersRound,
@@ -31,6 +32,7 @@ import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
 import { getThemePreference } from "@/server/domain/preferences";
 import { sharingCounts } from "@/server/domain/sharing/groups";
+import { countActiveTags } from "@/server/domain/tags";
 import { getTipsOff } from "@/server/domain/tips";
 import { usersOverview } from "@/server/domain/users";
 import { getFlags } from "@/server/flags";
@@ -51,16 +53,18 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, theme, tipsOff, flags, admin] = await Promise.all([
-    getUserContext(user.id),
-    listCategories(user.id),
-    getThemePreference(user.id),
-    getTipsOff(user.id),
-    getFlags(user.id),
-    user.role === "admin"
-      ? Promise.all([usersOverview(), flagsOverview()])
-      : null,
-  ]);
+  const [ctx, categories, tags, theme, tipsOff, flags, admin] =
+    await Promise.all([
+      getUserContext(user.id),
+      listCategories(user.id),
+      countActiveTags(user.id),
+      getThemePreference(user.id),
+      getTipsOff(user.id),
+      getFlags(user.id),
+      user.role === "admin"
+        ? Promise.all([usersOverview(), flagsOverview()])
+        : null,
+    ]);
   const expenses = categories.filter(
     (category) => category.kind === "expense",
   ).length;
@@ -147,6 +151,16 @@ async function Settings() {
             label="Categorias"
             description={`${expenses} de despesa · ${incomes} de receita`}
             href="/ajustes/categorias"
+          />
+          <InsetListItem
+            icon={<Tag />}
+            label="Etiquetas"
+            description={
+              tags === 0
+                ? "Junte lançamentos, como os de uma viagem"
+                : plural(tags, "etiqueta", "etiquetas")
+            }
+            href="/ajustes/etiquetas"
           />
           {sharing ? (
             <InsetListItem
@@ -285,9 +299,10 @@ function SettingsSkeleton() {
       <Skeleton className="h-25 rounded-2xl" />
       {/* Preferências: 36 + 3 × 52 + 2 hairlines = 194 */}
       <Skeleton className="h-48.5 rounded-2xl" />
-      {/* Organização: 36 + 64 = 100. The "Compartilhado" row (+65) only shows
-          with financas_compartilhadas, off by default: size for the default. */}
-      <Skeleton className="h-25 rounded-2xl" />
+      {/* Organização: 36 + 64 + 1 + 64 = 165. The "Compartilhado" row (+65)
+          only shows with financas_compartilhadas, off by default: size for
+          the default. */}
+      <Skeleton className="h-41.25 rounded-2xl" />
       {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
       <Skeleton className="h-41.25 rounded-2xl" />
       {/* Sobre: 36 + 64 + 1 + 52 = 153 */}

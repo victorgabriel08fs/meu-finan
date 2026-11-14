@@ -9,6 +9,7 @@ import {
 import {
   type FilterAccount,
   type FilterCategory,
+  type FilterTag,
   StatementFilterBar,
 } from "@/components/transactions/statement-filters";
 import { StatementList } from "@/components/transactions/statement-list";
@@ -30,6 +31,7 @@ import { getUserContext, resolvePeriod } from "@/server/domain/context";
 import { pendingNonBusinessDue } from "@/server/domain/holidays";
 import { transactionShares } from "@/server/domain/sharing/expenses";
 import { listShareTargets } from "@/server/domain/sharing/groups";
+import { listTags } from "@/server/domain/tags";
 import {
   listTransactions,
   periodTotals,
@@ -41,7 +43,7 @@ export const metadata: Metadata = { title: "Extrato" };
 
 /**
  * Extrato (doc 02 §6.4). URL state: `mes` (YYYY-MM), `conta`, `categoria`
- * (its subcategories included), `tipo` (receita | despesa | transferencia),
+ * (its subcategories included), `etiqueta`, `tipo` (receita | despesa | transferencia),
  * `status` (pendente | pago) and `q`. The title prerenders; the search reads
  * the URL on the client; the list streams in behind its skeleton. Filter and
  * search updates flag `data-pending`, which dims the list (the `group`
@@ -72,11 +74,12 @@ async function Statement({
   const range = resolvePeriod(ctx, parsed.month);
   const currentMonth = resolvePeriod(ctx, null).month;
 
-  const [accounts, categories] = await Promise.all([
+  const [accounts, categories, tags] = await Promise.all([
     listAccounts(ctx.userId, { includeArchived: true }),
     // Archived ones too: the filter of a parent brings its archived
     // subcategories, and a link to an archived category still filters.
     listCategoriesForAdmin(ctx.userId),
+    listTags(ctx.userId, { includeArchived: true }),
   ]);
   // Ids from the URL count only when they are the user's own.
   const accountId = accounts.some((item) => item.id === parsed.accountId)
@@ -85,15 +88,19 @@ async function Statement({
   const categoryId = categories.some((item) => item.id === parsed.categoryId)
     ? parsed.categoryId
     : null;
+  const tagId = tags.some((item) => item.id === parsed.tagId)
+    ? parsed.tagId
+    : null;
   const filters: StatementFilters = {
     ...parsed,
     month: range.month,
     accountId,
     categoryId,
+    tagId,
   };
   // periodTotals filters by account only; any other filter sums the list.
   const totalsFromList = Boolean(
-    categoryId || filters.kind || filters.status || filters.q,
+    categoryId || tagId || filters.kind || filters.status || filters.q,
   );
 
   const [list, totals, flags] = await Promise.all([
@@ -107,6 +114,7 @@ async function Statement({
       kind: filters.kind ?? undefined,
       status: filters.status ?? undefined,
       q: filters.q || undefined,
+      tagId: tagId ?? undefined,
     }),
     totalsFromList
       ? null
@@ -163,6 +171,7 @@ async function Statement({
     parentId: item.parentId,
     archived: item.archived,
   }));
+  const filterTags: FilterTag[] = tags;
 
   return (
     <>
@@ -182,6 +191,7 @@ async function Statement({
       <StatementFilterBar
         accounts={filterAccounts}
         categories={filterCategories}
+        tags={filterTags}
       />
 
       <div className="flex flex-col gap-4 transition-opacity duration-150 group-has-data-pending:opacity-60">
@@ -210,6 +220,7 @@ async function Statement({
           filtered={hasActiveFilters(filters)}
           query={filters.q}
           categories={filterCategories}
+          tags={tags}
           sharing={sharing ? sharing[0] : null}
         />
       </div>

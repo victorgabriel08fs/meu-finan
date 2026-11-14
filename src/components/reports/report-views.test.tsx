@@ -351,6 +351,7 @@ describe("DayExpenses", () => {
     recurring: false,
     recurrence: null,
     notes: null,
+    tags: [],
   });
 
   it("lists the day's expenses with their total and the way to the statement", () => {

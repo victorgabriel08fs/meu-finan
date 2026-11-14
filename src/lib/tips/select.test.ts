@@ -328,7 +328,8 @@ describe("novidades feed", () => {
       "novidade-importar-extrato",
     );
     // Of the ones without a flag, only the subcategories (5/nov), the
-    // categories news (6/nov) and the benefício (13/nov) are newer.
+    // categories news (6/nov), the benefício (13/nov) and the tags (14/nov)
+    // are newer.
     expect(
       unreadNewsIds({
         seen: new Set(),
@@ -336,6 +337,7 @@ describe("novidades feed", () => {
         context: withImport,
       }),
     ).toEqual([
+      "novidade-etiquetas",
       "novidade-conta-beneficio",
       "novidade-categorias-organizar",
       "novidade-caixinhas",

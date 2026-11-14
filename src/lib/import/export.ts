@@ -14,6 +14,8 @@ export const EXPORT_COLUMNS = [
   "Valor",
   "Parcela",
   "Observação",
+  // Last, so the columns of spreadsheets made before task 18 do not shift.
+  "Etiquetas",
 ] as const;
 
 export type ExportKind = "income" | "expense" | "transfer" | "adjustment";
@@ -31,6 +33,8 @@ export type ExportRow = {
   amountCents: number;
   installment: { number: number; count: number } | null;
   notes: string | null;
+  /** Tag names, in name order. */
+  tags: readonly string[];
 };
 
 const KIND_LABELS: Record<ExportKind, string> = {
@@ -115,6 +119,7 @@ export function transactionsCsv(rows: readonly ExportRow[]): string {
         ? `${row.installment.number} de ${row.installment.count}`
         : "",
       row.notes ?? "",
+      row.tags.join(", "),
     ]),
   ]);
 }

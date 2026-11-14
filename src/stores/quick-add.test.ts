@@ -49,3 +49,20 @@ describe("openQuickAdd", () => {
     });
   });
 });
+
+describe("tags in the draft", () => {
+  it("starts empty", () => {
+    expect(emptyDraft().tagIds).toEqual([]);
+    expect(emptyDraft("income").tagIds).toEqual([]);
+  });
+
+  it("resetDraft keeps them only when asked to", () => {
+    const store = useQuickAddStore.getState();
+    store.updateDraft({ tagIds: ["t1", "t2"], expression: "10" });
+    store.resetDraft({ tagIds: ["t1", "t2"] });
+    expect(useQuickAddStore.getState().draft.tagIds).toEqual(["t1", "t2"]);
+    expect(useQuickAddStore.getState().draft.expression).toBe("");
+    store.resetDraft();
+    expect(useQuickAddStore.getState().draft.tagIds).toEqual([]);
+  });
+});

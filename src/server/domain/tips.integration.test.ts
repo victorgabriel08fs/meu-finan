@@ -206,6 +206,7 @@ describe("tips per user", () => {
         context: state.context,
       }),
     ).toEqual([
+      "novidade-etiquetas",
       "novidade-conta-beneficio",
       "novidade-categorias-organizar",
       "novidade-caixinhas",

@@ -15,6 +15,7 @@ import {
   reportViewAt,
   reportViewHref,
   reportWindowCaption,
+  tagDetailHref,
 } from "./views";
 
 const view = (label: string) => {
@@ -24,10 +25,11 @@ const view = (label: string) => {
 };
 
 describe("report views", () => {
-  it("lists the five views of doc 02 §6.12 in order", () => {
+  it("lists the six views of doc 02 §6.12 in order", () => {
     expect(REPORT_VIEWS.map((item) => item.label)).toEqual([
       "Visão geral",
       "Categorias",
+      "Etiquetas",
       "Fluxo",
       "Patrimônio",
       "Calendário",
@@ -134,6 +136,17 @@ describe("category detail", () => {
     expect(reportWindowCaption(now, 12)).toBe("12 meses, inclui out parcial");
     expect(reportWindowCaption(past, 1)).toBe("setembro");
     expect(reportWindowCaption(past, 3)).toBe("3 meses");
+  });
+});
+
+describe("tag detail", () => {
+  it("links the detail over the window of the ranking", () => {
+    expect(tagDetailHref("t1", 12, "2026-10", "2026-10")).toBe(
+      "/relatorios/etiquetas/t1?periodo=12",
+    );
+    expect(tagDetailHref("t1", 1, "2026-09", "2026-10")).toBe(
+      "/relatorios/etiquetas/t1?periodo=1&mes=2026-09",
+    );
   });
 });
 

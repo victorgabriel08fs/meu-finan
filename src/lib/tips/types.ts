@@ -26,6 +26,7 @@ export type TipIcon =
   | "smartphone"
   | "sparkles"
   | "sun-moon"
+  | "tag"
   | "users"
   | "utensils"
   | "vault";

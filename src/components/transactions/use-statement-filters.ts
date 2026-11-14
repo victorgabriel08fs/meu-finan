@@ -16,6 +16,7 @@ export function useStatementFilters() {
     {
       conta: parseAsString,
       categoria: parseAsString,
+      etiqueta: parseAsString,
       tipo: parseAsStringLiteral(KIND_PARAMS),
       status: parseAsStringLiteral(STATUS_PARAMS),
       q: parseAsString.withDefault(""),
@@ -27,6 +28,7 @@ export function useStatementFilters() {
     void setFilters({
       conta: null,
       categoria: null,
+      etiqueta: null,
       tipo: null,
       status: null,
       q: null,

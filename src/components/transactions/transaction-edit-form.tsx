@@ -4,12 +4,14 @@ import { ChevronDown } from "lucide-react";
 import { type FormEvent, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { formatCents } from "@/components/quick-add/calculator";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { categoryLabel } from "@/lib/categories/hierarchy";
 import { parseBRLToCents } from "@/lib/finance";
 import { updateTransactionAction } from "@/server/actions/transactions";
+import type { TagItem } from "@/server/domain/tags";
 import { actionErrorMessage, NETWORK_ERROR } from "./action-result";
 import {
   type EditScope,
@@ -25,11 +27,14 @@ type TransactionPatch = {
   categoryId?: string | null;
   occurredOn?: string;
   notes?: string | null;
+  tagIds?: string[];
 };
 
 type TransactionEditFormProps = {
   item: StatementItem;
   categories: FilterCategory[];
+  /** Every tag of the person (archived ones too). */
+  tags?: TagItem[];
   /** The sheet footer's submit button points here with `form={formId}`. */
   formId: string;
   onDone: () => void;
@@ -48,13 +53,14 @@ const selectClass =
 
 /**
  * Edit of an entry from the detail sheet (doc 02 §6.6): description, amount,
- * category, date and note. Only changed fields are sent. Saving an
+ * category, tags, date and note. Only changed fields are sent. Saving an
  * installment or a recurring entry asks for the scope (Só este · Este e os
  * próximos · Todos), unless the change can only apply to this one.
  */
 export function TransactionEditForm({
   item,
   categories,
+  tags = [],
   formId,
   onDone,
   onPendingChange,
@@ -68,6 +74,7 @@ export function TransactionEditForm({
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
   const [date, setDate] = useState(item.occurredOn);
   const [notes, setNotes] = useState(item.notes ?? "");
+  const [tagIds, setTagIds] = useState(() => item.tags.map((tag) => tag.id));
   const [errors, setErrors] = useState<Errors>({});
 
   const editsAmount = item.kind !== "adjustment";
@@ -85,6 +92,11 @@ export function TransactionEditForm({
       id: category.id,
       label: `${categoryLabel(category, categories)}${category.archived ? " (arquivada)" : ""}`,
     }));
+  // Active tags plus the archived ones the entry already has.
+  const tagOptions = [
+    ...tags.filter((tag) => !tag.archived),
+    ...item.tags.filter((tag) => tag.archived),
+  ];
   const partOfSeries = item.installment !== null || item.recurring;
   const dateChanged = date !== item.occurredOn;
   const amountChanged =
@@ -128,6 +140,15 @@ export function TransactionEditForm({
     if (date !== item.occurredOn) patch.occurredOn = date;
     if ((notes.trim() || null) !== (item.notes ?? null)) {
       patch.notes = notes.trim() || null;
+    }
+    if (
+      editsCategory &&
+      !sameIds(
+        tagIds,
+        item.tags.map((tag) => tag.id),
+      )
+    ) {
+      patch.tagIds = tagIds;
     }
     if (Object.keys(patch).length === 0) {
       onDone();
@@ -285,6 +306,10 @@ export function TransactionEditForm({
         ) : null}
       </div>
 
+      {editsCategory ? (
+        <TagPicker tags={tagOptions} selected={tagIds} onChange={setTagIds} />
+      ) : null}
+
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`${ids}-notes`}>Nota</Label>
         <textarea
@@ -303,4 +328,10 @@ export function TransactionEditForm({
       ) : null}
     </form>
   );
+}
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((id) => set.has(id));
 }

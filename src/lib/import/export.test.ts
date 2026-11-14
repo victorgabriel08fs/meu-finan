@@ -74,6 +74,7 @@ describe("transactionsCsv", () => {
       amountCents: -6450,
       installment: null,
       notes: null,
+      tags: [],
     },
     {
       occurredOn: "2026-10-03",
@@ -85,6 +86,7 @@ describe("transactionsCsv", () => {
       amountCents: -9998,
       installment: { number: 2, count: 6 },
       notes: "=presente",
+      tags: ["=cmd", "viagem"],
     },
     {
       occurredOn: "2026-10-07",
@@ -96,6 +98,7 @@ describe("transactionsCsv", () => {
       amountCents: -100000,
       installment: null,
       notes: null,
+      tags: [],
     },
   ];
 
@@ -103,7 +106,7 @@ describe("transactionsCsv", () => {
     const csv = transactionsCsv(rows);
     expect(
       csv.startsWith(
-        "﻿Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação\r\n",
+        "﻿Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação;Etiquetas\r\n",
       ),
     ).toBe(true);
     const back = parseCsv(csv, ";").map((record) => record.cells);
@@ -118,6 +121,7 @@ describe("transactionsCsv", () => {
         "Valor",
         "Parcela",
         "Observação",
+        "Etiquetas",
       ],
       [
         "14/10/2026",
@@ -127,6 +131,7 @@ describe("transactionsCsv", () => {
         "Despesa",
         "Pago",
         "-64,50",
+        "",
         "",
         "",
       ],
@@ -140,6 +145,7 @@ describe("transactionsCsv", () => {
         "-99,98",
         "2 de 6",
         "'=presente",
+        "'=cmd, viagem",
       ],
       [
         "07/10/2026",
@@ -151,13 +157,14 @@ describe("transactionsCsv", () => {
         "-1000,00",
         "",
         "",
+        "",
       ],
     ]);
   });
 
   it("writes only the header when there is nothing to export", () => {
     expect(transactionsCsv([])).toBe(
-      "﻿Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação\r\n",
+      "﻿Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação;Etiquetas\r\n",
     );
   });
 });

@@ -393,7 +393,12 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     if (savingRef.current) return;
     const current = useQuickAddStore.getState().draft;
     const requestId = current.requestId ?? uuidv7();
-    const built = buildEntry(current, { today, defaultAccountId, requestId });
+    const built = buildEntry(current, {
+      today,
+      defaultAccountId,
+      requestId,
+      tagIds: new Set(data.tags.map((tag) => tag.id)),
+    });
     if (!built.ok) {
       if (built.field === "amount") {
         failAmount(built.message);
@@ -443,6 +448,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
         paid: saved.paid,
         accountId: saved.accountId,
         toAccountId: saved.toAccountId,
+        tagIds: saved.tagIds,
       });
       setAmountError(null);
       setKeypadVisible(true);
@@ -666,6 +672,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
               draft={draft}
               date={date}
               amountCents={amountCents}
+              tags={data.tags}
               open={moreOpen}
               onOpenChange={setMoreOpen}
               onChange={edit}

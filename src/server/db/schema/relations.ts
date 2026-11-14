@@ -9,7 +9,13 @@ import {
   finAccounts,
 } from "./accounts";
 import { categories, tags } from "./categories";
-import { budgets, goals, installmentPlans, recurrences } from "./planning";
+import {
+  budgets,
+  goals,
+  installmentPlans,
+  recurrences,
+  recurrenceTags,
+} from "./planning";
 import { categorizationRules, imports } from "./system";
 import { transactions, transactionTags } from "./transactions";
 
@@ -75,6 +81,7 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   transactions: many(transactionTags),
+  recurrences: many(recurrenceTags),
 }));
 
 export const installmentPlansRelations = relations(
@@ -98,6 +105,18 @@ export const recurrencesRelations = relations(recurrences, ({ one, many }) => ({
     references: [categories.id],
   }),
   transactions: many(transactions),
+  tags: many(recurrenceTags),
+}));
+
+export const recurrenceTagsRelations = relations(recurrenceTags, ({ one }) => ({
+  recurrence: one(recurrences, {
+    fields: [recurrenceTags.recurrenceId],
+    references: [recurrences.id],
+  }),
+  tag: one(tags, {
+    fields: [recurrenceTags.tagId],
+    references: [tags.id],
+  }),
 }));
 
 export const goalsRelations = relations(goals, ({ one, many }) => ({
