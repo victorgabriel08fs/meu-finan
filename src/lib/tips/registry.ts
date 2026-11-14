@@ -474,6 +474,21 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-aviso-gasto-fora-do-padrao",
+    kind: "novidade",
+    // Only in Ajustes › Novidades, like the other notices: the Notificações
+    // row sits below the fold of Ajustes.
+    routes: [],
+    anchor: null,
+    title: "Aviso de gasto fora do padrão",
+    body: "Quando uma categoria passa bem da média dos 3 meses anteriores, você recebe um aviso, uma vez por mês. Dá para desligar em Ajustes › Notificações.",
+    since: "2026-11-14",
+    order: 26,
+    when: { flag: "notificacoes_push" },
+    icon: "bell",
+    link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

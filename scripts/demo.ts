@@ -675,6 +675,11 @@ async function seedNotifications(
       ),
     )
     .limit(1);
+  const [market] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.userId, userId), eq(categories.name, "Mercado")))
+    .limit(1);
   const day = (offset: number) => iso(addDays(ctx.today, offset));
   const rows: (typeof notifications.$inferInsert)[] = [];
   if (bill) {
@@ -709,6 +714,24 @@ async function seedNotifications(
       },
       readAt: ago(1),
       createdAt: ago(1),
+    },
+    {
+      userId,
+      type: "unusual_spending",
+      dedupeKey: `unusual_spending:${day(-2)}`,
+      payload: {
+        type: "unusual_spending",
+        date: day(-2),
+        title: "Mercado está 42% acima da média",
+        body: "Comparado aos 3 meses anteriores no mesmo ponto do mês. Toque para ver os lançamentos.",
+        url: market
+          ? `/extrato?categoria=${market.id}&tipo=despesa`
+          : "/extrato?tipo=despesa",
+        itemKeys: [],
+        amounts: false,
+      },
+      readAt: ago(2),
+      createdAt: ago(2),
     },
     {
       userId,
