@@ -170,6 +170,16 @@ export const HOME_BLOCKS = {
     weight: 280,
     since: "2026-11-13",
   },
+  "month-comparison": {
+    label: "Comparado ao mês passado",
+    description:
+      "Seu gasto do mês até hoje contra o mesmo ponto do mês passado.",
+    errorTitle: "Não deu para carregar a comparação com o mês passado",
+    size: "narrow",
+    inDefault: false,
+    weight: 480,
+    since: "2026-11-14",
+  },
   // Only with financas_compartilhadas and a group or an invite: otherwise the
   // block renders nothing and its place closes up.
   shared: {
@@ -207,6 +217,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "daily-spend",
   "top-expenses",
   "installments-ending",
+  "month-comparison",
   "shared",
 ] as const satisfies readonly HomeBlockId[];
 

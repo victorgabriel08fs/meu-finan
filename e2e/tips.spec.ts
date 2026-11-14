@@ -154,7 +154,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+20 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+21 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -246,6 +246,15 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   ).toBeVisible();
   await expect(
     itemTitled("Parcelas a terminar").getByRole("link", {
+      name: "Personalizar o Início",
+    }),
+  ).toHaveAttribute("href", "/ajustes/preferencias");
+  // Comparado ao mês passado, behind the same flag.
+  await expect(
+    itemTitled("Comparado ao mês passado").getByText("Nova", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    itemTitled("Comparado ao mês passado").getByRole("link", {
       name: "Personalizar o Início",
     }),
   ).toHaveAttribute("href", "/ajustes/preferencias");

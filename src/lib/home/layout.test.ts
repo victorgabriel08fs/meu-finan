@@ -56,6 +56,7 @@ describe("defaultHomeLayout", () => {
       { id: "daily-spend", visible: false },
       { id: "top-expenses", visible: false },
       { id: "installments-ending", visible: false },
+      { id: "month-comparison", visible: false },
     ]);
   });
 });
@@ -101,6 +102,7 @@ describe("resolveHomeLayout", () => {
       { id: "daily-spend", visible: false, isNew: true },
       { id: "top-expenses", visible: false, isNew: true },
       { id: "installments-ending", visible: false, isNew: true },
+      { id: "month-comparison", visible: false, isNew: true },
       { id: "shared", visible: false, isNew: true },
     ]);
   });
@@ -147,6 +149,7 @@ describe("resolveHomeLayout", () => {
       "daily-spend",
       "top-expenses",
       "installments-ending",
+      "month-comparison",
       "shared",
     ]);
     for (const entry of entries.slice(3)) {
@@ -202,14 +205,15 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-8)).toEqual([
+    expect(ids(saved).slice(-9)).toEqual([
       ...reports,
       "daily-spend",
       "top-expenses",
       "installments-ending",
+      "month-comparison",
       "shared",
     ]);
-    for (const entry of saved.slice(-8)) {
+    for (const entry of saved.slice(-9)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -274,6 +278,7 @@ describe("toStoredLayout", () => {
       { id: "daily-spend", visible: false },
       { id: "top-expenses", visible: false },
       { id: "installments-ending", visible: false },
+      { id: "month-comparison", visible: false },
     ]);
   });
 });
@@ -290,9 +295,7 @@ describe("moveHomeBlock", () => {
     const layout = defaultHomeLayout();
     expect(moveHomeBlock(layout, "balance", "down")).toEqual(layout);
     expect(moveHomeBlock(layout, "month-totals", "up")).toEqual(layout);
-    expect(moveHomeBlock(layout, "installments-ending", "down")).toEqual(
-      layout,
-    );
+    expect(moveHomeBlock(layout, "month-comparison", "down")).toEqual(layout);
   });
 
   it("keeps the same blocks, the Saldo first, whatever the moves", () => {
@@ -333,8 +336,8 @@ describe("canMoveHomeBlock", () => {
     expect(canMoveHomeBlock(layout, "spending-calendar", "up")).toBe(true);
     expect(canMoveHomeBlock(layout, "spending-calendar", "down")).toBe(true);
     expect(canMoveHomeBlock(layout, "net-worth", "down")).toBe(true);
-    expect(canMoveHomeBlock(layout, "installments-ending", "up")).toBe(true);
-    expect(canMoveHomeBlock(layout, "installments-ending", "down")).toBe(false);
+    expect(canMoveHomeBlock(layout, "month-comparison", "up")).toBe(true);
+    expect(canMoveHomeBlock(layout, "month-comparison", "down")).toBe(false);
   });
 
   it("agrees with moveHomeBlock", () => {

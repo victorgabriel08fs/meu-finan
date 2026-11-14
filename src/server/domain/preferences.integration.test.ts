@@ -342,6 +342,28 @@ describe("saveHomeLayoutAction", () => {
     ).toMatchObject({ visible: false, isNew: true });
   });
 
+  it("accepts the Comparado ao mês passado and keeps it", async () => {
+    await enableHomeLayout("owner");
+    const blocks = [
+      ...CALENDAR_SECOND,
+      { id: "month-comparison" as const, visible: true },
+    ];
+    const result = await m.saveHomeLayout({ blocks });
+    expect(result.serverError).toBeUndefined();
+    expect(result.validationErrors).toBeUndefined();
+    expect(await storedHomeLayout("owner")).toEqual(blocks);
+  });
+
+  it("hides the Comparado ao mês passado, marked new, in a layout saved before it", async () => {
+    await m.preferences.setHomeLayout("owner", [...CALENDAR_SECOND]);
+    const { entries } = await m.preferences.getHomeLayout("owner", {
+      today: "2026-11-14",
+    });
+    expect(
+      entries.find((entry) => entry.id === "month-comparison"),
+    ).toMatchObject({ visible: false, isNew: true });
+  });
+
   it("restores the default with null", async () => {
     await enableHomeLayout("owner");
     await m.preferences.setHomeLayout("owner", [...CALENDAR_SECOND]);

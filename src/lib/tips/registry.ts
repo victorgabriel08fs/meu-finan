@@ -448,6 +448,19 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-inicio-comparado-mes-passado",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Comparado ao mês passado",
+    body: "Veja no Início se está gastando mais ou menos que no mês passado até o mesmo dia, e as categorias que mais mudaram.",
+    since: "2026-11-14",
+    order: 24,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
