@@ -28,8 +28,9 @@ function problems(report: RemindersReport): string[] {
 }
 
 /**
- * The daily notices (doc 01 §9): Resumo do dia, Contas a vencer, Próxima
- * receita, Resumo semanal and Resumo mensal, once a day each. A second run
+ * The daily notices (doc 01 §9): Resumo do dia, Contas a vencer,
+ * Vencimento em dia não útil, Próxima receita, Resumo semanal, Resumo mensal
+ * and Gasto fora do padrão, once a day each. A second run
  * the same day sends only what the first one left.
  */
 export const sendReminders: JobStep = {

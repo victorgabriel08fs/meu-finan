@@ -6,14 +6,18 @@
 import { and, between, count, eq, isNull, or, sql } from "drizzle-orm";
 import {
   addDays,
+  type CategoryTrend,
   compareToAverage,
+  comparisonWindows,
   daysBetween,
+  findUnusualSpending,
   iso,
   isSpendableAccount,
   type Period,
   parse,
   periodContaining,
   spendablePerDay,
+  UNUSUAL_SPENDING_MIN_DAYS,
 } from "@/lib/finance";
 import type { Flags } from "@/lib/flags/registry";
 import type {
@@ -41,6 +45,7 @@ import {
   userSettings,
 } from "@/server/db/schema";
 import { getBudgets } from "./budgets";
+import { categorySpendingTrend } from "./category-trend";
 import {
   type PeriodRange,
   periodMonthOf,
@@ -304,5 +309,44 @@ export async function loadMonthlySummary(
             over: over.map((item) => item.categoryName),
           }
         : null,
+  };
+}
+
+export type UnusualSpendingItem = CategoryTrend & {
+  categoryId: string;
+  name: string;
+};
+
+/**
+ * Gasto fora do padrão (doc 03 §12): the main categories of today's
+ * financial month spending well over the average of the same days of the 3
+ * months before (findUnusualSpending), the most over first. Before day
+ * `UNUSUAL_SPENDING_MIN_DAYS` nothing is read.
+ */
+export async function loadUnusualSpending(
+  ctx: UserContext,
+): Promise<{ month: string; items: UnusualSpendingItem[] }> {
+  const range = resolvePeriod(ctx, null);
+  const elapsed = comparisonWindows(range.period, [], ctx.today);
+  if (!elapsed || elapsed.elapsedDays < UNUSUAL_SPENDING_MIN_DAYS) {
+    return { month: range.month, items: [] };
+  }
+  const trend = await categorySpendingTrend(ctx, range);
+  if (!trend) return { month: range.month, items: [] };
+  const names = new Map(trend.rows.map((row) => [row.categoryId, row.name]));
+  return {
+    month: range.month,
+    items: findUnusualSpending(
+      trend.rows.map((row) => ({
+        key: row.categoryId,
+        currentCents: row.currentCents,
+        historyCents: row.historyCents,
+      })),
+      trend.windows.elapsedDays,
+    ).map(({ key, ...change }) => ({
+      ...change,
+      categoryId: key,
+      name: names.get(key) ?? "",
+    })),
   };
 }

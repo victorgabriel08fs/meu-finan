@@ -9,6 +9,8 @@ import {
   previousWeek,
   selectBillReminders,
   selectNonBusinessDueReminders,
+  UNUSUAL_SPENDING_LOOKBACK_DAYS,
+  unusualSpendingKey,
 } from "./schedule";
 
 // 09/nov/2026 is a Monday.
@@ -302,5 +304,18 @@ describe("selectBillReminders: grace of a non-business due date (D2)", () => {
     expect(pick("2026-11-15", [{ ...sat, nonBusinessDue: undefined }])).toEqual(
       ["sab:vencida"],
     );
+  });
+});
+
+describe("unusualSpendingKey", () => {
+  it("is the category and the financial month", () => {
+    expect(unusualSpendingKey("c1", "2026-11")).toBe("c1:2026-11");
+    expect(unusualSpendingKey("c1", "2026-12")).not.toBe(
+      unusualSpendingKey("c1", "2026-11"),
+    );
+  });
+
+  it("is remembered for longer than any financial month", () => {
+    expect(UNUSUAL_SPENDING_LOOKBACK_DAYS).toBeGreaterThan(31);
   });
 });

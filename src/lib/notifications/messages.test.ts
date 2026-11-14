@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { holidayCalendar, nonBusinessDue } from "@/lib/finance";
 import {
@@ -14,6 +15,8 @@ import {
   monthlySummaryMessage,
   nonBusinessDueMessage,
   type ReminderMessage,
+  type UnusualSpendingInput,
+  unusualSpendingMessage,
   type WeeklySummaryInput,
   weeklySummaryMessage,
 } from "./messages";
@@ -702,5 +705,84 @@ describe("Contas a vencer: note for a due date on a non-business day", () => {
       nonBusinessDue: undefined,
     });
     expect(billsDueMessage([none], WITHOUT)?.body).not.toMatch(/Cai num/);
+  });
+});
+
+describe("Gasto fora do padrão", () => {
+  const mercado = {
+    name: "Mercado",
+    ratio: 0.4017,
+    currentCents: 82_000,
+    averageCents: 58_500,
+  };
+  const other = (name: string) => ({
+    name,
+    ratio: 0.5,
+    currentCents: 30_000,
+    averageCents: 20_000,
+  });
+  const input = (...extra: string[]): UnusualSpendingInput => ({
+    items: [mercado, ...extra.map(other)],
+  });
+  const LEAD_WITH =
+    "R$ 820,00 até hoje, contra R$ 585,00 na média dos 3 meses anteriores até este ponto do mês.";
+  const LEAD_WITHOUT =
+    "Comparado aos 3 meses anteriores no mesmo ponto do mês.";
+
+  it("one category, with and without amounts", () => {
+    expect(plain(unusualSpendingMessage(input(), WITH))).toEqual({
+      title: "Mercado está 40% acima da média",
+      body: `${LEAD_WITH} Toque para ver os lançamentos.`,
+    });
+    const message = unusualSpendingMessage(input(), WITHOUT);
+    expectNoAmounts(message);
+    expect(message).toEqual({
+      title: "Mercado está 40% acima da média",
+      body: `${LEAD_WITHOUT} Toque para ver os lançamentos.`,
+    });
+  });
+
+  it("names the other categories in the body", () => {
+    expect(plain(unusualSpendingMessage(input("Lazer"), WITH))?.body).toBe(
+      `${LEAD_WITH} Lazer também está acima da média. Toque para ver as categorias.`,
+    );
+    expect(unusualSpendingMessage(input("Lazer"), WITHOUT)?.body).toBe(
+      `${LEAD_WITHOUT} Lazer também está acima da média. Toque para ver as categorias.`,
+    );
+    expect(
+      unusualSpendingMessage(input("Lazer", "Farmácia"), WITHOUT)?.body,
+    ).toBe(
+      `${LEAD_WITHOUT} Lazer e Farmácia também estão acima da média. Toque para ver as categorias.`,
+    );
+    expect(
+      unusualSpendingMessage(input("Lazer", "Farmácia", "Casa"), WITHOUT)?.body,
+    ).toBe(
+      `${LEAD_WITHOUT} Lazer, Farmácia e mais 1 também estão acima da média. Toque para ver as categorias.`,
+    );
+  });
+
+  it("rounds the percentage", () => {
+    expect(
+      unusualSpendingMessage({ items: [{ ...mercado, ratio: 0.675 }] }, WITHOUT)
+        ?.title,
+    ).toBe("Mercado está 68% acima da média");
+  });
+
+  it("says nothing without categories", () => {
+    expect(unusualSpendingMessage({ items: [] }, WITH)).toBeNull();
+  });
+
+  it("carries no R$ without amounts (property)", () => {
+    const item = fc.record({
+      name: fc.constantFrom("Mercado", "Lazer", "Casa"),
+      ratio: fc.double({ min: 0.4, max: 10, noNaN: true }),
+      currentCents: fc.integer({ min: 0, max: 100_000_000 }),
+      averageCents: fc.integer({ min: 0, max: 100_000_000 }),
+    });
+    fc.assert(
+      fc.property(fc.array(item, { minLength: 1, maxLength: 5 }), (items) => {
+        expectNoAmounts(unusualSpendingMessage({ items }, WITHOUT));
+      }),
+    );
   });
 });

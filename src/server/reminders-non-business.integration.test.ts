@@ -83,6 +83,7 @@ const prefs = (
     income_countdown: false,
     weekly_summary: false,
     monthly_summary: false,
+    unusual_spending: false,
     ...events,
   },
   billsLeadDays,

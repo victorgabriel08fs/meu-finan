@@ -53,7 +53,7 @@ const switchOn = (html: string) =>
   /role="switch" aria-checked="true"/.test(html);
 
 describe("ReminderList", () => {
-  it("shows the five notices with the owner's defaults", () => {
+  it("shows the six notices with the owner's defaults", () => {
     const html = render();
     const expected = {
       daily_summary: false,
@@ -61,6 +61,7 @@ describe("ReminderList", () => {
       income_countdown: false,
       weekly_summary: true,
       monthly_summary: true,
+      unusual_spending: true,
     };
     for (const [event, on] of Object.entries(expected)) {
       expect(switchOn(row(html, event)), event).toBe(on);
@@ -91,6 +92,45 @@ describe("ReminderList", () => {
     expect(switchOn(row(on, "non_business_due"))).toBe(true);
   });
 
+  it("shows Gasto fora do padrão between Próxima receita and Resumo semanal, on by default", () => {
+    const html = render();
+    expect(row(html, "unusual_spending")).toContain("Gasto fora do padrão");
+    expect(row(html, "unusual_spending")).toContain(
+      "Quando uma categoria passa bem da média dos 3 meses anteriores, uma vez por mês.",
+    );
+    expect(html.indexOf('data-event="income_countdown"')).toBeLessThan(
+      html.indexOf('data-event="unusual_spending"'),
+    );
+    expect(html.indexOf('data-event="unusual_spending"')).toBeLessThan(
+      html.indexOf('data-event="weekly_summary"'),
+    );
+    expect(switchOn(row(html, "unusual_spending"))).toBe(true);
+  });
+
+  it("counts Gasto fora do padrão as a notice on", () => {
+    const onlyUnusual = {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      events: {
+        daily_summary: false,
+        bills_due: false,
+        non_business_due: false,
+        income_countdown: false,
+        weekly_summary: false,
+        monthly_summary: false,
+        unusual_spending: true,
+      },
+    };
+    expect(devicesNote(1, onlyUnusual)).not.toBe(
+      "Todos os avisos estão desligados.",
+    );
+    expect(
+      devicesNote(1, {
+        ...onlyUnusual,
+        events: { ...onlyUnusual.events, unusual_spending: false },
+      }),
+    ).toBe("Todos os avisos estão desligados.");
+  });
+
   it("counts only the visible rows for 'Todos os avisos estão desligados'", () => {
     const hiddenOnly = {
       ...DEFAULT_NOTIFICATION_PREFERENCES,
@@ -101,6 +141,7 @@ describe("ReminderList", () => {
         income_countdown: false,
         weekly_summary: false,
         monthly_summary: false,
+        unusual_spending: false,
       },
     };
     expect(render(hiddenOnly)).toContain("Todos os avisos estão desligados.");
@@ -151,6 +192,7 @@ describe("ReminderList", () => {
         income_countdown: false,
         weekly_summary: false,
         monthly_summary: false,
+        unusual_spending: false,
       },
     };
     expect(devicesNote(1, allOff)).toBe("Todos os avisos estão desligados.");

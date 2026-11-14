@@ -619,13 +619,14 @@ describe("each notice once, whatever happens", () => {
     const [first, second] = await Promise.all([run(), run()]);
     expect(sentTotal(first) + sentTotal(second)).toBe(MONDAY_NOTICES);
     // What one run sent, the other found taken (or, for bills it read
-    // after the claim, already announced: nothing to send).
+    // after the claim, already announced: nothing to send). Gasto fora do
+    // padrão is on for all 4 (the default) with nothing to say in either run.
     expect(
       first.alreadySent +
         second.alreadySent +
         first.nothingToSend +
         second.nothingToSend,
-    ).toBe(MONDAY_NOTICES);
+    ).toBe(MONDAY_NOTICES + 2 * 4);
     expect(first.errors + second.errors).toBe(0);
     expect(first.undelivered + second.undelivered).toBe(0);
     expect(pushService.sent).toHaveLength(MONDAY_NOTICES);

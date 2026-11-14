@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { NOTIFICATION_TYPES } from "@/server/db/schema/enums";
+import {
+  NOTIFICATION_TYPES,
+  REMINDER_NOTIFICATION_TYPES,
+} from "@/server/db/schema/enums";
 import { REMINDER_EVENTS } from "./events";
 import {
   availableReminderEvents,
@@ -17,6 +20,7 @@ const ALL_ON = {
     income_countdown: true,
     weekly_summary: true,
     monthly_summary: true,
+    unusual_spending: true,
   },
   billsLeadDays: 3,
   showAmounts: true,
@@ -29,7 +33,11 @@ describe("notification preferences", () => {
     }
   });
 
-  it("defaults: bills, weekly and monthly on, a day ahead, no amounts", () => {
+  it("the schema's reminder types repeat the events, in order", () => {
+    expect([...REMINDER_NOTIFICATION_TYPES]).toEqual([...REMINDER_EVENTS]);
+  });
+
+  it("defaults: bills, weekly, monthly and unusual spending on, a day ahead, no amounts", () => {
     for (const stored of [null, undefined, "x", 3, []]) {
       expect(resolveNotificationPreferences(stored)).toEqual(
         DEFAULT_NOTIFICATION_PREFERENCES,
@@ -40,6 +48,7 @@ describe("notification preferences", () => {
       "non_business_due",
       "weekly_summary",
       "monthly_summary",
+      "unusual_spending",
     ]);
     expect(DEFAULT_NOTIFICATION_PREFERENCES.billsLeadDays).toBe(1);
     expect(DEFAULT_NOTIFICATION_PREFERENCES.showAmounts).toBe(false);
@@ -146,5 +155,29 @@ describe("non_business_due preference", () => {
     expect(REMINDER_EVENTS.indexOf("non_business_due")).toBe(
       REMINDER_EVENTS.indexOf("bills_due") + 1,
     );
+  });
+});
+
+describe("unusual_spending preference", () => {
+  it("is on by default, also for preferences saved before it existed", () => {
+    expect(DEFAULT_NOTIFICATION_PREFERENCES.events.unusual_spending).toBe(true);
+    const { unusual_spending: _omitted, ...before } = ALL_ON.events;
+    expect(
+      resolveNotificationPreferences({ ...ALL_ON, events: before }).events
+        .unusual_spending,
+    ).toBe(true);
+    expect(
+      notificationPreferencesSchema.safeParse({ ...ALL_ON, events: before })
+        .success,
+    ).toBe(false);
+  });
+
+  it("keeps an off choice", () => {
+    expect(
+      resolveNotificationPreferences({
+        ...ALL_ON,
+        events: { ...ALL_ON.events, unusual_spending: false },
+      }).events.unusual_spending,
+    ).toBe(false);
   });
 });

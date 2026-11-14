@@ -546,3 +546,48 @@ export function monthlySummaryMessage(
     body: sentences([result, budgetsText(input.budgets)]),
   };
 }
+
+// Gasto fora do padrão -------------------------------------------------------
+
+export type UnusualSpendingInput = {
+  /** Categories over their pattern, the most over first (findUnusualSpending). */
+  items: readonly {
+    name: string;
+    /** (current − average) / average. */
+    ratio: number;
+    currentCents: number;
+    averageCents: number;
+  }[];
+};
+
+/** Other categories named in the body before "e mais N". */
+const UNUSUAL_SPENDING_NAMES = 2;
+
+/**
+ * "Gasto fora do padrão": the first category in the title, the others in
+ * the body. One category opens its statement; several, the categories report.
+ */
+export function unusualSpendingMessage(
+  input: UnusualSpendingInput,
+  { showAmounts }: MessageOptions,
+): ReminderMessage | null {
+  const [first, ...others] = input.items;
+  if (!first) return null;
+  const pct = Math.round(first.ratio * 100);
+  const names = others.map((item) => item.name);
+  return {
+    title: `${first.name} está ${pct}% acima da média`,
+    body: sentences([
+      showAmounts
+        ? `${formatBRL(first.currentCents)} até hoje, contra ${formatBRL(first.averageCents)} na média dos 3 meses anteriores até este ponto do mês.`
+        : "Comparado aos 3 meses anteriores no mesmo ponto do mês.",
+      names.length > 0 &&
+        `${joinNames(names, UNUSUAL_SPENDING_NAMES)} também ${
+          names.length === 1 ? "está" : "estão"
+        } acima da média.`,
+      others.length === 0
+        ? "Toque para ver os lançamentos."
+        : "Toque para ver as categorias.",
+    ]),
+  };
+}

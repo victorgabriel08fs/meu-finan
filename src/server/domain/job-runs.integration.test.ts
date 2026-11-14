@@ -158,6 +158,7 @@ describe("routineConfig recipients and alerta_dia_nao_util", () => {
         income_countdown: false,
         weekly_summary: false,
         monthly_summary: false,
+        unusual_spending: false,
       },
       billsLeadDays: 1,
       showAmounts: false,

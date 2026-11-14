@@ -106,7 +106,9 @@ export type NotificationPayload =
       url: string;
       /**
        * bills_due and non_business_due: the bills it announced (see
-       * selectBillReminders and selectNonBusinessDueReminders).
+       * selectBillReminders and selectNonBusinessDueReminders);
+       * unusual_spending: the categories it named, `{categoryId}:{YYYY-MM}`
+       * (unusualSpendingKey).
        */
       itemKeys?: string[];
       /**
