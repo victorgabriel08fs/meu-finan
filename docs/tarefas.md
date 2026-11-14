@@ -2,21 +2,15 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (18 a 21), nesta ordem
+## Próximas tarefas (18, 20 e 21), nesta ordem
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado) e 17 (Assinaturas do mês), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês) e 19 (Gasto fora do padrão), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ### 18. Etiquetas — M
 
 - As tabelas `tags` e `transaction_tags` já existem, sem tela. Criar, renomear e arquivar etiquetas (Ajustes), escolher várias no lançamento (Nova transação e detalhe), filtro no Extrato (na URL, como os demais) e um relatório por etiqueta (total e lançamentos do período).
 - Exportação CSV com a coluna de etiquetas.
 - Pré-requisito da tarefa 21 (`#etiqueta` no texto).
-
-### 19. Gasto fora do padrão — M
-
-- Aviso quando uma categoria passa da média dos últimos meses ("Mercado está 40% acima da média"), usando `comparisonWindows`/`compareBreakdown` da tarefa 16 (a média dos 3 períodos anteriores vem do `previous` de `comparisonWindows`).
-- Trocar `categoryInsight` (`dashboard.ts`) por `comparisonWindows`: ele usa `addDays(period.start, elapsed)` sem limitar ao fim do período anterior, então com o mês anterior mais curto a janela invade o período seguinte (início dia 1, 30/mar: fevereiro vira 1/fev–2/mar).
-- Novo aviso no cron diário (uma vez por categoria e mês), no sino e no push, ligado ou desligado em Ajustes › Notificações; sem valores na tela bloqueada sem "Mostrar valores". Pode virar também um insight no Início.
 
 ### 20. Fechamento do mês — M
 
@@ -27,6 +21,17 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 
 - Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
 - Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
+
+## 19. Gasto fora do padrão: o que ficou de fora
+
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Aviso de "abaixo da média"** (gasto bem menor que o normal): só o lado de cima avisa.
+- **Limiares configuráveis pela pessoa** (hoje fixos: +40%, +R$ 100,00, média de R$ 50,00, a partir do 7º dia, 3 meses de histórico).
+- **Categoria "Sem categoria"**, **receitas** e **subcategoria** (a subcategoria soma na categoria principal).
+- **Ação "Criar orçamento"** no aviso e no sino.
+- **Novo bloco ou insight no Início**: não foi criado; o insight que já existe (+25%) passou a ler as mesmas janelas.
+- **Menos de 3 meses de uso**: quem tem menos histórico não recebe o aviso (sem padrão para comparar).
 
 ## 17. Assinaturas do mês: o que ficou de fora
 
@@ -44,7 +49,7 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 
 - **Comparar receitas** e **escolher o mês de referência** (hoje é sempre o mês anterior).
-- **Aviso de "fora do padrão"** no cron e no insight: tarefa 19 (inclui o ajuste do `categoryInsight`, ver lá).
+- **Aviso de "fora do padrão"**: entregue na tarefa 19 (ver "Entregue"), com o ajuste do `categoryInsight`.
 - **Skeleton com menos categorias**: a altura é a do bloco com 3 categorias; sem base de comparação, com 1 ou 2 categorias ou no convite, o bloco carregado fica mais baixo e o salto é aceito.
 - **Tela de fechamento**: tarefa 20.
 
@@ -141,6 +146,19 @@ A "Fatura atual" informada ao criar um cartão ficava no saldo inicial, que nenh
 - [x] Migração `0015_card_opening_invoice` move o saldo inicial dos cartões existentes para esse lançamento, na fatura do dia da criação do cartão.
 - [x] "Ajustar saldo" de cartão liga o ajuste à fatura atual.
 - [x] Testes: integração (`card-opening.integration.test.ts`, com a migração) e e2e (`cartao-fatura-inicial.spec.ts`). Detalhes: doc 03 §9.4, doc 02 §6.7 e §6.8.
+
+### Aviso "Gasto fora do padrão" (tarefa 19) — 14/11/2026
+
+Aviso novo do cron diário, no sino e no push, ligado por padrão em Ajustes › Notificações: uma categoria principal que passa bem da média dos 3 meses anteriores até o mesmo ponto do mês ("Mercado está 40% acima da média"), uma vez por categoria e mês.
+
+- [x] **Função pura** `categoryTrend`, `isUnusualSpending` e `findUnusualSpending` (`src/lib/finance/category-trend.ts`): +40% e +R$ 100,00 sobre a média, média de pelo menos R$ 50,00, do 7º dia em diante, com gasto nos 3 períodos anteriores.
+- [x] **Consulta** `categorySpendingTrend` (`src/server/domain/category-trend.ts`): uma consulta, com as janelas de `comparisonWindows`, só da pessoa, sem cache, sem migração.
+- [x] **Correção do `categoryInsight`** (Início): passou a usar `categorySpendingTrend`; antes, com o período anterior mais curto (início dia 1, 30/mar), a janela de fevereiro invadia março.
+- [x] **Aviso** `unusual_spending` (`src/server/reminders.ts`, `loadUnusualSpending`): um por dia, com todas as categorias novas; `itemKeys` `{categoria}:{mês}` nos últimos 45 dias; sem R$ sem "Mostrar valores"; toque no Extrato da categoria ou em Relatórios › Categorias; prévia dos administradores; contagem na Rotina diária.
+- [x] **Ajustes › Notificações**: linha "Gasto fora do padrão" (ícone `trending-up`), entre Próxima receita e Resumo semanal; skeleton dos Avisos com 7 linhas (189,5 px, 150 px a partir de `sm`). **Sino**: ícone `trending-up` em `cat-6`, ação "Ver gastos".
+- [x] **Dicas**: novidade `novidade-aviso-gasto-fora-do-padrao` (`since` 14/11/2026, atrás de `notificacoes_push`). A demo dá à Ana um aviso lido no sino.
+- [x] Testes: unidade (`category-trend.test.ts`, `messages`, `preferences`, `kinds`, `schedule`, `routine`, `reminder-settings`), integração (`category-trend.integration.test.ts`, `category-rollup.integration.test.ts`, `reminders-unusual-spending.integration.test.ts`, `reminders*.integration.test.ts`, `preferences`, `job-runs`) e e2e (`notificacoes`, `sino`, `tips`, `novidades-flags`).
+- Decisões do dono: ligado por padrão; +40% e +R$ 100,00; média de pelo menos R$ 50,00; do dia 7; gasto nos 3 meses anteriores; sem insight novo no Início; várias categorias no mesmo aviso. O que ficou de fora está na seção 19, acima.
 
 ### Bloco "Assinaturas do mês" (tarefa 17) — 14/11/2026
 
