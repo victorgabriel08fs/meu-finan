@@ -154,6 +154,11 @@ describe("HomeBlockSkeleton", () => {
         "top-expenses",
         "h-75.5 rounded-card @min-[19.125rem]:h-73 @min-[20rem]:h-67.5",
       ],
+      ["installments-ending", "h-89 rounded-card"],
+      [
+        "month-comparison",
+        "h-141 rounded-card @min-[19rem]:h-125 @min-[21.75rem]:h-116 @min-[35rem]:h-99.5",
+      ],
       [
         "subscriptions",
         "h-129.5 rounded-card @min-[24rem]:h-116.75 @min-[27rem]:h-109.75",

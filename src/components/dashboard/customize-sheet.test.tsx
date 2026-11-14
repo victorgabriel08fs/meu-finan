@@ -71,7 +71,7 @@ describe("HomeBlockList", () => {
 
   it("gives each block a switch named and described by its row", () => {
     const html = list();
-    expect(html.match(/role="switch"/g)).toHaveLength(15);
+    expect(html.match(/role="switch"/g)).toHaveLength(17);
     const budget = row(html, "budget");
     expect(budget).toContain('aria-checked="true"');
     const labelledBy = /aria-labelledby="([^"]+)"/.exec(budget)?.[1];
@@ -88,7 +88,7 @@ describe("HomeBlockList", () => {
     expect(row(html, "goals")).not.toContain("Novo");
     expect(row(html, "spending-calendar")).toContain("Novo");
     expect(row(html, "income-expense")).toContain("Novo");
-    expect(html.match(/>Novo</g)).toHaveLength(14);
+    expect(html.match(/>Novo</g)).toHaveLength(16);
   });
 
   it("marks a recent block new and tells the switch about it", () => {
@@ -114,13 +114,13 @@ describe("HomeBlockList", () => {
 describe("positionAnnouncement", () => {
   it("counts the Saldo in the position", () => {
     expect(positionAnnouncement(defaultHomeLayout(), "month-totals")).toBe(
-      "Receitas e despesas na posição 2 de 16.",
+      "Receitas e despesas na posição 2 de 18.",
     );
     expect(positionAnnouncement(defaultHomeLayout(), "spending-calendar")).toBe(
-      "Calendário de gastos na posição 9 de 16.",
+      "Calendário de gastos na posição 9 de 18.",
     );
     expect(positionAnnouncement(defaultHomeLayout(), "net-worth")).toBe(
-      "Patrimônio na posição 13 de 16.",
+      "Patrimônio na posição 13 de 18.",
     );
   });
 });

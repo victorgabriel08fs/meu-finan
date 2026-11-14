@@ -8,6 +8,7 @@ import {
   desc,
   eq,
   inArray,
+  isNotNull,
   isNull,
   lt,
   sql,
@@ -38,6 +39,11 @@ import {
   dailySpendChooserIds,
   dailySpendLineIds,
 } from "@/lib/home/block-settings";
+import {
+  type InstallmentRow,
+  type InstallmentsSummary,
+  summarizeInstallmentPlans,
+} from "@/lib/home/installments-ending";
 import { db } from "@/server/db/client";
 import {
   type ColorToken,
@@ -793,4 +799,59 @@ export async function biggestExpenses(
         : null,
     recurring: row.recurrenceId !== null,
   }));
+}
+
+/** Parcelas a terminar: how many purchases the block lists. */
+export const INSTALLMENTS_ENDING_LIMIT = 3;
+
+export type InstallmentsEnding = InstallmentsSummary;
+
+/**
+ * Parcelas a terminar (doc 02 §6.3): the purchases in installments that still
+ * have a pending installment, from the pending rows themselves (the plan does
+ * not follow paid, edited or deleted installments). Whatever month the Início
+ * shows (`?mes=`); overdue pending ones count. Installments of a group's
+ * expense are the person's own rows: nothing of the shared tables is read.
+ */
+export async function installmentsEnding(
+  ctx: UserContext,
+  limit = INSTALLMENTS_ENDING_LIMIT,
+): Promise<InstallmentsEnding> {
+  const rows = await db
+    .select({
+      planId: transactions.installmentPlanId,
+      description: transactions.description,
+      count: installmentPlans.count,
+      accountId: transactions.accountId,
+      accountName: finAccounts.name,
+      number: transactions.installmentNumber,
+      amountCents: transactions.amountCents,
+      occurredOn: transactions.occurredOn,
+    })
+    .from(transactions)
+    .innerJoin(
+      installmentPlans,
+      and(
+        eq(installmentPlans.id, transactions.installmentPlanId),
+        eq(installmentPlans.userId, ctx.userId),
+      ),
+    )
+    .innerJoin(finAccounts, eq(finAccounts.id, transactions.accountId))
+    .where(
+      and(
+        eq(transactions.userId, ctx.userId),
+        isNull(transactions.deletedAt),
+        eq(transactions.kind, "expense"),
+        eq(transactions.status, "pending"),
+        isNotNull(transactions.installmentPlanId),
+        isNotNull(transactions.installmentNumber),
+        lt(transactions.amountCents, 0),
+      ),
+    );
+  const installments: InstallmentRow[] = [];
+  for (const row of rows) {
+    if (row.planId === null || row.number === null) continue;
+    installments.push({ ...row, planId: row.planId, number: row.number });
+  }
+  return summarizeInstallmentPlans(installments, limit);
 }

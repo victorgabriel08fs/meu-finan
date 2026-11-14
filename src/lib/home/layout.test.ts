@@ -55,6 +55,8 @@ describe("defaultHomeLayout", () => {
       { id: "net-worth", visible: false },
       { id: "daily-spend", visible: false },
       { id: "top-expenses", visible: false },
+      { id: "installments-ending", visible: false },
+      { id: "month-comparison", visible: false },
       { id: "subscriptions", visible: false },
     ]);
   });
@@ -100,6 +102,8 @@ describe("resolveHomeLayout", () => {
       { id: "income-expense", visible: false },
       { id: "daily-spend", visible: false, isNew: true },
       { id: "top-expenses", visible: false, isNew: true },
+      { id: "installments-ending", visible: false, isNew: true },
+      { id: "month-comparison", visible: false, isNew: true },
       { id: "subscriptions", visible: false, isNew: true },
       { id: "shared", visible: false, isNew: true },
     ]);
@@ -146,6 +150,8 @@ describe("resolveHomeLayout", () => {
       "net-worth",
       "daily-spend",
       "top-expenses",
+      "installments-ending",
+      "month-comparison",
       "subscriptions",
       "shared",
     ]);
@@ -202,14 +208,16 @@ describe("resolveHomeLayout", () => {
     const saved = resolveHomeLayout([{ id: "budget", visible: true }], {
       today: day(60),
     }).entries;
-    expect(ids(saved).slice(-8)).toEqual([
+    expect(ids(saved).slice(-10)).toEqual([
       ...reports,
       "daily-spend",
       "top-expenses",
+      "installments-ending",
+      "month-comparison",
       "subscriptions",
       "shared",
     ]);
-    for (const entry of saved.slice(-8)) {
+    for (const entry of saved.slice(-10)) {
       expect(entry).toMatchObject({ visible: false, isNew: true });
     }
   });
@@ -273,6 +281,8 @@ describe("toStoredLayout", () => {
       { id: "net-worth", visible: false },
       { id: "daily-spend", visible: false },
       { id: "top-expenses", visible: false },
+      { id: "installments-ending", visible: false },
+      { id: "month-comparison", visible: false },
       { id: "subscriptions", visible: false },
     ]);
   });

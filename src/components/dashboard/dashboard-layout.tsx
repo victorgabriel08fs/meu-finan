@@ -497,6 +497,17 @@ export function HomeBlockSkeleton({
           <Skeleton className="h-51.25 rounded-card @min-[21.75rem]:h-46.75" />
         </div>
       );
+    // The total, its chip, the previous month's line and three categories
+    // (demo, Chromium), measured by the block's own width: 564px under a 19rem
+    // slot, 500px up to 21.75rem, 464px from there (398px from 35rem). Fewer
+    // categories, no baseline or the invites are shorter: the shift when they
+    // load is accepted, as in top-expenses.
+    case "month-comparison":
+      return (
+        <div className="@container">
+          <Skeleton className="h-141 rounded-card @min-[19rem]:h-125 @min-[21.75rem]:h-116 @min-[35rem]:h-99.5" />
+        </div>
+      );
     // Three rows (demo, Chromium, 360 to 1440px), measured by the block's own
     // width: 302px under a 19.125rem slot, 292px up to 20rem, 270px from there
     // (the rows wrap a line more as the slot narrows). Fewer than three
@@ -505,6 +516,15 @@ export function HomeBlockSkeleton({
       return (
         <div className="@container">
           <Skeleton className="h-75.5 rounded-card @min-[19.125rem]:h-73 @min-[20rem]:h-67.5" />
+        </div>
+      );
+    // Heading, caption and three two-line rows (about 64px each, the caption
+    // wraps a line more as the slot narrows). Measured by QA: 356px at 360, 430 and 1280px. Fewer
+    // rows or long descriptions shift it, accepted as in top-expenses.
+    case "installments-ending":
+      return (
+        <div className="@container">
+          <Skeleton className="h-89 rounded-card" />
         </div>
       );
     // Heading, caption, five two-line rows and the "e mais N" footer (the

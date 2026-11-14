@@ -77,7 +77,9 @@ const components = {} as {
   cashFlow: typeof import("@/components/dashboard/cash-flow-block");
   categories: typeof import("@/components/dashboard/category-breakdown-block");
   incomeExpense: typeof import("@/components/dashboard/income-expense-block");
+  installmentsEnding: typeof import("@/components/dashboard/installments-ending-block");
   netWorth: typeof import("@/components/dashboard/net-worth-block");
+  monthComparison: typeof import("@/components/dashboard/month-comparison-block");
   noRecords: typeof import("@/components/dashboard/block-no-records");
   spendable: typeof import("@/components/dashboard/spendable-per-day-block");
   subscriptions: typeof import("@/components/dashboard/subscriptions-block");
@@ -132,6 +134,12 @@ beforeAll(async () => {
   );
   components.incomeExpense = await import(
     "@/components/dashboard/income-expense-block"
+  );
+  components.installmentsEnding = await import(
+    "@/components/dashboard/installments-ending-block"
+  );
+  components.monthComparison = await import(
+    "@/components/dashboard/month-comparison-block"
   );
   components.netWorth = await import("@/components/dashboard/net-worth-block");
   components.noRecords = await import(
@@ -1035,6 +1043,178 @@ describe("Maior gasto da semana", () => {
     expect(empty.type).toBe(components.topExpenses.TopExpensesInvite);
     const none = await loadTop(caio);
     expect(none.type).toBe(components.topExpenses.TopExpensesInvite);
+  });
+});
+
+describe("Parcelas a terminar", () => {
+  type Item = import("@/lib/home/installments-ending").EndingInstallment;
+
+  async function loadEnding(ctx: UserContext) {
+    const element = (await blocks.HOME_BLOCK_LOADERS["installments-ending"]({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  async function buyInstallments(
+    ctx: UserContext,
+    accountId: string,
+    description: string,
+    occurredOn: string,
+  ) {
+    await transactions.createTransaction(ctx, {
+      kind: "expense",
+      accountId,
+      categoryId: null,
+      amountCents: 30_000,
+      occurredOn,
+      description,
+      installments: 3,
+    });
+  }
+
+  it("lists the purchases with something left, each row opening the statement of its next installment", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "nair", name: "Nair", email: "nair@exemplo.com" });
+    const account = await accounts.createAccount("nair", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const nair = await context.getUserContext("nair", { now: NOW });
+    await buyInstallments(nair, account, "Sofá", "2026-10-20");
+    const { type, props } = await loadEnding(nair);
+    expect(type).toBe(components.installmentsEnding.InstallmentsEndingBlock);
+    const summary = props.summary as {
+      items: Item[];
+      totalPlans: number;
+      monthlyCents: number;
+    };
+    expect(summary.totalPlans).toBe(1);
+    expect(summary.monthlyCents).toBe(10_000);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [first] = summary.items;
+    if (!first) throw new Error("sem item");
+    // The next installment is on 20/out: the month on screen, no `mes`.
+    expect(hrefFor(first)).toBe(
+      `/extrato?conta=${account}&tipo=despesa&status=pendente&q=Sof%C3%A1`,
+    );
+  });
+
+  it("names the month of the next installment when it is not the one on screen", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "fred", name: "Fred", email: "fred@exemplo.com" });
+    const account = await accounts.createAccount("fred", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const fred = await context.getUserContext("fred", { now: NOW });
+    await buyInstallments(fred, account, "Mesa", "2026-11-20");
+    const { props } = await loadEnding(fred);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [first] = (props.summary as { items: Item[] }).items;
+    if (!first) throw new Error("sem item");
+    expect(hrefFor(first)).toContain("mes=2026-11");
+  });
+
+  it("invites without a pending installment, and never reads another person's", async () => {
+    const empty = await loadEnding(bia);
+    expect(empty.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
+    const none = await loadEnding(caio);
+    expect(none.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
+    // Ana has installments? No: and Nair's/Fred's do not leak into her.
+    const ana1 = await loadEnding(ana);
+    expect(ana1.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
+  });
+});
+
+describe("Comparado ao mês passado", () => {
+  type Row = import("@/server/domain/month-comparison").MonthComparisonCategory;
+
+  async function loadComparison(ctx: UserContext, month: string) {
+    const element = (await blocks.HOME_BLOCK_LOADERS["month-comparison"]({
+      ctx,
+      range: context.resolvePeriod(ctx, month),
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  it("compares October up to today with September's same days, the header going to the report", async () => {
+    const { type, props } = await loadComparison(ana, "2026-10");
+    expect(type).toBe(components.monthComparison.MonthComparisonBlock);
+    expect(props).toMatchObject({
+      monthName: "outubro",
+      previousMonthName: "setembro",
+      minDiffCents: 1_000,
+    });
+    // No `mes` in the links: October is the month on screen.
+    expect(props.reportHref).toBe("/relatorios/categorias?periodo=1");
+    const comparison = props.comparison as {
+      complete: boolean;
+      total: { currentCents: number };
+      categories: Row[];
+    };
+    expect(comparison.complete).toBe(false);
+    // The rent of the 15th is pending: only the 14/out entries count.
+    expect(comparison.total.currentCents).toBe(6_450 + 2_290);
+    expect(comparison.categories.map((c) => c.name)).toEqual([
+      "Mercado",
+      "Transporte",
+    ]);
+  });
+
+  it("opens each category on the same month as the Início", async () => {
+    const current = await loadComparison(ana, "2026-10");
+    const [first] = (current.props.comparison as { categories: Row[] })
+      .categories;
+    if (!first?.categoryId) throw new Error("sem categoria");
+    const hrefFor = current.props.hrefFor as (id: string) => string;
+    expect(hrefFor(first.categoryId)).toContain(first.categoryId);
+    expect(hrefFor(first.categoryId)).not.toContain("mes=");
+
+    const past = await loadComparison(ana, "2026-09");
+    expect(past.type).toBe(components.monthComparison.MonthComparisonBlock);
+    expect((past.props.comparison as { complete: boolean }).complete).toBe(
+      true,
+    );
+    expect(past.props.reportHref).toContain("mes=2026-09");
+    const pastHref = past.props.hrefFor as (id: string) => string;
+    expect(pastHref(first.categoryId)).toContain("mes=2026-09");
+  });
+
+  it("says the month has not started, and invites when nothing was paid", async () => {
+    const ahead = await loadComparison(ana, "2026-11");
+    expect(ahead.type).toBe(
+      components.monthComparison.MonthComparisonFutureInvite,
+    );
+    expect(ahead.props).toMatchObject({ monthName: "novembro" });
+    const empty = await loadComparison(bia, "2026-10");
+    expect(empty.type).toBe(components.monthComparison.MonthComparisonInvite);
+    expect(empty.props).toMatchObject({
+      monthName: "outubro",
+      previousMonthName: "setembro",
+    });
+  });
+
+  it("shows the invite for a month before the first record, and never reads another person's", async () => {
+    const before = await loadComparison(ana, "2026-08");
+    expect(before.type).toBe(components.noRecords.BlockNoRecords);
+    const none = await loadComparison(caio, "2026-10");
+    expect(none.type).not.toBe(components.monthComparison.MonthComparisonBlock);
   });
 });
 
