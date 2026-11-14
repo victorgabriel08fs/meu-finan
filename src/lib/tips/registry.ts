@@ -501,6 +501,19 @@ export const TIPS: readonly Tip[] = [
     icon: "bell",
     link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },
   },
+  {
+    id: "novidade-fechamento-do-mes",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Fechamento do mês",
+    body: "Veja como foi o mês que acabou: o que sobrou, os orçamentos que estouraram e o que vem agora. Dá para guardar a sobra numa caixinha.",
+    since: "2026-11-14",
+    order: 28,
+    when: { hasAccounts: true },
+    icon: "chart",
+    link: { href: "/relatorios/fechamento", label: "Ver fechamento" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

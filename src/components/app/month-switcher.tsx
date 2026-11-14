@@ -13,6 +13,10 @@ type MonthSwitcherProps = {
    * a request-time <Suspense> boundary; pass it explicitly anywhere else.
    */
   currentMonth?: string;
+  /** Last month that can be shown: from it on, there is no "Próximo mês". */
+  maxMonth?: string;
+  /** Text of the chip that leads back to `currentMonth` (default "Voltar para hoje"). */
+  currentLabel?: string;
   className?: string;
 };
 
@@ -34,6 +38,8 @@ export function MonthSwitcher({
   month,
   hrefFor,
   currentMonth,
+  maxMonth,
+  currentLabel = "Voltar para hoje",
   className,
 }: MonthSwitcherProps) {
   const current = currentMonth ?? todayInTimeZone().slice(0, 7);
@@ -64,20 +70,24 @@ export function MonthSwitcher({
         >
           {monthLabel(month)}
         </p>
-        <Link
-          href={hrefFor(next)}
-          aria-label={`Próximo mês: ${monthLabel(next)}`}
-          className={arrowClass}
-        >
-          <ChevronRight aria-hidden="true" className="size-6" />
-        </Link>
+        {maxMonth !== undefined && month >= maxMonth ? (
+          <span aria-hidden="true" className="size-(--target) shrink-0" />
+        ) : (
+          <Link
+            href={hrefFor(next)}
+            aria-label={`Próximo mês: ${monthLabel(next)}`}
+            className={arrowClass}
+          >
+            <ChevronRight aria-hidden="true" className="size-6" />
+          </Link>
+        )}
       </div>
       {month === current ? null : (
         <Link
           href={hrefFor(current)}
           className="relative inline-flex min-h-8 items-center rounded-full bg-primary-soft px-3 py-1 text-center text-caption text-balance font-semibold text-on-primary-soft transition-transform duration-100 after:absolute after:inset-x-0 after:-inset-y-1.5 active:scale-97"
         >
-          Voltar para hoje
+          {currentLabel}
         </Link>
       )}
     </div>
