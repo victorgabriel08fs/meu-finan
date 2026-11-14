@@ -528,6 +528,19 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/inicio?novo=despesa", label: "Experimentar" },
   },
+  {
+    id: "novidade-retrospectiva-do-mes",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Retrospectiva do mês",
+    body: "No começo de cada mês, veja em 1 minuto como foi o mês que acabou: o que entrou e saiu, para onde foi o dinheiro e o maior gasto.",
+    since: "2026-11-15",
+    order: 30,
+    when: { hasAccounts: true },
+    icon: "sparkles",
+    link: { href: "/retrospectiva", label: "Ver a retrospectiva" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
