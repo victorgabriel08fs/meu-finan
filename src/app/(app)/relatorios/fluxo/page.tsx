@@ -147,6 +147,7 @@ async function CashFlow({
                 month: range.month,
                 accountId: null,
                 categoryId: null,
+                tagId: null,
                 kind: null,
                 status: "pending",
                 q: "",

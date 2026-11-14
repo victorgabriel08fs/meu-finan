@@ -23,6 +23,7 @@ export type ReportView = {
 export const REPORT_VIEWS: readonly ReportView[] = [
   { path: "/relatorios/visao-geral", label: "Visão geral", filter: "period" },
   { path: "/relatorios/categorias", label: "Categorias", filter: "period" },
+  { path: "/relatorios/etiquetas", label: "Etiquetas", filter: "period" },
   { path: "/relatorios/fluxo", label: "Fluxo", filter: "month" },
   { path: "/relatorios/patrimonio", label: "Patrimônio", filter: "period" },
   { path: "/relatorios/calendario", label: "Calendário", filter: "month" },
@@ -132,6 +133,24 @@ export function categoryDetailHref(
 ): string {
   return periodViewHref(
     `/relatorios/categorias/${categoryId}`,
+    period,
+    endMonth,
+    currentMonth,
+  );
+}
+
+/**
+ * Link of a tag's detail (`/relatorios/etiquetas/{id}`) over the same window
+ * as {@link categoryDetailHref}.
+ */
+export function tagDetailHref(
+  tagId: string,
+  period: ReportPeriod,
+  endMonth: string,
+  currentMonth: string,
+): string {
+  return periodViewHref(
+    `/relatorios/etiquetas/${tagId}`,
     period,
     endMonth,
     currentMonth,

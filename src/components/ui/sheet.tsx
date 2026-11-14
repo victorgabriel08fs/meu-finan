@@ -352,6 +352,7 @@ export function SheetContent({
           </div>
           <div
             data-slot={together ? "sheet-scroll" : undefined}
+            tabIndex={together && !flow ? 0 : undefined}
             className={
               together && !flow
                 ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
@@ -360,6 +361,7 @@ export function SheetContent({
           >
             <div
               data-slot="sheet-body"
+              tabIndex={together ? undefined : 0}
               className={cn(
                 "@container px-5 pt-2",
                 together

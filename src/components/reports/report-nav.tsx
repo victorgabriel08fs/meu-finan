@@ -30,8 +30,8 @@ const UNDERLINE_SPRING = {
 
 /**
  * Report views (doc 02 §6.12) as route tabs that scroll sideways, with an
- * underline under the current one: Visão geral · Categorias · Fluxo ·
- * Patrimônio · Calendário. Period views keep `?periodo=` and every view keeps
+ * underline under the current one: Visão geral · Categorias · Etiquetas ·
+ * Fluxo · Patrimônio · Calendário. Period views keep `?periodo=` and every view keeps
  * `?mes=`. Reads the URL, so render it inside <Suspense> with
  * <ReportTabsFallback /> (same tabs, links without the query).
  */
@@ -146,7 +146,7 @@ function ReportTabsView({
 
 /**
  * The period chips, only on the views that take a window of months
- * (Visão geral, Categorias, Patrimônio); Fluxo and Calendário switch months
+ * (Visão geral, Categorias, Etiquetas, Patrimônio); Fluxo and Calendário switch months
  * in the page instead. Decides from the pathname, which is known while
  * prerendering, so a month view never flashes the chips.
  */

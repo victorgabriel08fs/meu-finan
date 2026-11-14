@@ -93,6 +93,7 @@ async function Calendar({
       month: range.month,
       accountId: null,
       categoryId: null,
+      tagId: null,
       kind: "expense",
       status: null,
       q: "",

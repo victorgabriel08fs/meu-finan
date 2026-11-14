@@ -2,6 +2,7 @@
 
 import { ChevronDown, Minus, Plus, X } from "lucide-react";
 import { useId, useState } from "react";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { QuickAddDraft, RepeatFrequency } from "@/stores/quick-add";
@@ -25,6 +26,8 @@ type MoreOptionsProps = {
   date: string;
   /** Resolved amount, for the installment preview. */
   amountCents: number | null;
+  /** Active tags, in name order. */
+  tags: { id: string; name: string }[];
   onChange: (patch: Partial<QuickAddDraft>) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,13 +35,14 @@ type MoreOptionsProps = {
 
 /**
  * "Mais opções" of the quick-add sheet (doc 02 §6.5): Parcelar (expenses,
- * 2–72x with a preview), Repetir (weekly, monthly, yearly, optional end) and
- * Nota. Installments and repetition exclude each other, as on the server.
+ * 2–72x with a preview), Repetir (weekly, monthly, yearly, optional end),
+ * Etiquetas and Nota. Installments and repetition exclude each other, as on the server.
  */
 export function MoreOptions({
   draft,
   date,
   amountCents,
+  tags,
   onChange,
   open,
   onOpenChange,
@@ -53,14 +57,15 @@ export function MoreOptions({
     !installing && repeating
       ? REPEAT_OPTIONS.find((option) => option.value === draft.repeat)?.label
       : null,
+    tagSummary(draft.tagIds, tags),
     draft.notes.trim() ? "nota" : null,
   ].filter(Boolean);
   const hint =
     summary.length > 0
       ? summary.join(" · ")
       : isExpense
-        ? "parcelar, repetir, nota"
-        : "repetir, nota";
+        ? "parcelar, repetir, etiquetas, nota"
+        : "repetir, etiquetas, nota";
 
   return (
     <div className="flex flex-col">
@@ -69,14 +74,14 @@ export function MoreOptions({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => onOpenChange(!open)}
-        className="-mx-1 inline-flex h-11 items-center gap-1.5 self-start rounded-control px-1 text-callout font-bold text-primary"
+        className="-mx-1 inline-flex h-11 max-w-full min-w-0 items-center gap-1.5 self-start rounded-control px-1 text-callout font-bold text-primary"
       >
-        Mais opções
-        <span className="font-medium text-fg-3">· {hint}</span>
+        <span className="shrink-0 whitespace-nowrap">Mais opções</span>
+        <span className="min-w-0 truncate font-medium text-fg-3">· {hint}</span>
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            "size-4 transition-transform duration-150",
+            "size-4 shrink-0 transition-transform duration-150",
             open && "rotate-180",
           )}
         />
@@ -101,6 +106,11 @@ export function MoreOptions({
           blockedByInstallments={installing}
           onChange={onChange}
         />
+        <TagPicker
+          tags={tags}
+          selected={draft.tagIds}
+          onChange={(tagIds) => onChange({ tagIds })}
+        />
         <NotesField
           value={draft.notes}
           onChange={(notes) => onChange({ notes })}
@@ -108,6 +118,16 @@ export function MoreOptions({
       </div>
     </div>
   );
+}
+
+/** "viagem" for one tag, "2 etiquetas" for more; null for none. */
+function tagSummary(
+  tagIds: readonly string[],
+  tags: readonly { id: string; name: string }[],
+): string | null {
+  if (tagIds.length === 0) return null;
+  if (tagIds.length > 1) return `${tagIds.length} etiquetas`;
+  return tags.find((tag) => tag.id === tagIds[0])?.name ?? "1 etiqueta";
 }
 
 function InstallmentsControl({

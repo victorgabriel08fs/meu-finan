@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Tag, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -39,30 +39,52 @@ export type FilterCategory = {
   archived: boolean;
 };
 
+export type FilterTag = { id: string; name: string; archived: boolean };
+
 const KIND_OPTIONS: { value: KindParam; label: string }[] = [
   { value: "despesa", label: "Despesas" },
   { value: "receita", label: "Receitas" },
   { value: "transferencia", label: "Transferências" },
 ];
 
-type SheetName = "conta" | "categoria" | "tipo";
+type SheetName = "conta" | "categoria" | "etiqueta" | "tipo";
 type FilterPatch = {
   conta?: string | null;
   categoria?: string | null;
+  etiqueta?: string | null;
   tipo?: KindParam | null;
 };
 
+const tagLabel = (tag: FilterTag) =>
+  tag.archived ? `${tag.name} (arquivada)` : tag.name;
+
+/** The tag glyph in a square the size of a small CategoryIcon. */
+function TagOptionIcon() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-7 shrink-0 items-center justify-center rounded-chip bg-surface-2 text-fg-2"
+    >
+      <Tag className="size-4" />
+    </span>
+  );
+}
+
 /**
- * Filter chips of the statement (doc 02 §5.12, §6.4): Conta, Categoria, Tipo
- * and Pendentes in a row that scrolls sideways. An active chip turns
+ * Filter chips of the statement (doc 02 §5.12, §6.4): Conta, Categoria,
+ * Etiqueta (only for someone who has tags), Tipo and Pendentes in a row that
+ * scrolls sideways. An active chip turns
  * --primary-soft with its own "×"; each list opens in a choice sheet.
  */
 export function StatementFilterBar({
   accounts,
   categories,
+  tags = [],
 }: {
   accounts: FilterAccount[];
   categories: FilterCategory[];
+  /** The person's tags, archived ones too. */
+  tags?: FilterTag[];
 }) {
   const { filters, setFilters, isPending } = useStatementFilters();
   const [sheet, setSheet] = useState<SheetName | null>(null);
@@ -75,8 +97,11 @@ export function StatementFilterBar({
   const category = categories.find(
     (item) => item.id === filters.categoria?.toLowerCase(),
   );
+  const tag = tags.find((item) => item.id === filters.etiqueta?.toLowerCase());
   const kind = KIND_OPTIONS.find((item) => item.value === filters.tipo);
-  const anyActive = Boolean(account || category || kind || filters.status);
+  const anyActive = Boolean(
+    account || category || tag || kind || filters.status,
+  );
 
   // Each list has a sheet of its own, and a sheet closes only itself: a tap
   // on the next chip while the previous sheet still slides out reaches that
@@ -148,6 +173,38 @@ export function StatementFilterBar({
     },
   ];
 
+  const tagOption = (item: FilterTag): Option => ({
+    id: item.id,
+    label: item.name,
+    detail: null,
+    icon: <TagOptionIcon />,
+  });
+  const tagGroups: OptionGroup<Option>[] = [
+    {
+      title: null,
+      options: tags.filter((item) => !item.archived).map(tagOption),
+    },
+    {
+      title: "Arquivadas",
+      options: tags.filter((item) => item.archived).map(tagOption),
+    },
+  ];
+
+  // An active chip can sit past the visible edge (a link with ?etiqueta=):
+  // bring the last active one into view when the page opens or it changes.
+  const scroller = useRef<HTMLDivElement>(null);
+  const activeKey = [filters.conta, filters.categoria, filters.etiqueta].join(
+    "|",
+  );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeKey is the trigger
+  useEffect(() => {
+    const chips =
+      scroller.current?.querySelectorAll<HTMLElement>("[data-active]");
+    chips
+      ?.item(chips.length - 1)
+      ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [activeKey]);
+
   // The chips scroll sideways; "Limpar" stays outside the scroller, at the
   // end of the row, so it is always on screen (the fade before it says that
   // more chips are hidden).
@@ -158,6 +215,7 @@ export function StatementFilterBar({
     >
       <legend className="sr-only">Filtros</legend>
       <div
+        ref={scroller}
         className={cn(
           "relative flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto scroll-px-gutter py-1 pl-gutter scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden",
           anyActive ? "pr-4" : "pr-gutter",
@@ -184,6 +242,15 @@ export function StatementFilterBar({
           onOpen={() => setSheet("categoria")}
           onClear={() => void setFilters({ categoria: null })}
         />
+        {tags.length > 0 ? (
+          <FilterChip
+            label="Etiqueta"
+            value={tag ? tagLabel(tag) : null}
+            placeholder="Etiquetas"
+            onOpen={() => setSheet("etiqueta")}
+            onClear={() => void setFilters({ etiqueta: null })}
+          />
+        ) : null}
         <FilterChip
           label="Tipo"
           value={kind?.label ?? null}
@@ -214,6 +281,7 @@ export function StatementFilterBar({
             void setFilters({
               conta: null,
               categoria: null,
+              etiqueta: null,
               tipo: null,
               status: null,
             });
@@ -267,6 +335,29 @@ export function StatementFilterBar({
           }
         />
       </ChoiceSheet>
+      {tags.length > 0 ? (
+        <ChoiceSheet
+          title="Filtrar por etiqueta"
+          open={sheet === "etiqueta"}
+          onClose={() => close("etiqueta")}
+          bodyClassName={searchable(tagGroups) ? "pt-0" : undefined}
+        >
+          <OptionList
+            selected={tag?.id ?? null}
+            allLabel="Todas as etiquetas"
+            onSelect={(id) => choose({ etiqueta: id })}
+            groups={tagGroups}
+            search={
+              searchable(tagGroups)
+                ? {
+                    label: "Buscar etiqueta",
+                    empty: (query) => `Nenhuma etiqueta com “${query}”.`,
+                  }
+                : undefined
+            }
+          />
+        </ChoiceSheet>
+      ) : null}
       <ChoiceSheet
         title="Filtrar por tipo"
         open={sheet === "tipo"}
@@ -347,6 +438,7 @@ function FilterChip({
   const main = useRef<HTMLButtonElement>(null);
   return (
     <div
+      data-active={active ? "" : undefined}
       className={cn(
         "inline-flex h-9 max-w-60 shrink-0 items-center rounded-full border text-callout font-semibold",
         active
