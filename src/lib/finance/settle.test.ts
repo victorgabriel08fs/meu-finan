@@ -93,7 +93,7 @@ describe("settleUpPlan", () => {
       })
       .map((values) => {
         const sum = values.reduce((acc, value) => acc + value, 0);
-        return [...values, -sum].map(
+        return [...values, 0 - sum].map(
           (netCents, index): MemberNet => ({ memberId: `m${index}`, netCents }),
         );
       });
