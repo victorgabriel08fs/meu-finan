@@ -33,6 +33,7 @@ const ROW: ExportRow = {
   amountCents: -6_450,
   installment: null,
   notes: null,
+  tags: [],
 };
 
 beforeEach(() => {
@@ -91,8 +92,8 @@ describe("GET /api/export/transactions", () => {
     const bytes = new Uint8Array(await response.arrayBuffer());
     expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     expect(new TextDecoder().decode(bytes.slice(3))).toBe(
-      "Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação\r\n" +
-        "14/10/2026;Supermercado;Mercado;Conta principal;Despesa;Pago;-64,50;;\r\n",
+      "Data;Descrição;Categoria;Conta;Tipo;Status;Valor;Parcela;Observação;Etiquetas\r\n" +
+        "14/10/2026;Supermercado;Mercado;Conta principal;Despesa;Pago;-64,50;;;\r\n",
     );
   });
 
