@@ -67,11 +67,11 @@ function NotificationsSkeleton() {
     <LoadingRegion className="flex flex-col gap-7">
       {/* Neste aparelho: 36 + 64 + the note below the card */}
       <Skeleton className="h-35 rounded-2xl" />
-      {/* Avisos: 36 + 6 rows (Vencimento em dia não útil included: the
+      {/* Avisos: 36 + 7 rows (Vencimento em dia não útil included: the
           flag needs the session, which a fallback cannot wait for), the
           lead time of Contas a vencer (on by default) and the note: between
-          360 and 430 px, and the desktop */}
-      <Skeleton className="h-162 rounded-2xl sm:h-133" />
+          360 px (758) and 430 px (720), and the desktop (598) */}
+      <Skeleton className="h-189.5 rounded-2xl sm:h-150" />
       {/* Privacidade: 36 + one row with a long hint */}
       <Skeleton className="h-37 rounded-2xl sm:h-25" />
     </LoadingRegion>
