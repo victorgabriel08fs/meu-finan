@@ -1,7 +1,7 @@
 // Accounts (doc 01 §6): balances are always derived from the ledger.
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
-import { isBenefitType, isValidCardCycle } from "@/lib/finance";
+import { invoiceFor, isBenefitType, isValidCardCycle } from "@/lib/finance";
 import { db, type Executor } from "@/server/db/client";
 import {
   type ColorToken,
@@ -10,8 +10,9 @@ import {
   finAccounts,
   transactions,
 } from "@/server/db/schema";
-import type { UserContext } from "./context";
+import { getUserContext, type UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
+import { ensureInvoice } from "./invoices";
 
 export const ACCOUNT_TYPE_LABELS: Record<FinAccountType, string> = {
   checking: "Conta corrente",
@@ -34,6 +35,12 @@ export const ACCOUNT_TYPE_ICONS: Record<FinAccountType, string> = {
   savings_box: "vault",
   benefit: "utensils-crossed",
 };
+
+/**
+ * Description of the entry that holds the "Fatura atual" informed when a card
+ * is created (doc 03 §9.4). Migration 0015 uses the same text.
+ */
+export const CARD_OPENING_DESCRIPTION = "Valor inicial da fatura";
 
 /**
  * Default color by type: cards violet, caixinhas green, benefícios cat-4, the
@@ -192,7 +199,10 @@ export type AccountInput = {
   type: FinAccountType;
   color?: ColorToken;
   icon?: string;
-  /** Current balance in cents (cards: amount owed today as a positive number). */
+  /**
+   * Current balance in cents. Cards: amount owed today, positive; it becomes
+   * the "Valor inicial da fatura" entry on the current invoice (doc 03 §9.4).
+   */
   initialBalanceCents: number;
   includeInNetWorth?: boolean;
   card?: {
@@ -229,6 +239,7 @@ export const BENEFIT_PAYS_NO_INVOICE = "O benefício não paga fatura de cartão
 export async function createAccount(
   userId: string,
   input: AccountInput,
+  options: { now?: number } = {},
 ): Promise<string> {
   const id = uuidv7();
   const isCard = input.type === "credit_card";
@@ -249,10 +260,8 @@ export async function createAccount(
       type: input.type,
       color: input.color ?? defaultAccountColor(input.type),
       icon: input.icon ?? ACCOUNT_TYPE_ICONS[input.type],
-      // A card balance is what is owed, stored with the ledger sign (negative).
-      initialBalanceCents: isCard
-        ? -Math.abs(input.initialBalanceCents)
-        : input.initialBalanceCents,
+      // A card starts at 0: what is owed today is an entry on its invoice.
+      initialBalanceCents: isCard ? 0 : input.initialBalanceCents,
       // A benefício stays out of the net worth unless the person says so.
       includeInNetWorth: input.includeInNetWorth ?? !isBenefitType(input.type),
       sortOrder: count,
@@ -266,6 +275,33 @@ export async function createAccount(
         dueDay: input.card.dueDay,
         paymentAccountId: input.card.paymentAccountId ?? null,
       });
+      const owed = Math.abs(input.initialBalanceCents);
+      if (owed > 0) {
+        // On the invoice a purchase made today goes to (doc 03 §9.4), so the
+        // invoice total, the limit and the balance all come from this entry.
+        const ctx = await getUserContext(userId, {
+          executor: tx,
+          now: options.now,
+        });
+        const invoiceId = await ensureInvoice(
+          tx,
+          userId,
+          id,
+          invoiceFor(ctx.today, input.card),
+        );
+        await tx.insert(transactions).values({
+          userId,
+          accountId: id,
+          kind: "adjustment",
+          status: "paid",
+          // The ledger sign: negative is owed.
+          amountCents: -owed,
+          description: CARD_OPENING_DESCRIPTION,
+          occurredOn: ctx.todayIso,
+          paidAt: new Date(),
+          invoiceId,
+        });
+      }
     }
   });
   return id;
@@ -366,6 +402,15 @@ export async function adjustBalance(
         : realBalanceCents;
     const difference = target - (current?.balanceCents ?? 0);
     if (difference === 0) return 0;
+    // On a card the adjustment goes to the current invoice (doc 03 §9.4).
+    const invoiceId = account.cycle
+      ? await ensureInvoice(
+          tx,
+          ctx.userId,
+          account.id,
+          invoiceFor(ctx.today, account.cycle),
+        )
+      : null;
     await tx.insert(transactions).values({
       userId: ctx.userId,
       accountId: account.id,
@@ -375,6 +420,7 @@ export async function adjustBalance(
       description: "Ajuste de saldo",
       occurredOn: ctx.todayIso,
       paidAt: new Date(),
+      invoiceId,
     });
     return difference;
   });

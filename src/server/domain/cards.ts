@@ -5,12 +5,10 @@ import { uuidv7 } from "uuidv7";
 import {
   canPayInvoice,
   compare,
-  type InvoiceDates,
   type InvoiceStatus,
   invoiceFor,
   invoiceOutstandingCents,
   invoiceStatus,
-  iso,
   isoMonth,
   parse,
 } from "@/lib/finance";
@@ -30,42 +28,7 @@ import {
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 
-/** Id of the invoice with these dates, created on first use. */
-export async function ensureInvoice(
-  tx: Executor,
-  userId: string,
-  accountId: string,
-  dates: InvoiceDates,
-): Promise<string> {
-  const referenceMonth = `${isoMonth(dates.referenceMonth)}-01`;
-  const [created] = await tx
-    .insert(cardInvoices)
-    .values({
-      id: uuidv7(),
-      userId,
-      accountId,
-      referenceMonth,
-      closingDate: iso(dates.closingDate),
-      dueDate: iso(dates.dueDate),
-    })
-    .onConflictDoNothing({
-      target: [cardInvoices.accountId, cardInvoices.referenceMonth],
-    })
-    .returning({ id: cardInvoices.id });
-  if (created) return created.id;
-  const [existing] = await tx
-    .select({ id: cardInvoices.id })
-    .from(cardInvoices)
-    .where(
-      and(
-        eq(cardInvoices.accountId, accountId),
-        eq(cardInvoices.referenceMonth, referenceMonth),
-      ),
-    )
-    .limit(1);
-  if (!existing) throw new Error("card invoice upsert returned nothing");
-  return existing.id;
-}
+export { ensureInvoice } from "./invoices";
 
 export type InvoiceSummary = {
   id: string;
