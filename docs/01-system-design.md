@@ -301,7 +301,7 @@ Regras de dependência: `app → features → server/lib`; `lib/finance` não im
 |---|---|
 | IDs | `uuid` v7 (ordenável no tempo → índices mais compactos); gerado na aplicação, inclusive no cliente para idempotência |
 | Dinheiro | `bigint` em **centavos** (`amount_cents`). Nunca `numeric`/`float` para valores de lançamento |
-| Sinal | **Ledger com sinal por conta**: entrada na conta `> 0`, saída `< 0`. Saldo = saldo inicial + Σ lançamentos efetivados |
+| Sinal | **Ledger com sinal por conta**: entrada na conta `> 0`, saída `< 0`. Saldo = saldo inicial + Σ lançamentos efetivados. Em cartões o saldo inicial é sempre 0: o valor devido na criação é um lançamento `adjustment` com `invoice_id` (doc 03 §9.4) |
 | Transferência | Duas linhas (`kind = 'transfer'`) ligadas por `transfer_id`: saída na origem, entrada no destino. Não entram em relatórios de receitas/despesas |
 | Cartão de crédito | É uma conta (`type = 'credit_card'`). Compras são despesas negativas na conta-cartão com `invoice_id`. Pagar a fatura = transferência da conta corrente para o cartão |
 | Caixinha | É uma conta (`type = 'savings_box'`, ícone `vault`): entra no patrimônio, mas **não é dinheiro para gastar**. A regra é uma só, `isSpendableAccount` (`src/lib/finance/spendable.ts`): tipo fora de `NON_SPENDABLE_ACCOUNT_TYPES` (cartão, caixinha e benefício), `include_in_net_worth` e não arquivada. Saldo em contas, variação do mês, previsto, Fluxo de caixa e os avisos Resumo do dia e Próxima receita leem essa regra (`spendableAccountsOf`, uma leitura por requisição); nenhuma consulta repete a lista de tipos em SQL. Guardar e resgatar são transferências (ADR-04) |
@@ -407,7 +407,7 @@ create table fin_accounts (
   type                  fin_account_type not null,
   color                 text not null,               -- token: 'cat-1'..'cat-8'
   icon                  text not null,               -- nome do ícone Lucide
-  initial_balance_cents bigint not null default 0,
+  initial_balance_cents bigint not null default 0,  -- cartão: sempre 0 (doc 03 §9.4)
   include_in_net_worth  boolean not null default true,
   sort_order            int not null default 0,
   archived_at           timestamptz,

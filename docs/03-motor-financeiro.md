@@ -450,7 +450,13 @@ export function installmentSchedule(purchase: LocalDate, totalCents: number, cou
 | Paga | pagamentos (transferências com `invoice_id`) ≥ total |
 | Vencida | `hoje > due_date` e pago < total |
 
-Total = − Σ `amount_cents` das compras/estornos da fatura; pago = Σ pagamentos vinculados. Pagamento parcial deixa saldo em aberto visível na fatura (o rotativo/juros do emissor ficam fora do escopo; o usuário lança encargos como despesa da categoria "Impostos e taxas").
+Total = − Σ `amount_cents` das compras, estornos e ajustes da fatura; pago = Σ pagamentos vinculados. Pagamento parcial deixa saldo em aberto visível na fatura (o rotativo/juros do emissor ficam fora do escopo; o usuário lança encargos como despesa da categoria "Impostos e taxas").
+
+### 9.4 Valor inicial do cartão
+
+Ao criar um cartão, a "Fatura atual (valor devido hoje)" vira um lançamento de ajuste efetivado, "Valor inicial da fatura", datado de hoje (no fuso da pessoa) e ligado à fatura que recebe uma compra feita hoje (§9.1). O saldo inicial do cartão fica sempre 0. Assim o valor entra no total da fatura, no limite comprometido e no saldo, pela mesma conta. "Ajustar saldo" num cartão também liga o ajuste à fatura atual.
+
+A migração `0015_card_opening_invoice` moveu o saldo inicial dos cartões que já existiam para esse lançamento, na fatura do dia em que o cartão foi criado. Ela só toca cartões com saldo inicial diferente de 0, então rodar de novo não muda nada.
 
 ---
 

@@ -913,7 +913,7 @@ Regras de comportamento:
 - Poupança e Investimento continuam contando como dinheiro para gastar (decisão do dono, 06/11/2026). Uma meta pode ser ligada a uma caixinha.
 - **Mudar o tipo**: em Editar, uma conta que não é cartão troca de tipo entre os tipos que não são cartão (cartão não muda de tipo, nem vira outro); o ícone acompanha se ainda era o padrão do tipo antigo.
 - Reordenar por arrastar (alça à direita, modo "Editar").
-- **Detalhe da conta**: saldo `display`, gráfico de área de 6 meses (série única), ações em linha (Transferir · Ajustar saldo · Editar), extrato da conta. Na caixinha, a legenda "Não entra no Saldo em contas do Início." e as ações **Guardar** (transferência da primeira conta para gastar para a caixinha) e **Resgatar** (da caixinha para ela), alvos de 44 px, que abrem a Nova transação já como transferência. "Ajustar saldo" pede o saldo real e cria um lançamento de ajuste com a diferença, explicando: "Vamos registrar −R$ 12,40 como ajuste."
+- **Detalhe da conta**: saldo `display`, gráfico de área de 6 meses (série única), ações em linha (Transferir · Ajustar saldo · Editar), extrato da conta. Na caixinha, a legenda "Não entra no Saldo em contas do Início." e as ações **Guardar** (transferência da primeira conta para gastar para a caixinha) e **Resgatar** (da caixinha para ela), alvos de 44 px, que abrem a Nova transação já como transferência. "Ajustar saldo" pede o saldo real e cria um lançamento de ajuste com a diferença, explicando: "Vamos registrar −R$ 12,40 como ajuste." No cartão, o ajuste entra na fatura atual (doc 03 §9.4).
 
 ### 6.8 Cartão de crédito e fatura
 
@@ -946,6 +946,7 @@ Regras de comportamento:
 - Limite disponível considera **parcelas futuras** (texto de apoio: "R$ 399,92 comprometidos em parcelas futuras").
 - **Pagar fatura** (sheet): valor sugerido = saldo em aberto (editável para pagamento parcial), conta de origem, data. Gera transferência conta → cartão. A conta de origem abre na "Conta que paga a fatura" do cartão (campo de Editar cartão, 12/11/2026: select "Nenhuma" + contas que não são cartão, ajuda "Vem escolhida ao pagar a fatura. Sem conta escolhida, vale a do último pagamento.", erro "Escolha uma conta, não um cartão."); sem ela, na primeira conta da lista. Uma conta arquivada gravada no campo aparece como "Nenhuma". O campo ainda não existe no cartão novo.
 - Abas de faturas: mês corrente centralizado ao abrir; ponto colorido indica status.
+- **Novo cartão** (14/11/2026): o campo "Fatura atual (valor devido hoje)" tem a descrição "Entra na fatura aberta hoje. Some o que já está nela e o que ainda não foi pago; deixe em branco se não deve nada." O valor aparece na fatura aberta como o lançamento "Valor inicial da fatura" (legenda "Ajuste de saldo"), e o limite disponível já o desconta (doc 03 §9.4).
 
 ### 6.9 Planejar › Orçamentos
 

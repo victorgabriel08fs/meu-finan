@@ -133,6 +133,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ## Entregue
 
+### Correção: fatura atual do novo cartão — 14/11/2026
+
+A "Fatura atual" informada ao criar um cartão ficava no saldo inicial, que nenhuma fatura somava: o limite caía e a fatura mostrava R$ 0.
+
+- [x] `createAccount` grava o valor como lançamento de ajuste "Valor inicial da fatura" na fatura que recebe uma compra de hoje; o saldo inicial do cartão fica 0. `ensureInvoice` passou para `src/server/domain/invoices.ts`.
+- [x] Migração `0015_card_opening_invoice` move o saldo inicial dos cartões existentes para esse lançamento, na fatura do dia da criação do cartão.
+- [x] "Ajustar saldo" de cartão liga o ajuste à fatura atual.
+- [x] Testes: integração (`card-opening.integration.test.ts`, com a migração) e e2e (`cartao-fatura-inicial.spec.ts`). Detalhes: doc 03 §9.4, doc 02 §6.7 e §6.8.
+
 ### Bloco "Assinaturas do mês" (tarefa 17) — 14/11/2026
 
 Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrás de `inicio_personalizavel`): as despesas que se repetem todo mês, quanto somam por mês, o próximo débito de cada uma e o selo "subiu R$ X".
