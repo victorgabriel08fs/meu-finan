@@ -73,6 +73,7 @@ const NOTICES = [
   // The demo turns alerta_dia_nao_util on for Ana: the row shows, on by default.
   ["Vencimento em dia não útil", true],
   ["Próxima receita", false],
+  ["Gasto fora do padrão", true],
   ["Resumo semanal", true],
   ["Resumo mensal", true],
 ] as const;
@@ -196,6 +197,40 @@ test("Vencimento em dia não útil: logo depois de Contas a vencer, com descriç
   });
   // Back to the default.
   await saveWith(page, '"non_business_due":true', () => toggle.click());
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+});
+
+test("Gasto fora do padrão: entre Próxima receita e Resumo semanal, ligado por padrão, com descrição, e a escolha fica salva", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await openNotices(page);
+  const row = page.locator('li[data-event="unusual_spending"]');
+  await expect(row).toBeVisible();
+  await expect(row).toContainText(
+    "Quando uma categoria passa bem da média dos 3 meses anteriores, uma vez por mês.",
+  );
+  const order = await page
+    .locator("li[data-event]")
+    .evaluateAll((items) =>
+      items.map((item) => item.getAttribute("data-event")),
+    );
+  expect(order.indexOf("unusual_spending")).toBe(
+    order.indexOf("income_countdown") + 1,
+  );
+  expect(order.indexOf("weekly_summary")).toBe(
+    order.indexOf("unusual_spending") + 1,
+  );
+  const toggle = switchOf(page, "Gasto fora do padrão");
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+  await saveWith(page, '"unusual_spending":false', () => toggle.click());
+  await page.reload();
+  await expect(toggle).toHaveAttribute("aria-checked", "false", {
+    timeout: 30_000,
+  });
+  // Back to the default.
+  await saveWith(page, '"unusual_spending":true', () => toggle.click());
   await expect(toggle).toHaveAttribute("aria-checked", "true");
 });
 

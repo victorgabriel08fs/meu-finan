@@ -83,17 +83,23 @@ export async function todaysReminderKeys(
   return new Set(rows.map((row) => row.dedupeKey));
 }
 
-/** The notices that list the bills they announced (`itemKeys`). */
-export type BillNoticeType = "bills_due" | "non_business_due";
+/**
+ * The notices that list what they announced (`itemKeys`): bills, or the
+ * categories of a "Gasto fora do padrão".
+ */
+export type ItemNoticeType =
+  | "bills_due"
+  | "non_business_due"
+  | "unusual_spending";
 
 /**
- * The bills announced since `since` by "Contas a vencer" or, with `type`,
- * by "Vencimento em dia não útil".
+ * The items announced since `since` by "Contas a vencer" or, with `type`,
+ * by "Vencimento em dia não útil" or "Gasto fora do padrão".
  */
-export async function recentBillKeys(
+export async function recentItemKeys(
   userId: string,
   since: Date,
-  type: BillNoticeType = "bills_due",
+  type: ItemNoticeType = "bills_due",
   executor: Executor = db,
 ): Promise<Set<string>> {
   const rows = await executor
@@ -109,10 +115,10 @@ export async function recentBillKeys(
   return itemKeysOf(rows, type);
 }
 
-/** The bills today's (`date`) notice of `type` announced; empty when none went out. */
+/** The items today's (`date`) notice of `type` announced; empty when none went out. */
 export async function noticeItemKeys(
   userId: string,
-  type: BillNoticeType,
+  type: ItemNoticeType,
   date: string,
   executor: Executor = db,
 ): Promise<Set<string>> {
@@ -130,7 +136,7 @@ export async function noticeItemKeys(
 
 function itemKeysOf(
   rows: readonly { payload: NotificationPayload }[],
-  type: BillNoticeType,
+  type: ItemNoticeType,
 ): Set<string> {
   const keys = new Set<string>();
   for (const { payload } of rows) {

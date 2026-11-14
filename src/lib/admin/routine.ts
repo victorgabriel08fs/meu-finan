@@ -117,6 +117,11 @@ const SENT_LABELS: [key: string, one: string, many: string][] = [
   ["income_countdown", "Próxima receita enviada", "Próximas receitas enviadas"],
   ["weekly_summary", "Resumo semanal enviado", "Resumos semanais enviados"],
   ["monthly_summary", "Resumo mensal enviado", "Resumos mensais enviados"],
+  [
+    "unusual_spending",
+    "Aviso de gasto fora do padrão enviado",
+    "Avisos de gasto fora do padrão enviados",
+  ],
 ];
 
 /** What the notices step did, from its numbers; nothing for malformed details. */

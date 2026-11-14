@@ -154,7 +154,7 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   // The other novidades are still unread: the avatar says so…
   await page.goto("/inicio");
   await expect(
-    page.getByRole("link", { name: /^Perfil e ajustes\W+23 novidades$/ }),
+    page.getByRole("link", { name: /^Perfil e ajustes\W+24 novidades$/ }),
   ).toBeVisible({ timeout: 30_000 });
 
   // …and Ajustes › Novidades marks them, then reads them.
@@ -190,6 +190,17 @@ test("novidade: aparece para quem já usava o app antes dela", async ({
   ).toBeVisible();
   await expect(
     item("Avisos todo dia pela manhã").getByRole("link", {
+      name: "Escolher avisos",
+    }),
+  ).toHaveAttribute("href", "/ajustes/notificacoes");
+  // The unusual-spending notice, behind the same flag.
+  await expect(
+    itemTitled("Aviso de gasto fora do padrão").getByText("Nova", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    itemTitled("Aviso de gasto fora do padrão").getByRole("link", {
       name: "Escolher avisos",
     }),
   ).toHaveAttribute("href", "/ajustes/notificacoes");

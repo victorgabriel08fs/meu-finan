@@ -11,6 +11,7 @@ export const REMINDER_EVENTS = [
   "income_countdown",
   "weekly_summary",
   "monthly_summary",
+  "unusual_spending",
 ] as const;
 
 export type ReminderEvent = (typeof REMINDER_EVENTS)[number];

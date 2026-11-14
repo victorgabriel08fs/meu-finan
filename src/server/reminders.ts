@@ -23,6 +23,7 @@ import {
   monthlySummaryMessage,
   nonBusinessDueMessage,
   type ReminderMessage,
+  unusualSpendingMessage,
   weeklySummaryMessage,
 } from "@/lib/notifications/messages";
 import {
@@ -36,13 +37,15 @@ import {
   previousWeek,
   selectBillReminders,
   selectNonBusinessDueReminders,
+  UNUSUAL_SPENDING_LOOKBACK_DAYS,
+  unusualSpendingKey,
 } from "@/lib/notifications/schedule";
 import { getUserContext, type UserContext } from "@/server/domain/context";
 import type { UpcomingItem } from "@/server/domain/dashboard";
 import {
   claimNotification,
   noticeItemKeys,
-  recentBillKeys,
+  recentItemKeys,
   releaseNotification,
   reminderDedupeKey,
   todaysReminderKeys,
@@ -55,6 +58,7 @@ import {
   loadDailySummary,
   loadIncomeCountdown,
   loadMonthlySummary,
+  loadUnusualSpending,
   loadWeeklySummary,
   periodMonthOf,
   type ReminderRecipient,
@@ -81,9 +85,13 @@ const PUSH_OPTIONS: Record<ReminderEvent, { tag: string; ttlSeconds: number }> =
     income_countdown: { tag: "receita", ttlSeconds: 12 * HOUR_SECONDS },
     weekly_summary: { tag: "resumo-semana", ttlSeconds: 24 * HOUR_SECONDS },
     monthly_summary: { tag: "resumo-mes", ttlSeconds: 24 * HOUR_SECONDS },
+    unusual_spending: {
+      tag: "gasto-fora-do-padrao",
+      ttlSeconds: 24 * HOUR_SECONDS,
+    },
   };
 
-/** A notice ready to send: the texts, where a tap leads, the bills it names. */
+/** A notice ready to send: the texts, where a tap leads, the items it names. */
 export type Reminder = ReminderMessage & { url: string; itemKeys?: string[] };
 
 /** The person's flags that shape the notices. */
@@ -140,7 +148,7 @@ async function billsReminder(
     // The preview shows every bill in the window, announced or not.
     preview
       ? new Set<string>()
-      : recentBillKeys(ctx.userId, lookbackStart(now)),
+      : recentItemKeys(ctx.userId, lookbackStart(now)),
   ]);
   const selected = selectBillReminders(items, {
     todayIso: ctx.todayIso,
@@ -187,7 +195,7 @@ async function nonBusinessReminder(
     loadBillCandidates(ctx, { nonBusiness: true }),
     preview
       ? none
-      : recentBillKeys(ctx.userId, lookbackStart(now), "non_business_due"),
+      : recentItemKeys(ctx.userId, lookbackStart(now), "non_business_due"),
     preview ? none : noticeItemKeys(ctx.userId, "bills_due", ctx.todayIso),
   ]);
   const selected = selectNonBusinessDueReminders(items, {
@@ -217,6 +225,57 @@ async function nonBusinessReminder(
       selected.map(({ item }) => item),
     ),
     itemKeys: selected.map(({ key }) => key),
+  };
+}
+
+/**
+ * Gasto fora do padrão: the categories over their pattern not yet announced
+ * this financial month (`itemKeys` of the last
+ * UNUSUAL_SPENDING_LOOKBACK_DAYS), all in one notice. One category opens
+ * its expenses in the statement (subcategories included); several, the
+ * categories report. The preview ignores what was already announced.
+ */
+async function unusualSpendingReminder(
+  ctx: UserContext,
+  options: MessageOptions,
+  now: Date,
+  preview: boolean,
+): Promise<Reminder | null> {
+  const [{ month, items }, notifiedKeys] = await Promise.all([
+    loadUnusualSpending(ctx),
+    preview
+      ? new Set<string>()
+      : recentItemKeys(
+          ctx.userId,
+          new Date(now.getTime() - UNUSUAL_SPENDING_LOOKBACK_DAYS * DAY_MS),
+          "unusual_spending",
+        ),
+  ]);
+  const fresh = items.filter(
+    (item) => !notifiedKeys.has(unusualSpendingKey(item.categoryId, month)),
+  );
+  const message = unusualSpendingMessage({ items: fresh }, options);
+  const [first] = fresh;
+  if (!message || !first) return null;
+  const currentMonth = periodMonthOf(ctx, ctx.todayIso);
+  return {
+    ...message,
+    url:
+      fresh.length === 1
+        ? statementHref(
+            {
+              month,
+              accountId: null,
+              categoryId: first.categoryId,
+              tagId: null,
+              kind: "expense",
+              status: null,
+              q: "",
+            },
+            currentMonth,
+          )
+        : periodViewHref("/relatorios/categorias", 1, month, currentMonth),
+    itemKeys: fresh.map((item) => unusualSpendingKey(item.categoryId, month)),
   };
 }
 
@@ -294,6 +353,8 @@ async function buildReminder(
         }
       );
     }
+    case "unusual_spending":
+      return unusualSpendingReminder(ctx, options, now, preview);
   }
 }
 
@@ -330,6 +391,7 @@ function emptyReport(): RemindersReport {
       income_countdown: 0,
       weekly_summary: 0,
       monthly_summary: 0,
+      unusual_spending: 0,
     },
     alreadySent: 0,
     nothingToSend: 0,

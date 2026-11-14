@@ -189,3 +189,15 @@ export function pickNextIncome<
   }
   return best;
 }
+
+/**
+ * How long the categories already in a "Gasto fora do padrão" are
+ * remembered: a whole financial month (the key carries the month, so an
+ * older period never matches).
+ */
+export const UNUSUAL_SPENDING_LOOKBACK_DAYS = 45;
+
+/** `{categoryId}:{YYYY-MM}`: a category is announced once per financial month. */
+export function unusualSpendingKey(categoryId: string, month: string): string {
+  return `${categoryId}:${month}`;
+}

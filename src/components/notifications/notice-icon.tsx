@@ -8,6 +8,7 @@ import {
   PiggyBank,
   ReceiptText,
   Sun,
+  TrendingUp,
   Trophy,
   UserMinus,
   UserPlus,
@@ -31,6 +32,7 @@ const ICONS: Record<NoticeIconName, ComponentType<{ className?: string }>> = {
   handshake: Handshake,
   "piggy-bank": PiggyBank,
   trophy: Trophy,
+  "trending-up": TrendingUp,
 };
 
 // Whole class names, so Tailwind sees them (doc 02 §3.1 tokens, both themes).

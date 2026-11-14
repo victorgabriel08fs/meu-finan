@@ -27,6 +27,8 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     income_countdown: false,
     weekly_summary: true,
     monthly_summary: true,
+    // On by default (owner, 14/11/2026): at most once per category a month.
+    unusual_spending: true,
   },
   billsLeadDays: 1,
   showAmounts: false,

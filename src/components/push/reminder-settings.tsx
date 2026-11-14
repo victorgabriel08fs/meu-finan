@@ -9,6 +9,7 @@ import {
   HandCoins,
   type LucideIcon,
   Sunrise,
+  TrendingUp,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -64,6 +65,13 @@ export const REMINDER_ROWS: readonly ReminderRow[] = [
     label: "Próxima receita",
     description: () =>
       "Nos 7 dias antes, com quanto dá para gastar por dia até lá.",
+  },
+  {
+    event: "unusual_spending",
+    icon: TrendingUp,
+    label: "Gasto fora do padrão",
+    description: () =>
+      "Quando uma categoria passa bem da média dos 3 meses anteriores, uma vez por mês.",
   },
   {
     event: "weekly_summary",

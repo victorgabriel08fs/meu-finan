@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { defaultFlags } from "@/lib/flags/registry";
+import type { NotificationPayload } from "@/server/db/schema/types";
 import {
   DISCREET_BODY,
   payloadHasAmounts,
+  pushTagOf,
   renderNotice,
   visibleNotificationTypes,
 } from "./kinds";
@@ -55,8 +57,37 @@ describe("visibleNotificationTypes", () => {
       "income_countdown",
       "monthly_summary",
       "non_business_due",
+      "unusual_spending",
       "weekly_summary",
     ]);
+  });
+});
+
+describe("Gasto fora do padrão", () => {
+  const unusual: NotificationPayload = {
+    type: "unusual_spending",
+    date: "2026-11-14",
+    title: "Mercado está 40% acima da média",
+    body: "R$ 820,00 até hoje, contra R$ 585,00 na média dos 3 meses anteriores até este ponto do mês. Toque para ver os lançamentos.",
+    url: "/extrato?categoria=c1&tipo=despesa",
+    itemKeys: ["c1:2026-11"],
+    amounts: true,
+  };
+
+  it("opens its destination with Ver gastos, under its own push tag", () => {
+    expect(renderNotice(unusual, { discreet: false })).toMatchObject({
+      title: "Mercado está 40% acima da média",
+      href: "/extrato?categoria=c1&tipo=despesa",
+      actions: [{ id: "open", label: "Ver gastos" }],
+    });
+    expect(pushTagOf("unusual_spending")).toBe("gasto-fora-do-padrao");
+  });
+
+  it("hides the body with amounts in the privacy mode", () => {
+    expect(renderNotice(unusual, { discreet: true })?.body).toBe(DISCREET_BODY);
+    expect(
+      renderNotice({ ...unusual, amounts: false }, { discreet: true })?.body,
+    ).toMatch(/^R\$ 820,00 até hoje/);
   });
 });
 

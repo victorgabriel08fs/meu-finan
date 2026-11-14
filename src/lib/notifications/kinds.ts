@@ -33,6 +33,7 @@ export const NOTICE_ICONS = [
   "handshake",
   "piggy-bank",
   "trophy",
+  "trending-up",
 ] as const;
 export type NoticeIconName = (typeof NOTICE_ICONS)[number];
 
@@ -219,6 +220,12 @@ export const NOTICE_KINDS: Partial<Record<NotificationType, NoticeKind>> = {
     "cat-7",
     "resumo-mes",
     "Ver relatório",
+  ),
+  unusual_spending: reminderKind(
+    "trending-up",
+    "cat-6",
+    "gasto-fora-do-padrao",
+    "Ver gastos",
   ),
   share_invite: shareKind(
     "user-plus",

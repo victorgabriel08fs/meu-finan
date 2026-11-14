@@ -44,6 +44,7 @@ describe("describeReminders", () => {
       income_countdown: 0,
       weekly_summary: 1,
       monthly_summary: 0,
+      unusual_spending: 2,
     },
     alreadySent: 1,
     nothingToSend: 3,
@@ -60,6 +61,7 @@ describe("describeReminders", () => {
       "2 Contas a vencer enviadas",
       "1 Aviso de dia não útil enviado",
       "1 Resumo semanal enviado",
+      "2 Avisos de gasto fora do padrão enviados",
       "1 aviso já tinha saído hoje",
       "3 sem nada a dizer hoje",
       "2 não entregues em nenhum aparelho (ficam para a próxima execução)",
@@ -67,6 +69,12 @@ describe("describeReminders", () => {
       "1 pessoa ficou para a próxima execução (acabou o prazo)",
       "2 erros",
     ]);
+  });
+
+  it("names one unusual spending notice in the singular", () => {
+    expect(
+      describeReminders({ recipients: 1, sent: { unusual_spending: 1 } }),
+    ).toContain("1 Aviso de gasto fora do padrão enviado");
   });
 
   it("says so when nobody had notices on and nothing went out", () => {

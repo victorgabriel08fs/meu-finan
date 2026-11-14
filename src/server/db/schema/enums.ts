@@ -154,6 +154,7 @@ export const REMINDER_NOTIFICATION_TYPES = [
   "income_countdown",
   "weekly_summary",
   "monthly_summary",
+  "unusual_spending",
 ] as const;
 export type ReminderNotificationType =
   (typeof REMINDER_NOTIFICATION_TYPES)[number];

@@ -17,6 +17,7 @@ import { cache } from "react";
 import {
   addDays,
   benefitPerDay,
+  categoryTrend,
   type Forecast,
   forecastBalance,
   type InvoiceToAttribute,
@@ -31,7 +32,6 @@ import {
   parse,
   type SpendableAccountInput,
   type SpendableDay,
-  shiftPeriod,
   spendablePerDayByAccount,
   spendablePerDayByDay,
 } from "@/lib/finance";
@@ -54,14 +54,10 @@ import {
   transactions,
 } from "@/server/db/schema";
 import type { AccountListItem } from "./accounts";
+import { categorySpendingTrend } from "./category-trend";
 import { type PeriodRange, resolvePeriod, type UserContext } from "./context";
 import { pendingNonBusinessDue } from "./holidays";
-import {
-  cashFlowReport,
-  categoryRootId,
-  liquidPendingFlows,
-  rootCategory,
-} from "./reports";
+import { cashFlowReport, liquidPendingFlows } from "./reports";
 import {
   accountsOf,
   benefitAccountsOf,
@@ -624,67 +620,24 @@ async function monthChangeCents(
 
 /**
  * One observation for the Início (doc 03 §12): spending of a category so far
- * in the period vs. the average of the 3 previous periods up to the same day.
+ * in the period vs. the average of the 3 previous periods up to the same day,
+ * each clamped to its period's end (`categorySpendingTrend`).
  */
 export async function categoryInsight(
   ctx: UserContext,
   range: PeriodRange,
 ): Promise<Insight | null> {
   if (!range.isCurrent) return null;
-  const elapsed = Math.round(
-    (Date.parse(ctx.todayIso) - Date.parse(range.start)) / 86_400_000,
-  );
-  if (elapsed < 3) return null;
-
-  const windows = [0, 1, 2, 3].map((k) => {
-    const period = shiftPeriod(range.period, -k);
-    return {
-      k,
-      start: iso(period.start),
-      end: iso(addDays(period.start, elapsed)),
-    };
-  });
-
-  // By main category: a subcategory adds up into its parent (D2).
-  const spentBy = async (start: string, end: string) =>
-    db
-      .select({
-        categoryId: rootCategory.id,
-        name: rootCategory.name,
-        cents: sql<number>`-sum(${transactions.amountCents})`.mapWith(Number),
-      })
-      .from(transactions)
-      .innerJoin(categories, eq(categories.id, transactions.categoryId))
-      .innerJoin(rootCategory, eq(rootCategory.id, categoryRootId))
-      .where(
-        and(
-          eq(transactions.userId, ctx.userId),
-          isNull(transactions.deletedAt),
-          eq(transactions.status, "paid"),
-          eq(transactions.kind, "expense"),
-          between(transactions.occurredOn, start, end),
-        ),
-      )
-      .groupBy(rootCategory.id, rootCategory.name);
-
-  const [current, ...previous] = await Promise.all(
-    windows.map((window) => spentBy(window.start, window.end)),
-  );
-  if (!current) return null;
+  const trend = await categorySpendingTrend(ctx, range);
+  // From the 4th day: three full days behind today.
+  if (!trend || trend.windows.elapsedDays < 4) return null;
 
   let best: Insight | null = null;
   let bestDiff = 0;
-  for (const row of current) {
-    if (!row.categoryId) continue;
-    const history = previous.map(
-      (rows) =>
-        rows.find((item) => item.categoryId === row.categoryId)?.cents ?? 0,
-    );
-    if (history.some((value) => value <= 0)) continue;
-    const average =
-      history.reduce((sum, value) => sum + value, 0) / history.length;
-    const diff = row.cents - average;
-    const ratio = diff / average;
+  for (const row of trend.rows) {
+    const change = categoryTrend(row.currentCents, row.historyCents);
+    if (!change) continue;
+    const { diffCents: diff, ratio } = change;
     const positive = ratio <= -0.2 && -diff >= 5_000;
     const attention = ratio >= 0.25 && diff >= 8_000;
     if (!positive && !attention) continue;

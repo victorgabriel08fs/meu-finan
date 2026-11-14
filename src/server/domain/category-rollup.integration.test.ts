@@ -239,4 +239,42 @@ describe("the Início insight (D2)", () => {
       changeRatio: 2,
     });
   });
+  it("reads February only up to its end, not into March (the previous window is clamped)", async () => {
+    // Bruno, today 30/mar/2027: 1..30/mar against 1..28/feb, 1..30/jan and
+    // 1..30/dec. The 20 reais of 1/mar are March's, not February's.
+    const { db } = await import("../db/client");
+    const schema = await import("../db/schema");
+    const entries = [
+      [30_000, "2027-03-10"],
+      [10_000, "2027-02-10"],
+      [20_000, "2027-03-01"],
+      [10_000, "2027-01-10"],
+      [10_000, "2026-12-10"],
+    ] as const;
+    for (const [amountCents, occurredOn] of entries) {
+      await db.insert(schema.transactions).values({
+        userId: "bruno",
+        accountId: wallet.bruno,
+        categoryId: market.bruno,
+        kind: "expense",
+        status: "paid",
+        amountCents: -amountCents,
+        description: "Compra",
+        occurredOn,
+      });
+    }
+    const late = await d.context.getUserContext("bruno", {
+      now: Date.UTC(2027, 2, 30, 15, 0, 0),
+    });
+    const insight = await d.dashboard.categoryInsight(
+      late,
+      d.context.resolvePeriod(late, null),
+    );
+    // March has 50 (30 + the 20 of the 1st): 50 vs. average 10 in each window.
+    expect(insight).toMatchObject({
+      tone: "attention",
+      categoryId: market.bruno,
+      changeRatio: 4,
+    });
+  });
 });

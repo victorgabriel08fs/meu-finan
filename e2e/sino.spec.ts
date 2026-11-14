@@ -3,9 +3,10 @@ import { expectNoA11yViolations } from "./axe";
 import { BIG_TEXT, expectNoHorizontalScroll } from "./layout";
 import { chooseTheme } from "./theme";
 
-// para Ana e Bruno e dá a Ana 3 avisos na lista (um não lido, "Condomínio vence
-// em dia não útil", de hoje; "Sua semana", de ontem; "Resumo do mês", de 10 dias atrás,
-// os dois últimos lidos) e um dispensado. Roda como Ana, no Pixel 7. O teste
+// para Ana e Bruno e dá a Ana 4 avisos na lista (um não lido, "Condomínio vence
+// em dia não útil", de hoje; "Sua semana", de ontem; "Mercado está 42% acima da
+// média", de 2 dias atrás; "Resumo do mês", de 10 dias atrás, os três últimos
+// lidos) e um dispensado. Roda como Ana, no Pixel 7. O teste
 // de "marcar todas" gasta o único aviso não lido: o demo recria os dados a
 // cada `npm run test:e2e`. "Marcar como pago" não é clicado aqui: pagar o
 // Condomínio mudaria as telas dos testes que rodam depois.
@@ -61,6 +62,14 @@ test("o sino mostra o número de não lidas e a folha agrupa por dia", async ({
       .locator('section[aria-labelledby="notices-week"]')
       .getByText("Sua semana"),
   ).toBeVisible();
+  // "Gasto fora do padrão": the demo's notice (read), with its action.
+  const unusual = sheet(page)
+    .locator('section[aria-labelledby="notices-week"]')
+    .locator("li", { hasText: "Mercado está 42% acima da média" });
+  await expect(unusual).toBeVisible();
+  await expect(
+    unusual.getByRole("button", { name: "Ver gastos" }),
+  ).toBeVisible();
   await expect(
     sheet(page)
       .locator('section[aria-labelledby="notices-earlier"]')
@@ -77,7 +86,7 @@ test("o sino mostra o número de não lidas e a folha agrupa por dia", async ({
   ).toBeVisible();
   // Every dismiss button is named and at least 44 px.
   const dismiss = sheet(page).getByRole("button", { name: "Dispensar" });
-  await expect(dismiss).toHaveCount(3);
+  await expect(dismiss).toHaveCount(4);
   const box = await dismiss.first().boundingBox();
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
