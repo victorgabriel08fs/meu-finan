@@ -435,6 +435,19 @@ export const TIPS: readonly Tip[] = [
     icon: "chart",
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
+  {
+    id: "novidade-inicio-parcelas-a-terminar",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Parcelas a terminar",
+    body: "Veja no Início o que falta pagar das compras parceladas, quando cada uma acaba e quanto sai por mês.",
+    since: "2026-11-13",
+    order: 23,
+    when: { flag: "inicio_personalizavel" },
+    icon: "chart",
+    link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
