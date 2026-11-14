@@ -16,6 +16,10 @@ type ReportMonthSwitcherProps = {
   end: string;
   /** The user's months start on another day than the 1st: show "5/out – 4/nov". */
   showRange: boolean;
+  /** Last month that can be shown (Fechamento): no "Próximo mês" from it on. */
+  maxMonth?: string;
+  /** Text of the chip back to `currentMonth`. */
+  currentLabel?: string;
 };
 
 /**
@@ -29,12 +33,16 @@ export function ReportMonthSwitcher({
   start,
   end,
   showRange,
+  maxMonth,
+  currentLabel,
 }: ReportMonthSwitcherProps) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <MonthSwitcher
         month={month}
         currentMonth={currentMonth}
+        maxMonth={maxMonth}
+        currentLabel={currentLabel}
         hrefFor={(target) => monthViewHref(path, target, currentMonth)}
       />
       {showRange ? (

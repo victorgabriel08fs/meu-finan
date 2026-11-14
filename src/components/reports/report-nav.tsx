@@ -30,7 +30,7 @@ const UNDERLINE_SPRING = {
 
 /**
  * Report views (doc 02 §6.12) as route tabs that scroll sideways, with an
- * underline under the current one: Visão geral · Categorias · Etiquetas ·
+ * underline under the current one: Visão geral · Fechamento · Categorias · Etiquetas ·
  * Fluxo · Patrimônio · Calendário. Period views keep `?periodo=` and every view keeps
  * `?mes=`. Reads the URL, so render it inside <Suspense> with
  * <ReportTabsFallback /> (same tabs, links without the query).
