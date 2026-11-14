@@ -2,7 +2,7 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (15 a 21), nesta ordem
+## Próximas tarefas (15, 16 e 18 a 21), nesta ordem
 
 Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). A tarefa 14 (Maior gasto da semana) foi entregue em 13/11/2026 (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
@@ -15,11 +15,6 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 
 - Gasto do mês até hoje contra o mesmo dia do mês anterior (mês financeiro), no total e pelas categorias que mais mudaram (subcategorias somadas na mãe).
 - A comparação vira função pura em `src/lib/finance` (com Vitest e fast-check): as tarefas 19 e 20 a reutilizam.
-
-### 17. Bloco "Assinaturas do mês" — M
-
-- Lista as recorrências de despesa ativas (streaming, academia), o total por mês e o próximo débito de cada uma.
-- Destaca aumento de valor entre ocorrências e permite marcar uma recorrência como assinatura (ou inferir pela repetição mensal; o arquiteto decide).
 
 ### 18. Etiquetas — M
 
@@ -41,6 +36,17 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 
 - Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
 - Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
+
+## 17. Assinaturas do mês: o que ficou de fora
+
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Rodapé "e mais N" sem destino**: não há filtro de recorrentes no Extrato; quando houver, o rodapé vira link.
+- **Marcar uma recorrência como assinatura**: pede coluna (`is_subscription`), migração e uma tela de recorrências.
+- **Recorrências anuais, semanais e a cada N meses**: ficam fora. Depois, as anuais podem entrar como 1/12 no "por mês", com "anual" no subtítulo.
+- **Aviso de aumento** (sino e push) e uso no Fechamento do mês (tarefa 20: reaproveita `monthlySubscriptions`).
+- **`aria-label` da linha no modo discreto**: lê os valores por extenso mesmo com os valores ocultos.
+- **Para o dono decidir**: aluguel e curso contam como assinatura (inferência pela repetição mensal); se incomodar, marcar à mão. Anuais (Prime, domínio) ficam fora por enquanto.
 
 ## 14. Maior gasto da semana: o que ficou de fora
 
@@ -117,6 +123,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Bloco "Assinaturas do mês" (tarefa 17) — 14/11/2026
+
+Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrás de `inicio_personalizavel`): as despesas que se repetem todo mês, quanto somam por mês, o próximo débito de cada uma e o selo "subiu R$ X".
+
+- [x] **Consulta** `monthlySubscriptions` (`src/server/domain/subscriptions.ts`) e redução pura `summarizeSubscriptions` (`src/lib/home/subscriptions.ts`): sem cache, sem migração; infere pela recorrência de despesa mensal ativa; o aumento segue a regra dividida por "Este e os próximos".
+- [x] **Bloco** `subscriptions-block.tsx` (até 5 linhas, selo, rodapé "e mais N", convite, modo discreto), skeleton medido e loader em `blocks.tsx`.
+- [x] **Dicas**: novidade `novidade-inicio-assinaturas` (`since` 14/11/2026).
+- [x] Testes: unidade (`subscriptions.test.ts` com fast-check, `subscriptions-block.test.tsx`, `blocks.test.ts`, `layout.test.ts`, `customize-sheet.test.tsx`, `home-skeleton.test.tsx`), integração (`subscriptions.integration.test.ts`, `blocks.integration.test.tsx`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 §8, doc 02 §6.3 e §6.16, doc 03 §10.1. O que ficou: "17. Assinaturas do mês: o que ficou de fora".
 
 ### Bloco "Maior gasto da semana" (tarefa 14) — 13/11/2026
 
