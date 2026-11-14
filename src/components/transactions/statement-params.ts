@@ -1,6 +1,6 @@
 /**
  * URL state of the statement (doc 02 §4.1, §6.4): `/extrato?mes=2026-10&
- * conta=…&categoria=…&tipo=despesa&status=pendente&q=farmácia`. Pure, so the
+ * conta=…&categoria=…&etiqueta=…&tipo=despesa&status=pendente&q=farmácia`. Pure, so the
  * server page and the client filters read and write it the same way.
  */
 
@@ -34,6 +34,7 @@ export type StatementFilters = {
   month: string | null;
   accountId: string | null;
   categoryId: string | null;
+  tagId: string | null;
   kind: StatementKind | null;
   status: StatementStatus | null;
   q: string;
@@ -68,12 +69,14 @@ export function parseStatementParams(params: RawParams): StatementFilters {
   const month = single(params.mes);
   const account = single(params.conta);
   const category = single(params.categoria);
+  const tag = single(params.etiqueta);
   const kind = oneOf(single(params.tipo), KIND_PARAMS);
   const status = oneOf(single(params.status), STATUS_PARAMS);
   return {
     month: month && MONTH.test(month) ? month : null,
     accountId: isUuid(account) ? account.toLowerCase() : null,
     categoryId: isUuid(category) ? category.toLowerCase() : null,
+    tagId: isUuid(tag) ? tag.toLowerCase() : null,
     kind: kind ? KIND_FROM_PARAM[kind] : null,
     status: status ? STATUS_FROM_PARAM[status] : null,
     q: (single(params.q) ?? "").trim().slice(0, MAX_QUERY_LENGTH),
@@ -85,6 +88,7 @@ export function hasActiveFilters(filters: StatementFilters): boolean {
   return Boolean(
     filters.accountId ||
       filters.categoryId ||
+      filters.tagId ||
       filters.kind ||
       filters.status ||
       filters.q,
@@ -124,6 +128,7 @@ export function statementHref(
   }
   if (filters.accountId) params.set("conta", filters.accountId);
   if (filters.categoryId) params.set("categoria", filters.categoryId);
+  if (filters.tagId) params.set("etiqueta", filters.tagId);
   if (filters.kind) params.set("tipo", KIND_TO_PARAM[filters.kind]);
   if (filters.status) params.set("status", STATUS_TO_PARAM[filters.status]);
   if (filters.q) params.set("q", filters.q);

@@ -6,9 +6,10 @@ import {
   pgTable,
   text,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { idColumn, timestamptz, userIdColumn } from "./columns";
+import { createdAt, idColumn, timestamptz, userIdColumn } from "./columns";
 import { COLOR_TOKENS, categoryKind } from "./enums";
 
 /** Income and expense categories; parent_id makes a subcategory. */
@@ -40,12 +41,23 @@ export const categories = pgTable(
   ],
 );
 
+/** Free labels across categories (task 18); a transaction can have several. */
 export const tags = pgTable(
   "tags",
   {
     id: idColumn(),
     userId: userIdColumn(),
     name: text("name").notNull(),
+    archivedAt: timestamptz("archived_at"),
+    createdAt: createdAt(),
   },
-  (t) => [unique("tags_user_id_name_key").on(t.userId, t.name)],
+  (t) => [
+    check("tags_name_check", sql`char_length(${t.name}) between 1 and 30`),
+    // One name per person ignoring case and accents, archived tags included.
+    // f_unaccent comes from the custom migration (0000_extensions).
+    uniqueIndex("tags_user_name_key").on(
+      t.userId,
+      sql`f_unaccent(lower(${t.name}))`,
+    ),
+  ],
 );

@@ -543,7 +543,7 @@ describe("export", () => {
 
     const csv = d.exporter.transactionsCsv(rows);
     expect(csv).toContain(
-      "12/10/2026;Geladeira;Mercado;Cartão Principal;Despesa;Pago;-100,00;1 de 3;'=presente\r\n",
+      "12/10/2026;Geladeira;Mercado;Cartão Principal;Despesa;Pago;-100,00;1 de 3;'=presente;\r\n",
     );
 
     const everything = await d.imports.listExportRows(ctx);

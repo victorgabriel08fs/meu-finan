@@ -43,12 +43,22 @@ import {
   type TxnKind,
   type TxnStatus,
   transactions,
+  transactionTags,
 } from "@/server/db/schema";
 import { BENEFIT_PAYS_NO_INVOICE, requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
 import { requireCategory } from "./categories";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
+import {
+  recurrenceTagIds,
+  replaceRecurrenceTags,
+  replaceTransactionTags,
+  requireTagsForLink,
+  type TagItem,
+  tagsForTransactions,
+  transactionTagIds,
+} from "./tags";
 
 /** Days of recurring entries created ahead of time (the cron extends it). */
 export const RECURRENCE_HORIZON_DAYS = 60;
@@ -75,6 +85,8 @@ export type TransactionInput = {
   paid?: boolean;
   installments?: number | null;
   recurrence?: RecurrenceInput | null;
+  /** Up to ten of the person's active tags; every installment or occurrence gets them. */
+  tagIds?: string[];
 };
 
 const statusFor = (
@@ -146,6 +158,9 @@ export async function createTransaction(
     const category = input.categoryId
       ? await requireCategory(tx, ctx.userId, input.categoryId, input.kind)
       : null;
+    const tagIds = input.tagIds?.length
+      ? await requireTagsForLink(tx, ctx.userId, input.tagIds)
+      : [];
     const description =
       input.description?.trim() ||
       category?.name ||
@@ -170,6 +185,7 @@ export async function createTransaction(
           )
         : null;
     const rows: (typeof transactions.$inferInsert)[] = [];
+    let recurrenceId: string | null = null;
 
     if (installments > 1) {
       if (input.kind !== "expense") {
@@ -237,7 +253,7 @@ export async function createTransaction(
         date,
       );
       const dates = occurrencesBetween(rule, date, horizon);
-      const recurrenceId = uuidv7();
+      recurrenceId = uuidv7();
       await tx.insert(recurrences).values({
         id: recurrenceId,
         userId: ctx.userId,
@@ -283,7 +299,10 @@ export async function createTransaction(
     }
 
     await tx.insert(transactions).values(rows);
-    return { ids: rows.map((row) => row.id as string) };
+    const ids = rows.map((row) => row.id as string);
+    await replaceTransactionTags(tx, ids, tagIds);
+    if (recurrenceId) await replaceRecurrenceTags(tx, recurrenceId, tagIds);
+    return { ids };
   });
 }
 
@@ -397,6 +416,8 @@ export type TransactionFilters = {
   kind?: TxnKind;
   status?: TxnStatus;
   q?: string;
+  /** Entries carrying this tag (already checked as the person's by the caller or by user_id). */
+  tagId?: string;
   limit?: number;
 };
 
@@ -421,6 +442,8 @@ export type TransactionListItem = {
   recurring: boolean;
   recurrence: RecurrenceRule | null;
   notes: string | null;
+  /** In name order, archived ones included. */
+  tags: TagItem[];
 };
 
 export type RecurrenceRule = {
@@ -467,6 +490,16 @@ export async function listTransactions(
     filters.kind ? eq(transactions.kind, filters.kind) : undefined,
     filters.status ? eq(transactions.status, filters.status) : undefined,
     filters.q?.trim() ? descriptionMatches(filters.q) : undefined,
+    // Not correlated: the person is already filtered by transactions.user_id.
+    filters.tagId
+      ? inArray(
+          transactions.id,
+          db
+            .select({ id: transactionTags.transactionId })
+            .from(transactionTags)
+            .where(eq(transactionTags.tagId, filters.tagId)),
+        )
+      : undefined,
   ];
 
   const rows = await db
@@ -518,9 +551,14 @@ export async function listTransactions(
     .where(and(...conditions))
     .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
     .limit(limit + 1);
+  const page = rows.slice(0, limit);
+  const tagsById = await tagsForTransactions(
+    ctx.userId,
+    page.map((row) => row.id),
+  );
 
   return {
-    items: rows.slice(0, limit).map((row) => ({
+    items: page.map((row) => ({
       id: row.id,
       description: row.description,
       amountCents: row.amountCents,
@@ -557,6 +595,7 @@ export async function listTransactions(
             }
           : null,
       notes: row.notes,
+      tags: tagsById.get(row.id) ?? [],
     })),
     hasMore: rows.length > limit,
   };
@@ -693,6 +732,8 @@ export type TransactionPatch = {
   occurredOn?: string;
   notes?: string | null;
   paid?: boolean;
+  /** The entry's whole set of tags (expenses and income only). */
+  tagIds?: string[];
 };
 
 /** "Só este", "Este e os próximos" or "Todos" for installments and recurrences. */
@@ -712,6 +753,12 @@ export async function updateTransaction(
   if (patch.amountCents !== undefined) assertAmount(patch.amountCents);
   await db.transaction(async (tx) => {
     const row = await requireOwnedTransaction(tx, ctx, id);
+    if (
+      patch.tagIds?.length &&
+      (row.kind === "transfer" || row.kind === "adjustment")
+    ) {
+      throw new DomainError("Transferências e ajustes não levam etiquetas.");
+    }
     if (scope !== "this" && (row.installmentPlanId || row.recurrenceId)) {
       await updateSeries(tx, ctx, row, patch, scope);
       return;
@@ -819,7 +866,25 @@ export async function updateTransaction(
         invoiceId,
       })
       .where(eq(transactions.id, row.id));
+    if (patch.tagIds !== undefined && row.kind !== "adjustment") {
+      const tagIds = await linkableTags(tx, ctx, row.id, patch.tagIds);
+      await replaceTransactionTags(tx, [row.id], tagIds);
+    }
   });
+}
+
+/**
+ * The checked tags for an edit of `transactionId`: an archived tag already on
+ * it may stay, a new one must be active.
+ */
+async function linkableTags(
+  tx: Executor,
+  ctx: UserContext,
+  transactionId: string,
+  tagIds: readonly string[],
+): Promise<string[]> {
+  const keep = await transactionTagIds(tx, transactionId);
+  return requireTagsForLink(tx, ctx.userId, tagIds, keep);
 }
 
 /**
@@ -829,7 +894,9 @@ export async function updateTransaction(
  * instead). A recurrence also changes its rule, and its paid entries other
  * than this one keep their values; "future" from a later occurrence splits
  * the rule: the old one ends the day before and a new one takes over from
- * here. Dates change one entry at a time.
+ * here. Dates change one entry at a time. Tags follow the same targets as
+ * the category (and the rule keeps them for the occurrences still to come);
+ * changing only the tags never splits the rule.
  */
 async function updateSeries(
   tx: Executor,
@@ -855,6 +922,10 @@ async function updateSeries(
   };
   const notes =
     patch.notes === undefined ? {} : { notes: patch.notes?.trim() || null };
+  const tagIds =
+    patch.tagIds === undefined
+      ? undefined
+      : await linkableTags(tx, ctx, row.id, patch.tagIds);
 
   if (row.installmentPlanId) {
     const accountChanges =
@@ -865,6 +936,26 @@ async function updateSeries(
       );
     }
     const values = { ...shared, ...notes };
+    if (tagIds !== undefined) {
+      const targets = await tx
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.userId, ctx.userId),
+            eq(transactions.installmentPlanId, row.installmentPlanId),
+            isNull(transactions.deletedAt),
+            scope === "future"
+              ? gte(transactions.installmentNumber, row.installmentNumber ?? 1)
+              : undefined,
+          ),
+        );
+      await replaceTransactionTags(
+        tx,
+        targets.map((target) => target.id),
+        tagIds,
+      );
+    }
     if (Object.keys(values).length === 0) return;
     if (scope === "all" && description) {
       await tx
@@ -931,6 +1022,12 @@ async function updateSeries(
       id: ruleId,
       startOn: row.occurredOn,
     });
+    // The new rule takes the new tags, or the old rule's; the old one keeps its own.
+    await replaceRecurrenceTags(
+      tx,
+      ruleId,
+      tagIds ?? (await recurrenceTagIds(tx, rule.id)),
+    );
     await tx
       .update(recurrences)
       .set({ endOn: iso(addDays(parse(row.occurredOn), -1)) })
@@ -952,6 +1049,9 @@ async function updateSeries(
       .set(ruleValues)
       .where(eq(recurrences.id, rule.id));
   }
+  if (tagIds !== undefined && ruleId === rule.id) {
+    await replaceRecurrenceTags(tx, rule.id, tagIds);
+  }
 
   const values = {
     ...shared,
@@ -972,6 +1072,13 @@ async function updateSeries(
           : undefined,
       ),
     );
+  if (tagIds !== undefined) {
+    await replaceTransactionTags(
+      tx,
+      targets.map((target) => target.id),
+      tagIds,
+    );
+  }
   if (!account) {
     if (Object.keys(values).length === 0 || targets.length === 0) return;
     await tx

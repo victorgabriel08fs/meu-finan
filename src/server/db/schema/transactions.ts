@@ -132,5 +132,8 @@ export const transactionTags = pgTable(
       name: "transaction_tags_pkey",
       columns: [t.transactionId, t.tagId],
     }),
+    // The primary key starts with transaction_id; the Extrato filter and the
+    // report look rows up by tag.
+    index("transaction_tags_tag_id").on(t.tagId),
   ],
 );

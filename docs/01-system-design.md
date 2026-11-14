@@ -476,11 +476,15 @@ create table categories (
 -- cada grupo de irmãs vale a posição relativa; trocar de mãe manda para o fim (999).
 
 create table tags (
-  id       uuid primary key,
-  user_id  text not null references "user"(id) on delete cascade,
-  name     text not null,
-  unique (user_id, name)
+  id          uuid primary key,
+  user_id     text not null references "user"(id) on delete cascade,
+  name        text not null check (char_length(name) between 1 and 30),
+  archived_at timestamptz,                    -- arquivada: some das escolhas, os vínculos ficam
+  created_at  timestamptz not null default now()
 );
+-- Nome único por pessoa sem caixa e sem acento, arquivadas incluídas
+-- ("Viagem" = "viagem" = "#víagem"); criar o nome de uma arquivada a restaura.
+create unique index tags_user_name_key on tags (user_id, f_unaccent(lower(name)));
 
 -- Planos de parcelamento e recorrências -------------------------------------
 create table installment_plans (
@@ -588,6 +592,14 @@ create table transaction_tags (
   transaction_id uuid not null references transactions(id) on delete cascade,
   tag_id         uuid not null references tags(id) on delete cascade,
   primary key (transaction_id, tag_id)
+);
+create index transaction_tags_tag_id on transaction_tags (tag_id);   -- filtro e relatório por etiqueta
+-- Só despesa e receita levam etiqueta (até 10 por lançamento); a regra de uma
+-- recorrência guarda as dela, e o cron as copia para as ocorrências novas.
+create table recurrence_tags (
+  recurrence_id uuid not null references recurrences(id) on delete cascade,
+  tag_id        uuid not null references tags(id) on delete cascade,
+  primary key (recurrence_id, tag_id)
 );
 
 -- Orçamentos ---------------------------------------------------------------
@@ -1008,6 +1020,7 @@ export const requireUser = cache(async () => {
 | | `updateTransaction(id, patch, scope)` | `scope`: `this` \| `this_and_future` \| `all` (recorrência/parcelas) |
 | | `deleteTransaction(id, scope)` / `restoreTransaction(id)` | soft delete + desfazer |
 | | `bulkUpdateTransactions(ids, patch)` | categoria, status, tags |
+| Etiquetas | `createTagAction` (cria, restaura a arquivada de mesmo nome ou, com `reuse`, devolve a ativa), `renameTagAction`, `setTagArchivedAction` | `tagIds` (até 10) em `createEntryAction` e em `updateTransactionAction`; escopo de série como o da categoria (esta e as pendentes) |
 | | `markAsPaid(id, paidOn?)` | |
 | Contas | `createAccount`, `updateAccount`, `archiveAccount`, `reorderAccounts` | |
 | | `adjustBalance(accountId, newBalanceCents)` | gera lançamento `adjustment` com a diferença |
@@ -1077,6 +1090,7 @@ Dados financeiros são **por usuário** e mudam a cada lançamento, então o cac
 - **Cache Components está ligado** (`cacheComponents: true` no `next.config.ts`). Ler a sessão (cookies/headers) é dado de requisição: só dentro de `<Suspense>` — fora dele é erro de build — e nunca com `await` no topo de um layout, que seguraria o segmento inteiro.
 - O **usuário atual** pode usar `'use cache: private'`: o resultado fica só no navegador (nunca num cache do servidor) e as telas autenticadas continuam com prefetch.
 - Funções de leitura agregada usam `'use cache'` + `cacheTag(...)`. O `userId` entra como **argumento** (faz parte da chave); cookies/headers não podem ser lidos dentro de `'use cache'` — a sessão é resolvida fora, pelo DAL, e só o id entra. Chaves e tags ficam em texto puro: usar o id, nunca e-mail ou valores.
+- Etiquetas: sem cache (leituras diretas, `refresh()` nas actions).
 - Mutações chamam `updateTag()` (leitura das próprias escritas na mesma navegação) para as tags afetadas.
 
 | Tag | Invalidada por |

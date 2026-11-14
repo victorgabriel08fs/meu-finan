@@ -748,6 +748,15 @@ describe("deleting an account", () => {
     await m.db
       .insert(s.transactionTags)
       .values({ transactionId: someTxn.id, tagId: tag.id });
+    const [rule] = await m.db
+      .select({ id: s.recurrences.id })
+      .from(s.recurrences)
+      .where(eq(s.recurrences.userId, rui))
+      .limit(1);
+    if (!rule) throw new Error("recorrência de teste");
+    await m.db
+      .insert(s.recurrenceTags)
+      .values({ recurrenceId: rule.id, tagId: tag.id });
     await m.db.insert(s.accountYield).values({
       accountId: savings,
       index: "cdi",
@@ -901,6 +910,11 @@ describe("deleting an account", () => {
       .from(s.transactionTags)
       .where(eq(s.transactionTags.tagId, tag.id));
     expect(tagged?.total).toBe(0);
+    const [ruleTagged] = await m.db
+      .select({ total: count() })
+      .from(s.recurrenceTags)
+      .where(eq(s.recurrenceTags.tagId, tag.id));
+    expect(ruleTagged?.total).toBe(0);
 
     // In the group Rui stays by name, gone from the account (conta excluída).
     const [kept] = await m.db

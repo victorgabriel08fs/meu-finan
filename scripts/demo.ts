@@ -77,6 +77,7 @@ import {
   respondToInvite,
 } from "../src/server/domain/sharing/groups";
 import { settleUp } from "../src/server/domain/sharing/settlements";
+import { ensureTag, setTagArchived } from "../src/server/domain/tags";
 import { setTipsOff } from "../src/server/domain/tips";
 import {
   createTransaction,
@@ -502,6 +503,64 @@ async function main(): Promise<void> {
   await expense("Tênis de corrida", "Compras", 59_988, purchase, card, {
     installments: 6,
   });
+
+  // Etiquetas: a trip last month across categories (and its monthly travel
+  // insurance), a work lunch and an archived tag still on an old entry.
+  const viagem = await ensureTag(userId, "viagem");
+  const trabalho = await ensureTag(userId, "trabalho");
+  const antiga = await ensureTag(userId, "antiga");
+  const lastMonth = addMonths(toYearMonth(today), -1);
+  const lastMonthDay = (d: number) => atDay(lastMonth.year, lastMonth.month, d);
+  const trip = { tagIds: [viagem.id] };
+  await expense(
+    "Restaurante na praia",
+    "Restaurantes",
+    18_900,
+    lastMonthDay(12),
+    card,
+    trip,
+  );
+  await expense(
+    "Transfer do aeroporto",
+    "Transporte",
+    9_500,
+    lastMonthDay(12),
+    card,
+    trip,
+  );
+  await expense(
+    "Passeio de barco",
+    "Lazer",
+    24_000,
+    lastMonthDay(13),
+    card,
+    trip,
+  );
+  await expense("Pousada", "Viagem", 86_000, lastMonthDay(14), card, trip);
+  await expense("Seguro viagem", "Viagem", 3_990, lastMonthDay(10), checking, {
+    ...trip,
+    recurrence: { freq: "monthly" },
+  });
+  await expense(
+    "Almoço com cliente",
+    "Restaurantes",
+    12_400,
+    lastMonthDay(20),
+    card,
+    {
+      tagIds: [trabalho.id],
+    },
+  );
+  const twoMonthsAgo = addMonths(toYearMonth(today), -2);
+  await expense(
+    "Livro",
+    "Educação",
+    6_990,
+    atDay(twoMonthsAgo.year, twoMonthsAgo.month, 8),
+    checking,
+    { tagIds: [antiga.id] },
+  );
+  await setTagArchived(userId, antiga.id, true);
 
   // A bill due next Saturday (1 to 7 days ahead): the non-business day note
   // of the Início, the Extrato and the detail (the flag is on for Ana).

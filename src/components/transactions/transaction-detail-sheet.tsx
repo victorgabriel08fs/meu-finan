@@ -22,6 +22,7 @@ import { isInGrace } from "@/lib/finance/business-days";
 import { fullDateLabel, relativeDayLabel } from "@/lib/format/date";
 import { graceLabel, nonBusinessDetail } from "@/lib/format/due-day";
 import type { ShareTarget } from "@/server/domain/sharing/groups";
+import type { TagItem } from "@/server/domain/tags";
 import {
   type EditScope,
   editScopeOptions,
@@ -44,6 +45,8 @@ type TransactionDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
   today: string;
   categories: FilterCategory[];
+  /** Every tag of the person (archived ones too), for the edit form. */
+  tags?: TagItem[];
   onSetPaid: (item: StatementItem, paid: boolean) => void;
   onDelete: (item: StatementItem, scope: DeleteScope) => void;
   /** Row that opened the sheet: the focus goes back to it. */
@@ -97,6 +100,7 @@ export function TransactionDetailSheet({
   onOpenChange,
   today,
   categories,
+  tags = [],
   onSetPaid,
   onDelete,
   returnFocusRef,
@@ -359,6 +363,7 @@ export function TransactionDetailSheet({
             key={item.id}
             item={item}
             categories={categories}
+            tags={tags}
             formId={formId}
             onPendingChange={setSaving}
             onDone={() => setMode("view")}
@@ -433,6 +438,20 @@ export function TransactionDetailSheet({
                 </Fact>
               ) : null}
               <Fact label="Status">{status.label}</Fact>
+              {item.tags.length > 0 ? (
+                <Fact label="Etiquetas">
+                  <span className="flex flex-wrap justify-end gap-1.5">
+                    {item.tags.map((tag, index) => (
+                      <Badge key={tag.id}>
+                        {tag.archived ? `${tag.name} (arquivada)` : tag.name}
+                        {index < item.tags.length - 1 ? (
+                          <span className="sr-only">,</span>
+                        ) : null}
+                      </Badge>
+                    ))}
+                  </span>
+                </Fact>
+              ) : null}
               {item.installment ? (
                 <Fact label="Parcela">
                   {item.installment.number} de {item.installment.count}

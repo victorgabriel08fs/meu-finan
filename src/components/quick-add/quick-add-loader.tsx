@@ -57,6 +57,7 @@ export async function QuickAddLoader() {
       expenseCategories: quickAdd.expenseCategories.map(toCategory),
       incomeCategories: quickAdd.incomeCategories.map(toCategory),
       lastAccountId: quickAdd.lastAccountId,
+      tags: quickAdd.tags,
     };
   } catch (error) {
     unstable_rethrow(error);

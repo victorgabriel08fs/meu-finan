@@ -11,6 +11,7 @@ import { transactions } from "@/server/db/schema";
 import { listAccounts } from "./accounts";
 import { type CategoryItem, categoriesByUse } from "./categories";
 import type { UserContext } from "./context";
+import { listTags } from "./tags";
 
 export type QuickAddData = {
   today: string;
@@ -27,11 +28,13 @@ export type QuickAddData = {
   incomeCategories: CategoryItem[];
   /** Account of the most recent entry, the default of the form. */
   lastAccountId: string | null;
+  /** Active tags, in name order. */
+  tags: { id: string; name: string }[];
 };
 
 export async function getQuickAddData(ctx: UserContext): Promise<QuickAddData> {
   const since = iso(addDays(ctx.today, -90));
-  const [accounts, expenseCategories, incomeCategories, [last]] =
+  const [accounts, expenseCategories, incomeCategories, [last], tags] =
     await Promise.all([
       listAccounts(ctx.userId),
       categoriesByUse(ctx.userId, "expense", since),
@@ -48,6 +51,7 @@ export async function getQuickAddData(ctx: UserContext): Promise<QuickAddData> {
         )
         .orderBy(desc(transactions.createdAt))
         .limit(1),
+      listTags(ctx.userId),
     ]);
   return {
     today: ctx.todayIso,
@@ -72,5 +76,6 @@ export async function getQuickAddData(ctx: UserContext): Promise<QuickAddData> {
         ? last.accountId
         : (accounts.find((account) => isSpendableType(account.type))?.id ??
           null),
+    tags: tags.map(({ id, name }) => ({ id, name })),
   };
 }

@@ -288,6 +288,7 @@ describe("Gasto fora do padrão", () => {
           month: "2026-11",
           accountId: null,
           categoryId: mercado,
+          tagId: null,
           kind: "expense",
           status: null,
           q: "",

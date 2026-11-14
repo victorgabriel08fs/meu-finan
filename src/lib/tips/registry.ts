@@ -475,6 +475,18 @@ export const TIPS: readonly Tip[] = [
     link: { href: "/ajustes/preferencias", label: "Personalizar o Início" },
   },
   {
+    id: "novidade-etiquetas",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Etiquetas",
+    body: "Marque lançamentos de categorias diferentes com uma etiqueta, como “viagem”, e veja quanto somam em Relatórios. Dá para filtrar o Extrato por ela.",
+    since: "2026-11-14",
+    order: 26,
+    icon: "tag",
+    link: { href: "/ajustes/etiquetas", label: "Criar etiquetas" },
+  },
+  {
     id: "novidade-aviso-gasto-fora-do-padrao",
     kind: "novidade",
     // Only in Ajustes › Novidades, like the other notices: the Notificações
@@ -484,7 +496,7 @@ export const TIPS: readonly Tip[] = [
     title: "Aviso de gasto fora do padrão",
     body: "Quando uma categoria passa bem da média dos 3 meses anteriores, você recebe um aviso, uma vez por mês. Dá para desligar em Ajustes › Notificações.",
     since: "2026-11-14",
-    order: 26,
+    order: 27,
     when: { flag: "notificacoes_push" },
     icon: "bell",
     link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },

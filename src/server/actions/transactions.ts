@@ -14,7 +14,7 @@ import {
   updateTransaction,
 } from "@/server/domain/transactions";
 import { authAction } from "@/server/safe-action";
-import { amountCents, description, idSchema, isoDate } from "./schemas";
+import { amountCents, description, idSchema, isoDate, tagIds } from "./schemas";
 
 const entrySchema = z.object({
   kind: z.enum(["expense", "income"]),
@@ -35,6 +35,7 @@ const entrySchema = z.object({
     })
     .nullable()
     .optional(),
+  tagIds: tagIds.optional(),
 });
 
 const transferSchema = z.object({
@@ -76,6 +77,7 @@ export const updateTransactionAction = authAction
         occurredOn: isoDate.optional(),
         notes: z.string().trim().max(500).nullable().optional(),
         paid: z.boolean().optional(),
+        tagIds: tagIds.optional(),
       }),
       scope: z.enum(["this", "future", "all"]).default("this"),
     }),

@@ -34,6 +34,8 @@ export type QuickAddDraft = {
   repeat: RepeatFrequency;
   repeatEndOn: string | null;
   notes: string;
+  /** Chosen tags (expenses and income); "Adicionar outra em seguida" keeps them. */
+  tagIds: string[];
   /**
    * Idempotency key (UUIDv7) of the next save. Kept across failed attempts so
    * a retry cannot create the entry twice; any edit to the draft drops it.
@@ -59,6 +61,7 @@ export function emptyDraft(kind: EntryKind = "expense"): QuickAddDraft {
     repeat: "never",
     repeatEndOn: null,
     notes: "",
+    tagIds: [],
     requestId: null,
   };
 }

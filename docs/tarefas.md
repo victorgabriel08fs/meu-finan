@@ -2,15 +2,9 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (18, 20 e 21), nesta ordem
+## Próximas tarefas (20 e 21), nesta ordem
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês) e 19 (Gasto fora do padrão), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
-
-### 18. Etiquetas — M
-
-- As tabelas `tags` e `transaction_tags` já existem, sem tela. Criar, renomear e arquivar etiquetas (Ajustes), escolher várias no lançamento (Nova transação e detalhe), filtro no Extrato (na URL, como os demais) e um relatório por etiqueta (total e lançamentos do período).
-- Exportação CSV com a coluna de etiquetas.
-- Pré-requisito da tarefa 21 (`#etiqueta` no texto).
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas) e 19 (Gasto fora do padrão), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ### 20. Fechamento do mês — M
 
@@ -20,6 +14,7 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 ### 21. Lançamento por texto — M/G (por último)
 
 - Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
+- Etiquetas: use `findTagByName` e `ensureTag` (`src/server/domain/tags.ts`; sem caixa, sem acento, `#` inicial ignorado). O nome pode ter espaços ("viagem chile"): o parser deve casar `#viagem-chile` com "viagem chile", trocando hífen por espaço. Limites: 10 por lançamento, 100 ativas por pessoa; uma etiqueta arquivada é restaurada ao ser nomeada.
 - Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
 
 ## 19. Gasto fora do padrão: o que ficou de fora
@@ -32,6 +27,19 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Ação "Criar orçamento"** no aviso e no sino.
 - **Novo bloco ou insight no Início**: não foi criado; o insight que já existe (+25%) passou a ler as mesmas janelas.
 - **Menos de 3 meses de uso**: quem tem menos histórico não recebe o aviso (sem padrão para comparar).
+
+## 18. Etiquetas: o que ficou de fora
+
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Etiquetas em transferências e ajustes de saldo**: só despesa e receita levam etiqueta (evita contar as duas pernas).
+- **Importação de extrato** não aplica etiquetas; **ações em lote** (marcar vários no Extrato) e **etiquetas na linha do Extrato** também ficam fora.
+- **Filtro por várias etiquetas** (hoje é uma só) e **divisão por categoria** no detalhe da etiqueta.
+- **Cor ou ícone** por etiqueta e **apagar de vez** (hoje só arquiva).
+- **Compartilhado**: etiquetas nunca vão para o grupo (ADR-13).
+- **`#etiqueta` no texto**: tarefa 21.
+- **Limite de 100 ativas** conta sem trava: duas criações ao mesmo tempo podem passar de 100 por 1 ou 2.
+- **Node 22 x 24**: no ambiente de testes com Node 22, `money.test.ts` (`formatCompactBRL`, "R$ 1,0 mil") falha; o projeto pede Node 24.
 
 ## 17. Assinaturas do mês: o que ficou de fora
 
@@ -137,6 +145,17 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Etiquetas (tarefa 18) — 14/11/2026
+
+Etiquetas para juntar lançamentos de categorias diferentes, como os de uma viagem. Sem feature flag.
+
+- [x] **Dados**: migração `0016_etiquetas` (`tags` com `archived_at`, `created_at`, nome de 1 a 30 caracteres e índice único sem caixa e sem acento; `transaction_tags_tag_id`; `recurrence_tags`).
+- [x] **Domínio** `src/server/domain/tags.ts` (criar com restauração, renomear, arquivar, `findTagByName`, vínculos) e `tag-report.ts`; `src/lib/tags/name.ts` (puro); actions em `src/server/actions/tags.ts`.
+- [x] **Lançamentos**: até 10 por despesa ou receita; parcelas e ocorrências herdam; a regra da recorrência guarda e o cron copia; edição com escopo ("Todos" numa recorrência muda só este e os pendentes).
+- [x] **Telas**: Ajustes › Etiquetas, seletor em Nova transação e no detalhe, chip no Extrato (`?etiqueta=`), aba Etiquetas e detalhe em Relatórios, coluna no CSV.
+- [x] **Dicas**: novidade `novidade-etiquetas`; dados de demo com etiquetas.
+- [x] Testes: unidade (`name.test.ts` com fast-check, `tag-picker.test.tsx`, `messages.test.ts`, `statement.test.ts`, `entry.test.ts`, `quick-add.test.ts`, `views.test.ts`, `export.test.ts`), integração (`tags.integration.test.ts`, `tag-report.integration.test.ts`, `imports.integration.test.ts`, `admin.integration.test.ts`) e e2e (`etiquetas.spec.ts`). Detalhes: README, doc 01 §6, §7.2 e §8, doc 02 §6.4 a §6.6, §6.12, §6.14 e §10, doc 03 §12. O que ficou: "18. Etiquetas: o que ficou de fora".
 
 ### Correção: fatura atual do novo cartão — 14/11/2026
 
