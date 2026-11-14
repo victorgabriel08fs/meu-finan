@@ -138,12 +138,12 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 15.",
+    "Calendário de gastos na posição 2 de 16.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 15.",
+    "Calendário de gastos na posição 2 de 16.",
   );
 
   const saved = homeSaved(page);
@@ -665,6 +665,73 @@ test("mostra Maior gasto da semana pela folha, com o caminho do Extrato, e escon
   await sheet.getByRole("button", { name: "Salvar" }).click();
   expect((await hidden).ok()).toBe(true);
   await expect(blockOf(page, "inicio-maior-gasto")).toHaveCount(0);
+});
+
+test("mostra Parcelas a terminar pela folha, com o Tênis em 6x do demo, e esconde de novo", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/inicio");
+  await customizeButton(page).click();
+  const sheet = sheetOf(page);
+  const name = "Parcelas a terminar";
+  const toggle = sheet.getByRole("switch", { name, exact: true });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(
+    sheet.getByText(
+      "Compras parceladas que ainda faltam pagar e quanto saem por mês.",
+    ),
+  ).toBeVisible();
+  await toggle.click();
+  const saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(sheet).toBeHidden();
+
+  // The demo has the Tênis de corrida in 6x, bought ~40 days ago: always
+  // with installments left.
+  const block = blockOf(page, "inicio-parcelas-a-terminar");
+  await expect(block).toBeVisible({ timeout: 30_000 });
+  await expect(
+    block.getByRole("heading", { level: 2, name, exact: true }),
+  ).toBeVisible();
+  await expect(block.getByText(/^Saem .* por mês$/)).toBeVisible();
+  const rows = block.getByRole("listitem");
+  expect(await rows.count()).toBeLessThanOrEqual(3);
+  const shoes = block.getByRole("link", {
+    name: /^Tênis de corrida, parcela \d de 6, faltam? .*; abrir no Extrato$/,
+  });
+  await expect(shoes).toBeVisible();
+  await expect(shoes).toHaveAttribute(
+    "href",
+    /^\/extrato\?.*tipo=despesa.*status=pendente.*q=T%C3%AAnis/,
+  );
+  await expect(block.getByText("falta pagar").first()).toBeVisible();
+
+  // Discreet mode masks the amounts.
+  const hide = page.getByRole("button", { name: "Ocultar valores" });
+  await hide.click();
+  await expect(hide).toHaveAttribute("aria-pressed", "true");
+  await expect(block.locator("[data-privacy-value]").first()).toBeHidden();
+  await expect(block.locator("[data-privacy-mask]").first()).toBeVisible();
+  await hide.click();
+  await expect(hide).toHaveAttribute("aria-pressed", "false");
+
+  await expectNoA11yViolations(page);
+
+  await shoes.click();
+  await expect(page).toHaveURL(/\/extrato\?.*status=pendente/);
+  await page.goto("/inicio");
+  await expect(blockOf(page, "inicio-parcelas-a-terminar")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await customizeButton(page).click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  const hidden = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await hidden).ok()).toBe(true);
+  await expect(blockOf(page, "inicio-parcelas-a-terminar")).toHaveCount(0);
 });
 
 test("Quanto dá para gastar, por conta: uma linha por conta, esconder uma, total igual e vale depois de recarregar", async ({
