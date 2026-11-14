@@ -11,7 +11,7 @@
 // it, so the next run retries.
 // The report carries counts only: no ids, names or amounts.
 import "server-only";
-import { closingHref } from "@/components/reports/views";
+import { closingHref, periodViewHref } from "@/components/reports/views";
 import { statementHref } from "@/components/transactions/statement-params";
 import { addDays, dayOfWeek } from "@/lib/finance";
 import type { ReminderEvent } from "@/lib/notifications/events";
