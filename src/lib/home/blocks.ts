@@ -180,6 +180,16 @@ export const HOME_BLOCKS = {
     weight: 480,
     since: "2026-11-14",
   },
+  subscriptions: {
+    label: "Assinaturas do mês",
+    description:
+      "Despesas que se repetem todo mês, quanto somam e o próximo débito.",
+    errorTitle: "Não deu para carregar as assinaturas do mês",
+    size: "narrow",
+    inDefault: false,
+    weight: 420,
+    since: "2026-11-14",
+  },
   // Only with financas_compartilhadas and a group or an invite: otherwise the
   // block renders nothing and its place closes up.
   shared: {
@@ -218,6 +228,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "top-expenses",
   "installments-ending",
   "month-comparison",
+  "subscriptions",
   "shared",
 ] as const satisfies readonly HomeBlockId[];
 

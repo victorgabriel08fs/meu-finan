@@ -68,7 +68,7 @@ describe("home blocks catalog", () => {
   });
 
   it("offers the blocks of the reports out of the default, after the calendar", () => {
-    expect(HOME_BLOCK_IDS.slice(-10, -4)).toEqual([
+    expect(HOME_BLOCK_IDS.slice(-11, -5)).toEqual([
       "spending-calendar",
       "cash-flow",
       "category-breakdown",
@@ -123,10 +123,26 @@ describe("home blocks catalog", () => {
     expect(block.inDefault).toBe(false);
     expect(block.since).toBe("2026-11-13");
     expect(HOME_BLOCK_IDS.at(-1)).toBe("shared");
-    expect(HOME_BLOCK_IDS.at(-2)).toBe("month-comparison");
-    expect(HOME_BLOCK_IDS.at(-3)).toBe("installments-ending");
-    expect(HOME_BLOCK_IDS.at(-4)).toBe("top-expenses");
+    expect(HOME_BLOCK_IDS.at(-2)).toBe("subscriptions");
+    expect(HOME_BLOCK_IDS.at(-3)).toBe("month-comparison");
+    expect(HOME_BLOCK_IDS.at(-4)).toBe("installments-ending");
+    expect(HOME_BLOCK_IDS.at(-5)).toBe("top-expenses");
     const novidade = tipById("novidade-inicio-maior-gasto-semana");
+    expect(novidade?.kind).toBe("novidade");
+    expect(novidade?.since).toBe(block.since);
+    expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
+    expect(novidade?.link?.href).toBe("/ajustes/preferencias");
+    expect(novidade?.body.length).toBeLessThanOrEqual(150);
+  });
+
+  it("offers the assinaturas do mês as a narrow block, out of the default, with its novidade", () => {
+    const block = HOME_BLOCKS.subscriptions;
+    expect(block.label).toBe("Assinaturas do mês");
+    expect(block.size).toBe("narrow");
+    expect(block.inDefault).toBe(false);
+    expect(block.since).toBe("2026-11-14");
+    expect(HOME_BLOCK_IDS.at(-2)).toBe("subscriptions");
+    const novidade = tipById("novidade-inicio-assinaturas");
     expect(novidade?.kind).toBe("novidade");
     expect(novidade?.since).toBe(block.since);
     expect(novidade?.when).toEqual({ flag: "inicio_personalizavel" });
@@ -142,7 +158,6 @@ describe("home blocks catalog", () => {
     expect(HOME_BLOCK_IDS.indexOf("month-comparison")).toBeGreaterThan(
       HOME_BLOCK_IDS.indexOf("top-expenses"),
     );
-    expect(HOME_BLOCK_IDS.at(-1)).toBe("shared");
     const novidade = tipById("novidade-inicio-comparado-mes-passado");
     expect(novidade?.kind).toBe("novidade");
     expect(novidade?.since).toBe(block.since);

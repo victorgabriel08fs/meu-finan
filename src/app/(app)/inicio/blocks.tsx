@@ -50,6 +50,10 @@ import {
   SpendingCalendarInvite,
 } from "@/components/dashboard/spending-calendar-block";
 import {
+  SubscriptionsBlock,
+  SubscriptionsInvite,
+} from "@/components/dashboard/subscriptions-block";
+import {
   TopExpensesBlock,
   TopExpensesInvite,
 } from "@/components/dashboard/top-expenses-block";
@@ -102,6 +106,7 @@ import {
 } from "@/server/domain/reports";
 import { firstRecordOn } from "@/server/domain/request-reads";
 import { listMyGroups } from "@/server/domain/sharing/groups";
+import { monthlySubscriptions } from "@/server/domain/subscriptions";
 import { periodTotals } from "@/server/domain/transactions";
 import { isFlagEnabled } from "@/server/flags";
 
@@ -132,6 +137,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "top-expenses": TopExpensesBlockLoader,
   "installments-ending": InstallmentsEndingBlockLoader,
   "month-comparison": MonthComparisonBlockLoader,
+  subscriptions: SubscriptionsBlockLoader,
   shared: SharedBlockLoader,
 };
 
@@ -569,6 +575,36 @@ async function InstallmentsEndingBlockLoader({ ctx }: HomeBlockProps) {
   return (
     <InstallmentsEndingBlock
       summary={summary}
+      hrefFor={(item) =>
+        statementHref(
+          {
+            month: periodMonthOf(ctx, item.nextOn),
+            accountId: item.accountId,
+            categoryId: null,
+            kind: "expense",
+            status: "pending",
+            q: item.description.slice(0, MAX_QUERY_LENGTH),
+          },
+          currentMonth,
+        )
+      }
+    />
+  );
+}
+
+/**
+ * Assinaturas do mês: always from today, whatever month the Início shows.
+ * Each row opens the statement of its next debit's month, narrowed to the
+ * pending expenses of its account.
+ */
+async function SubscriptionsBlockLoader({ ctx }: HomeBlockProps) {
+  const summary = await monthlySubscriptions(ctx);
+  if (summary.items.length === 0) return <SubscriptionsInvite />;
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <SubscriptionsBlock
+      summary={summary}
+      today={ctx.todayIso}
       hrefFor={(item) =>
         statementHref(
           {

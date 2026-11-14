@@ -138,12 +138,12 @@ test("personaliza pelo teclado, salva e vale depois de recarregar e em outro apa
   await expect(up).toBeFocused();
   await expect(up).toHaveAttribute("aria-disabled", "true");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 17.",
+    "Calendário de gastos na posição 2 de 18.",
   );
   // One more Enter at the top changes nothing.
   await page.keyboard.press("Enter");
   await expect(sheet.locator("output")).toHaveText(
-    "Calendário de gastos na posição 2 de 17.",
+    "Calendário de gastos na posição 2 de 18.",
   );
 
   const saved = homeSaved(page);
@@ -817,6 +817,95 @@ test("mostra Comparado ao mês passado pela folha, com o relatório, e esconde d
   await sheet.getByRole("button", { name: "Salvar" }).click();
   expect((await hidden).ok()).toBe(true);
   await expect(blockOf(page, "inicio-comparado-mes")).toHaveCount(0);
+});
+
+test("mostra Assinaturas do mês pela folha, com o caminho do Extrato, e esconde de novo", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await page.goto("/inicio");
+  await customizeButton(page).click();
+  const sheet = sheetOf(page);
+  const name = "Assinaturas do mês";
+  const toggle = sheet.getByRole("switch", { name, exact: true });
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(
+    sheet.getByText(
+      "Despesas que se repetem todo mês, quanto somam e o próximo débito.",
+    ),
+  ).toBeVisible();
+  await toggle.click();
+  const saved = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(sheet).toBeHidden();
+
+  // The demo's recurrences depend on the run: the block is the list or its
+  // invite, never both.
+  const block = blockOf(page, "inicio-assinaturas");
+  const invite = page.getByRole("heading", {
+    name: "Nenhuma assinatura por aqui",
+  });
+  await expect(block.or(invite)).toBeVisible({ timeout: 30_000 });
+  if (await block.isVisible()) {
+    await expect(
+      block.getByRole("heading", { level: 2, name, exact: true }),
+    ).toBeVisible();
+    await expect(block.getByText(/^Somam/)).toBeVisible();
+    await expect(block.getByText("por mês").first()).toBeVisible();
+    const rows = block.getByRole("listitem");
+    expect(await rows.count()).toBeGreaterThan(0);
+    expect(await rows.count()).toBeLessThanOrEqual(5);
+    await expect(rows.first().getByText(/próximo débito/)).toBeVisible();
+    // Each row opens the statement narrowed to the pending expenses of its account.
+    await expect(rows.first().getByRole("link").first()).toHaveAttribute(
+      "href",
+      /^\/extrato\?.*tipo=despesa.*status=pendente/,
+    );
+
+    // Discreet mode masks the amounts of the rows.
+    const hide = page.getByRole("button", { name: "Ocultar valores" });
+    await hide.click();
+    await expect(hide).toHaveAttribute("aria-pressed", "true");
+    await expect(block.locator("[data-privacy-value]").first()).toBeHidden();
+    await expect(block.locator("[data-privacy-mask]").first()).toBeVisible();
+    await hide.click();
+    await expect(hide).toHaveAttribute("aria-pressed", "false");
+
+    for (const width of [360, 430]) {
+      await page.setViewportSize({ width, height: 780 });
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              document.documentElement.clientWidth,
+          ),
+        )
+        .toBe(true);
+    }
+    await expectNoA11yViolations(page);
+    try {
+      await chooseTheme(page, "Claro");
+      await page.goto("/inicio");
+      await expect(blockOf(page, "inicio-assinaturas")).toBeVisible({
+        timeout: 30_000,
+      });
+      await expectNoA11yViolations(page);
+    } finally {
+      await chooseTheme(page, "Escuro");
+    }
+    await page.goto("/inicio");
+  } else {
+    await expectNoA11yViolations(page);
+  }
+
+  await customizeButton(page).click();
+  await sheet.getByRole("switch", { name, exact: true }).click();
+  const hidden = homeSaved(page);
+  await sheet.getByRole("button", { name: "Salvar" }).click();
+  expect((await hidden).ok()).toBe(true);
+  await expect(blockOf(page, "inicio-assinaturas")).toHaveCount(0);
 });
 
 test("Quanto dá para gastar, por conta: uma linha por conta, esconder uma, total igual e vale depois de recarregar", async ({

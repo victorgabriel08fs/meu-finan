@@ -82,6 +82,7 @@ const components = {} as {
   monthComparison: typeof import("@/components/dashboard/month-comparison-block");
   noRecords: typeof import("@/components/dashboard/block-no-records");
   spendable: typeof import("@/components/dashboard/spendable-per-day-block");
+  subscriptions: typeof import("@/components/dashboard/subscriptions-block");
   topExpenses: typeof import("@/components/dashboard/top-expenses-block");
 };
 
@@ -146,6 +147,9 @@ beforeAll(async () => {
   );
   components.spendable = await import(
     "@/components/dashboard/spendable-per-day-block"
+  );
+  components.subscriptions = await import(
+    "@/components/dashboard/subscriptions-block"
   );
   components.topExpenses = await import(
     "@/components/dashboard/top-expenses-block"
@@ -1211,5 +1215,73 @@ describe("Comparado ao mês passado", () => {
     expect(before.type).toBe(components.noRecords.BlockNoRecords);
     const none = await loadComparison(caio, "2026-10");
     expect(none.type).not.toBe(components.monthComparison.MonthComparisonBlock);
+  });
+});
+
+describe("Assinaturas do mês", () => {
+  type Item = import("@/lib/home/subscriptions").Subscription;
+
+  async function loadSubscriptions(ctx: UserContext) {
+    const element = (await blocks.HOME_BLOCK_LOADERS.subscriptions({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  it("lists the monthly expenses, each row opening the pending ones of its account in the month of the next debit", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "leo", name: "Leo", email: "leo@exemplo.com" });
+    const account = await accounts.createAccount("leo", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const leo = await context.getUserContext("leo", { now: NOW });
+    for (const [description, occurredOn] of [
+      ["Streaming", "2026-07-10"],
+      ["Academia", "2026-07-20"],
+    ] as const) {
+      await transactions.createTransaction(leo, {
+        kind: "expense",
+        accountId: account,
+        categoryId: null,
+        amountCents: 4_990,
+        occurredOn,
+        description,
+        recurrence: { freq: "monthly" },
+      });
+    }
+    const { type, props } = await loadSubscriptions(leo);
+    expect(type).toBe(components.subscriptions.SubscriptionsBlock);
+    expect(props).toMatchObject({ today: "2026-10-14" });
+    const summary = props.summary as {
+      items: Item[];
+      totalCount: number;
+      monthlyCents: number;
+    };
+    expect(summary.totalCount).toBe(2);
+    expect(summary.monthlyCents).toBe(9_980);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [academia, streaming] = summary.items;
+    if (!academia || !streaming) throw new Error("sem itens");
+    // 20/out is in the month on screen: no `mes` in the link.
+    expect(hrefFor(academia)).toBe(
+      `/extrato?conta=${account}&tipo=despesa&status=pendente&q=Academia`,
+    );
+    // 10/nov is November's.
+    expect(hrefFor(streaming)).toBe(
+      `/extrato?mes=2026-11&conta=${account}&tipo=despesa&status=pendente&q=Streaming`,
+    );
+  });
+
+  it("invites without a monthly expense, and never reads another person's", async () => {
+    const empty = await loadSubscriptions(bia);
+    expect(empty.type).toBe(components.subscriptions.SubscriptionsInvite);
+    const other = await loadSubscriptions(caio);
+    expect(other.type).toBe(components.subscriptions.SubscriptionsInvite);
   });
 });

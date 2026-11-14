@@ -488,6 +488,7 @@ export function occurrencesBetween(r: Recurrence, from: LocalDate, to: LocalDate
   - **Só este**: altera a linha (ela continua ligada à regra).
   - **Este e os próximos**: encerra a regra em `data − 1`, cria regra nova a partir de `data` e regenera os pendentes futuros.
   - **Todos**: altera a regra e os pendentes futuros; lançamentos já pagos não mudam.
+- "Assinatura" (bloco do Início, doc 02 §6.3): recorrência de despesa mensal (`interval = 1`) ativa. O aumento compara o próximo débito com a última ocorrência antes do início do mês financeiro atual, seguindo a divisão de "Este e os próximos" (a regra que terminou em `data − 1` faz parte da mesma série).
 
 ### 10.2 Mês financeiro
 
