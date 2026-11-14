@@ -237,7 +237,7 @@ meu-finan/
 │  │  │  ├─ planejar/orcamentos/page.tsx
 │  │  │  ├─ planejar/metas/page.tsx · planejar/metas/[id]/page.tsx
 │  │  │  ├─ planejar/simulador/page.tsx
-│  │  │  ├─ relatorios/[visao]/page.tsx       # visao-geral | categorias | fluxo | patrimonio | calendario
+│  │  │  ├─ relatorios/[visao]/page.tsx       # visao-geral | fechamento | categorias | fluxo | patrimonio | calendario
 │  │  │  ├─ importar/page.tsx                 # atrás da flag importar_extrato (§11.10)
 │  │  │  ├─ ajustes/…                         # inclui ajustes/novidades
 │  │  │  └─ admin/{usuarios,flags,atividade}  # só administradores (§11.9)
@@ -1150,7 +1150,7 @@ export async function GET(req: Request) {
 | 3. `syncMarketRates` | busca CDI, Selic e IPCA no SGS/BCB; `upsert` em `market_rates`; `updateTag('rates')` | PK (`index`, `ref_date`) |
 | 3b. `syncHolidays` | feriados nacionais do ano atual e do seguinte na BrasilAPI → `holidays`, cada ano no máximo a cada 30 dias; resposta com menos de 9 feriados válidos é erro e não apaga nada; `revalidateTag('holidays', 'max')` | PK (`scope`, `date`); diff em memória dentro de uma transação por ano |
 | 4. `snapshotBalances` | no 1º dia do mês, grava saldo de fim de mês de cada conta | PK (`account_id`, `on_date`) |
-| 5. `sendReminders` | os avisos ligados por cada pessoa (doc 02 §6.14) → Web Push: Resumo do dia, Contas a vencer, Vencimento em dia não útil, Próxima receita, Gasto fora do padrão, Resumo semanal (segunda) e Resumo mensal (1º dia do mês financeiro) | `unique (user_id, dedupe_key)` com `'{tipo}:{data local}'`, reservado antes de enviar |
+| 5. `sendReminders` | os avisos ligados por cada pessoa (doc 02 §6.14) → Web Push: Resumo do dia, Contas a vencer, Vencimento em dia não útil, Próxima receita, Gasto fora do padrão, Resumo semanal (segunda) e Resumo mensal (1º dia do mês financeiro; o toque abre `/relatorios/fechamento?mes=` do mês que fechou) | `unique (user_id, dedupe_key)` com `'{tipo}:{data local}'`, reservado antes de enviar |
 | 6. `purge` | apaga lançamentos com `deleted_at` > 30 dias e avisos lidos há mais de 90 dias (importações e blobs órfãos > 7 dias, quando entrarem) | naturalmente idempotente |
 
 Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e retoma no dia seguinte, registrando no `job_runs`). Com poucas contas (uso pessoal ou familiar) o volume é pequeno; o orçamento de tempo é só uma proteção.
