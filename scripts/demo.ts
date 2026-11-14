@@ -32,6 +32,7 @@ import {
   parse,
   toYearMonth,
 } from "../src/lib/finance";
+import { unusualSpendingKey } from "../src/lib/notifications/schedule";
 import { TIPS } from "../src/lib/tips";
 import {
   closeDatabase,
@@ -62,6 +63,7 @@ import { listInvoices, payInvoice } from "../src/server/domain/cards";
 import { createCategory } from "../src/server/domain/categories";
 import { setCategoryArchived } from "../src/server/domain/category-admin";
 import { getUserContext } from "../src/server/domain/context";
+import { loadUnusualSpending } from "../src/server/domain/reminders";
 import {
   contribute,
   createBox,
@@ -680,6 +682,9 @@ async function seedNotifications(
     .from(categories)
     .where(and(eq(categories.userId, userId), eq(categories.name, "Mercado")))
     .limit(1);
+  // What the reminders job would flag today is already announced by the demo's
+  // notice, so running the job does not add a second one.
+  const unusual = await loadUnusualSpending(ctx);
   const day = (offset: number) => iso(addDays(ctx.today, offset));
   const rows: (typeof notifications.$inferInsert)[] = [];
   if (bill) {
@@ -727,7 +732,9 @@ async function seedNotifications(
         url: market
           ? `/extrato?categoria=${market.id}&tipo=despesa`
           : "/extrato?tipo=despesa",
-        itemKeys: [],
+        itemKeys: unusual.items.map((item) =>
+          unusualSpendingKey(item.categoryId, unusual.month),
+        ),
         amounts: false,
       },
       readAt: ago(2),
@@ -765,6 +772,27 @@ async function seedNotifications(
       createdAt: ago(3),
     },
   );
+  // The suite runs the reminders job (Rotina diária) as Ana. On the eve of a
+  // weekend the job would add a "vence no fim de semana" notice for her rent
+  // and change the bell's count, so today's is already there, read and
+  // dismissed (invisible in the list; the dedupe key keeps the job out).
+  rows.push({
+    userId,
+    type: "non_business_due",
+    dedupeKey: `non_business_due:${ctx.todayIso}`,
+    payload: {
+      type: "non_business_due",
+      date: ctx.todayIso,
+      title: "Vencimento em dia não útil",
+      body: "Aviso já dado.",
+      url: "/extrato?status=pendente",
+      itemKeys: [],
+      amounts: false,
+    },
+    readAt: ago(0),
+    dismissedAt: ago(0),
+    createdAt: ago(0),
+  });
   await db.insert(notifications).values(rows);
 }
 
