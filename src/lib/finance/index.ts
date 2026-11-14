@@ -7,6 +7,7 @@ export * from "./averages";
 export * from "./budget";
 export * from "./business-days";
 export * from "./cash-flow";
+export * from "./category-trend";
 export * from "./comparison";
 export * from "./compound";
 export * from "./dates";
