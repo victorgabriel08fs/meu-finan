@@ -518,6 +518,15 @@ export function HomeBlockSkeleton({
           <Skeleton className="h-75.5 rounded-card @min-[19.125rem]:h-73 @min-[20rem]:h-67.5" />
         </div>
       );
+    // Heading, caption and three two-line rows (about 64px each, the caption
+    // wraps a line more as the slot narrows). Measured by QA: 356px at 360, 430 and 1280px. Fewer
+    // rows or long descriptions shift it, accepted as in top-expenses.
+    case "installments-ending":
+      return (
+        <div className="@container">
+          <Skeleton className="h-89 rounded-card" />
+        </div>
+      );
     // The heading, a strip of day cards (they scroll inside the block, so the
     // height does not depend on how many fit) and the footer note, which wraps
     // as the slot narrows. Measured: 262px at a 288px slot, 244px from 19rem,

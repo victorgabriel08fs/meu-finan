@@ -48,6 +48,9 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
     page.getByText("Traga para o Início os 3 maiores gastos"),
   ).toHaveCount(0);
   await expect(
+    page.getByText("Veja no Início o que falta pagar das compras parceladas"),
+  ).toHaveCount(0);
+  await expect(
     page.getByText("Veja no Início se está gastando mais ou menos"),
   ).toHaveCount(0);
   // Nor the non-business day alert (alerta_dia_nao_util, on for Ana only).

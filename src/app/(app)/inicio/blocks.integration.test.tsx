@@ -77,6 +77,7 @@ const components = {} as {
   cashFlow: typeof import("@/components/dashboard/cash-flow-block");
   categories: typeof import("@/components/dashboard/category-breakdown-block");
   incomeExpense: typeof import("@/components/dashboard/income-expense-block");
+  installmentsEnding: typeof import("@/components/dashboard/installments-ending-block");
   netWorth: typeof import("@/components/dashboard/net-worth-block");
   monthComparison: typeof import("@/components/dashboard/month-comparison-block");
   noRecords: typeof import("@/components/dashboard/block-no-records");
@@ -132,6 +133,9 @@ beforeAll(async () => {
   );
   components.incomeExpense = await import(
     "@/components/dashboard/income-expense-block"
+  );
+  components.installmentsEnding = await import(
+    "@/components/dashboard/installments-ending-block"
   );
   components.monthComparison = await import(
     "@/components/dashboard/month-comparison-block"
@@ -1035,6 +1039,102 @@ describe("Maior gasto da semana", () => {
     expect(empty.type).toBe(components.topExpenses.TopExpensesInvite);
     const none = await loadTop(caio);
     expect(none.type).toBe(components.topExpenses.TopExpensesInvite);
+  });
+});
+
+describe("Parcelas a terminar", () => {
+  type Item = import("@/lib/home/installments-ending").EndingInstallment;
+
+  async function loadEnding(ctx: UserContext) {
+    const element = (await blocks.HOME_BLOCK_LOADERS["installments-ending"]({
+      ctx,
+      range: context.resolvePeriod(ctx, "2026-10"),
+    })) as ReactElement<Props>;
+    return { type: element.type, props: element.props };
+  }
+
+  async function buyInstallments(
+    ctx: UserContext,
+    accountId: string,
+    description: string,
+    occurredOn: string,
+  ) {
+    await transactions.createTransaction(ctx, {
+      kind: "expense",
+      accountId,
+      categoryId: null,
+      amountCents: 30_000,
+      occurredOn,
+      description,
+      installments: 3,
+    });
+  }
+
+  it("lists the purchases with something left, each row opening the statement of its next installment", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "nair", name: "Nair", email: "nair@exemplo.com" });
+    const account = await accounts.createAccount("nair", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const nair = await context.getUserContext("nair", { now: NOW });
+    await buyInstallments(nair, account, "Sofá", "2026-10-20");
+    const { type, props } = await loadEnding(nair);
+    expect(type).toBe(components.installmentsEnding.InstallmentsEndingBlock);
+    const summary = props.summary as {
+      items: Item[];
+      totalPlans: number;
+      monthlyCents: number;
+    };
+    expect(summary.totalPlans).toBe(1);
+    expect(summary.monthlyCents).toBe(10_000);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [first] = summary.items;
+    if (!first) throw new Error("sem item");
+    // The next installment is on 20/out: the month on screen, no `mes`.
+    expect(hrefFor(first)).toBe(
+      `/extrato?conta=${account}&tipo=despesa&status=pendente&q=Sof%C3%A1`,
+    );
+  });
+
+  it("names the month of the next installment when it is not the one on screen", async () => {
+    const { db } = await import("@/server/db/client");
+    const schema = await import("@/server/db/schema");
+    await db
+      .insert(schema.user)
+      .values({ id: "fred", name: "Fred", email: "fred@exemplo.com" });
+    const account = await accounts.createAccount("fred", {
+      name: "Conta",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const fred = await context.getUserContext("fred", { now: NOW });
+    await buyInstallments(fred, account, "Mesa", "2026-11-20");
+    const { props } = await loadEnding(fred);
+    const hrefFor = props.hrefFor as (item: Item) => string;
+    const [first] = (props.summary as { items: Item[] }).items;
+    if (!first) throw new Error("sem item");
+    expect(hrefFor(first)).toContain("mes=2026-11");
+  });
+
+  it("invites without a pending installment, and never reads another person's", async () => {
+    const empty = await loadEnding(bia);
+    expect(empty.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
+    const none = await loadEnding(caio);
+    expect(none.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
+    // Ana has installments? No: and Nair's/Fred's do not leak into her.
+    const ana1 = await loadEnding(ana);
+    expect(ana1.type).toBe(
+      components.installmentsEnding.InstallmentsEndingInvite,
+    );
   });
 });
 

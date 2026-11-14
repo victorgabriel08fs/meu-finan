@@ -26,6 +26,10 @@ import {
   IncomeExpenseInvite,
 } from "@/components/dashboard/income-expense-block";
 import { InsightCard } from "@/components/dashboard/insight-card";
+import {
+  InstallmentsEndingBlock,
+  InstallmentsEndingInvite,
+} from "@/components/dashboard/installments-ending-block";
 import { monthName } from "@/components/dashboard/labels";
 import {
   MonthComparisonBlock,
@@ -80,6 +84,7 @@ import {
   getBalanceSummary,
   getSpendablePerDay,
   getUpcoming,
+  installmentsEnding,
   withNonBusinessDue,
 } from "@/server/domain/dashboard";
 import { listGoals } from "@/server/domain/goals";
@@ -125,6 +130,7 @@ export const HOME_BLOCK_LOADERS: Record<
   "net-worth": NetWorthBlockLoader,
   "daily-spend": DailySpendBlockLoader,
   "top-expenses": TopExpensesBlockLoader,
+  "installments-ending": InstallmentsEndingBlockLoader,
   "month-comparison": MonthComparisonBlockLoader,
   shared: SharedBlockLoader,
 };
@@ -542,6 +548,35 @@ async function TopExpensesBlockLoader({ ctx }: HomeBlockProps) {
             categoryId: null,
             kind: "expense",
             status: null,
+            q: item.description.slice(0, MAX_QUERY_LENGTH),
+          },
+          currentMonth,
+        )
+      }
+    />
+  );
+}
+
+/**
+ * Parcelas a terminar: always the pending installments from here on (overdue
+ * ones included), whatever month the Início shows. Each row opens the
+ * statement of its next installment's month, narrowed to pending expenses.
+ */
+async function InstallmentsEndingBlockLoader({ ctx }: HomeBlockProps) {
+  const summary = await installmentsEnding(ctx);
+  if (summary.items.length === 0) return <InstallmentsEndingInvite />;
+  const currentMonth = resolvePeriod(ctx, null).month;
+  return (
+    <InstallmentsEndingBlock
+      summary={summary}
+      hrefFor={(item) =>
+        statementHref(
+          {
+            month: periodMonthOf(ctx, item.nextOn),
+            accountId: item.accountId,
+            categoryId: null,
+            kind: "expense",
+            status: "pending",
             q: item.description.slice(0, MAX_QUERY_LENGTH),
           },
           currentMonth,

@@ -160,6 +160,16 @@ export const HOME_BLOCKS = {
     weight: 270,
     since: "2026-11-13",
   },
+  "installments-ending": {
+    label: "Parcelas a terminar",
+    description:
+      "Compras parceladas que ainda faltam pagar e quanto saem por mês.",
+    errorTitle: "Não deu para carregar as parcelas a terminar",
+    size: "narrow",
+    inDefault: false,
+    weight: 280,
+    since: "2026-11-13",
+  },
   "month-comparison": {
     label: "Comparado ao mês passado",
     description:
@@ -206,6 +216,7 @@ export const MOVABLE_HOME_BLOCK_IDS = [
   "net-worth",
   "daily-spend",
   "top-expenses",
+  "installments-ending",
   "month-comparison",
   "shared",
 ] as const satisfies readonly HomeBlockId[];

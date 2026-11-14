@@ -320,6 +320,28 @@ describe("saveHomeLayoutAction", () => {
     });
   });
 
+  it("accepts the Parcelas a terminar and keeps it", async () => {
+    await enableHomeLayout("owner");
+    const blocks = [
+      ...CALENDAR_SECOND,
+      { id: "installments-ending" as const, visible: true },
+    ];
+    const result = await m.saveHomeLayout({ blocks });
+    expect(result.serverError).toBeUndefined();
+    expect(result.validationErrors).toBeUndefined();
+    expect(await storedHomeLayout("owner")).toEqual(blocks);
+  });
+
+  it("hides the Parcelas a terminar, marked new, in a layout saved before it", async () => {
+    await m.preferences.setHomeLayout("owner", [...CALENDAR_SECOND]);
+    const { entries } = await m.preferences.getHomeLayout("owner", {
+      today: "2026-11-14",
+    });
+    expect(
+      entries.find((entry) => entry.id === "installments-ending"),
+    ).toMatchObject({ visible: false, isNew: true });
+  });
+
   it("accepts the Comparado ao mês passado and keeps it", async () => {
     await enableHomeLayout("owner");
     const blocks = [

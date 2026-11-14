@@ -2,14 +2,9 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (15 e 17 a 21), nesta ordem
+## Próximas tarefas (17 a 21), nesta ordem
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana, 13/11/2026) e 16 (Comparado ao mês passado, 14/11/2026) foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
-
-### 15. Bloco "Parcelas a terminar" — P
-
-- Lê `installment_plans`: o que ainda falta pagar em cada compra parcelada, quantas parcelas restam e o mês em que acaba; total que sai do orçamento a cada mês.
-- Atalho para o lançamento no Extrato.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, e 16 (Comparado ao mês passado), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ### 17. Bloco "Assinaturas do mês" — M
 
@@ -46,6 +41,15 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Aviso de "fora do padrão"** no cron e no insight: tarefa 19 (inclui o ajuste do `categoryInsight`, ver lá).
 - **Skeleton com menos categorias**: a altura é a do bloco com 3 categorias; sem base de comparação, com 1 ou 2 categorias ou no convite, o bloco carregado fica mais baixo e o salto é aceito.
 - **Tela de fechamento**: tarefa 20.
+
+## 15. Parcelas a terminar: o que ficou de fora
+
+A tarefa foi entregue em 13/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Botão do estado vazio**: é "Adicionar gasto", porque o `QuickAddButton` não abre já em "Mais opções › Parcelar".
+- **Skeleton 16 px maior que o bloco a 430 px** quando a descrição cabe em 1 linha (`h-89` foi medido com a legenda em 2 linhas).
+- **Filtro "parcelados" no Extrato**: o bloco não tem link no cabeçalho nem no rodapé "e mais N" por isso.
+- **Antecipar parcelas** e linha do tempo da compra.
 
 ## 14. Maior gasto da semana: o que ficou de fora
 
@@ -132,6 +136,15 @@ Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrá
 - [x] **Bloco** `month-comparison-block.tsx` e `month-comparison-model.ts` (textos puros), convites (nada para comparar, mês futuro), modo discreto, skeleton medido (`weight` 480) e loader em `blocks.tsx`.
 - [x] **Dicas**: novidade `novidade-inicio-comparado-mes-passado` (`since` 14/11/2026).
 - [x] Testes: unidade (`comparison.test.ts`, `month-comparison-model.test.ts`, `month-comparison-block.test.tsx`, `blocks.test.ts`, `layout.test.ts`, `customize-sheet.test.tsx`, `home-skeleton.test.tsx`), integração (`month-comparison.integration.test.ts`, `blocks.integration.test.tsx`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 §8, doc 02 §6.3 e doc 03 §12. O que ficou: "16. Comparado ao mês passado: o que ficou de fora".
+
+### Bloco "Parcelas a terminar" (tarefa 15) — 13/11/2026
+
+Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrás de `inicio_personalizavel`): as 3 compras parceladas que acabam primeiro, com o que falta pagar, as parcelas que restam, o mês em que acaba e quanto sai por mês.
+
+- [x] **Consulta** `installmentsEnding` (`src/server/domain/dashboard.ts`) e função pura `summarizeInstallmentPlans` (`src/lib/home/installments-ending.ts`): lê as parcelas pendentes, não o plano; sem cache, sem migração.
+- [x] **Bloco** `installments-ending-block.tsx` (linhas-link, rodapé "e mais N", convite, modo discreto), skeleton `h-89` (`weight` 280) e loader em `blocks.tsx`.
+- [x] **Dicas**: novidade `novidade-inicio-parcelas-a-terminar` (`since` 13/11/2026).
+- [x] Testes: unidade (`installments-ending.test.ts`, `installments-ending-block.test.tsx`, `blocks.test.ts`, `layout.test.ts`, `customize-sheet.test.tsx`, `home-skeleton.test.tsx`), integração (`installments-ending.integration.test.ts`, `blocks.integration.test.tsx`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 §8 e doc 02 §6.3. O que ficou: "15. Parcelas a terminar: o que ficou de fora".
 
 ### Bloco "Maior gasto da semana" (tarefa 14) — 13/11/2026
 
