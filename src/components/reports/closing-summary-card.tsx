@@ -43,7 +43,7 @@ export function ClosingSummaryCard({
         <p className="text-callout text-fg-2">
           {closingHeadline(leftCents, monthName)}
         </p>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-4">
+        <div className="grid grid-cols-fit gap-2 md:grid-cols-3 md:gap-4">
           <KpiTile
             label="Receitas"
             value={
@@ -76,7 +76,7 @@ export function ClosingSummaryCard({
                 tone="neutral"
               />
             }
-            className="col-span-2 md:col-span-1"
+            className="col-span-full md:col-span-1"
           />
         </div>
         {previousLeftCents !== null ? (

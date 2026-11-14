@@ -22,12 +22,12 @@ export type ReportView = {
 
 export const REPORT_VIEWS: readonly ReportView[] = [
   { path: "/relatorios/visao-geral", label: "Visão geral", filter: "period" },
-  { path: "/relatorios/fechamento", label: "Fechamento", filter: "month" },
   { path: "/relatorios/categorias", label: "Categorias", filter: "period" },
   { path: "/relatorios/etiquetas", label: "Etiquetas", filter: "period" },
   { path: "/relatorios/fluxo", label: "Fluxo", filter: "month" },
   { path: "/relatorios/patrimonio", label: "Patrimônio", filter: "period" },
   { path: "/relatorios/calendario", label: "Calendário", filter: "month" },
+  { path: "/relatorios/fechamento", label: "Fechamento", filter: "month" },
 ];
 
 /** The view on screen (exact path or any path below it), or null. */

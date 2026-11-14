@@ -118,14 +118,6 @@ export function ClosingBudgetsCard({
                     <p className="text-headline break-words text-fg">
                       {budget.categoryName}
                     </p>
-                    <p className="text-caption text-fg-3">
-                      <span className="whitespace-nowrap">
-                        {money(budget.spentCents)}
-                      </span>{" "}
-                      <span className="whitespace-nowrap">
-                        de {money(budget.budgetCents)}
-                      </span>
-                    </p>
                     <p className="text-callout font-semibold text-danger">
                       <Money
                         cents={budget.spentCents - budget.budgetCents}
@@ -138,6 +130,14 @@ export function ClosingBudgetsCard({
                     </p>
                   </div>
                 </div>
+                <p className="flex flex-wrap gap-x-1 text-caption text-fg-3">
+                  <span className="whitespace-nowrap">
+                    {money(budget.spentCents)}
+                  </span>
+                  <span className="whitespace-nowrap">
+                    de {money(budget.budgetCents)}
+                  </span>
+                </p>
                 {latest ? (
                   <Suggestion
                     budget={budget}

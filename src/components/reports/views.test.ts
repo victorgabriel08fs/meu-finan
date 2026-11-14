@@ -30,21 +30,21 @@ describe("report views", () => {
   it("lists the seven views of doc 02 §6.12 in order", () => {
     expect(REPORT_VIEWS.map((item) => item.label)).toEqual([
       "Visão geral",
-      "Fechamento",
       "Categorias",
       "Etiquetas",
       "Fluxo",
       "Patrimônio",
       "Calendário",
+      "Fechamento",
     ]);
     expect(
       REPORT_VIEWS.filter((item) => item.filter === "month").map(
         (item) => item.path,
       ),
     ).toEqual([
-      "/relatorios/fechamento",
       "/relatorios/fluxo",
       "/relatorios/calendario",
+      "/relatorios/fechamento",
     ]);
   });
 
@@ -170,8 +170,8 @@ describe("day labels", () => {
 });
 
 describe("fechamento", () => {
-  it("is the second tab and a month view", () => {
-    expect(REPORT_VIEWS[1]).toMatchObject({
+  it("is the last tab and a month view", () => {
+    expect(REPORT_VIEWS.at(-1)).toMatchObject({
       path: "/relatorios/fechamento",
       label: "Fechamento",
       filter: "month",
