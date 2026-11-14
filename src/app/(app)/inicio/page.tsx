@@ -11,6 +11,7 @@ import {
 } from "@/components/dashboard/dashboard-layout";
 import { FirstRunChecklist } from "@/components/dashboard/first-run-checklist";
 import { greetingFor, weekdayDateLabel } from "@/components/dashboard/labels";
+import { RecapInviteLoader } from "@/components/recap/recap-invite-loader";
 import { DEFAULT_TIME_ZONE } from "@/lib/finance/dates";
 import { isBenefitAccount, isSpendableAccount } from "@/lib/finance/spendable";
 import { monthLabel, todayInTimeZone } from "@/lib/format/date";
@@ -155,6 +156,12 @@ async function Summary({
           </HomeBlockFrame>
         )}
       />
+
+      {range.isCurrent ? (
+        <Suspense fallback={null}>
+          <RecapInviteLoader ctx={ctx} />
+        </Suspense>
+      ) : null}
 
       {layout ? (
         <div className="flex justify-center pt-3">

@@ -24,6 +24,7 @@ import {
   monthViewHref,
   parseMonthParam,
   periodViewHref,
+  recapHref,
 } from "@/components/reports/views";
 import {
   MAX_QUERY_LENGTH,
@@ -190,6 +191,7 @@ async function Closing({
           previousLeftCents={closing.previous?.leftCents ?? null}
           hasPending={closing.hasPending}
           pendingHref={statement("pending")}
+          recapHref={recapHref(closing.month)}
         />
 
         {next && closing.leftCents > 0 ? (

@@ -1,5 +1,7 @@
+import { Play } from "lucide-react";
 import Link from "next/link";
 import { Money } from "@/components/money/money";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { closingHeadline } from "./closing-model";
 import { KpiTile } from "./kpi-tile";
@@ -17,6 +19,8 @@ type ClosingSummaryCardProps = {
   hasPending: boolean;
   /** The statement of the month's pending entries. */
   pendingHref: string;
+  /** The Retrospectiva of the month. */
+  recapHref: string;
 };
 
 /**
@@ -33,6 +37,7 @@ export function ClosingSummaryCard({
   previousLeftCents,
   hasPending,
   pendingHref,
+  recapHref,
 }: ClosingSummaryCardProps) {
   return (
     <Card asChild className="flex flex-col gap-3 lg:col-span-2">
@@ -106,6 +111,12 @@ export function ClosingSummaryCard({
             </Link>
           </div>
         ) : null}
+        <Button asChild variant="tonal" className="self-start">
+          <Link href={recapHref}>
+            <Play aria-hidden="true" />
+            Ver a retrospectiva
+          </Link>
+        </Button>
       </section>
     </Card>
   );
