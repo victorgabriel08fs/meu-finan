@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { BRUNO_EMAIL, BRUNO_PASSWORD } from "./demo";
 
 // Novidades follow the person's feature flags (doc 01 §11.10). The demo turns
-// importar_extrato off for Bruno only, and notificacoes_push and
+// importar_extrato off for Bruno only, and notificacoes_push, lancamento_por_texto and
 // inicio_personalizavel (off by default) on for Ana only, so his Ajustes ›
 // Novidades must announce neither the import, nor the notifications, nor the
 // customizable Início, nor the non-business day alert, nor link to /importar or
@@ -42,6 +42,10 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
     page.getByRole("heading", { name: "Aviso de gasto fora do padrão" }),
   ).toHaveCount(0);
   await expect(page.locator('a[href="/ajustes/notificacoes"]')).toHaveCount(0);
+  // Nor the text entry (lancamento_por_texto, on for Ana only).
+  await expect(
+    page.getByRole("heading", { name: "Lançar escrevendo" }),
+  ).toHaveCount(0);
   await expect(page.getByText("Monte o seu Início")).toHaveCount(0);
   await expect(page.getByText("Mais blocos para o Início")).toHaveCount(0);
   await expect(page.getByText("Quanto dá para gastar por dia")).toHaveCount(0);
@@ -122,4 +126,13 @@ test("sem as flags, Novidades não anuncia o que ele não tem e o Início fica n
   ).toHaveCount(0);
   await expect(page.getByText("Personalizar o Início")).toHaveCount(0);
   await expect(page.locator('[data-tip="home-customize"]')).toHaveCount(0);
+
+  // Without lancamento_por_texto the Nova transação has no text field.
+  await page.goto("/inicio");
+  await page.getByRole("button", { name: "Nova transação" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Nova transação" });
+  await expect(sheet.getByPlaceholder("Descrição (opcional)")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(sheet.getByLabel("Escrever o lançamento")).toHaveCount(0);
 });
