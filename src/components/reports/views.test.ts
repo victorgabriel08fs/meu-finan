@@ -14,6 +14,7 @@ import {
   periodHref,
   periodViewHref,
   REPORT_VIEWS,
+  recapHref,
   reportViewAt,
   reportViewHref,
   reportWindowCaption,
@@ -194,5 +195,6 @@ describe("fechamento", () => {
 
   it("links to a month, always with ?mes=", () => {
     expect(closingHref("2026-10")).toBe("/relatorios/fechamento?mes=2026-10");
+    expect(recapHref("2026-10")).toBe("/retrospectiva?mes=2026-10");
   });
 });

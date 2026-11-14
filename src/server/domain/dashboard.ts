@@ -690,13 +690,15 @@ export type TopExpense = {
  * purchases and installments (the installment's value) and recurrences count;
  * transfers (the invoice payment included), adjustments, income, pending and
  * deleted rows do not. A group's expense counts for what it cost the person,
- * in full: nothing of the shared tables is read.
+ * in full: nothing of the shared tables is read. `window` replaces the last 7
+ * days (the Retrospectiva asks for a whole closed month).
  */
 export async function biggestExpenses(
   ctx: UserContext,
   limit = TOP_EXPENSES_LIMIT,
+  window: { start: string; end: string } = topExpensesWindow(ctx.todayIso),
 ): Promise<TopExpense[]> {
-  const { start, end } = topExpensesWindow(ctx.todayIso);
+  const { start, end } = window;
   const rows = await db
     .select({
       id: transactions.id,

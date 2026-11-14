@@ -72,6 +72,11 @@ export function clampClosingMonth(
   return month && month <= lastClosedMonth ? month : lastClosedMonth;
 }
 
+/** Link to the Retrospectiva of a month (always with `?mes=`). */
+export function recapHref(month: string): string {
+  return `/retrospectiva?mes=${month}`;
+}
+
 /** Link to the Fechamento of a month (always with `?mes=`). */
 export function closingHref(month: string): string {
   return `/relatorios/fechamento?mes=${month}`;
