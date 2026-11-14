@@ -249,7 +249,7 @@ export function AccountForm({ initialType }: { initialType: AccountType }) {
               setBalance(cents);
               clearError("balance");
             }}
-            description="Some o que já está na fatura aberta e o que ainda não foi pago. Deixe em branco se não deve nada."
+            description="Entra na fatura aberta hoje. Some o que já está nela e o que ainda não foi pago; deixe em branco se não deve nada."
             error={errors.balance}
           />
         </>
