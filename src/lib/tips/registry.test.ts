@@ -116,3 +116,18 @@ describe("novidade-dia-nao-util", () => {
     expect(TIP_FLAG_KEYS).toContain("alerta_dia_nao_util");
   });
 });
+
+describe("novidade-lancamento-por-texto", () => {
+  const tip = TIPS.find(
+    (entry) => entry.id === "novidade-lancamento-por-texto",
+  );
+
+  it("is gated by the flag, lives only in Ajustes › Novidades and fits the title limit", () => {
+    expect(tip?.kind).toBe("novidade");
+    expect(tip?.when).toEqual({ flag: "lancamento_por_texto" });
+    expect(tip?.routes).toEqual([]);
+    expect(tip?.anchor).toBeNull();
+    expect((tip?.title ?? "").length).toBeLessThanOrEqual(32);
+    expect(TIP_FLAG_KEYS).toContain("lancamento_por_texto");
+  });
+});

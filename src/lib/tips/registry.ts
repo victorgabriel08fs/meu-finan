@@ -501,6 +501,20 @@ export const TIPS: readonly Tip[] = [
     icon: "bell",
     link: { href: "/ajustes/notificacoes", label: "Escolher avisos" },
   },
+  {
+    id: "novidade-lancamento-por-texto",
+    kind: "novidade",
+    // The sheet is open when the field shows, so no balloon points at it.
+    routes: [],
+    anchor: null,
+    title: "Lançar escrevendo",
+    body: "Na Nova transação, escreva “café 12 no nubank ontem #viagem” e toque em Preencher: valor, conta, data, categoria e etiquetas vêm prontos.",
+    since: "2026-11-14",
+    order: 28,
+    when: { flag: "lancamento_por_texto" },
+    icon: "sparkles",
+    link: { href: "/inicio?novo=despesa", label: "Experimentar" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */
