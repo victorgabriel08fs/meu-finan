@@ -39,6 +39,7 @@ import {
   type Suggestion,
 } from "@/lib/import/suggest";
 import { MAX_DESCRIPTION_LENGTH } from "@/lib/import/text";
+import { sortTags } from "@/lib/tags/name";
 import { db, type Executor } from "@/server/db/client";
 import {
   type CategoryKind,
@@ -49,7 +50,9 @@ import {
   imports,
   installmentPlans,
   type TxnKind,
+  tags,
   transactions,
+  transactionTags,
 } from "@/server/db/schema";
 import { requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
@@ -549,8 +552,28 @@ export async function listExportRows(
   ctx: UserContext,
   range: { start?: string | null; end?: string | null } = {},
 ): Promise<ExportRow[]> {
+  const period = and(
+    eq(transactions.userId, ctx.userId),
+    isNull(transactions.deletedAt),
+    range.start ? gte(transactions.occurredOn, range.start) : undefined,
+    range.end ? lte(transactions.occurredOn, range.end) : undefined,
+  );
+  // Tags in a second read over the same period, not a long list of ids.
+  const tagRows = await db
+    .select({ transactionId: transactionTags.transactionId, name: tags.name })
+    .from(transactionTags)
+    .innerJoin(transactions, eq(transactions.id, transactionTags.transactionId))
+    .innerJoin(tags, eq(tags.id, transactionTags.tagId))
+    .where(and(period, eq(tags.userId, ctx.userId)));
+  const tagsById = new Map<string, { name: string }[]>();
+  for (const row of tagRows) {
+    const list = tagsById.get(row.transactionId) ?? [];
+    list.push({ name: row.name });
+    tagsById.set(row.transactionId, list);
+  }
   const rows = await db
     .select({
+      id: transactions.id,
       occurredOn: transactions.occurredOn,
       description: transactions.description,
       categoryName: categories.name,
@@ -571,14 +594,7 @@ export async function listExportRows(
       installmentPlans,
       eq(installmentPlans.id, transactions.installmentPlanId),
     )
-    .where(
-      and(
-        eq(transactions.userId, ctx.userId),
-        isNull(transactions.deletedAt),
-        range.start ? gte(transactions.occurredOn, range.start) : undefined,
-        range.end ? lte(transactions.occurredOn, range.end) : undefined,
-      ),
-    )
+    .where(period)
     .orderBy(
       asc(transactions.occurredOn),
       asc(transactions.createdAt),
@@ -601,5 +617,6 @@ export async function listExportRows(
         ? { number: row.installmentNumber, count: row.installmentCount }
         : null,
     notes: row.notes,
+    tags: sortTags(tagsById.get(row.id) ?? []).map((tag) => tag.name),
   }));
 }

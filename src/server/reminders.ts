@@ -115,6 +115,7 @@ function billsUrl(ctx: UserContext, items: readonly UpcomingItem[]): string {
       month: periodMonthOf(ctx, first),
       accountId: null,
       categoryId: null,
+      tagId: null,
       kind: null,
       status: "pending",
       q: "",

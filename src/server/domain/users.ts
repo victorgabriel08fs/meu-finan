@@ -23,6 +23,7 @@ import { type AccountAction, accountActionBlocker } from "@/lib/admin/guards";
 import { hasAdminRole, toUserRole, type UserRole } from "@/lib/admin/roles";
 import { type AccountStatus, accountStatus } from "@/lib/admin/status";
 import { db, type Transaction } from "@/server/db/client";
+import { isUniqueViolation } from "@/server/db/errors";
 import {
   type AccessLinkPurpose,
   accessLinks,
@@ -401,17 +402,6 @@ async function issueLink(
 // Writing -----------------------------------------------------------------------------
 
 export type NewUserInput = { name: string; email: string; role: UserRole };
-
-const isUniqueViolation = (error: unknown): boolean => {
-  const code = (value: unknown) =>
-    typeof value === "object" && value !== null && "code" in value
-      ? (value as { code: unknown }).code
-      : undefined;
-  return (
-    code(error) === "23505" ||
-    code((error as { cause?: unknown } | null)?.cause) === "23505"
-  );
-};
 
 const EMAIL_TAKEN = "Já existe uma conta com este e-mail.";
 
