@@ -39,4 +39,6 @@ export type QuickAddSheetData = {
   lastAccountId: string | null;
   /** Active tags, in name order. */
   tags: { id: string; name: string }[];
+  /** Flag `lancamento_por_texto`: the "Escrever o lançamento" field shows. */
+  textEntry: boolean;
 };

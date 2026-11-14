@@ -3,6 +3,7 @@ import { requireUser } from "@/server/dal";
 import { ACCOUNT_TYPE_LABELS, listAccounts } from "@/server/domain/accounts";
 import { getUserContext } from "@/server/domain/context";
 import { getQuickAddData } from "@/server/domain/quick-add";
+import { isFlagEnabled } from "@/server/flags";
 import { QuickAddSheet, QuickAddUnavailable } from "./quick-add-sheet";
 import type { QuickAddCategory, QuickAddSheetData } from "./types";
 
@@ -33,9 +34,14 @@ export async function QuickAddLoader() {
   let data: QuickAddSheetData;
   try {
     const ctx = await getUserContext(user.id);
-    const [quickAdd, accounts] = await Promise.all([
+    const [quickAdd, accounts, textEntry] = await Promise.all([
       getQuickAddData(ctx),
       listAccounts(ctx.userId),
+      // A flag that cannot be read must not take the sheet down.
+      isFlagEnabled("lancamento_por_texto", user.id).catch((error) => {
+        unstable_rethrow(error);
+        return false;
+      }),
     ]);
     const cards = new Map(
       accounts.map((account) => [account.id, account.card]),
@@ -58,6 +64,7 @@ export async function QuickAddLoader() {
       incomeCategories: quickAdd.incomeCategories.map(toCategory),
       lastAccountId: quickAdd.lastAccountId,
       tags: quickAdd.tags,
+      textEntry,
     };
   } catch (error) {
     unstable_rethrow(error);

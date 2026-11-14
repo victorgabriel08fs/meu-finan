@@ -18,10 +18,12 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
+import { sortTags } from "@/lib/tags/name";
 import {
   createEntryAction,
   discardCreatedAction,
 } from "@/server/actions/transactions";
+import type { EntryTextResult } from "@/server/domain/entry-text";
 import {
   draftHasContent,
   type EntryKind,
@@ -67,6 +69,8 @@ import {
 import { HAPTIC, vibrate } from "./haptics";
 import { Keypad } from "./keypad";
 import { MoreOptions } from "./more-options";
+import { applyTextResult, filledSummary } from "./text-entry";
+import { TextEntryField } from "./text-entry-field";
 import type { QuickAddSheetData } from "./types";
 
 const KIND_OPTIONS = [
@@ -226,6 +230,9 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>("account");
+  // Tags the text field created or restored: the layout's list only has them
+  // after the refresh, and `buildEntry` drops ids it does not know.
+  const [textTags, setTextTags] = useState<{ id: string; name: string }[]>([]);
   const amountRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const listOpen = useRef(false);
@@ -241,6 +248,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     setAmountError(null);
     setFormError(null);
     setPickerOpen(false);
+    setTextTags([]);
     setMoreOpen(
       current.installments > 1 ||
         current.repeat !== "never" ||
@@ -282,6 +290,15 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
       ? invoiceHint(date, account.card)
       : null;
   const noAccounts = accounts.length === 0;
+  const tags = useMemo(() => {
+    const known = new Set(data.tags.map((tag) => tag.id));
+    return textTags.length === 0
+      ? data.tags
+      : sortTags([
+          ...data.tags,
+          ...textTags.filter((tag) => !known.has(tag.id)),
+        ]);
+  }, [data.tags, textTags]);
 
   function edit(patch: Partial<QuickAddDraft>) {
     updateDraft(patch);
@@ -383,6 +400,33 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     setKeypadVisible(true);
   }
 
+  function applyText(result: EntryTextResult) {
+    if (kind === "transfer") return { summary: "", warnings: [] };
+    const applied = applyTextResult(
+      useQuickAddStore.getState().draft,
+      result,
+      kind,
+      {
+        categoryIds: new Set(categories.map((category) => category.id)),
+        accountIds: new Set(accounts.map((entry) => entry.id)),
+        currentAccountName: account?.name,
+      },
+    );
+    if (result.tags.length > 0) {
+      setTextTags((current) => [
+        ...current,
+        ...result.tags.filter((tag) => !current.some((c) => c.id === tag.id)),
+      ]);
+    }
+    edit(applied.patch);
+    setKeypadVisible(true);
+    amountRef.current?.focus({ preventScroll: true });
+    return {
+      summary: filledSummary(applied.filled),
+      warnings: applied.warnings,
+    };
+  }
+
   function openPicker(target: PickerTarget) {
     setPickerTarget(target);
     setPickerOpen(true);
@@ -397,7 +441,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
       today,
       defaultAccountId,
       requestId,
-      tagIds: new Set(data.tags.map((tag) => tag.id)),
+      tagIds: new Set(tags.map((tag) => tag.id)),
     });
     if (!built.ok) {
       if (built.field === "amount") {
@@ -574,6 +618,10 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
         }}
       />
 
+      {data.textEntry && kind !== "transfer" && !noAccounts ? (
+        <TextEntryField kind={kind} onResult={applyText} />
+      ) : null}
+
       <AmountDisplay
         ref={amountRef}
         expression={draft.expression}
@@ -672,7 +720,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
               draft={draft}
               date={date}
               amountCents={amountCents}
-              tags={data.tags}
+              tags={tags}
               open={moreOpen}
               onOpenChange={setMoreOpen}
               onChange={edit}
