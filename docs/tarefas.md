@@ -2,14 +2,9 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (15 a 21), nesta ordem
+## Próximas tarefas (16 a 21), nesta ordem
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). A tarefa 14 (Maior gasto da semana) foi entregue em 13/11/2026 (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
-
-### 15. Bloco "Parcelas a terminar" — P
-
-- Lê `installment_plans`: o que ainda falta pagar em cada compra parcelada, quantas parcelas restam e o mês em que acaba; total que sai do orçamento a cada mês.
-- Atalho para o lançamento no Extrato.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar) foram entregues em 13/11/2026 (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ### 16. Bloco "Comparado ao mês passado" — P
 
@@ -49,6 +44,15 @@ A tarefa foi entregue em 13/11/2026 (ver "Entregue"). Fica para depois:
 - **`?abrir=<id>` no Extrato**: a linha do bloco leva ao mês, à conta, ao tipo e ao começo da descrição, mas não abre o lançamento.
 - **Filtro `desde`/`ate` no Extrato**: para o "Ver no Extrato" mostrar só os 7 dias (hoje mostra as despesas do mês).
 - **`aria-label` do `TransactionRow` no modo discreto**: lê o valor por extenso mesmo com os valores ocultos.
+
+## 15. Parcelas a terminar: o que ficou de fora
+
+A tarefa foi entregue em 13/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Botão do estado vazio**: é "Adicionar gasto", porque o `QuickAddButton` não abre já em "Mais opções › Parcelar".
+- **Skeleton 16 px maior que o bloco a 430 px** quando a descrição cabe em 1 linha (`h-89` foi medido com a legenda em 2 linhas).
+- **Filtro "parcelados" no Extrato**: o bloco não tem link no cabeçalho nem no rodapé "e mais N" por isso.
+- **Antecipar parcelas** e linha do tempo da compra.
 
 ## 5. Categorias — pendências pequenas
 
@@ -117,6 +121,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Bloco "Parcelas a terminar" (tarefa 15) — 13/11/2026
+
+Bloco novo do catálogo do Início (estreito, fora do padrão, com "Novo", atrás de `inicio_personalizavel`): as 3 compras parceladas que acabam primeiro, com o que falta pagar, as parcelas que restam, o mês em que acaba e quanto sai por mês.
+
+- [x] **Consulta** `installmentsEnding` (`src/server/domain/dashboard.ts`) e função pura `summarizeInstallmentPlans` (`src/lib/home/installments-ending.ts`): lê as parcelas pendentes, não o plano; sem cache, sem migração.
+- [x] **Bloco** `installments-ending-block.tsx` (linhas-link, rodapé "e mais N", convite, modo discreto), skeleton `h-89` (`weight` 280) e loader em `blocks.tsx`.
+- [x] **Dicas**: novidade `novidade-inicio-parcelas-a-terminar` (`since` 13/11/2026).
+- [x] Testes: unidade (`installments-ending.test.ts`, `installments-ending-block.test.tsx`, `blocks.test.ts`, `layout.test.ts`, `customize-sheet.test.tsx`, `home-skeleton.test.tsx`), integração (`installments-ending.integration.test.ts`, `blocks.integration.test.tsx`, `preferences.integration.test.ts`) e e2e (`inicio-personalizavel.spec.ts`, `tips.spec.ts`, `novidades-flags.spec.ts`). Detalhes: README, doc 01 §8 e doc 02 §6.3. O que ficou: "15. Parcelas a terminar: o que ficou de fora".
 
 ### Bloco "Maior gasto da semana" (tarefa 14) — 13/11/2026
 
