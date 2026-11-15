@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/server/auth";
 import { recoverOwnerAccess } from "@/server/domain/recovery";
-import { readServerEnv } from "@/server/env";
+import { readServerEnvSafe } from "@/server/env";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress, secretMatches } from "@/server/security/guards";
 import { throttle } from "@/server/security/throttle";
@@ -46,13 +46,24 @@ export const recoverAccess = actionClient
       );
     }
 
-    const recoveryToken = readServerEnv("RECOVERY_TOKEN");
-    if (!recoveryToken) throw new ActionError("A recuperação está desativada.");
-    if (!secretMatches(input.token, recoveryToken)) {
+    const recoveryToken = readServerEnvSafe("RECOVERY_TOKEN");
+    if (recoveryToken.status === "invalid")
+      console.error(recoveryToken.problem);
+    if (recoveryToken.status !== "ok") {
+      throw new ActionError("Esta tela está fechada.");
+    }
+    if (!secretMatches(input.token, recoveryToken.value)) {
       throw new ActionError("Código de recuperação inválido.");
     }
 
-    const ownerEmail = readServerEnv("OWNER_EMAIL");
+    const ownerEmailEnv = readServerEnvSafe("OWNER_EMAIL");
+    if (ownerEmailEnv.status === "invalid") {
+      // Never guess the account: an invalid OWNER_EMAIL closes the recovery.
+      console.error(ownerEmailEnv.problem);
+      throw new ActionError("Esta tela está fechada.");
+    }
+    const ownerEmail =
+      ownerEmailEnv.status === "ok" ? ownerEmailEnv.value : undefined;
     const context = await auth.$context;
     const recovered = await recoverOwnerAccess({
       ownerEmail,

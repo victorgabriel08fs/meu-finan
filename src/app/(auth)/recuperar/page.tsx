@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { readServerEnv } from "@/server/env";
+import { readServerEnvSafe } from "@/server/env";
 import { RecoverForm } from "./recover-form";
 
 export const metadata: Metadata = { title: "Recuperar acesso" };
@@ -11,7 +11,10 @@ export const instant = false;
 
 export default async function RecoverPage() {
   await connection();
-  if (!readServerEnv("RECOVERY_TOKEN")) notFound();
+  // Fail closed: an unset or invalid token is a 404, never a public warning.
+  const token = readServerEnvSafe("RECOVERY_TOKEN");
+  if (token.status === "invalid") console.error(token.problem);
+  if (token.status !== "ok") notFound();
 
   return (
     <>

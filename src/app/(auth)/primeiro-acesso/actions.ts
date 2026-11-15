@@ -10,7 +10,7 @@ import { db } from "@/server/db/client";
 import { user } from "@/server/db/schema";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
 import { recordAudit } from "@/server/domain/audit";
-import { readServerEnv } from "@/server/env";
+import { readServerEnvSafe } from "@/server/env";
 import { ActionError, actionClient } from "@/server/safe-action";
 import {
   clientAddress,
@@ -59,12 +59,16 @@ export const setupOwner = actionClient
       );
     }
 
-    const setupToken = readServerEnv("SETUP_TOKEN");
-    const ownerEmail = readServerEnv("OWNER_EMAIL");
-    if (!setupToken || !ownerEmail) {
-      throw new ActionError("O primeiro acesso está desativado.");
+    const setupToken = readServerEnvSafe("SETUP_TOKEN");
+    const ownerEmailEnv = readServerEnvSafe("OWNER_EMAIL");
+    for (const gate of [setupToken, ownerEmailEnv]) {
+      if (gate.status === "invalid") console.error(gate.problem);
     }
-    if (!secretMatches(input.token, setupToken)) {
+    if (setupToken.status !== "ok" || ownerEmailEnv.status !== "ok") {
+      throw new ActionError("Esta tela está fechada.");
+    }
+    const ownerEmail = ownerEmailEnv.value;
+    if (!secretMatches(input.token, setupToken.value)) {
       throw new ActionError("Código de configuração inválido.");
     }
     const [row] = await db.select({ total: count() }).from(user);
