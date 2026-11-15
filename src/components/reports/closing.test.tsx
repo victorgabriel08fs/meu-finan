@@ -39,6 +39,7 @@ const summary = (over: Partial<SummaryProps>) =>
       previousLeftCents={120_000}
       hasPending={false}
       pendingHref="/extrato?mes=2026-10&status=pending"
+      recapHref="/retrospectiva?mes=2026-10"
       {...over}
     />,
   );

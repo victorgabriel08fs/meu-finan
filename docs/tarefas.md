@@ -19,6 +19,18 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Etiqueta criada sem salvar**: o campo cria a etiqueta na hora; se a pessoa fechar a folha sem salvar, ela fica (como no Enter do seletor de etiquetas).
 - **Voz** e **dia da semana no futuro** ("sexta" é sempre a mais recente que já passou).
 
+## 20b. Retrospectiva do mês: o que ficou de fora
+
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Avanço automático** com temporizador e pausa (o dono escolheu só manual).
+- **Compartilhar** a retrospectiva como imagem ou story; música ou som; confete.
+- **"Visto" entre aparelhos**: hoje fica no aparelho, por pessoa; sincronizar pede coluna em `user_settings` e migração.
+- **Retrospectiva do ano**, comparação de receitas e caixinha compartilhada no "Guardar a sobra" (ADR-13).
+- **Assinaturas e parcelas** de meses antigos: só no último mês fechado, como no Fechamento.
+- **Teste de componente do convite e do player** (sem jsdom no projeto): a regra do "visto" está em `model.test.ts` e o player no e2e; o convite do Início (dias 1 a 7) não tem e2e, porque a data do servidor não é simulável.
+- **Feature flag**: entrou sem flag (só leitura).
+
 ## 20. Fechamento do mês: o que ficou de fora
 
 A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
@@ -161,6 +173,14 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Retrospectiva do mês (tarefa 20b) — 15/11/2026
+
+Nova tela `/retrospectiva?mes=AAAA-MM`, fora do shell: o mês que fechou contado em até 10 partes animadas, de avanço manual. Sem flag, sem migração, nada é gravado.
+
+- [x] **Domínio** `src/server/domain/month-recap.ts` (`monthRecap`, `recapInvite`); `biggestExpenses` aceita uma janela.
+- [x] **Telas**: player com teclado, toque e deslizar, modo discreto e movimento reduzido; convite no Início (dias 1 a 7, uma vez por pessoa no aparelho); botão "Ver a retrospectiva" no Fechamento; o Resumo mensal abre a retrospectiva; novidade `novidade-retrospectiva-do-mes`.
+- [x] Testes: unidade (`model.test.ts`, `views.test.ts`), integração (`month-recap.integration.test.ts`, `reminders.integration.test.ts`) e e2e (`retrospectiva.spec.ts`, com axe nos dois temas; `/retrospectiva` entrou em `texto-grande.spec.ts`). Detalhes: README, doc 01, doc 02 §3.8, §6.3, §6.12 e §6.16, doc 03 §12. O que ficou: "20b. Retrospectiva: o que ficou de fora".
 
 ### Lançamento por texto (tarefa 21) — 14/11/2026
 

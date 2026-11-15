@@ -11,7 +11,7 @@
 // it, so the next run retries.
 // The report carries counts only: no ids, names or amounts.
 import "server-only";
-import { closingHref, periodViewHref } from "@/components/reports/views";
+import { periodViewHref, recapHref } from "@/components/reports/views";
 import { statementHref } from "@/components/transactions/statement-params";
 import { addDays, dayOfWeek } from "@/lib/finance";
 import type { ReminderEvent } from "@/lib/notifications/events";
@@ -340,11 +340,12 @@ async function buildReminder(
     case "monthly_summary": {
       const summary = await loadMonthlySummary(ctx);
       const message = monthlySummaryMessage(summary, options);
-      // The Fechamento opens on the month that closed, not on today's.
+      // The Retrospectiva opens on the month that closed, not on today's;
+      // its end leads to the Fechamento.
       return (
         message && {
           ...message,
-          url: closingHref(summary.month),
+          url: recapHref(summary.month),
         }
       );
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, Lightbulb, PiggyBank, TrendingUp } from "lucide-react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useState } from "react";
 import { DataTable } from "@/components/charts/data-table";
 import { axisMoneyLabel, formatMoneyShort } from "@/components/charts/format";
 import { ChartLegend, LegendSwatch } from "@/components/charts/legend";
@@ -9,6 +9,7 @@ import { niceTicks } from "@/components/charts/scale";
 import { SplitBar } from "@/components/charts/split-bar";
 import { StackedAreaChart } from "@/components/charts/stacked-area-chart";
 import { Money } from "@/components/money/money";
+import { useCountUp } from "@/components/money/use-count-up";
 import { Card } from "@/components/ui/card";
 import { formatBRL } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
@@ -26,43 +27,6 @@ const INTEREST = "var(--chart-3)";
 /** Whole reais, rounded: projections are estimates, cents are noise. */
 const wholeReais = (cents: number) =>
   formatMoneyShort(Math.round(cents / 100) * 100);
-
-const COUNT_UP_MS = 320;
-
-/**
- * Hero value that counts from the previous result to the new one (doc 02
- * §6.11 "contagem animada"); jumps straight there with reduced motion.
- */
-function useCountUp(target: number): number {
-  const [value, setValue] = useState(target);
-  const shown = useRef(target);
-
-  useEffect(() => {
-    const from = shown.current;
-    const reduce =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (from === target || reduce) {
-      shown.current = target;
-      setValue(target);
-      return;
-    }
-    const start = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / COUNT_UP_MS);
-      const eased = 1 - (1 - progress) ** 3;
-      const next = Math.round(from + (target - from) * eased);
-      shown.current = next;
-      setValue(next);
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-
-  return value;
-}
 
 function AnimatedMoney({ cents }: { cents: number }) {
   const value = useCountUp(cents);
