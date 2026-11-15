@@ -58,8 +58,8 @@ export function TextEntryField({ kind, onResult }: TextEntryFieldProps) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-control border border-border-strong bg-surface px-3.5 focus-within:border-primary focus-within:shadow-[inset_0_0_0_1px_var(--primary)]">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-12 min-w-[min(12rem,100%)] flex-1 items-center gap-2.5 rounded-control border border-border-strong bg-surface px-3.5 focus-within:border-primary focus-within:shadow-[inset_0_0_0_1px_var(--primary)]">
           <Sparkles
             aria-hidden="true"
             className="size-4.5 shrink-0 text-fg-3"

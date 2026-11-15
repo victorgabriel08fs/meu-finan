@@ -4,7 +4,7 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 
 ## Roadmap concluído
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, e a 24 (Prumo), de 15/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, a 23 (valor visível com o teclado) e a 24 (Prumo), de 15/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ## 24b. Prumo: o que ficou de fora
 
@@ -33,7 +33,11 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 
 ## 23. Modal de lançamento: valor visível com o teclado
 
-Pedido do dono em 15/11/2026: na Nova transação, ao tocar no valor para editar, o teclado cobre o campo e é preciso rolar a tela para vê-lo. O valor (e o seletor de tipo) devem continuar visíveis com o teclado aberto, a 100% e a 200% de texto (ver "Acessibilidade — depois": folha que reserva a altura do teclado, `visualViewport`/`interactive-widget`). Testar em 360 e 430 px.
+A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
+
+- **"Salvar" no fim da rolagem a 200%** em 360 px: tipo, valor e teclado próprio cabem juntos, mas "Salvar" só aparece depois de rolar.
+- **Teste em aparelho iOS real**: o teclado do iOS é simulado nos testes por um `visualViewport` falso.
+- **Campo "Escrever o lançamento" com largura 0 a 200%** (360 e 430 px): o botão "Preencher" ocupa a linha toda (`e2e/teclado-folha.spec.ts`, "o campo de texto tem largura útil a 200%").
 
 ## 20b. Retrospectiva do mês: o que ficou de fora
 
@@ -180,7 +184,6 @@ A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
 
 Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 200% de texto em 360 px:
 
-- **Nova transação**: com o teclado aberto, o valor e o seletor de tipo ficam abaixo da dobra (o rodapé rola junto, mas a folha ainda é alta demais). Pensar numa folha que reserva a altura do teclado.
 - **Skeletons exatos a 200%**: as alturas são as de 100%, então o conteúdo ainda empurra a tela ao chegar.
 - **Gráfico de poupança** (Relatórios › Visão geral) a 200%: ~60 px de altura, e os rótulos encostam na linha.
 - **Chip de variação do Saldo** a 200%: quebra em 4 linhas (~160 px).
@@ -189,6 +192,14 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Nova transação com o teclado (tarefa 23, versão 0.5.1) — 15/11/2026
+
+Só cliente. Sem migração, flag ou variável nova.
+
+- [x] **Folha acompanha o teclado do iOS** pelo `visualViewport` (`useKeyboardInset`, `keyboardInset`): `--sheet-kb`, `--sheet-vvh` e `data-keyboard` só com teclado; campo focado 24 px acima dele (`scroll-padding`). Vale para todas as folhas; no Android nada muda.
+- [x] **Tipo e valor fixos no topo** da Nova transação (`top` e `pinTop` do `SheetContent`), teclado próprio no rodapé (encaixado) ou logo abaixo do valor (empilhado: texto grande, tela curta), `useKeypadDock`/`keypadFits`. O campo de texto e o "Rascunho restaurado" desceram para abaixo do valor.
+- [x] Testes: unidade (`viewport-inset.test.ts`, com fast-check) e `e2e/teclado-folha.spec.ts` (360 × 560, 360 × 640 e 430 × 932, 100% e 200%; teclado do iOS falso e do Android por viewport menor; outra folha; axe a 200% nos dois temas). Detalhes: doc 02 §5.14, §6.5 e §7.4. O que ficou: "23. Modal de lançamento" e "Acessibilidade — depois".
 
 ### Rebranding e homepage (tarefa 24, versão 0.5.0) — 15/11/2026
 
