@@ -67,7 +67,7 @@
 | RF-11 | Simulador | Juros compostos com valor inicial, aporte mensal (com reajuste anual), taxa (a.m., a.a., % do CDI, IPCA+), prazo, IR regressivo, inflação; modos "quanto terei", "quanto investir", "em quanto tempo"; comparar até 3 cenários; salvar e compartilhar |
 | RF-12 | Relatórios | Visão geral (receitas × despesas, taxa de poupança), por categoria (com drill-down), fluxo de caixa com projeção, patrimônio líquido, calendário de gastos; regime de competência ou caixa; exportar CSV/PDF |
 | RF-13 | Importação | Upload de OFX/CSV, pré-visualização, deduplicação, categorização sugerida por regras aprendidas |
-| RF-14 | Notificações | Via Web Push, uma vez por dia pelo cron: Resumo do dia, Contas a vencer, Vencimento em dia não útil (flag `alerta_dia_nao_util`, 12/11/2026), Próxima receita, Gasto fora do padrão (14/11/2026), Resumo semanal e Resumo mensal, cada um ligado ou desligado pela pessoa (05/11/2026). Depois: fatura fechando, orçamento a 80%/100%, meta atingida (resumo por e-mail opcional, em fase posterior) |
+| RF-14 | Notificações | Via Web Push, uma vez por dia pelo cron: Resumo do dia, Contas a vencer, Vencimento em dia não útil (flag `alerta_dia_nao_util`, 12/11/2026), Próxima receita, Gasto fora do padrão (14/11/2026), Resumo semanal e Resumo mensal (abre a Retrospectiva do mês que fechou, 14/11/2026), cada um ligado ou desligado pela pessoa (05/11/2026). Depois: fatura fechando, orçamento a 80%/100%, meta atingida (resumo por e-mail opcional, em fase posterior) |
 | RF-15 | Insights | Cartões de observação automáticos (ex.: gasto atípico em uma categoria) |
 | RF-16 | Privacidade e dados | Modo discreto (oculta valores), exportar todos os dados (backup), apagar todos os dados (recomeçar do zero) |
 | RF-17 | Ajustes | Categorias (criar, editar, mesclar, reordenar), tema, dia de início do mês, notificações, segurança (passkeys, senha, sessões) |
@@ -237,6 +237,7 @@ meu-finan/
 │  │  │  ├─ planejar/orcamentos/page.tsx
 │  │  │  ├─ planejar/metas/page.tsx · planejar/metas/[id]/page.tsx
 │  │  │  ├─ planejar/simulador/page.tsx
+│  │  │  ├─ retrospectiva/page.tsx            # fora do shell, sem flag; ?mes=AAAA-MM (tela cheia, só leitura; "visto" no aparelho)
 │  │  │  ├─ relatorios/[visao]/page.tsx       # visao-geral | fechamento | categorias | fluxo | patrimonio | calendario
 │  │  │  ├─ importar/page.tsx                 # atrás da flag importar_extrato (§11.10)
 │  │  │  ├─ ajustes/…                         # inclui ajustes/novidades
