@@ -12,6 +12,7 @@ import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
+import { easeOutCubic } from "@/components/money/count-up";
 import { Money } from "@/components/money/money";
 import { useCountUp } from "@/components/money/use-count-up";
 import { SaveLeftoverButton } from "@/components/reports/save-leftover-button";
@@ -19,7 +20,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePrivacyStore } from "@/stores/privacy";
 import type { RecapSlide } from "./model";
-import { EASE_ENTER, RECAP_COUNT_MS, stagger } from "./motion";
+import {
+  EASE_ENTER,
+  RECAP_COUNT_MS,
+  RECAP_POP_MS,
+  RECAP_REVEAL_MS,
+  RECAP_RING_MS,
+  RECAP_RISE_PX,
+  revealEnd,
+  stagger,
+  weekEnd,
+} from "./motion";
 import { RecapBar, RecapDayStrip, RecapRing } from "./recap-charts";
 
 type SlideOf<Id extends RecapSlide["id"]> = Extract<RecapSlide, { id: Id }>;
@@ -27,18 +38,22 @@ type SlideOf<Id extends RecapSlide["id"]> = Extract<RecapSlide, { id: Id }>;
 /**
  * One component per part of the Retrospectiva (doc 02 §6.12). Each has a
  * focusable title, one hero figure at most and elements that come in one
- * after the other (60 ms apart, five at most). Every value goes through
+ * after the other (100 ms apart, five at most). Every value goes through
  * <Money>, so privacy mode hides it here as everywhere.
  */
 
 /** Fade and rise of the nth element of a part. */
 function Reveal({
   index = 0,
+  delay,
   as = "div",
   className,
   children,
 }: {
   index?: number;
+  /** Seconds before it starts, instead of the nth element's own. */
+  delay?: number;
+
   as?: "div" | "li";
   className?: string;
   children: ReactNode;
@@ -48,12 +63,12 @@ function Reveal({
   return (
     <Tag
       className={className}
-      initial={reduce ? false : { opacity: 0, y: 12 }}
+      initial={reduce ? false : { opacity: 0, y: RECAP_RISE_PX }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.36,
+        duration: RECAP_REVEAL_MS / 1000,
         ease: EASE_ENTER,
-        delay: reduce ? 0 : stagger(index, 0.08),
+        delay: reduce ? 0 : (delay ?? stagger(index)),
       }}
     >
       {children}
@@ -119,17 +134,24 @@ function RecapMoney({
   cents,
   negative = false,
   size = "3.5rem",
+  variant = "display",
+  delay = 0,
 }: {
   cents: number;
   negative?: boolean;
   size?: string;
+  variant?: "display" | "title";
+  /** Seconds before the count starts: when the figure shows up. */
+  delay?: number;
 }) {
   const hidden = usePrivacyStore((state) => state.hidden);
+  const reduce = useReducedMotion();
   const value = useCountUp(cents, {
     initial: 0,
     durationMs: RECAP_COUNT_MS,
-    skip: hidden,
-    ease: (p) => 1 - (1 - p) ** 4,
+    delayMs: delay * 1000,
+    skip: hidden || !!reduce,
+    ease: easeOutCubic,
   });
   const sign = negative ? -1 : 1;
   return (
@@ -137,7 +159,7 @@ function RecapMoney({
       <span aria-hidden="true">
         <Money
           cents={sign * value}
-          variant="display"
+          variant={variant}
           sign={negative ? "auto" : "never"}
           tone="neutral"
           size={size}
@@ -147,7 +169,7 @@ function RecapMoney({
       <span className="sr-only">
         <Money
           cents={sign * cents}
-          variant="display"
+          variant={variant}
           sign={negative ? "auto" : "never"}
           tone="neutral"
         />
@@ -167,14 +189,25 @@ export function IntroSlide({ slide }: { slide: SlideOf<"intro"> }) {
       <motion.div
         initial={reduce ? false : { opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.36, ease: EASE_ENTER }}
+        transition={{ duration: RECAP_REVEAL_MS / 1000, ease: EASE_ENTER }}
       >
-        <RecapRing value={1} size={96} stroke={3}>
-          <CalendarCheck
-            aria-hidden="true"
-            className="size-8 text-primary"
-            strokeWidth={1.75}
-          />
+        <RecapRing value={1} size={96} stroke={3} delay={stagger(0)}>
+          <motion.span
+            className="flex"
+            initial={reduce ? false : { scale: 0.6 }}
+            animate={reduce ? undefined : { scale: [0.6, 1.08, 1] }}
+            transition={{
+              duration: RECAP_POP_MS / 1000,
+              ease: EASE_ENTER,
+              delay: stagger(0) + RECAP_RING_MS / 1000 - 0.2,
+            }}
+          >
+            <CalendarCheck
+              aria-hidden="true"
+              className="size-8 text-primary"
+              strokeWidth={1.75}
+            />
+          </motion.span>
         </RecapRing>
       </motion.div>
       <div className="flex flex-col items-center gap-3">
@@ -182,9 +215,13 @@ export function IntroSlide({ slide }: { slide: SlideOf<"intro"> }) {
           <p className="text-overline text-primary">RETROSPECTIVA</p>
         </Reveal>
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 24 }}
+          initial={reduce ? false : { opacity: 0, y: RECAP_RISE_PX }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.36, ease: EASE_ENTER, delay: 0.12 }}
+          transition={{
+            duration: RECAP_REVEAL_MS / 1000,
+            ease: EASE_ENTER,
+            delay: stagger(2),
+          }}
         >
           <SlideTitle className="text-[length:min(2.5rem,11vw)] leading-tight">
             {slide.title}
@@ -240,17 +277,16 @@ export function FlowSlide({ slide }: { slide: SlideOf<"flow"> }) {
                 {row.label}
               </span>
             </div>
-            <Money
+            <RecapMoney
               cents={row.cents}
               variant="title"
-              sign="never"
-              tone="neutral"
               size="2rem"
+              delay={revealEnd(index + 1) - 0.2}
             />
             <RecapBar
               share={row.cents / largest}
               color={row.color}
-              delay={0.3 + index * 0.12}
+              delay={revealEnd(index + 1) - 0.2}
             />
           </Reveal>
         ))}
@@ -274,9 +310,13 @@ export function LeftSlide({ slide }: { slide: SlideOf<"left"> }) {
           "flex flex-col gap-6 text-center",
           up && "rounded-[2.5rem] bg-primary-soft px-5 py-10",
         )}
-        initial={reduce ? false : { opacity: 0, scale: 0.94 }}
+        initial={reduce ? false : { opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.6, ease: EASE_ENTER }}
+        transition={{
+          duration: RECAP_REVEAL_MS / 1000,
+          ease: EASE_ENTER,
+          delay: stagger(0, 0),
+        }}
       >
         <Reveal index={0} className="flex flex-col items-center gap-3">
           <p
@@ -287,7 +327,7 @@ export function LeftSlide({ slide }: { slide: SlideOf<"left"> }) {
           >
             {slide.label}
           </p>
-          <RecapMoney cents={slide.cents} />
+          <RecapMoney cents={slide.cents} delay={stagger(0) + 0.15} />
         </Reveal>
         <Reveal index={2}>
           <SlideTitle className="mx-auto text-[length:max(1rem,min(1.375rem,6.5vw))]">
@@ -317,7 +357,12 @@ export function DaysSlide({ slide }: { slide: SlideOf<"days"> }) {
         <Body>Quanto mais forte a cor, mais você gastou no dia.</Body>
       </Reveal>
       <RecapDayStrip weeks={slide.weeks} />
-      <Reveal index={4} className="flex flex-col gap-1">
+      <Reveal
+        delay={
+          weekEnd(slide.weeks.length, slide.weeks.length) + RECAP_POP_MS / 1000
+        }
+        className="flex flex-col gap-1"
+      >
         {slide.topLine ? (
           <p className="text-callout text-fg-2">
             {slide.topLine.lead} {money(slide.topLine.cents, "callout")}.
@@ -370,7 +415,7 @@ export function CategoriesSlide({ slide }: { slide: SlideOf<"categories"> }) {
                 share={item.share / top}
                 color="var(--primary)"
                 height={8}
-                delay={0.25 + index * 0.06}
+                delay={revealEnd(index + 1) - 0.2}
               />
             </div>
           </Reveal>
@@ -405,9 +450,9 @@ export function BiggestSlide({ slide }: { slide: SlideOf<"biggest"> }) {
   return (
     <Column className="items-center text-center">
       <motion.div
-        initial={reduce ? false : { opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.36, ease: EASE_ENTER }}
+        initial={reduce ? false : { opacity: 0, scale: 0.5 }}
+        animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.5, 1.1, 1] }}
+        transition={{ duration: RECAP_POP_MS / 1000, ease: EASE_ENTER }}
       >
         <CategoryIcon icon={slide.icon} color={slide.color} size="lg" />
       </motion.div>
@@ -418,7 +463,7 @@ export function BiggestSlide({ slide }: { slide: SlideOf<"biggest"> }) {
         <p className="text-title-2 break-words text-fg">{slide.description}</p>
       </Reveal>
       <Reveal index={2} className="w-full">
-        <RecapMoney cents={-slide.cents} negative />
+        <RecapMoney cents={-slide.cents} negative delay={revealEnd(1)} />
       </Reveal>
       <Reveal index={3} className="flex flex-col items-center gap-1">
         <p className="text-callout text-fg-2">{slide.meta}</p>
@@ -477,11 +522,10 @@ export function ComparisonSlide({ slide }: { slide: SlideOf<"comparison"> }) {
                 {item.name}
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 text-callout text-fg-2">
-                {item.direction === "up" ? (
-                  <ArrowUp aria-hidden="true" className="size-4" />
-                ) : (
-                  <ArrowDown aria-hidden="true" className="size-4" />
-                )}
+                <ComparisonArrow
+                  up={item.direction === "up"}
+                  delay={revealEnd(index + 1)}
+                />
                 {money(item.cents, "callout")}{" "}
                 {item.direction === "up" ? "a mais" : "a menos"}
               </span>
@@ -493,7 +537,36 @@ export function ComparisonSlide({ slide }: { slide: SlideOf<"comparison"> }) {
   );
 }
 
+/** The arrow slides in toward its own direction after its row. */
+function ComparisonArrow({ up, delay }: { up: boolean; delay: number }) {
+  const reduce = useReducedMotion();
+  const Icon = up ? ArrowUp : ArrowDown;
+  return (
+    <motion.span
+      className="flex"
+      initial={reduce ? false : { opacity: 0, y: up ? 8 : -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: RECAP_POP_MS / 1000,
+        ease: EASE_ENTER,
+        delay,
+      }}
+    >
+      <Icon aria-hidden="true" className="size-4" />
+    </motion.span>
+  );
+}
+
 export function BudgetsSlide({ slide }: { slide: SlideOf<"budgets"> }) {
+  const reduce = useReducedMotion();
+  const ringDelay = revealEnd(1) - 0.2;
+  const met = useCountUp(slide.met, {
+    initial: 0,
+    durationMs: RECAP_RING_MS,
+    delayMs: ringDelay * 1000,
+    skip: !!reduce,
+    ease: easeOutCubic,
+  });
   return (
     <Column>
       <Reveal className="flex flex-col gap-2">
@@ -503,12 +576,20 @@ export function BudgetsSlide({ slide }: { slide: SlideOf<"budgets"> }) {
       <Reveal index={1} className="flex justify-center">
         <RecapRing
           value={slide.total > 0 ? slide.met / slide.total : 0}
-          delay={0.2}
+          delay={ringDelay}
         >
-          <span className="text-title-1 text-fg tabular-nums">
-            {slide.met} de {slide.total}
+          <span className="sr-only">
+            {slide.met} de {slide.total} cumpridos
           </span>
-          <span className="text-caption text-fg-2">cumpridos</span>
+          <span
+            aria-hidden="true"
+            className="text-title-1 text-fg tabular-nums"
+          >
+            {met} de {slide.total}
+          </span>
+          <span aria-hidden="true" className="text-caption text-fg-2">
+            cumpridos
+          </span>
         </RecapRing>
       </Reveal>
       {slide.over.length > 0 ? (
@@ -536,7 +617,7 @@ export function BudgetsSlide({ slide }: { slide: SlideOf<"budgets"> }) {
                     share={1}
                     color="var(--danger-fill)"
                     height={8}
-                    delay={0.3}
+                    delay={revealEnd(index + 2)}
                   />
                   <span
                     aria-hidden="true"

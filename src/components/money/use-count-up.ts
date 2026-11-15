@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { countUpAt, easeOutCubic } from "./count-up";
 
 type CountUpOptions = {
   /** Length of each count, in ms. */
   durationMs?: number;
+  /** Wait before each count starts, in ms (the value stays put meanwhile). */
+  delayMs?: number;
   /** Where the first count starts; by default the value is already there. */
   initial?: number;
   /** Jump straight to the value (a caller's own reason, like privacy mode). */
@@ -12,8 +15,6 @@ type CountUpOptions = {
   /** 0…1 progress to eased progress; defaults to ease-out cubic. */
   ease?: (progress: number) => number;
 };
-
-const easeOutCubic = (progress: number) => 1 - (1 - progress) ** 3;
 
 /**
  * A value that counts from the one shown to `target` (doc 02 §6.11 "contagem
@@ -23,6 +24,7 @@ export function useCountUp(
   target: number,
   {
     durationMs = 320,
+    delayMs = 0,
     initial,
     skip = false,
     ease = easeOutCubic,
@@ -30,6 +32,10 @@ export function useCountUp(
 ): number {
   const [value, setValue] = useState(initial ?? target);
   const shown = useRef(initial ?? target);
+  // Kept out of the effect's dependencies: a new function on every render
+  // would restart the count on every frame.
+  const easeRef = useRef(ease);
+  easeRef.current = ease;
 
   useEffect(() => {
     const from = shown.current;
@@ -44,15 +50,19 @@ export function useCountUp(
     const start = performance.now();
     let frame = 0;
     const tick = (now: number) => {
-      const progress = Math.min(1, (now - start) / durationMs);
-      const next = Math.round(from + (target - from) * ease(progress));
+      const elapsed = now - start;
+      const next = countUpAt(from, target, elapsed, {
+        durationMs,
+        delayMs,
+        ease: easeRef.current,
+      });
       shown.current = next;
       setValue(next);
-      if (progress < 1) frame = requestAnimationFrame(tick);
+      if (elapsed < delayMs + durationMs) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [target, durationMs, skip, ease]);
+  }, [target, durationMs, delayMs, skip]);
 
   return value;
 }

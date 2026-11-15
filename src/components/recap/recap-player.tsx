@@ -10,6 +10,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -24,8 +25,11 @@ import {
 import {
   EASE_ENTER,
   EASE_EXIT,
+  EASE_STANDARD,
+  RECAP_DRIFT_MS,
   RECAP_EXIT_MS,
   RECAP_REDUCED_FADE_MS,
+  RECAP_SHIFT_PX,
   RECAP_SLIDE_MS,
 } from "./motion";
 import { RecapFrame } from "./recap-frame";
@@ -54,6 +58,21 @@ type RecapPlayerProps = {
 
 const SWIPE_PX = 56;
 const TAP_SLOP_PX = 10;
+const noopSubscribe = () => () => {};
+
+/**
+ * False in the server HTML and while hydrating. The part mounts only after
+ * it, so its entrance runs (the presence context would otherwise block the
+ * first part's animations) and server and client markup never differ.
+ */
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+}
+
 const INTERACTIVE = "a,button,[role=button],input,textarea,select,label";
 
 /**
@@ -87,7 +106,7 @@ const DRIFT = [
 
 function Backdrop({ index }: { index: number }) {
   const drift = DRIFT[index % DRIFT.length] ?? DRIFT[0];
-  const transition = { duration: 0.9, ease: [0.2, 0, 0, 1] as const };
+  const transition = { duration: RECAP_DRIFT_MS / 1000, ease: EASE_STANDARD };
   return (
     <div
       aria-hidden="true"
@@ -176,6 +195,8 @@ function Player({
 }: RecapPlayerProps) {
   const router = useRouter();
   const reduce = useReducedMotion();
+  const hydrated = useHydrated();
+  const changed = useRef(false);
   const [index, setIndex] = useState(0);
   const direction = useRef<1 | -1>(1);
   const frameRef = useRef<HTMLElement>(null);
@@ -193,6 +214,7 @@ function Player({
     const next = nextIndex(index, total, action);
     if (next === index) return;
     direction.current = next > index ? 1 : -1;
+    changed.current = true;
     setIndex(next);
   };
 
@@ -254,7 +276,10 @@ function Player({
 
   const fade = { duration: RECAP_REDUCED_FADE_MS / 1000 };
   const variants = {
-    enter: (dir: number) => ({ opacity: 0, x: reduce ? 0 : dir * 24 }),
+    enter: (dir: number) => ({
+      opacity: 0,
+      x: reduce ? 0 : dir * RECAP_SHIFT_PX,
+    }),
     center: {
       opacity: 1,
       x: 0,
@@ -264,7 +289,7 @@ function Player({
     },
     exit: (dir: number) => ({
       opacity: 0,
-      x: reduce ? 0 : dir * -24,
+      x: reduce ? 0 : dir * -RECAP_SHIFT_PX,
       transition: reduce
         ? fade
         : { duration: RECAP_EXIT_MS / 1000, ease: EASE_EXIT },
@@ -323,8 +348,8 @@ function Player({
       }
     >
       <h1 className="sr-only">{kicker}</h1>
-      <AnimatePresence mode="wait" custom={direction.current} initial={false}>
-        {slide ? (
+      <AnimatePresence mode="wait" custom={direction.current}>
+        {hydrated && slide ? (
           <motion.div
             key={slide.id}
             custom={direction.current}
@@ -338,7 +363,7 @@ function Player({
             data-slide={slide.id}
             className="flex flex-1 flex-col"
             onAnimationStart={(definition) => {
-              if (definition !== "center") return;
+              if (definition !== "center" || !changed.current) return;
               stageRef.current
                 ?.querySelector<HTMLElement>("[data-recap-title]")
                 ?.focus({ preventScroll: true });

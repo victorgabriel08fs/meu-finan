@@ -4,7 +4,17 @@ import { motion, useReducedMotion } from "motion/react";
 import { heatFill, heatTextClass } from "@/components/charts/heat-scale";
 import { cn } from "@/lib/utils";
 import type { RecapDayCell } from "./model";
-import { EASE_STANDARD, RECAP_GROW_MS } from "./motion";
+import {
+  EASE_ENTER,
+  RECAP_CONTENT_DELAY_MS,
+  RECAP_GROW_MS,
+  RECAP_POP_MS,
+  RECAP_REVEAL_MS,
+  RECAP_RING_MS,
+  RECAP_STAGGER_MS,
+  RECAP_WEEK_RISE_PX,
+  weekEnd,
+} from "./motion";
 
 /**
  * Charts of the Retrospectiva (doc 02 §6.12): bars that grow, a ring that
@@ -47,7 +57,7 @@ export function RecapBar({
         animate={{ scaleX: 1 }}
         transition={{
           duration: RECAP_GROW_MS / 1000,
-          ease: EASE_STANDARD,
+          ease: EASE_ENTER,
           delay,
         }}
       />
@@ -102,7 +112,11 @@ export function RecapRing({
           strokeLinecap="round"
           initial={reduce ? false : { pathLength: 0 }}
           animate={{ pathLength: clamped }}
-          transition={{ duration: 0.8, ease: EASE_STANDARD, delay }}
+          transition={{
+            duration: RECAP_RING_MS / 1000,
+            ease: EASE_ENTER,
+            delay,
+          }}
         />
       </svg>
       {children ? (
@@ -138,18 +152,30 @@ export function RecapDayStrip({ weeks }: { weeks: (RecapDayCell | null)[][] }) {
           // biome-ignore lint/suspicious/noArrayIndexKey: weeks never reorder
           key={weekIndex}
           className="grid grid-cols-7 gap-1.5"
-          initial={reduce ? false : { opacity: 0, y: 8 }}
+          initial={reduce ? false : { opacity: 0, y: RECAP_WEEK_RISE_PX }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
-            duration: 0.36,
-            ease: [0.05, 0.7, 0.1, 1],
-            delay: 0.1 + Math.min(weekIndex, 5) * 0.09,
+            duration: RECAP_REVEAL_MS / 1000,
+            ease: EASE_ENTER,
+            delay:
+              (RECAP_CONTENT_DELAY_MS +
+                Math.min(weekIndex, 5) * RECAP_STAGGER_MS) /
+              1000,
           }}
         >
           {week.map((cell, cellIndex) =>
             cell ? (
-              <span
+              <motion.span
                 key={cell.date}
+                initial={reduce || !cell.top ? false : { scale: 1 }}
+                animate={
+                  cell.top && !reduce ? { scale: [1, 1.2, 1] } : undefined
+                }
+                transition={{
+                  duration: RECAP_POP_MS / 1000,
+                  ease: EASE_ENTER,
+                  delay: weekEnd(weeks.length, weeks.length),
+                }}
                 className={cn(
                   "flex aspect-square max-h-11 items-center justify-center rounded-lg text-micro tabular-nums",
                   cell.level === 0 && "border border-border",
@@ -159,7 +185,7 @@ export function RecapDayStrip({ weeks }: { weeks: (RecapDayCell | null)[][] }) {
                 style={{ background: heatFill(cell.level) ?? undefined }}
               >
                 {cell.day}
-              </span>
+              </motion.span>
             ) : (
               // biome-ignore lint/suspicious/noArrayIndexKey: padding cells have no id
               <span key={`pad-${cellIndex}`} className="aspect-square" />
