@@ -585,6 +585,16 @@ async function main(): Promise<void> {
     await income("Freelance", "Freelance", 65_000, freelanceDay);
   }
 
+  // A bonus on the last day of the previous month: its leftover is well above
+  // what the demo (and the caixinha specs) move to caixinhas, so "Guardar a
+  // sobra" of the Fechamento always has something left to offer.
+  await income(
+    "Bônus",
+    "Salário",
+    500_000,
+    addDays(atDay(today.year, today.month, 1), -1),
+  );
+
   await setCategoryArchived(userId, cat("Padaria"), true);
 
   // Budgets for this month and the previous one ---------------------------------

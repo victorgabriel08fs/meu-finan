@@ -27,6 +27,7 @@ export const REPORT_VIEWS: readonly ReportView[] = [
   { path: "/relatorios/fluxo", label: "Fluxo", filter: "month" },
   { path: "/relatorios/patrimonio", label: "Patrimônio", filter: "period" },
   { path: "/relatorios/calendario", label: "Calendário", filter: "month" },
+  { path: "/relatorios/fechamento", label: "Fechamento", filter: "month" },
 ];
 
 /** The view on screen (exact path or any path below it), or null. */
@@ -58,6 +59,22 @@ export function clampReportMonth(
   currentMonth: string,
 ): string {
   return month && month < currentMonth ? month : currentMonth;
+}
+
+/**
+ * `?mes=` of Fechamento: only a month that already closed, so a missing,
+ * malformed, current or future value means the last closed month. Pure.
+ */
+export function clampClosingMonth(
+  month: string | null,
+  lastClosedMonth: string,
+): string {
+  return month && month <= lastClosedMonth ? month : lastClosedMonth;
+}
+
+/** Link to the Fechamento of a month (always with `?mes=`). */
+export function closingHref(month: string): string {
+  return `/relatorios/fechamento?mes=${month}`;
 }
 
 /**

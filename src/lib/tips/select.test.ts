@@ -338,6 +338,7 @@ describe("novidades feed", () => {
       }),
     ).toEqual([
       "novidade-etiquetas",
+      "novidade-fechamento-do-mes",
       "novidade-conta-beneficio",
       "novidade-categorias-organizar",
       "novidade-caixinhas",

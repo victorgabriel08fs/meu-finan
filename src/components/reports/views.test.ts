@@ -6,7 +6,9 @@ import {
 } from "./day-labels";
 import {
   categoryDetailHref,
+  clampClosingMonth,
   clampReportMonth,
+  closingHref,
   monthViewHref,
   parseMonthParam,
   periodHref,
@@ -25,7 +27,7 @@ const view = (label: string) => {
 };
 
 describe("report views", () => {
-  it("lists the six views of doc 02 §6.12 in order", () => {
+  it("lists the seven views of doc 02 §6.12 in order", () => {
     expect(REPORT_VIEWS.map((item) => item.label)).toEqual([
       "Visão geral",
       "Categorias",
@@ -33,12 +35,17 @@ describe("report views", () => {
       "Fluxo",
       "Patrimônio",
       "Calendário",
+      "Fechamento",
     ]);
     expect(
       REPORT_VIEWS.filter((item) => item.filter === "month").map(
         (item) => item.path,
       ),
-    ).toEqual(["/relatorios/fluxo", "/relatorios/calendario"]);
+    ).toEqual([
+      "/relatorios/fluxo",
+      "/relatorios/calendario",
+      "/relatorios/fechamento",
+    ]);
   });
 
   it("finds the view on screen", () => {
@@ -159,5 +166,33 @@ describe("day labels", () => {
     expect(calendarDayLabel("2026-10-14", false)).toBe("14");
     expect(calendarDayLabel("2026-11-01", false)).toBe("1 nov");
     expect(calendarDayLabel("2026-10-01", true)).toBe("1");
+  });
+});
+
+describe("fechamento", () => {
+  it("is the last tab and a month view", () => {
+    expect(REPORT_VIEWS.at(-1)).toMatchObject({
+      path: "/relatorios/fechamento",
+      label: "Fechamento",
+      filter: "month",
+    });
+    expect(reportViewHref(view("Fechamento"), { mes: "2026-09" })).toBe(
+      "/relatorios/fechamento?mes=2026-09",
+    );
+    expect(
+      reportViewHref(view("Fechamento"), { periodo: "3", mes: "2026-09" }),
+    ).toBe("/relatorios/fechamento?mes=2026-09");
+  });
+
+  it("keeps a closed month and sends anything else to the last closed one", () => {
+    expect(clampClosingMonth("2026-08", "2026-10")).toBe("2026-08");
+    expect(clampClosingMonth("2026-10", "2026-10")).toBe("2026-10");
+    expect(clampClosingMonth("2026-11", "2026-10")).toBe("2026-10");
+    expect(clampClosingMonth("2027-01", "2026-10")).toBe("2026-10");
+    expect(clampClosingMonth(null, "2026-10")).toBe("2026-10");
+  });
+
+  it("links to a month, always with ?mes=", () => {
+    expect(closingHref("2026-10")).toBe("/relatorios/fechamento?mes=2026-10");
   });
 });

@@ -53,4 +53,41 @@ describe("MonthSwitcher", () => {
     expect(html).toContain("size-(--target)");
     expect(html).not.toContain("min-w-38");
   });
+
+  it("has no next month from maxMonth on, and keeps the arrow before it", () => {
+    const at = renderToStaticMarkup(
+      <MonthSwitcher
+        month="2026-10"
+        currentMonth="2026-10"
+        maxMonth="2026-10"
+        hrefFor={hrefFor}
+      />,
+    );
+    expect(at).not.toContain("Próximo mês");
+    expect(at).toContain('aria-label="Mês anterior: setembro de 2026"');
+    const before = renderToStaticMarkup(
+      <MonthSwitcher
+        month="2026-09"
+        currentMonth="2026-10"
+        maxMonth="2026-10"
+        hrefFor={hrefFor}
+      />,
+    );
+    expect(before).toContain('aria-label="Próximo mês: outubro de 2026"');
+  });
+
+  it("renames the chip back to the current month", () => {
+    const html = renderToStaticMarkup(
+      <MonthSwitcher
+        month="2026-07"
+        currentMonth="2026-10"
+        currentLabel="Ver o último fechamento"
+        hrefFor={hrefFor}
+      />,
+    );
+    expect(html).toMatch(
+      /href="\/extrato\?mes=2026-10"[^>]*>Ver o último fechamento/,
+    );
+    expect(html).not.toContain("Voltar para hoje");
+  });
 });

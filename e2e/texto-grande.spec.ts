@@ -23,6 +23,7 @@ const SCREENS = [
   "/planejar/metas",
   "/planejar/simulador",
   "/relatorios/visao-geral",
+  "/relatorios/fechamento",
   "/relatorios/categorias",
   "/relatorios/fluxo",
   "/relatorios/patrimonio",

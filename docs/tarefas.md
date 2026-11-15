@@ -2,14 +2,9 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próximas tarefas (20), nesta ordem
+## Roadmap concluído
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas) e 19 (Gasto fora do padrão) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
-
-### 20. Fechamento do mês — M
-
-- No 1º dia do mês financeiro, uma tela de revisão do mês que acabou: receitas, despesas e o que sobrou; comparação com o anterior (tarefa 16, `comparisonWindows` com o período já terminado); assinaturas (17) e parcelas que continuam (15); orçamentos estourados com a sugestão pela média; e "Guardar a sobra" (transferência para uma caixinha).
-- Chega pelo Resumo mensal (sino e push) e fica em Relatórios para os meses anteriores.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
 ## 21. Lançamento por texto: o que ficou de fora
 
@@ -23,6 +18,20 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Aviso de conta ruidoso**: qualquer palavra depois de no/na/em/pelo/pela que não case com conta gera "Não achei a conta “X”", inclusive "na praia".
 - **Etiqueta criada sem salvar**: o campo cria a etiqueta na hora; se a pessoa fechar a folha sem salvar, ela fica (como no Enter do seletor de etiquetas).
 - **Voz** e **dia da semana no futuro** ("sexta" é sempre a mais recente que já passou).
+
+## 20. Fechamento do mês: o que ficou de fora
+
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Card ou insight no Início** nos primeiros dias do mês ("Outubro fechou · Ver fechamento"): o Início está em mudança em outra frente.
+- **Marcar o fechamento como "revisto"** (e esconder o aviso).
+- **Guardar a sobra numa caixinha compartilhada** (ADR-13): hoje só caixinhas próprias.
+- **Comparar receitas** no fechamento.
+- **Assinaturas e parcelas "históricas"** de meses antigos: os dois blocos só aparecem no último mês fechado, sempre a partir de hoje.
+- **PDF ou CSV do fechamento** e **e-mail** do resumo.
+- **Texto "Toque para ver o fechamento"** no corpo do push do Resumo mensal.
+- **Aviso de aumento de assinatura** (tarefa 17) no fechamento.
+- **Feature flag**: o fechamento entrou sem flag (é só leitura sobre dados que já existem). Se o dono pedir, ver o plano: entrada no registro, `isFlagEnabled` na página, aba filtrada e URL do Resumo mensal condicionada.
 
 ## 19. Gasto fora do padrão: o que ficou de fora
 
@@ -55,7 +64,7 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Rodapé "e mais N" sem destino**: não há filtro de recorrentes no Extrato; quando houver, o rodapé vira link.
 - **Marcar uma recorrência como assinatura**: pede coluna (`is_subscription`), migração e uma tela de recorrências.
 - **Recorrências anuais, semanais e a cada N meses**: ficam fora. Depois, as anuais podem entrar como 1/12 no "por mês", com "anual" no subtítulo.
-- **Aviso de aumento** (sino e push) e uso no Fechamento do mês (tarefa 20: reaproveita `monthlySubscriptions`).
+- **Aviso de aumento** (sino e push); o Fechamento do mês (tarefa 20) já reaproveita `monthlySubscriptions`.
 - **`aria-label` da linha no modo discreto**: lê os valores por extenso mesmo com os valores ocultos.
 - **Para o dono decidir**: aluguel e curso contam como assinatura (inferência pela repetição mensal); se incomodar, marcar à mão. Anuais (Prime, domínio) ficam fora por enquanto.
 
@@ -66,7 +75,7 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Comparar receitas** e **escolher o mês de referência** (hoje é sempre o mês anterior).
 - **Aviso de "fora do padrão"**: entregue na tarefa 19 (ver "Entregue"), com o ajuste do `categoryInsight`.
 - **Skeleton com menos categorias**: a altura é a do bloco com 3 categorias; sem base de comparação, com 1 ou 2 categorias ou no convite, o bloco carregado fica mais baixo e o salto é aceito.
-- **Tela de fechamento**: tarefa 20.
+- **Tela de fechamento**: entregue na tarefa 20 (Relatórios › Fechamento).
 
 ## 15. Parcelas a terminar: o que ficou de fora
 
@@ -162,6 +171,15 @@ Um campo na Nova transação entende "café 12 no nubank ontem #viagem". Atrás 
 - [x] **Tela**: campo "Preencher" acima do valor (Despesa e Receita), mescla no rascunho (`text-entry.ts`), avisos em linhas de apoio.
 - [x] **Novidade** `novidade-lancamento-por-texto` e flag no registro; a demo liga para a Ana.
 - [x] **Testes**: unidade, fast-check, integração (`entry-text.integration.test.ts`) e e2e (`lancamento-por-texto.spec.ts`).
+
+### Fechamento do mês (tarefa 20) — 14/11/2026
+
+Nova aba **Fechamento** em Relatórios (`/relatorios/fechamento?mes=AAAA-MM`): a revisão do período financeiro que acabou, calculada na hora (nada é gravado). Sem feature flag, sem migração.
+
+- [x] **Domínio** `src/server/domain/month-closing.ts` (`closingRange`, `monthClosing`): receitas e despesas pagas, a sobra, a sobra do mês anterior, orçamentos cumpridos e estourados, comparação com o mês anterior (tarefa 16), e, no último mês fechado, médias de 3 meses, o que já foi para caixinhas, assinaturas (17) e parcelas (15).
+- [x] **Telas**: "Como foi {mês}", "Guardar a sobra" (abre Nova transação como transferência, preenchida), "Orçamentos de {mês}" com "Usar em {mês}" (grava o orçamento do mês atual), comparado ao mês passado, assinaturas e parcelas; seletor de mês sem "próximo mês" (`maxMonth`) e chip "Ver o último fechamento" (`currentLabel`).
+- [x] **Avisos**: o Resumo mensal (sino e push) abre o fechamento do mês que fechou; novidade `novidade-fechamento-do-mes`.
+- [x] Testes: unidade (`closing-model.test.ts` com fast-check, `closing.test.tsx`, `views.test.ts`, `month-switcher.test.tsx`), integração (`month-closing.integration.test.ts`) e e2e (`fechamento.spec.ts`; a demo ganhou o lançamento "Bônus" no último dia do mês anterior, para sobrar o que guardar). Detalhes: README, doc 01 §5, doc 02 §6.12 e §6.14, doc 03 §12. O que ficou: "20. Fechamento do mês: o que ficou de fora".
 
 ### Etiquetas (tarefa 18) — 14/11/2026
 
