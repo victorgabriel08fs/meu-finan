@@ -111,7 +111,7 @@ export function ClosingSummaryCard({
             </Link>
           </div>
         ) : null}
-        <Button asChild variant="tonal" className="self-start">
+        <Button asChild variant="tonal" className="max-w-full self-start">
           <Link href={recapHref}>
             <Play aria-hidden="true" />
             Ver a retrospectiva
