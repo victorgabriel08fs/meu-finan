@@ -14,8 +14,10 @@ import {
   createContext,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
+  type Ref,
   use,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -25,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { IconButton } from "./icon-button";
 import { titleFit } from "./title-fit";
 import { useBackToClose } from "./use-back-to-close";
+import { useKeyboardInset } from "./use-keyboard-inset";
+import { keyboardInset } from "./viewport-inset";
 
 /**
  * Sheet (doc 02 §4.4, §5.14) on a Radix Dialog: a bottom sheet on phones
@@ -33,7 +37,10 @@ import { useBackToClose } from "./use-back-to-close";
  * closes on Esc or a tap on the scrim; the focus goes back to what opened the
  * sheet, a SheetTrigger or not. On phones the sheet also closes when dragged
  * down by the handle/header, and the back button closes it instead of
- * leaving the page.
+ * leaving the page. On iOS, which lays the keyboard over the page, the sheet
+ * follows `visualViewport` (`useKeyboardInset`: `--sheet-kb`, `--sheet-vvh`,
+ * `data-keyboard`, only while a keyboard shows); a focused field keeps 24px
+ * above the footer or keyboard (scroll padding).
  */
 
 type SheetContextValue = {
@@ -174,6 +181,20 @@ type SheetContentProps = Omit<
    */
   fullHeight?: boolean;
   /**
+   * Block after the header (with `fullHeight`): it does not scroll with the
+   * body while `pinTop` is true, so what it holds (type and amount) stays in
+   * view. Classes in `topClassName`; `topRef` receives the element.
+   */
+  top?: ReactNode;
+  topClassName?: string;
+  topRef?: Ref<HTMLDivElement>;
+  /**
+   * With `top`: true (default) pins it, body and footer scroll below it. False:
+   * the whole panel scrolls (top, body, footer), the footer sticky only while
+   * the sheet is 32rem tall, as with `flowFooter`.
+   */
+  pinTop?: boolean;
+  /**
    * For a sheet as tall as its content: the footer stays at the bottom only
    * while the sheet can be 32rem tall. With large text (rem grows) or a short
    * screen the whole sheet, header and footer included, scrolls as one, so the
@@ -189,7 +210,7 @@ type SheetContentProps = Omit<
 };
 
 /** Phone sheets follow the finger; from md up they are dialogs. */
-const DIALOG_QUERY = "(min-width: 48rem)";
+export const DIALOG_QUERY = "(min-width: 48rem)";
 /** Close when dragged past 25% of the height or flicked faster than 500px/s. */
 const DISMISS_RATIO = 0.25;
 const DISMISS_VELOCITY = 500;
@@ -208,11 +229,26 @@ function useShortScreen(enabled: boolean): boolean {
       const rem = Number.parseFloat(
         getComputedStyle(document.documentElement).fontSize,
       );
-      setShort(window.innerHeight * 0.92 < 32 * rem);
+      const vv = window.visualViewport;
+      // With the iOS keyboard up the sheet is at most 92% of what shows.
+      const covered =
+        vv &&
+        keyboardInset({
+          layoutHeight: document.documentElement.clientHeight,
+          viewportHeight: vv.height,
+          offsetTop: vv.offsetTop,
+          scale: vv.scale,
+        }) > 0;
+      const height = vv && covered ? vv.height : window.innerHeight;
+      setShort(height * 0.92 < 32 * rem);
     };
     measure();
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+    };
   }, [enabled]);
   return short;
 }
@@ -226,6 +262,10 @@ export function SheetContent({
   bodyClassName,
   swap = false,
   fullHeight = false,
+  top,
+  topClassName,
+  topRef,
+  pinTop = true,
   flowFooter = false,
   focusTitle = false,
   onOpenAutoFocus,
@@ -236,12 +276,54 @@ export function SheetContent({
   const sheet = use(SheetContext);
   const together = fullHeight || flowFooter;
   // Short (large text): the whole sheet scrolls, header and footer included.
-  const flow = useShortScreen(flowFooter);
+  const short = useShortScreen(flowFooter);
+  const hasTop = fullHeight && top !== undefined;
+  // The whole panel scrolls: a short sheet, or a `top` that is not pinned.
+  const flow = short || (hasTop && !pinTop);
+  const pinned = hasTop && pinTop;
+  const [contentEl, setContentEl] = useState<HTMLElement | null>(null);
+  useKeyboardInset(contentEl);
   const fit = typeof title === "string" ? titleFit(title, "title-2") : null;
   const panelRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const dragControls = useDragControls();
   const y = useMotionValue(0);
+
+  // Pinned again: an overflow-hidden panel does not scroll back by itself.
+  useEffect(() => {
+    if (pinned && panelRef.current) panelRef.current.scrollTop = 0;
+  }, [pinned]);
+
+  // Height of the sticky footer, for the 24px a focused field keeps above it.
+  const hasFooter = footer !== undefined && footer !== null;
+  // A full-height panel under 32rem (in the page's rem: large text counts)
+  // scrolls its footer along instead of keeping it stuck over the content.
+  const [shortPanel, setShortPanel] = useState(false);
+  useLayoutEffect(() => {
+    if (!contentEl || !hasFooter) return;
+    const footerEl = contentEl.querySelector<HTMLElement>(
+      '[data-slot="sheet-footer"]',
+    );
+    if (!footerEl) return;
+    const update = () => {
+      const rem = Number.parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      setShortPanel((panelRef.current?.clientHeight ?? 0) < 32 * rem);
+      contentEl.style.setProperty(
+        "--sheet-footer-h",
+        `${footerEl.offsetHeight}px`,
+      );
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(footerEl);
+    if (panelRef.current) observer.observe(panelRef.current);
+    return () => {
+      observer.disconnect();
+      contentEl.style.removeProperty("--sheet-footer-h");
+    };
+  }, [contentEl, hasFooter]);
 
   function startDrag(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0 || window.matchMedia(DIALOG_QUERY).matches) return;
@@ -272,6 +354,7 @@ export function SheetContent({
         className="fixed inset-0 z-50 bg-scrim"
       />
       <Dialog.Content
+        ref={setContentEl}
         data-slot="sheet-content"
         data-swap={swap || undefined}
         onOpenAutoFocus={(event) => {
@@ -288,7 +371,7 @@ export function SheetContent({
         }}
         {...(description ? {} : { "aria-describedby": undefined })}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col outline-none data-[state=closed]:pointer-events-none",
+          "group/sheet-content fixed inset-x-0 bottom-0 z-50 flex max-h-[calc(var(--sheet-vvh,100dvh)*0.92)] flex-col outline-none data-[state=closed]:pointer-events-none max-md:bottom-(--sheet-kb,0px)",
           "md:inset-0 md:m-auto md:h-fit md:max-h-[min(85dvh,48rem)] md:w-[calc(100%-2rem)] md:max-w-140",
           className,
         )}
@@ -296,6 +379,7 @@ export function SheetContent({
       >
         <motion.div
           ref={panelRef}
+          data-slot="sheet-panel"
           drag="y"
           dragControls={dragControls}
           dragListener={false}
@@ -308,11 +392,13 @@ export function SheetContent({
             "flex min-h-0 flex-1 flex-col rounded-t-sheet bg-surface text-fg shadow-sheet md:rounded-card md:shadow-dialog",
             fullHeight &&
               "max-md:[container-name:sheet] max-md:[container-type:size]",
-            flow && "overflow-y-auto overscroll-contain",
+            flow &&
+              "scroll-pt-6 scroll-pb-[calc(var(--sheet-footer-h,0px)+1.5rem)] overflow-y-auto overscroll-contain [overflow-anchor:none]",
           )}
         >
           {/* Drag-to-close is a pointer shortcut; the close button and Esc do the same. */}
           <div
+            data-slot="sheet-header"
             onPointerDown={startDrag}
             className={cn(
               "shrink-0 select-none md:touch-auto",
@@ -350,12 +436,21 @@ export function SheetContent({
               </Dialog.Close>
             </div>
           </div>
+          {hasTop ? (
+            <div
+              ref={topRef}
+              data-slot="sheet-top"
+              className={cn("shrink-0 px-5 pt-2", topClassName)}
+            >
+              {top}
+            </div>
+          ) : null}
           <div
             data-slot={together ? "sheet-scroll" : undefined}
             tabIndex={together && !flow ? 0 : undefined}
             className={
               together && !flow
-                ? "flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+                ? "flex min-h-0 flex-1 scroll-pt-6 scroll-pb-[calc(var(--sheet-footer-h,0px)+1.5rem)] flex-col overflow-y-auto overscroll-contain"
                 : "contents"
             }
           >
@@ -379,12 +474,15 @@ export function SheetContent({
               <div
                 data-slot="sheet-footer"
                 className={cn(
-                  "flex flex-col gap-2 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-5",
+                  "flex flex-col gap-2 border-t border-border px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] group-data-[keyboard]/sheet-content:pb-4 md:pb-5",
                   together
                     ? cn(
                         "sticky bottom-0 mt-auto bg-surface",
+                        // Fade above a footer that stays over the content.
+                        !(fullHeight ? !pinned && shortPanel : flow) &&
+                          "before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-linear-to-t before:from-surface before:to-transparent",
                         fullHeight
-                          ? "@max-[32rem]/sheet:static"
+                          ? !pinned && shortPanel && "static"
                           : flow && "static",
                       )
                     : "shrink-0",
