@@ -6,13 +6,15 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 
 Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
-## 22. Retrospectiva: animações que se vejam
+## 24. Rebranding e homepage (versão 0.5)
 
-Pedido do dono em 15/11/2026: na tela `/retrospectiva` ele não viu animação nenhuma. O código usa `motion/react` (barra de progresso, fundo, barras, anel e linhas em `src/components/recap/`), mas o efeito não aparece ou é sutil demais. A fazer:
+Pedido do dono em 15/11/2026, logo depois da tarefa 22. Marca a versão 0.5.
 
-- **Diagnosticar** no aparelho do dono e em produção: movimento reduzido ligado no sistema (`useReducedMotion` desliga tudo), CSP ou hidratação impedindo o `motion`, ou animações curtas e discretas demais.
-- **Animar cada parte de forma visível**: entrada e saída entre partes, números que contam até o valor, destaques que surgem em sequência, gráficos que crescem; manter a versão sem movimento quando o sistema pedir (doc 02 §3.8).
-- **Testes**: e2e que confirme a animação com movimento normal e a ausência dela com movimento reduzido.
+- **Identidade**: manter as cores e o design system atuais (doc 02), mas dar ao app uma cara própria, com **nome** e **ícone** novos. O dono gosta de apps minimalistas e de nomes curtos com significado (mesmo que um pouco subliminar). Trazer opções para ele escolher.
+- **Aplicar a marca**: nome, ícone (PWA, favicon, splash), manifest, metadados e textos onde aparece "Meu Finan".
+- **Homepage pública** com animações de scroll, pensada primeiro no mobile, respeitando o movimento reduzido. Fica fora da autenticação, sem cadastro público (contas só por convite).
+- **Modelo**: usar o Fable onde fizer sentido (nome, ícone, textos e desenho da homepage).
+- **Versão**: subir para 0.5 (package.json, README, changelog se houver).
 
 ## 21. Lançamento por texto: o que ficou de fora
 
@@ -26,6 +28,10 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 - **Aviso de conta ruidoso**: qualquer palavra depois de no/na/em/pelo/pela que não case com conta gera "Não achei a conta “X”", inclusive "na praia".
 - **Etiqueta criada sem salvar**: o campo cria a etiqueta na hora; se a pessoa fechar a folha sem salvar, ela fica (como no Enter do seletor de etiquetas).
 - **Voz** e **dia da semana no futuro** ("sexta" é sempre a mais recente que já passou).
+
+## 23. Modal de lançamento: valor visível com o teclado
+
+Pedido do dono em 15/11/2026: na Nova transação, ao tocar no valor para editar, o teclado cobre o campo e é preciso rolar a tela para vê-lo. O valor (e o seletor de tipo) devem continuar visíveis com o teclado aberto, a 100% e a 200% de texto (ver "Acessibilidade — depois": folha que reserva a altura do teclado, `visualViewport`/`interactive-widget`). Testar em 360 e 430 px.
 
 ## 20b. Retrospectiva do mês: o que ficou de fora
 
@@ -181,6 +187,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Retrospectiva: animações que se vejam (tarefa 22) — 15/11/2026
+
+Diagnóstico: a Abertura nascia parada (`AnimatePresence initial={false}` bloqueava os filhos), o número contava enquanto a parte ainda estava invisível e `useCountUp` reiniciava a cada render (cauda longa), e os tempos eram discretos demais. Sem migração, flag ou variável nova.
+
+- [x] **Abertura anima** (a parte monta depois da hidratação), troca de parte de 360/200 ms com 48 px, `Reveal` de 480 ms, stagger de 100 ms, contagem de 1 s que começa com o número visível, barras de 800 ms, anéis de 1 s e pulsos únicos; tempos só em `motion.ts`.
+- [x] **`countUpAt`** (puro, `src/components/money/count-up.ts`) e `useCountUp` com `delayMs` e `ease` fora das dependências do efeito.
+- [x] Testes: `count-up.test.ts` (fast-check), `motion.test.ts` e e2e em `retrospectiva.spec.ts` (Abertura anima, contagem termina no valor exato, nada se move com movimento reduzido, axe só depois de as animações terminarem, sem esperas fixas entre cliques). Doc 02 §3.8 e §6.12.
+- Fica de fora: quem usa "Remover animações" (Android) ou "Reduzir movimento" (iOS) continua sem ver movimento, por desenho (só o fade de 120 ms); não há opção para forçar a animação.
 
 ### Retrospectiva do mês (tarefa 20b) — 15/11/2026
 
