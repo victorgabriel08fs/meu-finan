@@ -23,13 +23,56 @@ async function position(page: Page) {
   return { index: Number(index), total: Number(total) };
 }
 
+/** Clicks "Próximo" and waits for the label of the next part. */
+async function next(page: Page) {
+  const { index, total } = await position(page);
+  await page.getByRole("button", { name: "Próximo", exact: true }).click();
+  await expect(part(page)).toHaveAttribute(
+    "aria-label",
+    new RegExp(`^${Math.min(index + 1, total)} de ${total}: `),
+  );
+}
+
 async function goToPart(page: Page, id: string) {
   const target = page.locator(`[data-slide="${id}"]`);
   for (let i = 0; i < 12 && !(await target.isVisible()); i++) {
-    await page.getByRole("button", { name: "Próximo", exact: true }).click();
-    await page.waitForTimeout(350);
+    await next(page);
   }
   await expect(target).toBeVisible();
+}
+
+/** "5.445 reais e 22 centavos" and "R$ 5.445,22" are the same 544522. */
+function cents(value: string) {
+  const [reais = "0", centavos = "0"] = value.replace(/[^\d,]/g, "").split(",");
+  return Number(reais) * 100 + Number(centavos);
+}
+
+function spokenCents(spoken: string) {
+  const [, reais = "0", centavos = "0"] =
+    spoken.match(/([\d.]+) reais?(?: e (\d+) centavos?)?/) ?? [];
+  return Number(reais.replace(/\./g, "")) * 100 + Number(centavos);
+}
+
+/** Waits until the part stopped moving: no running animation, figures steady. */
+async function settled(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        const first = await part(page).evaluate((el) => ({
+          running: document
+            .getAnimations()
+            .filter((a) => a.playState === "running").length,
+          text: (el as HTMLElement).innerText,
+        }));
+        await page.waitForTimeout(150);
+        const second = await part(page).evaluate(
+          (el) => (el as HTMLElement).innerText,
+        );
+        return first.running === 0 && first.text === second;
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 }
 
 test("abre na primeira parte, com título, e avança com o Próximo até o fim", async ({
@@ -136,17 +179,100 @@ test("com movimento reduzido, o valor que sobrou aparece inteiro de uma vez", as
   const drawn = left.locator("[data-privacy-value] [aria-hidden]").first();
   await expect(drawn).toContainText(/R\$\s?[0-9.]+,[0-9]{2}/);
   const text = (await drawn.textContent()) ?? "";
-  // "5.445 reais e 22 centavos" and "R$ 5.445,22" are the same 544522.
-  const cents = (value: string) => {
-    const [reais = "0", centavos = "0"] = value
-      .replace(/[^\d,]/g, "")
-      .split(",");
-    return Number(reais) * 100 + Number(centavos);
-  };
-  const [reais = "0", centavos = "0"] = spoken.match(/\d[\d.]*/g) ?? [];
-  expect(cents(text)).toBe(
-    Number(reais.replace(/\./g, "")) * 100 + Number(centavos),
-  );
+  expect(cents(text)).toBe(spokenCents(spoken));
+});
+
+test("com movimento normal, a Abertura anima ao abrir", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/retrospectiva");
+  const intro = page.locator('[data-slide="intro"]');
+  await expect(intro).toBeVisible({ timeout: 30_000 });
+  // Right after it shows up the title is still coming in, not at rest.
+  const title = intro.getByRole("heading", { level: 2 });
+  const opacities: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    // The opacity lives on the wrapper of the title: multiply up to the part.
+    opacities.push(
+      await title.evaluate((el) => {
+        let opacity = 1;
+        for (
+          let node: Element | null = el;
+          node && !node.hasAttribute("data-slide");
+          node = node.parentElement
+        ) {
+          opacity *= Number(getComputedStyle(node).opacity);
+        }
+        return opacity;
+      }),
+    );
+    await page.waitForTimeout(60);
+  }
+  expect(Math.min(...opacities)).toBeLessThan(1);
+  await settled(page);
+  expect(
+    await title.evaluate((el) =>
+      Number(getComputedStyle(el.parentElement ?? el).opacity),
+    ),
+  ).toBe(1);
+});
+
+test("com movimento normal, a contagem termina no valor exato", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await openRecap(page);
+  await goToPart(page, "left");
+  const left = page.locator('[data-slide="left"]');
+  // The spoken amount outside the drawn (aria-hidden) one is always the final.
+  const final_ = left.locator(".sr-only:not([aria-hidden] *) .sr-only").first();
+  await expect(final_).toContainText(/reais/);
+  const spoken = (await final_.textContent()) ?? "";
+  const final = spokenCents(spoken);
+  expect(final).toBeGreaterThan(0);
+  const drawn = left.locator("[data-privacy-value] [aria-hidden]").first();
+  const seen: number[] = [];
+  for (let i = 0; i < 25; i++) {
+    seen.push(cents((await drawn.textContent()) ?? ""));
+    await page.waitForTimeout(100);
+  }
+  // It started below the end (the count is visible) and never overshot.
+  expect(seen[0]).toBeLessThan(final);
+  expect(Math.max(...seen)).toBeLessThanOrEqual(final);
+  await settled(page);
+  expect(cents((await drawn.textContent()) ?? "")).toBe(final);
+});
+
+test("com movimento reduzido, nada se move ao abrir nem ao trocar de parte", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await openRecap(page);
+  const moving = () =>
+    page.evaluate(
+      () =>
+        document.getAnimations().filter((animation) => {
+          const effect = animation.effect as KeyframeEffect | null;
+          const target = effect?.target as HTMLElement | null;
+          if (!target?.closest("[data-slide]")) return false;
+          return effect
+            ?.getKeyframes()
+            .some((frame) =>
+              ["transform", "translate", "scale", "width", "height"].some(
+                (key) => key in frame,
+              ),
+            );
+        }).length,
+    );
+  const title = page.locator("[data-slide] [data-recap-title]").first();
+  await expect(title).toHaveCSS("opacity", "1");
+  expect(await moving()).toBe(0);
+  for (let i = 0; i < 3; i++) {
+    await next(page);
+    expect(await moving()).toBe(0);
+  }
 });
 
 test("no modo discreto nenhum valor aparece, só a máscara", async ({
@@ -166,8 +292,7 @@ test("no modo discreto nenhum valor aparece, só a máscara", async ({
     const shown = await slide.evaluate((el) => (el as HTMLElement).innerText);
     expect(shown).not.toMatch(/R\$\s?\d/);
     if (step < total) {
-      await page.getByRole("button", { name: "Próximo", exact: true }).click();
-      await page.waitForTimeout(350);
+      await next(page);
     }
   }
   // Back to the default for the next tests.
@@ -230,14 +355,10 @@ test("sem acessibilidade quebrada em cada parte, nos dois temas e em 360 px", as
     await openRecap(page);
     const { total } = await position(page);
     for (let step = 1; step <= total; step++) {
-      await page.waitForTimeout(1_000);
+      await settled(page);
       await expectNoA11yViolations(page);
       await expectNoHorizontalScroll(page);
-      if (step < total) {
-        await page
-          .getByRole("button", { name: "Próximo", exact: true })
-          .click();
-      }
+      if (step < total) await next(page);
     }
   }
   await chooseTheme(page, "Escuro");
