@@ -24,7 +24,7 @@ const KEYS: KeyDef[] = [
   { key: "−", label: "−", spoken: "menos" },
   { key: ",", label: ",", spoken: "vírgula" },
   { key: "0", label: "0" },
-  { key: "00", label: "00", spoken: "zero zero" },
+  { key: "00", label: "00" },
   { key: "=", label: "=", spoken: "igual" },
 ];
 

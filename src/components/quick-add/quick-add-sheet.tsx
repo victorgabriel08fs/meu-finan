@@ -11,12 +11,13 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { toast } from "sonner";
 import { uuidv7 } from "uuidv7";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { DIALOG_QUERY, Sheet, SheetContent } from "@/components/ui/sheet";
 import { toastWithUndo } from "@/components/ui/toast";
 import { sortTags } from "@/lib/tags/name";
 import {
@@ -72,6 +73,7 @@ import { MoreOptions } from "./more-options";
 import { applyTextResult, filledSummary } from "./text-entry";
 import { TextEntryField } from "./text-entry-field";
 import type { QuickAddSheetData } from "./types";
+import { useKeypadDock } from "./use-keypad-dock";
 
 const KIND_OPTIONS = [
   { value: "expense", label: "Despesa" },
@@ -108,6 +110,23 @@ const TEXT_FIELDS =
 /** Fields that bring up the system keyboard (the on-screen keypad steps aside). */
 const KEYBOARD_FIELDS =
   "input:not([type='checkbox']):not([type='radio']):not([type='date']), textarea, [contenteditable='true']";
+
+/** A phone: the on-screen keypad is used (touch, narrower than a dialog). */
+function subscribePhone(onChange: () => void) {
+  const queries = [FINE_POINTER, DIALOG_QUERY].map((query) =>
+    window.matchMedia(query),
+  );
+  for (const query of queries) query.addEventListener("change", onChange);
+  return () => {
+    for (const query of queries) query.removeEventListener("change", onChange);
+  };
+}
+function phoneSnapshot() {
+  return (
+    !window.matchMedia(FINE_POINTER).matches &&
+    !window.matchMedia(DIALOG_QUERY).matches
+  );
+}
 
 function isEntryKind(value: string): value is EntryKind {
   return value === "expense" || value === "income" || value === "transfer";
@@ -209,6 +228,7 @@ type PickerTarget = "account" | "from" | "to";
 
 function QuickAddContent({ data }: { data: QuickAddSheetData }) {
   const draft = useQuickAddStore((state) => state.draft);
+  const open = useQuickAddStore((state) => state.open);
   const openedAt = useQuickAddStore((state) => state.openedAt);
   const restored = useQuickAddStore((state) => state.restored);
   const keepAdding = useQuickAddStore((state) => state.keepAdding);
@@ -233,6 +253,11 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
   // Tags the text field created or restored: the layout's list only has them
   // after the refresh, and `buildEntry` drops ids it does not know.
   const [textTags, setTextTags] = useState<{ id: string; name: string }[]>([]);
+  const isPhone = useSyncExternalStore(
+    subscribePhone,
+    phoneSnapshot,
+    () => false,
+  );
   const amountRef = useRef<HTMLDivElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const listOpen = useRef(false);
@@ -290,6 +315,15 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
       ? invoiceHint(date, account.card)
       : null;
   const noAccounts = accounts.length === 0;
+  // Keypad docked in the footer when it fits; else under the amount, with the
+  // whole sheet scrolling. With the system keyboard up nothing is pinned.
+  const keypadShown = keypadVisible && !noAccounts;
+  const { docked, top, topRef } = useKeypadDock(open && keypadShown && isPhone);
+  const pinTop = !isPhone || noAccounts || (keypadVisible && docked);
+  const pinTopRef = useRef(pinTop);
+  pinTopRef.current = pinTop;
+  const topElRef = useRef<HTMLDivElement | null>(null);
+  topElRef.current = top;
   const tags = useMemo(() => {
     const known = new Set(data.tags.map((tag) => tag.id));
     return textTags.length === 0
@@ -357,8 +391,35 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     }
   }
 
+  /** Stacked layout: scrolls type and amount back to the start of the view. */
+  function revealAmount() {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const element = topElRef.current;
+        if (!element?.isConnected || pinTopRef.current) return;
+        // Type and amount already in view (opening, say): leave the scroll be.
+        const panel = element.closest("[data-slot='sheet-panel']");
+        const amount = amountRef.current;
+        if (panel && amount) {
+          const area = panel.getBoundingClientRect();
+          if (
+            element.getBoundingClientRect().top >= area.top &&
+            amount.getBoundingClientRect().bottom <= area.bottom
+          )
+            return;
+        }
+        const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+        element.scrollIntoView({
+          block: "start",
+          behavior: calm.matches ? "auto" : "smooth",
+        });
+      }),
+    );
+  }
+
   function activateAmount() {
     setKeypadVisible(true);
+    revealAmount();
   }
 
   function pickSuggestion(suggestion: DescriptionSuggestion) {
@@ -384,6 +445,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     edit(patch);
     setKeypadVisible(true);
     amountRef.current?.focus({ preventScroll: true });
+    revealAmount();
   }
 
   /**
@@ -398,6 +460,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     }
     descriptionRef.current?.blur();
     setKeypadVisible(true);
+    revealAmount();
   }
 
   function applyText(result: EntryTextResult) {
@@ -421,6 +484,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     edit(applied.patch);
     setKeypadVisible(true);
     amountRef.current?.focus({ preventScroll: true });
+    revealAmount();
     return {
       summary: filledSummary(applied.filled),
       warnings: applied.warnings,
@@ -497,6 +561,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
       setAmountError(null);
       setKeypadVisible(true);
       amountRef.current?.focus({ preventScroll: true });
+      revealAmount();
     } else {
       closeQuickAdd({ discard: true });
     }
@@ -542,7 +607,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
 
   const footer = (
     <>
-      {keypadVisible && !noAccounts ? (
+      {keypadShown && (docked || !isPhone) ? (
         <Keypad onKey={pressKey} className="pointer-fine:hidden" />
       ) : null}
       {formError ? (
@@ -567,12 +632,43 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
     </>
   );
 
+  const topBlock = (
+    <>
+      <SegmentedControl
+        options={KIND_OPTIONS}
+        value={kind}
+        ariaLabel="Tipo de lançamento"
+        onValueChange={(value) => {
+          if (isEntryKind(value)) edit({ kind: value });
+        }}
+      />
+      <AmountDisplay
+        ref={amountRef}
+        expression={draft.expression}
+        kind={kind}
+        message={amountMessage}
+        messageTone={amountError ? "error" : "hint"}
+        messageId={amountMessageId}
+        shakeSignal={shakeSignal}
+        active={keypadVisible}
+        onActivate={activateAmount}
+      />
+      {keypadShown && isPhone && !docked ? (
+        <Keypad onKey={pressKey} className="pointer-fine:hidden" />
+      ) : null}
+    </>
+  );
+
   return (
     <SheetContent
       title="Nova transação"
       fullHeight
-      className="h-[calc(100dvh-max(2rem,env(safe-area-inset-top)+0.5rem))] max-h-none md:h-fit md:max-h-[min(92dvh,54rem)] md:max-w-120"
+      className="h-[calc(var(--sheet-vvh,100dvh)-max(2rem,env(safe-area-inset-top)+0.5rem))] max-h-none md:h-fit md:max-h-[min(92dvh,54rem)] md:max-w-120"
       bodyClassName="flex flex-col gap-4"
+      topClassName="flex flex-col gap-4 pb-2"
+      topRef={topRef}
+      pinTop={pinTop}
+      top={topBlock}
       footer={footer}
       onKeyDown={onSheetKeyDown}
       onFocus={onSheetFocus}
@@ -602,6 +698,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
               resetDraft();
               dismissRestored();
               amountRef.current?.focus({ preventScroll: true });
+              revealAmount();
             }}
           >
             Limpar
@@ -609,30 +706,9 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
         </div>
       ) : null}
 
-      <SegmentedControl
-        options={KIND_OPTIONS}
-        value={kind}
-        ariaLabel="Tipo de lançamento"
-        onValueChange={(value) => {
-          if (isEntryKind(value)) edit({ kind: value });
-        }}
-      />
-
       {data.textEntry && kind !== "transfer" && !noAccounts ? (
         <TextEntryField kind={kind} onResult={applyText} />
       ) : null}
-
-      <AmountDisplay
-        ref={amountRef}
-        expression={draft.expression}
-        kind={kind}
-        message={amountMessage}
-        messageTone={amountError ? "error" : "hint"}
-        messageId={amountMessageId}
-        shakeSignal={shakeSignal}
-        active={keypadVisible}
-        onActivate={activateAmount}
-      />
 
       {noAccounts ? (
         <NoAccounts />
