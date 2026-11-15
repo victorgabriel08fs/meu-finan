@@ -47,8 +47,13 @@ Versioning:
   case, without a final period, and the attribution lines the session gives.
 - Never use `--no-verify`, `--amend` on pushed commits, force-push, rebase
   of shared branches, merge, push or deploy: the main session pushes and
-  opens the pull request, and merges or deploys only with the owner. Bump
-  `package.json` `version` only when the owner asks for a release.
+  opens the pull request, and merges or deploys only with the owner.
+- Bump the app version (shown in Ajustes and Sobre) once per task, in the
+  task's last commit, with `npm version <minor|patch> --no-git-tag-version`
+  (updates `package.json` and `package-lock.json`): `minor` when the task
+  delivers a `feat`, `patch` when it only fixes or changes something a person
+  sees; none for tasks with only `docs`, `test` or `chore`. Commit it as
+  `chore(versão): x.y.z`. Before 1.0, never bump `major`.
 
 Do not create git worktrees: removing one that links `node_modules` deleted
 the real `node_modules` twice on this Windows machine. To check a commit in
