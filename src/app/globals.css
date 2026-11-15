@@ -535,6 +535,116 @@
     animation: none;
   }
 
+  /* Homepage (§6.19). The thread runs from the "p" of the hero wordmark to
+     the "p" of the closing one, 24px to the left of the column. Its box comes
+     from the wordmark's 301×88 grid alone (stem at x 16, diamond's top point
+     at y 58; brand/wordmark.tsx), scaled by --k-hero and --k-closing, which
+     the page sets from home/model.ts: nothing is measured. The hero wordmark
+     is the first thing in the track and the closing one the last. */
+  .home-track {
+    --thread-x: -24px;
+    position: relative;
+  }
+
+  .home-wordmark {
+    position: relative;
+    z-index: 10;
+    display: block;
+    width: auto;
+    max-width: none;
+    height: calc(88px * var(--k));
+    margin-left: calc(var(--thread-x) - 16px * var(--k));
+  }
+
+  .home-thread {
+    position: absolute;
+    top: calc(58px * var(--k-hero));
+    bottom: calc(30px * var(--k-closing));
+    left: calc(var(--thread-x) - 10px);
+    width: 20px;
+    pointer-events: none;
+  }
+
+  /* Under the wordmarks (z 10): each p's stem covers the thread's end. */
+  .home-thread-rail,
+  .home-thread-line {
+    position: absolute;
+    inset-block: 0;
+    left: 9px;
+    z-index: 0;
+    width: 2px;
+    border-radius: 1px;
+  }
+
+  .home-thread-rail {
+    background-color: var(--border);
+  }
+
+  .home-thread-line {
+    background-color: var(--primary);
+    transform-origin: center top;
+  }
+
+  /* As tall as the thread and moved up by what is left of it, so its bottom
+     edge is the thread's tip. Above the closing p's stem, which the weight
+     slides down before it settles. */
+  .home-thread-carrier {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+  }
+
+  .home-thread-weight {
+    position: absolute;
+    top: calc(100% - 1.5px);
+    left: 0;
+    width: 20px;
+    height: 25px;
+    opacity: 0;
+    transform-origin: 10px 1.5px;
+  }
+
+  /* One diamond at a time: the wordmark's own at rest (top of the page, end of
+     the page), the thread's while it travels. Same place and size at each
+     hand-over, so nothing is seen to change. */
+  [data-home-thread="run"] .home-thread-weight {
+    opacity: 1;
+  }
+
+  [data-home-thread="run"] [data-wordmark-weight],
+  [data-home-thread="docked"] [data-home-hero] [data-wordmark-weight],
+  [data-home-thread="top"] [data-home-closing-mark] [data-wordmark-weight] {
+    opacity: 0;
+  }
+
+  /* With motion allowed the thread starts empty and follows the scroll
+     (home/scroll-thread.tsx); this holds it empty until hydration. */
+  @media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+    .home-thread-line {
+      transform: scaleY(0);
+    }
+  }
+
+  /* The hero's entrance runs in CSS, before hydration: the p's stem drops to
+     its weight, then the button and the note come in. The h1 and the text
+     never animate (LCP). Tempos come from home/motion.ts (HOME_MOTION_VARS). */
+  @media (prefers-reduced-motion: no-preference) {
+    [data-home-hero] [data-wordmark-stem] {
+      transform-box: fill-box;
+      transform-origin: center top;
+      animation: home-stem var(--home-stem-ms) var(--ease-enter) both;
+    }
+
+    [data-home-hero] [data-wordmark-weight] {
+      animation: home-weight var(--home-stem-ms) var(--ease-enter) both;
+    }
+
+    .home-rise {
+      animation: home-rise var(--home-reveal-ms) var(--ease-enter)
+        calc(var(--home-stagger-ms) * var(--i, 0)) both;
+    }
+  }
+
   /* Reduced motion: no movement, a 120ms fade instead (§3.8). */
   @media (prefers-reduced-motion: reduce) {
     .skeleton::after {
@@ -620,6 +730,27 @@ input:-webkit-autofill[aria-invalid="true"]:focus-visible {
 @keyframes ring-draw {
   from {
     stroke-dashoffset: var(--ring-length);
+  }
+}
+
+/* Homepage: the stem grows from a tenth of its 48 units and the weight
+   travels the other nine tenths with its tip (SVG user units). */
+@keyframes home-stem {
+  from {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes home-weight {
+  from {
+    transform: translateY(-43.2px);
+  }
+}
+
+@keyframes home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--home-rise-px));
   }
 }
 

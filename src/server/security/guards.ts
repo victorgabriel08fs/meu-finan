@@ -45,6 +45,8 @@ export function safeRedirectPath(
 ): string {
   if (!value || !value.startsWith("/") || value.startsWith("//"))
     return fallback;
+  // The public homepage: whoever signed in goes to the app, not back to it.
+  if (value === "/") return fallback;
   // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
   if (/[\\\u0000-\u001f\u007f]/.test(value)) return fallback;
   let url: URL;
