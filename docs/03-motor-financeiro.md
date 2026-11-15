@@ -1,4 +1,4 @@
-# 03 · Motor financeiro — Meu Finan
+# 03 · Motor financeiro — Prumo
 
 > Fórmulas e algoritmos de `src/lib/finance/`. Tudo aqui é **puro** (sem I/O, sem data/hora implícita, sem fuso): recebe dados, devolve dados. Roda igual no navegador (simulador instantâneo) e no servidor (metas, relatórios, cron). O código de referência abaixo foi executado contra todos os casos da §13.
 

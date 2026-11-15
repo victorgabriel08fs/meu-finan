@@ -1,4 +1,4 @@
-# 01 · System design — Meu Finan
+# 01 · System design — Prumo
 
 > Controle financeiro pessoal, mobile-first, com projeção de juros compostos, orçamentos, metas e relatórios. Backend e frontend hospedados na Vercel. Uso pessoal ou familiar: **a primeira conta (a do dono) administra e convida as outras**; cada conta tem as próprias finanças, e a autenticação é obrigatória.
 
@@ -220,7 +220,7 @@ Organização **por feature** (cada domínio tem suas actions, queries, schemas 
 meu-finan/
 ├─ src/
 │  ├─ app/
-│  │  ├─ page.tsx                             # "/" → redireciona para /inicio (sem landing pública)
+│  │  ├─ page.tsx                             # "/" → homepage pública estática (§11; quem tem sessão vai para /inicio pelo proxy)
 │  │  ├─ (auth)/                              # as únicas páginas sem sessão
 │  │  │  ├─ entrar/page.tsx
 │  │  │  ├─ primeiro-acesso/page.tsx          # configuração única do dono (SETUP_TOKEN)
@@ -1192,7 +1192,7 @@ Cada passo processa em lotes com cursor e orçamento de tempo (para em ~240 s e 
 O app é do dono e, se ele quiser, de quem ele convidar (uso pessoal ou familiar). A **primeira conta é a do dono, que administra**; as outras entram só por convite de um administrador, e **cada conta tem as próprias finanças**. A autenticação é obrigatória e de primeira classe — o app fica numa URL pública e guarda dados financeiros sensíveis. Princípios:
 
 - **Sem cadastro público**, nem agora nem depois: a primeira conta é criada uma única vez (§11.1); depois dela, uma conta nova só nasce de um convite feito por um administrador no painel (§11.9).
-- **Só quatro páginas sem sessão**: `/entrar`, `/primeiro-acesso`, `/recuperar` e `/convite/[token]` (mais os arquivos públicos: manifest, ícones, service worker). As três últimas só abrem com o próprio token. Todo o resto exige sessão.
+- **Só cinco páginas sem sessão**: `/` (a homepage, estática, sem dado e sem ação além de "Entrar"; com cookie de sessão, o `proxy.ts` manda para `/inicio`), `/entrar`, `/primeiro-acesso`, `/recuperar` e `/convite/[token]` (mais os arquivos públicos: manifest, ícones, service worker). As três últimas só abrem com o próprio token. Todo o resto exige sessão. O nome do app é Prumo; o identificador técnico (`meu-finan`) fica nas chaves locais, no pacote e no demo.
 - **Isolamento por conta**: toda consulta das finanças é filtrada pelo `user_id` da sessão e confere a posse de cada id recebido. O painel de administração não mostra o dinheiro de ninguém e não há personificação. Um link de redefinição abre a conta para a qual foi gerado, por isso a Atividade registra quem o gerou e quando foi usado, e a conta do dono não recebe esse link nem pode ser excluída pelo painel (§11.9).
 - **Verificação no servidor em toda camada**: cada página, Server Action e Route Handler confere a sessão pelo DAL (§11.5). Exceções: `/api/auth/*` (o próprio Better Auth), `/api/cron/daily` (segredo próprio) e o aviso de upload concluído do Vercel Blob (assinado, §7.3). O `proxy.ts` só redireciona — nunca é a única checagem.
 - **Falha fechada**: sem `SETUP_TOKEN` ou `OWNER_EMAIL`, o primeiro acesso fica desligado; sem `RECOVERY_TOKEN`, a recuperação; sem `CRON_SECRET`, o cron. Nunca abertos.
@@ -1234,7 +1234,7 @@ Para quando o dono perde o acesso (sem passkey e sem senha). A conta do dono nã
 
 | Camada | O que faz | Fronteira de segurança? |
 |---|---|---|
-| `proxy.ts` | sem cookie de sessão → redireciona para `/entrar?voltar=…` | não: só olha a presença do cookie |
+| `proxy.ts` | sem cookie de sessão → redireciona para `/entrar?voltar=…`; em `/`, sem cookie mostra a homepage e com cookie vai para `/inicio` | não: só olha a presença do cookie |
 | Páginas e layouts (RSC) | `requireUser()` do DAL, dentro de `<Suspense>` (Cache Components) | sim |
 | Server Actions | `authAction` chama `requireUser()` antes de validar a entrada | sim |
 | Páginas da administração | `requireAdmin()` dentro de `<Suspense>`, antes de ler qualquer dado: quem não é administrador recebe a página 404 | sim |
@@ -1253,6 +1253,7 @@ const PUBLIC_PAGES = ['/entrar', '/primeiro-acesso', '/recuperar'];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname === '/') return getSessionCookie(request) ? NextResponse.redirect(new URL('/inicio', request.url)) : NextResponse.next();
   if (PUBLIC_PAGES.includes(pathname) || pathname.startsWith('/convite/') || getSessionCookie(request)) return NextResponse.next();
   const url = new URL('/entrar', request.url);
   url.searchParams.set('voltar', pathname);

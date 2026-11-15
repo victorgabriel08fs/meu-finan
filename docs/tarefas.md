@@ -4,17 +4,19 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 
 ## Roadmap concluído
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, e a 24 (Prumo), de 15/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
-## 24. Rebranding e homepage (versão 0.5)
+## 24b. Prumo: o que ficou de fora
 
-Pedido do dono em 15/11/2026, logo depois da tarefa 22. Marca a versão 0.5.
+A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
 
-- **Identidade**: manter as cores e o design system atuais (doc 02), mas dar ao app uma cara própria, com **nome** e **ícone** novos. O dono gosta de apps minimalistas e de nomes curtos com significado (mesmo que um pouco subliminar). Trazer opções para ele escolher.
-- **Aplicar a marca**: nome, ícone (PWA, favicon, splash), manifest, metadados e textos onde aparece "Meu Finan".
-- **Homepage pública** com animações de scroll, pensada primeiro no mobile, respeitando o movimento reduzido. Fica fora da autenticação, sem cadastro público (contas só por convite).
-- **Modelo**: usar o Fable onde fizer sentido (nome, ícone, textos e desenho da homepage).
-- **Versão**: subir para 0.5 (package.json, README, changelog se houver).
+- **Domínio da Vercel**: o endereço continua o antigo (`meu-finan.vercel.app`); mudar exige trocar `BETTER_AUTH_URL` e recadastrar as passkeys, que ficam presas ao domínio.
+- **Remetente de e-mail**: quando houver envio de e-mail, usar o nome Prumo.
+- **Busca no INPI** (classes 9, 36 e 42) e de domínio próprio, antes de divulgar fora da família (risco baixo para uso pessoal, médio como produto). Alternativas de nome: Lastro e Tento.
+- **Imagem Open Graph**, **splash do iOS** e **indexação** da homepage (hoje `noindex`).
+- **Continuam `meu-finan` de propósito**: pacote, chaves de `localStorage`, `user-agent` e contas do demo.
+- **Passkeys antigas** podem ter o rótulo "Meu Finan" no gerenciador do aparelho; não há como renomear de fora.
+- **Onboarding** mantém "Seu dinheiro, claro como deveria ser" (decisão do dono); a tagline da marca vale na homepage e no Entrar.
 
 ## 21. Lançamento por texto: o que ficou de fora
 
@@ -187,6 +189,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Rebranding e homepage (tarefa 24, versão 0.5.0) — 15/11/2026
+
+Sem migração, flag ou variável nova.
+
+- [x] **Marca Prumo**: nome, tagline "Seu dinheiro no prumo.", símbolo (o "p" que é fio de prumo) no selo, nos ícones do app (`any`, `maskable`, `apple`), no ícone monocromático do manifesto e no badge do push; textos, metadados, convite, push, CSV (`prumo-lancamentos-…`) e novidade `novidade-prumo`. Regras de uso da marca em doc 02 §1.
+- [x] **Homepage pública** em `/` (doc 02 §6.19): estática, sete partes, cartões de exemplo, fio ligado à rolagem, movimento reduzido e sem JavaScript; `proxy.ts` e `safeRedirectPath` mandam quem tem sessão para `/inicio`; controle Escuro/Claro só do aparelho (`useDeviceTheme`).
+- [x] Testes: `model.test.ts` e `manifest.test.ts` (Vitest), `guards.test.ts`, e `e2e/homepage.spec.ts` (conteúdo, só Entrar, movimento normal e reduzido, sem JavaScript, tema, ícones e manifesto, axe em dois temas e dois tamanhos, texto a 200%, redirect com sessão). Specs antigos ajustados ao nome novo.
+- Fica de fora: ver "24b. Prumo: o que ficou de fora".
 
 ### Retrospectiva: animações que se vejam (tarefa 22) — 15/11/2026
 
