@@ -6,6 +6,14 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 
 Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
+## 22. Retrospectiva: animações que se vejam
+
+Pedido do dono em 15/11/2026: na tela `/retrospectiva` ele não viu animação nenhuma. O código usa `motion/react` (barra de progresso, fundo, barras, anel e linhas em `src/components/recap/`), mas o efeito não aparece ou é sutil demais. A fazer:
+
+- **Diagnosticar** no aparelho do dono e em produção: movimento reduzido ligado no sistema (`useReducedMotion` desliga tudo), CSP ou hidratação impedindo o `motion`, ou animações curtas e discretas demais.
+- **Animar cada parte de forma visível**: entrada e saída entre partes, números que contam até o valor, destaques que surgem em sequência, gráficos que crescem; manter a versão sem movimento quando o sistema pedir (doc 02 §3.8).
+- **Testes**: e2e que confirme a animação com movimento normal e a ausência dela com movimento reduzido.
+
 ## 21. Lançamento por texto: o que ficou de fora
 
 A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
