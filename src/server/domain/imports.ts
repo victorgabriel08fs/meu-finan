@@ -32,19 +32,13 @@ import {
 import type { ExportRow } from "@/lib/import/export";
 import { MAX_IMPORT_ROWS } from "@/lib/import/files";
 import type { ImportFormatName, StatementRow } from "@/lib/import/statement";
-import {
-  type CategoryRule,
-  createCategorySuggester,
-  type HistoryEntry,
-  type Suggestion,
-} from "@/lib/import/suggest";
+import type { Suggestion } from "@/lib/import/suggest";
 import { MAX_DESCRIPTION_LENGTH } from "@/lib/import/text";
 import { sortTags } from "@/lib/tags/name";
 import { db, type Executor } from "@/server/db/client";
 import {
   type CategoryKind,
   categories,
-  categorizationRules,
   type FinAccountType,
   finAccounts,
   imports,
@@ -57,6 +51,7 @@ import {
 import { requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
 import { requireCategory } from "./categories";
+import { loadCategorySuggester } from "./category-suggest";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 
@@ -111,7 +106,7 @@ export async function reviewImport(
   const from = addDaysIso(dates[0] as string, -1);
   const to = addDaysIso(dates[dates.length - 1] as string, 1);
 
-  const [known, nearby, history, rules] = await Promise.all([
+  const [known, nearby, suggest] = await Promise.all([
     // Deleted rows included: the unique index (account_id, external_id) covers them.
     db
       .select({ externalId: transactions.externalId })
@@ -141,8 +136,7 @@ export async function reviewImport(
           between(transactions.occurredOn, from, to),
         ),
       ),
-    categoryHistory(ctx),
-    categoryRules(ctx),
+    loadCategorySuggester(ctx.userId),
   ]);
 
   const existingIds = new Set(
@@ -163,7 +157,6 @@ export async function reviewImport(
     ),
     candidates,
   );
-  const suggest = createCategorySuggester(history, rules);
 
   return rows.map((row, index) => {
     const kind = row.amountCents < 0 ? "expense" : "income";
@@ -180,64 +173,6 @@ export async function reviewImport(
       suggestion: suggestion?.source ?? null,
     };
   });
-}
-
-/** The user's descriptions with their categories, most recent first. */
-async function categoryHistory(ctx: UserContext): Promise<HistoryEntry[]> {
-  const uses = sql<number>`count(*)`.mapWith(Number);
-  const lastUsedOn = sql<string>`to_char(max(${transactions.occurredOn}), 'YYYY-MM-DD')`;
-  const rows = await db
-    .select({
-      description: transactions.description,
-      kind: transactions.kind,
-      categoryId: transactions.categoryId,
-      uses,
-      lastUsedOn,
-    })
-    .from(transactions)
-    .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(
-      and(
-        eq(transactions.userId, ctx.userId),
-        eq(categories.userId, ctx.userId),
-        isNull(transactions.deletedAt),
-        isNull(categories.archivedAt),
-        inArray(transactions.kind, ["income", "expense"]),
-      ),
-    )
-    .groupBy(
-      transactions.description,
-      transactions.kind,
-      transactions.categoryId,
-    )
-    .orderBy(desc(lastUsedOn))
-    .limit(5000);
-  return rows.flatMap((row) =>
-    row.categoryId !== null && (row.kind === "income" || row.kind === "expense")
-      ? [{ ...row, kind: row.kind, categoryId: row.categoryId }]
-      : [],
-  );
-}
-
-/** Explicit "description → category" rules of active categories. */
-async function categoryRules(ctx: UserContext): Promise<CategoryRule[]> {
-  return db
-    .select({
-      pattern: categorizationRules.pattern,
-      kind: categories.kind,
-      categoryId: categorizationRules.categoryId,
-      accountId: categorizationRules.accountId,
-      hits: categorizationRules.hits,
-    })
-    .from(categorizationRules)
-    .innerJoin(categories, eq(categories.id, categorizationRules.categoryId))
-    .where(
-      and(
-        eq(categorizationRules.userId, ctx.userId),
-        eq(categories.userId, ctx.userId),
-        isNull(categories.archivedAt),
-      ),
-    );
 }
 
 export type ConfirmImportRow = {

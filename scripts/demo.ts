@@ -965,7 +965,7 @@ async function seedPeople(
   }
   // Importar extrato turned off for Bruno only (a per-person flag), and the
   // notifications, the customizable Início and the non-business day alert
-  // (off by default) on for Ana, so the demo shows them. The notification
+  // (off by default) on for Ana, so the demo shows them (and the text entry). The notification
   // center (the bell) is on for Ana and Bruno.
   await db.insert(featureFlagOverrides).values([
     {
@@ -992,6 +992,13 @@ async function seedPeople(
     {
       userId: admin.id,
       key: "alerta_dia_nao_util",
+      enabled: true,
+      updatedBy: admin.id,
+      updatedAt: ago(0),
+    },
+    {
+      userId: admin.id,
+      key: "lancamento_por_texto",
       enabled: true,
       updatedBy: admin.id,
       updatedAt: ago(0),

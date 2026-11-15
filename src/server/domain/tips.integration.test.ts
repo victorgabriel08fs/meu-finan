@@ -43,6 +43,7 @@ const VIEWER: TipViewer = {
     inicio_personalizavel: false,
     alerta_dia_nao_util: false,
     central_notificacoes: false,
+    lancamento_por_texto: false,
     financas_compartilhadas: false,
   },
 };
@@ -74,6 +75,7 @@ describe("tips per user", () => {
         inicio_personalizavel: false,
         alerta_dia_nao_util: false,
         central_notificacoes: false,
+        lancamento_por_texto: false,
         financas_compartilhadas: false,
       },
     });

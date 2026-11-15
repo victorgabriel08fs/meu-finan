@@ -26,6 +26,7 @@ describe("useFlag", () => {
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
       central_notificacoes: false,
+      lancamento_por_texto: false,
       financas_compartilhadas: false,
     };
     expect(
@@ -44,6 +45,7 @@ describe("useFlag", () => {
       inicio_personalizavel: false,
       alerta_dia_nao_util: false,
       central_notificacoes: false,
+      lancamento_por_texto: false,
       financas_compartilhadas: false,
     });
     const html = await prerenderToString(

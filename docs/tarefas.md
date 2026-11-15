@@ -2,15 +2,22 @@
 
 O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do projeto (CLAUDE.md › Agents): `arquiteto` planeja, `dev` implementa, `qa-ui-ux` revisa as telas e `testador-documentador-versionador` testa, documenta e commita. Ao entregar, marque aqui o que ficou pronto e mova para o README o que a pessoa já pode usar.
 
-## Próxima tarefa (21)
+## Roadmap concluído
 
-Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão) e 20 (Fechamento do mês), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
+Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
-### 21. Lançamento por texto — M/G (por último)
+## 21. Lançamento por texto: o que ficou de fora
 
-- Um campo na Nova transação que entende "café 12 no nubank ontem #viagem" e preenche o formulário (valor, descrição, conta, data, categoria pelas regras de `categorization_rules` e etiquetas da tarefa 18) para a pessoa conferir antes de salvar.
-- Etiquetas: use `findTagByName` e `ensureTag` (`src/server/domain/tags.ts`; sem caixa, sem acento, `#` inicial ignorado). O nome pode ter espaços ("viagem chile"): o parser deve casar `#viagem-chile` com "viagem chile", trocando hífen por espaço. Limites: 10 por lançamento, 100 ativas por pessoa; uma etiqueta arquivada é restaurada ao ser nomeada.
-- Começar com um parser determinístico em `src/lib` (sem serviço externo); um modelo de linguagem fica para avaliar depois (custo, CSP e privacidade).
+A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Modelo de linguagem**: o parser é determinístico, sem serviço externo (custo, CSP e privacidade a avaliar).
+- **Aprender regras ao salvar**: nada grava `categorization_rules`; a categoria vem das regras que já existem e do histórico. Também não há o selo "sugerida" na categoria.
+- **Tipo pelas palavras** (receita, transferência): o tipo vem do seletor, e o campo some em Transferência.
+- **Parcelas ("3x"), repetição ("todo mês") e nota** no texto; "semana passada", "mês passado", "2 mil" e contas como "12+3".
+- **Apelido de conta**: a conta casa por palavras do nome ("no nubank"); não há apelido salvo.
+- **Aviso de conta ruidoso**: qualquer palavra depois de no/na/em/pelo/pela que não case com conta gera "Não achei a conta “X”", inclusive "na praia".
+- **Etiqueta criada sem salvar**: o campo cria a etiqueta na hora; se a pessoa fechar a folha sem salvar, ela fica (como no Enter do seletor de etiquetas).
+- **Voz** e **dia da semana no futuro** ("sexta" é sempre a mais recente que já passou).
 
 ## 20. Fechamento do mês: o que ficou de fora
 
@@ -154,6 +161,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Lançamento por texto (tarefa 21) — 14/11/2026
+
+Um campo na Nova transação entende "café 12 no nubank ontem #viagem". Atrás da flag `lancamento_por_texto` (desligada por padrão). Sem migração.
+
+- [x] **Parser puro** (`src/lib/entry-text`): etiquetas, conta, data, valor e descrição; testes de unidade e fast-check.
+- [x] **Servidor**: `interpretEntryText` e `interpretEntryTextAction` (`flaggedAction`), categoria pelo sugestor extraído da importação (`category-suggest.ts`), etiquetas por `ensureTag`.
+- [x] **Tela**: campo "Preencher" acima do valor (Despesa e Receita), mescla no rascunho (`text-entry.ts`), avisos em linhas de apoio.
+- [x] **Novidade** `novidade-lancamento-por-texto` e flag no registro; a demo liga para a Ana.
+- [x] **Testes**: unidade, fast-check, integração (`entry-text.integration.test.ts`) e e2e (`lancamento-por-texto.spec.ts`).
 
 ### Fechamento do mês (tarefa 20) — 14/11/2026
 
