@@ -28,6 +28,7 @@
     "@date-fns/tz": "^1.5.0",
     "@electric-sql/pglite": "^0.5.10",
     "@neondatabase/serverless": "^1.2.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.10.1",
     "better-auth": "^1.7.8",
     "class-variance-authority": "^0.7.1",
