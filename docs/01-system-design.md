@@ -1323,7 +1323,7 @@ Preservar os dados também é não perdê-los.
 - **Excluir uma conta** (Administração): apaga a conta e todas as finanças dela de uma vez — toda tabela com `user_id` referencia o usuário com `ON DELETE CASCADE` (um teste de integração confere todas pelo catálogo). Ficam só as entradas da auditoria, com nome e e-mail como retrato. A exceção é `share_members.user_id`, a única chave para `user` sem cascade (`ON DELETE SET NULL`): no grupo ficam o nome e o histórico ("Bruno (conta excluída)") e os convites pendentes dela são apagados; a redefinição de acesso pelo painel não mexe nos grupos (§11.11). "Apagar todos os dados", quando existir, sai de todos os grupos antes.
 - **Exportar meus dados** (backup sob demanda): ZIP com JSON completo + CSV de lançamentos, gerado na hora, link que expira em 24 h; exige sessão recente.
 - **Apagar todos os dados** (conveniência para recomeçar do zero): confirmação forte (digitar "apagar") + sessão recente; apaga dados financeiros e anexos, mantém o acesso (usuário, senha, passkeys) e volta ao onboarding. O que foi apagado continua nos backups (§11.7) até sair da janela de retenção.
-- Criptografia em trânsito (TLS) e em repouso (Neon). Sem analytics de produto: as métricas de hábito saem do próprio banco (§13); o Speed Insights mede só desempenho.
+- Criptografia em trânsito (TLS) e em repouso (Neon). Sem analytics de produto: as métricas de hábito saem do próprio banco (§13); o Speed Insights mede só desempenho e o Web Analytics só visualizações de página, sem cookies.
 
 ### 11.9 Administração de contas (`/admin`)
 
@@ -1411,6 +1411,7 @@ Orçamento por rota (p75, 4G): `/inicio` LCP ≤ 2,0 s; `/extrato` primeira pág
 | Logs de funções | Vercel Observability | JSON estruturado com `requestId`, rota, duração, `userId` com hash |
 | Acesso | log de eventos de autenticação | logins, falhas, bloqueios do limitador, uso do primeiro acesso e da recuperação |
 | Core Web Vitals | Vercel Speed Insights | p75 por rota; alerta se LCP > 2,5 s |
+| Visitas | Vercel Web Analytics (`<Analytics />` no layout raiz) | visualizações de página por rota, sem cookies; script e envio em `/_vercel/insights`, na própria origem |
 | Hábito pessoal | consultas no próprio banco (sem analytics de produto) | dias com registro por semana, origem dos lançamentos, simulações salvas |
 | Jobs | tabela `job_runs` + log | painel simples em `/ajustes/sistema` |
 | Uso dos planos gratuitos | painéis de uso da Vercel e da Neon | conferir de tempos em tempos se o consumo segue dentro dos planos gratuitos |

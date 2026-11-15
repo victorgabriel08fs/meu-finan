@@ -24,13 +24,15 @@ const isVercel = process.env.VERCEL === "1";
  *
  * WebAuthn is not governed by CSP (its Permissions-Policy default is 'self'),
  * and next/font serves the font files from /_next/static, covered by
- * font-src 'self'. A new third-party origin (Sentry, Vercel Blob uploads) must
+ * font-src 'self'. Vercel Web Analytics loads its script from and reports to
+ * /_vercel/insights on this origin; only development loads the debug script
+ * from va.vercel-scripts.com. A new third-party origin (Sentry, Vercel Blob uploads) must
  * be added to the matching directive.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
   // 'unsafe-eval' only in development: React rebuilds server error stacks with eval.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval' https://va.vercel-scripts.com" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
