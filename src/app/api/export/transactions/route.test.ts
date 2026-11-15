@@ -80,7 +80,7 @@ describe("GET /api/export/transactions", () => {
       "text/csv; charset=utf-8",
     );
     expect(response.headers.get("content-disposition")).toBe(
-      'attachment; filename="meu-finan-lancamentos-2026-10-15.csv"',
+      'attachment; filename="prumo-lancamentos-2026-10-15.csv"',
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(mocks.getUserContext).toHaveBeenCalledWith("owner");

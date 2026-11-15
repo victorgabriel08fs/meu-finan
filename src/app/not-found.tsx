@@ -18,7 +18,7 @@ export default function NotFound() {
       <div className="w-full max-w-[400px]">
         <div className="mb-8 flex items-center gap-3">
           <BrandMark />
-          <span className="font-bold text-[17px] text-fg">Meu Finan</span>
+          <span className="font-bold text-[17px] text-fg">Prumo</span>
         </div>
         <NotFoundMessage href="/inicio" label="Ir para o Início" />
       </div>

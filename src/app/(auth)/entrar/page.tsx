@@ -29,7 +29,7 @@ export default async function LoginPage({
         Entrar
       </h1>
       <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
-        Seu dinheiro, claro como deveria ser.
+        Seu dinheiro no prumo.
       </p>
       <LoginForm redirectTo={target} notice={notice} />
     </>

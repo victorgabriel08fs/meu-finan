@@ -139,7 +139,7 @@ async function About() {
       </Topic>
 
       <p className="px-1 text-caption text-fg-3">
-        Meu Finan · versão {packageJson.version}
+        Prumo · versão {packageJson.version}
       </p>
     </>
   );

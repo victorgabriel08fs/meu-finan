@@ -425,7 +425,7 @@ test("exporta os lançamentos em CSV", async ({ page }) => {
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toContain("text/csv");
   expect(response.headers()["content-disposition"]).toContain(
-    "meu-finan-lancamentos-",
+    "prumo-lancamentos-",
   );
   const body = await response.text();
   expect(body.startsWith("\uFEFFData;Descrição;")).toBe(true);

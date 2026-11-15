@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 
 /** Shown under every invite field: the same for any e-mail (ADR-13). */
 export const NEUTRAL_INVITE_NOTE =
-  "Se houver alguém com esse e-mail no Meu Finan, a pessoa recebe o convite.";
+  "Se houver alguém com esse e-mail no Prumo, a pessoa recebe o convite.";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

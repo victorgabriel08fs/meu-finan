@@ -30,9 +30,9 @@ import {
 /** Why the switch cannot be used here, in the person's words. */
 const BLOCKED: Record<Exclude<PushSupport, "ready">, string> = {
   install:
-    "No iPhone e no iPad, as notificações chegam pelo app na Tela de Início. No Safari, toque em Compartilhar › Adicionar à Tela de Início, abra o Meu Finan pelo ícone e volte aqui.",
+    "No iPhone e no iPad, as notificações chegam pelo app na Tela de Início. No Safari, toque em Compartilhar › Adicionar à Tela de Início, abra o Prumo pelo ícone e volte aqui.",
   denied:
-    "As notificações do Meu Finan estão bloqueadas neste aparelho. No iPhone, libere em Ajustes › Notificações › Meu Finan e volte aqui.",
+    "As notificações do Prumo estão bloqueadas neste aparelho. No iPhone, libere em Ajustes › Notificações › Prumo e volte aqui.",
   unsupported:
     "Este navegador não recebe notificações. No iPhone, use o app da Tela de Início (iOS 16.4 ou mais recente).",
 };

@@ -96,7 +96,7 @@ export const sendTestPushAction = flaggedAction("notificacoes_push", FLAG_OFF)
     const outcome = await sendPush(
       user.id,
       {
-        title: "Meu Finan",
+        title: "Prumo",
         body: flags.central_notificacoes
           ? "Notificação de teste: tudo certo neste aparelho. O número no ícone some quando você lê os avisos no sino."
           : "Notificação de teste: tudo certo neste aparelho. O número no ícone some quando você abre o app.",

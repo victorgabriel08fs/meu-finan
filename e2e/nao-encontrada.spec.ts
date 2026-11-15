@@ -6,11 +6,11 @@ import { devices, expect, type Page, test } from "@playwright/test";
 
 const NOT_FOUND = "Página não encontrada";
 
-/** The page has one landmark and draws the brand ("Meu Finan") only once. */
+/** The page has one landmark and draws the brand ("Prumo") only once. */
 async function expectSingleFrame(page: Page) {
   await expect(page.getByRole("main")).toHaveCount(1);
   await expect(
-    page.getByText("Meu Finan", { exact: true }).filter({ visible: true }),
+    page.getByText("Prumo", { exact: true }).filter({ visible: true }),
   ).toHaveCount(1);
 }
 
