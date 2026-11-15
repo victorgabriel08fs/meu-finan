@@ -19,6 +19,13 @@ const TOKEN_GATED: Record<string, "SETUP_TOKEN" | "RECOVERY_TOKEN"> = {
 const ACCESS_LINK_PREFIX = "/convite/";
 
 /**
+ * Same as `randomSecret` in src/server/env.ts (which is server-only and cannot
+ * be imported here; proxy.test.ts checks they match). A shorter token would
+ * make the page throw, so the route stays closed instead.
+ */
+export const MIN_TOKEN_LENGTH = 32;
+
+/**
  * Deliberately matches no route: rewriting a request here makes Next render
  * app/not-found.tsx (the app's theme, in pt-BR) with a 404 status.
  */
@@ -31,7 +38,11 @@ export function proxy(request: NextRequest) {
   if (gate) {
     // Without its token the page answers a real 404 and never renders; with
     // it, the page itself checks the rest.
-    return process.env[gate]?.trim()
+    const token = process.env[gate]?.trim() ?? "";
+    if (token && token.length < MIN_TOKEN_LENGTH) {
+      console.warn(`${gate} curto: rota fechada`);
+    }
+    return token.length >= MIN_TOKEN_LENGTH
       ? NextResponse.next()
       : NextResponse.rewrite(new URL(NOT_FOUND_PATH, request.url));
   }

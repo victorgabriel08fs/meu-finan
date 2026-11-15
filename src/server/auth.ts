@@ -17,7 +17,7 @@ import { ADMIN_ROLE } from "@/lib/admin/roles";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
-import { readServerEnv } from "@/server/env";
+import { authOrigins, readServerEnv } from "@/server/env";
 import { isOwnerEmail, secretMatches } from "@/server/security/guards";
 
 /** Header the setup Server Action uses to hand the setup token to sign-up. */
@@ -25,10 +25,6 @@ export const SETUP_TOKEN_HEADER = "x-meu-finan-setup-token";
 
 const DAY = 60 * 60 * 24;
 const BUILD_ONLY_SECRET = "build-only-secret-never-used-to-sign-real-sessions";
-
-function appUrl(): URL {
-  return new URL(readServerEnv("BETTER_AUTH_URL") ?? "http://localhost:3000");
-}
 
 /**
  * The secret signs session cookies. `next build` evaluates this module without
@@ -78,11 +74,24 @@ const ADMIN_HTTP_PATHS = Object.values(adminPlugin.endpoints).map(
   (endpoint) => endpoint.path,
 );
 
-const url = appUrl();
+const { origin, rpId, passkeyOrigins, trustedOrigins } = authOrigins();
+
+// A production runtime without BETTER_AUTH_URL falls back to the Vercel domain
+// or localhost: say so once, in the logs. Never throw: the build has no env.
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PHASE !== "phase-production-build" &&
+  !process.env.BETTER_AUTH_URL?.trim()
+) {
+  console.warn(
+    `[auth] BETTER_AUTH_URL não definida: usando ${origin}. Logins de outro domínio serão recusados (INVALID_ORIGIN).`,
+  );
+}
 
 export const auth = betterAuth({
   appName: "Prumo",
-  baseURL: url.origin,
+  baseURL: origin,
+  trustedOrigins,
   secret: authSecret(),
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -161,9 +170,9 @@ export const auth = betterAuth({
   },
   plugins: [
     passkey({
-      rpID: url.hostname,
+      rpID: rpId,
       rpName: "Prumo",
-      origin: url.origin,
+      origin: passkeyOrigins,
     }),
     adminPlugin,
     // Must stay last: sets cookies from Server Actions.

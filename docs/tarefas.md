@@ -10,7 +10,7 @@ Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, 
 
 A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
 
-- **Domínio da Vercel**: o endereço continua o antigo (`meu-finan.vercel.app`); mudar exige trocar `BETTER_AUTH_URL` e recadastrar as passkeys, que ficam presas ao domínio.
+- **Domínio da Vercel**: o endereço continua o antigo (`meu-finan.vercel.app`); mudar exige trocar `BETTER_AUTH_URL` e recadastrar as passkeys, que ficam presas ao domínio (README › Trocar de domínio).
 - **Remetente de e-mail**: quando houver envio de e-mail, usar o nome Prumo.
 - **Busca no INPI** (classes 9, 36 e 42) e de domínio próprio, antes de divulgar fora da família (risco baixo para uso pessoal, médio como produto). Alternativas de nome: Lastro e Tento.
 - **Imagem Open Graph**, **splash do iOS** e **indexação** da homepage (hoje `noindex`).
@@ -192,6 +192,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Login e recuperação em produção (versão 0.5.2) — 15/11/2026
+
+Sem migração ou flag. Variáveis novas, opcionais: `PASSKEY_RP_ID`, `BETTER_AUTH_TRUSTED_ORIGINS`.
+
+- [x] **Origem e rpID por env** (`auth-origins.ts`): `BETTER_AUTH_URL`, ou o domínio de produção da Vercel, ou localhost; origens confiáveis e rpID das passkeys normalizados.
+- [x] **Login** distingue senha errada de falha de origem, rede ou servidor ("Não foi possível entrar agora. Tente de novo em instantes."); passkey cancelada fica quieta.
+- [x] **Token com menos de 32 caracteres** fecha `/recuperar` e `/primeiro-acesso` (404, motivo no log) em vez de quebrar a página.
+- [x] Testes: `auth-origins`, `env`, `login-errors`, `proxy` (Vitest). Fica de fora: teste de integração das actions de recuperação e primeiro acesso com token curto.
 
 ### Nova transação com o teclado (tarefa 23, versão 0.5.1) — 15/11/2026
 

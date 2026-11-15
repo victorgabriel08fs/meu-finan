@@ -649,7 +649,7 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 
 - **Subtítulo**: "Seu dinheiro no prumo." (a mesma tagline da homepage, §6.19).
 - **Passkey primeiro**: botão primário **"Entrar com passkey"** (Face ID/biometria) quando o aparelho suporta; campo de e-mail com `autocomplete="username webauthn"` — a autenticação condicional oferece a passkey já no foco do campo.
-- **Senha como alternativa**: "Usar senha" (`ghost`) revela o campo de senha (`autocomplete="current-password"`, botão mostrar/ocultar). Erro: "E-mail ou senha incorretos".
+- **Senha como alternativa**: "Usar senha" (`ghost`) revela o campo de senha (`autocomplete="current-password"`, botão mostrar/ocultar). Erro: "E-mail ou senha incorretos."; para falha de origem, de rede ou do servidor (senha e passkey): "Não foi possível entrar agora. Tente de novo em instantes."; passkey cancelada não mostra erro.
 - Muitas tentativas: mensagem inline com o tempo de espera devolvido pelo servidor ("Muitas tentativas. Tente de novo em 40 s.").
 - Depois de entrar, volta para a tela de `?voltar=` (só caminhos internos) ou para o Início.
 - Sem "Continuar com Google", sem link por e-mail e sem atalho para a recuperação — ela só existe quando o dono a liga.
