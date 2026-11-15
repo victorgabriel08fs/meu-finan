@@ -47,7 +47,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       headers: {
         ...NO_STORE,
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="meu-finan-lancamentos-${ctx.todayIso}.csv"`,
+        "Content-Disposition": `attachment; filename="prumo-lancamentos-${ctx.todayIso}.csv"`,
       },
     });
   } catch (error) {

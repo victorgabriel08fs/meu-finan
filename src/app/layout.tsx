@@ -19,12 +19,12 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: { template: "%s · Meu Finan", default: "Meu Finan" },
+  title: { template: "%s · Prumo", default: "Prumo" },
   description: "Controle financeiro pessoal",
-  applicationName: "Meu Finan",
+  applicationName: "Prumo",
   appleWebApp: {
     capable: true,
-    title: "Meu Finan",
+    title: "Prumo",
     statusBarStyle: "default",
   },
   formatDetection: { telephone: false },

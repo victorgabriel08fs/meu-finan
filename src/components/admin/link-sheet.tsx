@@ -44,8 +44,8 @@ export function LinkSheetContent({
   const expires = deadlineLabel(link.expiresAt, Date.now());
   const isInvite = link.purpose === "invite";
   const message = isInvite
-    ? `${firstName}, este é o seu convite para o Meu Finan. Crie a sua senha por este link, que vale até ${expires}:`
-    : `${firstName}, use este link para redefinir o seu acesso ao Meu Finan. Ele vale até ${expires}:`;
+    ? `${firstName}, este é o seu convite para o Prumo. Crie a sua senha por este link, que vale até ${expires}:`
+    : `${firstName}, use este link para redefinir o seu acesso ao Prumo. Ele vale até ${expires}:`;
 
   async function copy() {
     try {
@@ -64,7 +64,7 @@ export function LinkSheetContent({
   async function share() {
     try {
       await navigator.share({
-        title: "Meu Finan",
+        title: "Prumo",
         text: message,
         url: link.url,
       });

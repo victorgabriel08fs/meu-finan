@@ -12,8 +12,8 @@ import { DEFAULT_THEME, THEME_COLORS } from "@/lib/theme";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Meu Finan",
-    short_name: "Meu Finan",
+    name: "Prumo",
+    short_name: "Prumo",
     description: "Controle financeiro pessoal",
     lang: "pt-BR",
     dir: "ltr",
@@ -42,6 +42,12 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
+      },
+      {
+        src: "/icons/monochrome-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "monochrome",
       },
     ],
     shortcuts: [

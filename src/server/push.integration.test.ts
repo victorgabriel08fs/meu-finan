@@ -192,13 +192,13 @@ describe("sendPush", () => {
     await m.domain.savePushSubscription("bruno", device(NOTEBOOK), null);
     await unread("bruno", "a");
     const outcome = await m.push.sendPush("bruno", {
-      title: "Meu Finan",
+      title: "Prumo",
       body: "Aluguel vence amanhã",
       url: "/extrato",
     });
     expect(outcome).toEqual({ sent: 2, removed: 0, failed: 0 });
     expect(pushService.sent[0]?.body).toEqual({
-      title: "Meu Finan",
+      title: "Prumo",
       body: "Aluguel vence amanhã",
       url: "/extrato",
       badge: 1,
@@ -215,7 +215,7 @@ describe("sendPush", () => {
   it("never sends a link to another site", async () => {
     await m.domain.savePushSubscription("bruno", device(IPHONE), null);
     await m.push.sendPush("bruno", {
-      title: "Meu Finan",
+      title: "Prumo",
       body: "Oi",
       url: "//evil.example",
     });
@@ -229,7 +229,7 @@ describe("sendPush", () => {
     pushService.failWith.set(NOTEBOOK, 500);
     vi.spyOn(console, "error").mockImplementation(() => {});
     const outcome = await m.push.sendPush("bruno", {
-      title: "Meu Finan",
+      title: "Prumo",
       body: "Oi",
       url: "/inicio",
     });
@@ -243,7 +243,7 @@ describe("sendPush", () => {
     await m.domain.savePushSubscription("bruno", device(IPHONE), null);
     await m.db.update(m.schema.featureFlagOverrides).set({ enabled: false });
     const outcome = await m.push.sendPush("bruno", {
-      title: "Meu Finan",
+      title: "Prumo",
       body: "Oi",
       url: "/inicio",
     });

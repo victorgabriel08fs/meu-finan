@@ -338,6 +338,7 @@ describe("novidades feed", () => {
       }),
     ).toEqual([
       "novidade-retrospectiva-do-mes",
+      "novidade-prumo",
       "novidade-etiquetas",
       "novidade-fechamento-do-mes",
       "novidade-conta-beneficio",

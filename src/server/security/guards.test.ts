@@ -62,6 +62,7 @@ describe("safeRedirectPath", () => {
     "/primeiro-acesso",
     "/recuperar/x",
     "/convite/abc.def",
+    "/",
   ])("falls back for unsafe target %j", (input) => {
     expect(safeRedirectPath(input as string | null)).toBe("/inicio");
   });

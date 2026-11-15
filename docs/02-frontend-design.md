@@ -1,4 +1,4 @@
-# 02 · Frontend design — Meu Finan
+# 02 · Frontend design — Prumo
 
 > Especificação visual e de interação, **mobile-first**. Desenhado para 390 px de largura (iPhone 13–16 / Android médio) e validado em 360 px; escala para tablet e desktop na §4.5. Os mockups de referência estão no canvas de design publicado junto com estes documentos.
 
@@ -35,6 +35,18 @@
 | Movimento curto e funcional | Animações decorativas longas |
 
 Personalidade da escrita: direta, gentil, sem julgamento ("Você gastou R$ 320 a mais com Restaurantes do que costuma" — nunca "Você estourou!").
+
+### Marca
+
+**Prumo** (15/11/2026, tarefa 24; antes, Meu Finan). Tagline: **"Seu dinheiro no prumo."** "Pôr as contas no prumo" é deixar em ordem; o fio de prumo só mostra o que está reto, sem empurrar, que é a voz do §10.2. As cores, a Manrope e o "Sereno" não mudam. Alternativas consideradas, em ordem: Lastro e Tento.
+
+- **Símbolo**: um "p" minúsculo que é um fio de prumo. A haste é o fio, perfeitamente vertical (a única reta do desenho); o losango na ponta é o peso; o anel é o bojo do "p" e, numa segunda leitura, uma moeda. Traço de 7 numa grade de 64, pontas redondas (o mesmo desenho dos ícones Lucide). No wordmark ("prumo", desenhado a traço), o "p" desce abaixo da linha de base e termina no losango em `--primary`, o único ponto de cor da palavra.
+- **Tamanho mínimo**: símbolo 16 px (favicon); wordmark 20 px de altura (menor que isso, só o símbolo); ícone do app 48 px ou mais com o desenho normal (a 16 e 32 px, o símbolo ocupa 64% do quadrado).
+- **Respiro**: em volta do símbolo ou do wordmark, a largura do losango (cerca de 1/4 da altura do símbolo) livre de texto e de outras marcas. No ícone "any": símbolo a 64% do lado, raio de 22,5%. No mascarável: fundo sangrado, símbolo a 56% da altura, dentro do círculo seguro de 80%.
+- **Versões**: ícone do app (any, maskable, apple) com fundo `#0A7F58` e símbolo `#FFFFFF`, um só para os dois temas; interface com o símbolo em `--primary` (claro `#0A7F58`, escuro `#3DDC97`); selo (`BrandMark`) com fundo `#0A7F58` e símbolo `--on-primary` nos dois temas; monocromático (badge de notificação, `monochrome` do manifesto) em uma cor chapada, sem meio-tom, porque o Android usa só o alfa. Dentro do app, o símbolo é SVG em linha com tokens (nunca `<img>`: o tema é escolhido por classe, §3.11).
+- **Não fazer**: inclinar ou girar (o fio é vertical, sempre); separar o losango da haste ou usá-lo sozinho; gradiente, sombra, contorno ou cor fora dos tokens; verde sobre verde (sobre `--primary`, só `--on-primary`); o nome em maiúsculas no wordmark (em texto corrido, "Prumo").
+- **Voz**: mostra, não julga; frases curtas e botões com verbo; promete só o que faz (sem "fique rico"; simulação não é recomendação).
+- **O que não mudou de propósito**: o domínio da Vercel e o remetente de e-mail, as chaves locais, o `user-agent` e o demo (`meu-finan`), e o onboarding "Seu dinheiro, claro como deveria ser".
 
 ---
 
@@ -267,6 +279,7 @@ Coreografia:
 - **Push de tela**: nova tela entra 24 px da direita com fade (240 ms); a anterior recua 8 px com fade parcial. Troca de aba: só crossfade (160 ms), sem deslocamento.
 - **Valores**: ao mudar, o número herói conta do valor antigo ao novo (500 ms, `--ease-standard`). Valores em lista não animam.
 - **Barras e anéis**: crescem de 0 na primeira exibição (600 ms, `--ease-enter`), não em revisitas.
+- **Homepage pública (exceção ao "sem animações decorativas longas" do §1)**: só em `/` (§6.19), com os tempos da Retrospectiva e sempre ligada à rolagem ou à entrada do elemento na tela, uma vez cada. Os tempos ficam só em `src/components/home/motion.ts`: entrada de 480 ms subindo 24 px com stagger de 100 ms (até 4 elementos), contagem de 1 s, a haste do "p" caindo em 600 ms ao carregar, valores virando "••••" em 160 ms, o toast do teclado em 240 ms. O fio que desce pela página, o teclado do exemplo digitando "R$ 64,50" e o peso que encaixa no fim seguem a rolagem (nada se move sozinho). Só `transform` e `opacity`. Com `prefers-reduced-motion`, ou sem JavaScript: tudo já no estado final, o fio inteiro, só o fade de 120 ms. Nada muda fora dessa tela.
 - **Retrospectiva (exceção ao "sem animações decorativas longas" do §1)**: só em `/retrospectiva` (§6.12). Teto de 1 s por animação (15/11/2026, tarefa 22; antes 800 ms, discretas demais). Troca de parte: entra em 360 ms com 48 px de deslocamento, sai em 200 ms. O conteúdo começa 180 ms depois, com `Reveal` de 480 ms subindo 24 px e stagger de 100 ms em no máximo 5 elementos. Número que conta de 0 ao valor em 1 s (ease-out cúbico, começa quando o número já está visível e termina exatamente no valor); barras crescem em 800 ms e anel fecha em 1 s (`--ease-enter`); um único pulso de 480 ms no destaque da parte (ícone da Abertura, dia de maior gasto, ícone do maior gasto). A Abertura também anima ao abrir (a parte só monta depois da hidratação). Valores em lista não contam. Toda animação está ligada a um dado, sem loop, sem confete e sem som; tudo dura até cerca de 1,8 s depois do toque. Com `prefers-reduced-motion`: valores, barras e anéis já no valor final, sem stagger, sem deslocamento e troca de parte por fade de 120 ms. Os tempos ficam só em `src/components/recap/motion.ts`. Nada muda fora dessa tela.
 - **Lista**: itens novos entram com fade + 8 px (stagger 20 ms, no máximo 8 itens); linha recém-criada recebe um realce `--primary-soft` que esmaece em 1,2 s.
 - **`prefers-reduced-motion`**: todo deslocamento vira fade de 120 ms; sem contagem de números, sem stagger, sem crescimento de barras.
@@ -396,9 +409,9 @@ export const viewport: Viewport = {
 | Atrás da flag `financas_compartilhadas` (Ajustes › Organização; barra lateral no desktop; bloco do Início) | `/compartilhado` · `/compartilhado/[grupo]` (`?mes=`) · `/compartilhado/[grupo]/caixinhas` · `/compartilhado/[grupo]/caixinhas/[caixinha]` | grupos e convites · um grupo · caixinhas do grupo · uma caixinha (§6.18) |
 | Administradores (Ajustes; barra lateral no desktop) | `/admin/usuarios` · `/admin/flags` · `/admin/atividade` · `/admin/rotina` | contas e convites · feature flags · auditoria · rotina diária (§6.17) |
 | Onboarding | `/onboarding` | 4 passos, logo depois do primeiro acesso ou do convite |
-| Sem sessão | `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
+| Sem sessão | `/` · `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | homepage (§6.19) · login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
 
-Não há landing pública nem "Criar conta": a primeira conta é a do dono, que administra, e as outras chegam por convite (doc 01 §11). `/` leva ao Início, e todas as rotas fora das quatro acima exigem sessão, verificada no servidor; as de Administração exigem também o papel de administrador, e quem não o tem vê a página 404.
+Não há "Criar conta": a primeira conta é a do dono, que administra, e as outras chegam por convite (doc 01 §11). Há uma homepage pública em `/`, sem cadastro (§6.19); quem já tem sessão vai de `/` para o Início. Todas as rotas fora das cinco acima exigem sessão, verificada no servidor; as de Administração exigem também o papel de administrador, e quem não o tem vê a página 404.
 
 Filtros e período vivem na URL (`?mes=2026-10&conta=…&categoria=…`) com **nuqs**: o botão voltar desfaz filtros e links podem ser compartilhados.
 
@@ -634,6 +647,7 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 
 **Entrar** (`/entrar`)
 
+- **Subtítulo**: "Seu dinheiro no prumo." (a mesma tagline da homepage, §6.19).
 - **Passkey primeiro**: botão primário **"Entrar com passkey"** (Face ID/biometria) quando o aparelho suporta; campo de e-mail com `autocomplete="username webauthn"` — a autenticação condicional oferece a passkey já no foco do campo.
 - **Senha como alternativa**: "Usar senha" (`ghost`) revela o campo de senha (`autocomplete="current-password"`, botão mostrar/ocultar). Erro: "E-mail ou senha incorretos".
 - Muitas tentativas: mensagem inline com o tempo de espera devolvido pelo servidor ("Muitas tentativas. Tente de novo em 40 s.").
@@ -657,7 +671,7 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 **Convite e link de redefinição** (`/convite/[token]`)
 
 - Link de uso único gerado por um administrador (§6.17), válido por 72 h. Token desconhecido ou adulterado: 404, sem dizer por quê.
-- **Convite**: "Olá, Bruno" + "Você recebeu um convite para o Meu Finan. Crie uma senha para entrar: suas finanças ficam só na sua conta." E-mail só leitura (oferecido ao gerenciador de senhas), senha e confirmação (12+ caracteres, indicador com ✓) e "Criar senha e entrar" → entra na hora, recebe a oferta de passkey como no primeiro acesso (Ajustes › Segurança, com "Pular e continuar") e segue para o onboarding (§6.2). Embaixo, com relógio: "O link vale até ter, 20/out, 14:32 e funciona uma única vez."
+- **Convite**: "Olá, Bruno" + "Você recebeu um convite para o Prumo. Crie uma senha para entrar: suas finanças ficam só na sua conta." E-mail só leitura (oferecido ao gerenciador de senhas), senha e confirmação (12+ caracteres, indicador com ✓) e "Criar senha e entrar" → entra na hora, recebe a oferta de passkey como no primeiro acesso (Ajustes › Segurança, com "Pular e continuar") e segue para o onboarding (§6.2). Embaixo, com relógio: "O link vale até ter, 20/out, 14:32 e funciona uma única vez."
 - **Redefinição**: "Redefinir acesso" + "Bruno, defina uma nova senha. As sessões abertas da sua conta serão encerradas.", com "Remover todas as passkeys" como em `/recuperar`; "Redefinir e entrar" leva a Ajustes › Segurança, com o aviso para cadastrar uma passkey.
 - **Link que não serve mais**, com ícone num círculo `--surface-2`: "Este link expirou" (72 h; "Peça um novo a quem administra o app."), "Este link já foi usado" (botão "Entrar") ou "Este link não funciona mais" (trocado por um mais novo ou cancelado).
 - **Aparelho já conectado** a outra conta: "Este aparelho está conectado à conta …" + "Sair e continuar" — nunca troca de conta sem a pessoa perceber.
@@ -1204,6 +1218,7 @@ Balões curtos que apontam o que fazer, na primeira visita a cada tela, e avisos
 - **Compartilhado** (`novidade-compartilhado`, 12/11/2026, `when: { flag: "financas_compartilhadas" }`): "Crie um grupo, convide pelo e-mail e veja quem deve quanto, com o acerto num toque." Título "Divida despesas com outra pessoa". Só em Ajustes › Novidades (sem âncora: a área não tem lugar fixo no celular), com o link "Ver Compartilhado"; ícone `users`.
 - **Caixinhas** (`novidade-caixinhas`, 06/11/2026, sem flag): "Guarde dinheiro à parte numa caixinha: ela conta no patrimônio, mas fica fora do Saldo em contas e do que dá para gastar." Só em Ajustes › Novidades (sem âncora), com o link "Criar caixinha" (`/contas/nova?tipo=caixinha`); ícone `vault`.
 - **Subcategorias** (`novidade-subcategorias`, 05/11/2026, sem flag): "Agora dá para criar subcategorias, como Mercado › Feira, em Ajustes › Categorias. No Extrato, filtrar a categoria traz as subcategorias junto." Só em Ajustes › Novidades (sem âncora), com o link "Ver categorias".
+- **Agora o app se chama Prumo** (`novidade-prumo`, 15/11/2026, sem flag, só em Ajustes › Novidades, `routes: []`): "O Meu Finan mudou de nome e de ícone. Suas contas continuam iguais. No iPhone, para ver o ícone novo, tire o app da Tela de Início e adicione de novo." Ícone `sparkles`.
 - **Registro e estado**: as dicas ficam em `src/lib/tips/registry.ts` (id estável, rotas, âncora `data-tip`, textos, data, ordem, condição: ter conta, ter passkey, papel, flag); o que cada pessoa viu fica na tabela `user_tips` (doc 01 §6.3) e acompanha a conta em qualquer aparelho. Dica ou novidade sobre algo atrás de uma flag ou só de administradores declara a flag ou o papel: o balão e o link nunca levam alguém a uma tela que ele não pode abrir (doc 01 §11.10).
 
 ### 6.17 Administração (`/admin`)
@@ -1270,7 +1285,7 @@ Atrás da flag `financas_compartilhadas` (12/11/2026); sem ela as duas rotas res
 - **Convites para você**: card "{Ana} ({ana@…}) convidou você para o grupo {Casa}." com **Aceitar** (primary) e **Recusar** (ghost). Quem convida nunca vê o nome de quem ainda não aceitou, só o e-mail digitado.
 - **Grupos**: linha de 72 px com pilha de até 3 avatares, o nome, "Você e Bruno" (e "· 1 convite") e a frase do saldo: "Bruno te deve R$ 120,00" (valor em `--income`), "Você deve R$ 80,00 para Bruno" (valor em `--expense`) ou "Tudo acertado" (`--text-3`). Vários devedores somam: "Você tem R$ 200,00 a receber".
 - **Vazio**: `Users`, "Divida despesas com quem mora com você" / "Crie um grupo, convide a pessoa pelo e-mail e escolham como dividir." / **Criar grupo**.
-- **Novo grupo** (folha): "Nome do grupo" (até 40 caracteres) e "E-mail de quem vai dividir", um campo por pessoa com "Adicionar outro e-mail" (até 5) e a nota neutra "Se houver alguém com esse e-mail no Meu Finan, a pessoa recebe o convite." Erros no campo ("Dê um nome ao grupo.", "Confira o e-mail."). O toast diz "Grupo criado. Convite enviado.".
+- **Novo grupo** (folha): "Nome do grupo" (até 40 caracteres) e "E-mail de quem vai dividir", um campo por pessoa com "Adicionar outro e-mail" (até 5) e a nota neutra "Se houver alguém com esse e-mail no Prumo, a pessoa recebe o convite." Erros no campo ("Dê um nome ao grupo.", "Confira o e-mail."). O toast diz "Grupo criado. Convite enviado.".
 
 **`/compartilhado/[grupo]`**: voltar "Compartilhado", título com o nome do grupo e, à direita, **Pessoas** (`Users`, 44 px) e **Adicionar despesas** (ícone `Plus` de 44 px abaixo de `sm`, 640 px; botão de texto `tonal sm` a partir dele).
 - **Saldo** (card): a frase em `title-3` e **Marcar como acertado** quando há uma pessoa a acertar; com 3 pessoas ou mais, **Acertar contas** abre a lista de quem paga quem para zerar o grupo (máximo n − 1 pagamentos), cada um com "Marcar como acertado". Sozinha no grupo: "Convide alguém em Pessoas para começar a dividir."
@@ -1303,6 +1318,25 @@ Mesma flag e mesmas regras de página (sessão dentro de `<Suspense>`, `error.ts
 - **Partes do objetivo** (folha, criadora do grupo): **Iguais** · **Percentual** ("Como dividir o objetivo"); em percentual, um campo por pessoa e "Os percentuais somam 100%." / "Os percentuais somam 90%. Precisam somar 100%."; toast "Partes salvas.". Quando alguém entra ou sai, as partes voltam a ser iguais.
 - **Desfazer uma linha do histórico** (folha): "Desfazer este lançamento?" com "O lançamento sai do histórico da caixinha. Se foi feito junto com um lançamento no seu extrato, ele também é desfeito." e **Desfazer lançamento** / **Cancelar**; toast "Lançamento desfeito.". Recusado quando a pessoa já resgatou parte do que a linha guardou.
 - **Estados e a11y**: alvos de 44 px; valores pelo `Money`/`Masked` (modo discreto); sem cor fora dos tokens; a 360 px e 200% nada rola para o lado.
+
+### 6.19 Homepage pública
+
+`/` para quem não entrou (15/11/2026, tarefa 24). Estática: sem sessão, sem cookie, sem banco e sem flag; quem tem cookie de sessão vai para `/inicio` pelo `proxy.ts`. A única ação é **Entrar** (`/entrar`, 48 px, no topo e no fim); não há "Criar conta", lista de espera nem outro CTA. Título da aba: "Prumo · Seu dinheiro no prumo.". Pensada primeiro para o celular (coluna de até 36 rem, o fio à esquerda) e, no desktop, até 1040 px. `h1` só na primeira parte e um `h2` por seção; os cartões de exemplo são decorativos (`aria-hidden`), com valores inventados em centavos (nunca `Money`: o modo discreto não pode apagar os exemplos) e o texto ao lado diz o mesmo. Todo o texto está no HTML final: lê-se sem JavaScript. O `h1` e o texto abaixo dele nunca animam (LCP). Não promete nada que esteja atrás de flag.
+
+| # | Parte | Texto | Cartão de exemplo e movimento |
+|---|---|---|---|
+| 1 | Abertura | wordmark; `h1` **Seu dinheiro no prumo.**; "Registre o que entra e o que sai, veja o mês inteiro em uma tela e decida com calma."; **Entrar**; "Só por convite. Recebeu um? Abra o link que chegou para você." | a haste do "p" cai em 600 ms; o fio nasce ali |
+| 2 | Registrar | **Um gasto, alguns toques.** "O "+" está em toda tela. O teclado já abre no valor, a data é hoje e a conta é a última que você usou." "Errou? Desfazer fica ali por alguns segundos." | teclado de valor: "R$ 64,50" digitado em três passos ligados à rolagem; ao fim sobe o toast "Despesa de R$ 64,50 salva · Desfazer" |
+| 3 | Ver | **O mês inteiro em uma tela.** "Saldo em contas, o previsto para o fim do mês, o que vence nos próximos dias e para onde o dinheiro foi." "Valores de exemplo." | saldo que conta de 0 ao valor (1 s), barras de receitas e despesas, três contas a vencer em stagger |
+| 4 | Planejar | **Planeje sem culpa.** "Orçamentos por categoria, metas com prazo e um simulador de juros compostos, já com CDI, IPCA e imposto de renda." Aviso: "Mercado chegou a 80% do orçamento, e ainda faltam 18 dias." "Simulação com taxa constante. Não é recomendação de investimento." | barra do orçamento até 80%, anel da meta até 62%, curva do simulador desenhada em 800 ms |
+| 5 | Privacidade | **Cada pessoa com as próprias finanças.** "O Prumo é de uso pessoal e familiar. Não existe cadastro aberto: quem administra convida, e cada conta vê só o próprio dinheiro. Nem quem administra vê o seu." Três linhas: passkey ou senha; o olho esconde os valores; CSV quando quiser. | valores viram "••••" (160 ms, largura estável) e a legenda "Valores ocultos" aparece |
+| 6 | Instalar | **Abre como um app.** "Adicione o Prumo à tela de início do celular. Escuro por padrão, claro se você preferir." | o ícone entra numa grade de ícones neutros (fade com escala de 0,9 a 1, 360 ms); o controle **Escuro / Claro** (`radiogroup` "Tema") troca só o tema deste aparelho (`useDeviceTheme().chooseOnDevice()`); ao entrar, o tema da conta passa a valer |
+| 7 | Fecho | wordmark grande; `h2` **Pronto quando você estiver.**; **Entrar**; "Só por convite. Sem convite, fale com quem administra o seu Prumo." | o fio chega ao "p" do wordmark e o losango encaixa nos últimos 15% da rolagem |
+
+- **Fio**: uma linha de 2 px em `--primary` do "p" da abertura ao "p" do fecho, do tamanho do progresso da rolagem, com o losango do wordmark na ponta (`ScrollThread`). Sua posição vem só do CSS (`globals.css`, "Homepage"); só `transform` muda.
+- **Movimento reduzido ou sem JavaScript**: o fio inteiro e parado, os dois wordmarks completos, o teclado com "R$ 64,50" e o toast, o saldo no valor final, o cartão da privacidade já com "Valores ocultos"; nada se desloca (tempos em §3.8).
+- **Acessibilidade**: axe sem violações nos dois temas, a 360 px e no desktop; a 200% de texto, sem rolagem lateral a 360 e 430 px.
+- **Indexação**: continua `noindex` (app por convite, domínio provisório); abrir só a `/` quando houver domínio próprio.
 
 ## 7. Padrões de interação
 
@@ -1544,8 +1578,8 @@ Meta: **WCAG 2.2 AA**.
 // src/app/manifest.ts
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Meu Finan',
-    short_name: 'Meu Finan',
+    name: 'Prumo',
+    short_name: 'Prumo',
     description: 'Controle financeiro pessoal',
     lang: 'pt-BR',
     start_url: '/inicio?origem=pwa',
@@ -1558,6 +1592,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icons/192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/512.png', sizes: '512x512', type: 'image/png' },
       { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: '/icons/monochrome-512.png', sizes: '512x512', type: 'image/png', purpose: 'monochrome' },
     ],
     shortcuts: [
       { name: 'Nova despesa', url: '/inicio?novo=despesa', icons: [{ src: '/icons/sc-despesa.png', sizes: '96x96' }] },

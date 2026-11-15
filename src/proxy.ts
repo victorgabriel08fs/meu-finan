@@ -1,6 +1,8 @@
 // Optimistic gate: without a session cookie, pages redirect to /entrar and API
 // routes answer 401. It never decides access on its own — the DAL
 // (src/server/dal.ts) validates the session on every page, action and route.
+// The one public page that also lives here is the homepage ("/"): static, no
+// data; with a session cookie it sends the person on to /inicio.
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -36,6 +38,12 @@ export function proxy(request: NextRequest) {
 
   if (pathname.startsWith(ACCESS_LINK_PREFIX)) return NextResponse.next();
 
+  if (pathname === "/") {
+    return getSessionCookie(request)
+      ? NextResponse.redirect(new URL("/inicio", request.url))
+      : NextResponse.next();
+  }
+
   if (getSessionCookie(request)) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
@@ -51,14 +59,12 @@ export function proxy(request: NextRequest) {
   const login = request.nextUrl.clone();
   login.pathname = "/entrar";
   login.search = "";
-  if (pathname !== "/") {
-    login.searchParams.set("voltar", `${pathname}${search}`);
-  }
+  login.searchParams.set("voltar", `${pathname}${search}`);
   return NextResponse.redirect(login);
 }
 
 export const config = {
-  // Everything except the login page, Better Auth's own endpoints, the cron
+  // Everything except the login page (the homepage is handled above), Better Auth's own endpoints, the cron
   // route (Bearer CRON_SECRET), Next and Vercel internals (Web Analytics) and public assets (the service
   // worker included: the browser checks it for updates with or without a
   // session).

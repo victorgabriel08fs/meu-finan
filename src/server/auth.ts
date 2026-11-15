@@ -81,7 +81,7 @@ const ADMIN_HTTP_PATHS = Object.values(adminPlugin.endpoints).map(
 const url = appUrl();
 
 export const auth = betterAuth({
-  appName: "Meu Finan",
+  appName: "Prumo",
   baseURL: url.origin,
   secret: authSecret(),
   database: drizzleAdapter(db, {
@@ -162,7 +162,7 @@ export const auth = betterAuth({
   plugins: [
     passkey({
       rpID: url.hostname,
-      rpName: "Meu Finan",
+      rpName: "Prumo",
       origin: url.origin,
     }),
     adminPlugin,

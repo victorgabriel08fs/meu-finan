@@ -1,5 +1,10 @@
 import { ImageResponse } from "next/og";
-import { BRAND_GLYPH_ARROW, BRAND_GLYPH_LINE } from "./brand-mark";
+import {
+  BRAND_STROKE,
+  BRAND_STROKE_SMALL,
+  BRAND_SYMBOL,
+  BRAND_WEIGHT_STROKE,
+} from "./brand-mark";
 
 /** Brand emerald (= light --primary). */
 const BRAND_GREEN = "#0A7F58";
@@ -7,15 +12,48 @@ const BRAND_GREEN = "#0A7F58";
 /**
  * - `rounded`: rounded square on transparency (favicon, manifest "any").
  * - `full`: full-bleed square, for platforms that apply their own mask (iOS).
- * - `maskable`: full bleed with the glyph inside the 80% safe circle.
+ * - `maskable`: full bleed with the symbol inside the 80% safe circle.
  */
 export type AppIconVariant = "rounded" | "full" | "maskable";
 
-const GLYPH_SCALE: Record<AppIconVariant, number> = {
-  rounded: 0.64,
-  full: 0.58,
-  maskable: 0.5,
+/** Side of the 64 box relative to the icon (full/maskable = icone-app.svg). */
+const SYMBOL_SCALE: Record<AppIconVariant, number> = {
+  rounded: 0.78,
+  full: 0.7,
+  maskable: 0.7,
 };
+
+/** The Prumo symbol in white, for next/og (strokes and a filled diamond). */
+function SymbolSvg({
+  size,
+  strokeWidth,
+}: {
+  size: number;
+  strokeWidth: number;
+}) {
+  const { stem, ring, weight, viewBox } = BRAND_SYMBOL;
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox={viewBox}
+      stroke="#FFFFFF"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={stem} fill="none" strokeWidth={strokeWidth} />
+      <circle
+        cx={ring.cx}
+        cy={ring.cy}
+        r={ring.r}
+        fill="none"
+        strokeWidth={strokeWidth}
+      />
+      <path d={weight} fill="#FFFFFF" strokeWidth={BRAND_WEIGHT_STROKE} />
+    </svg>
+  );
+}
 
 /** Lucide paths (24×24) of the manifest shortcuts (doc 02 §12.1). */
 export const SHORTCUT_GLYPHS = {
@@ -82,7 +120,7 @@ export function shortcutIconResponse(paths: readonly string[]) {
  * web manifest points to. Server only.
  */
 export function appIconResponse(size: number, variant: AppIconVariant) {
-  const glyph = Math.round(size * GLYPH_SCALE[variant]);
+  const symbol = Math.round(size * SYMBOL_SCALE[variant]);
   return new ImageResponse(
     <div
       style={{
@@ -95,25 +133,43 @@ export function appIconResponse(size: number, variant: AppIconVariant) {
         borderRadius: variant === "rounded" ? Math.round(size * 0.225) : 0,
       }}
     >
-      <svg
-        aria-hidden="true"
-        width={glyph}
-        height={glyph}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth={size <= 48 ? 2.8 : 2.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d={BRAND_GLYPH_LINE} />
-        <path d={BRAND_GLYPH_ARROW} />
-      </svg>
+      <SymbolSvg
+        size={symbol}
+        strokeWidth={size <= 48 ? BRAND_STROKE_SMALL : BRAND_STROKE}
+      />
     </div>,
     {
       width: size,
       height: size,
       // The /icons/* URLs carry no hash: let a redesign reach installed apps.
+      headers: { "Cache-Control": "public, max-age=604800" },
+    },
+  );
+}
+
+/**
+ * Monochrome icon (Android themed icons, notification badge): flat white
+ * symbol on transparency, heavier stroke, no mid-tones. Server only.
+ */
+export function monochromeIconResponse(size: number) {
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <SymbolSvg
+        size={Math.round(size * 0.7)}
+        strokeWidth={BRAND_STROKE_SMALL}
+      />
+    </div>,
+    {
+      width: size,
+      height: size,
       headers: { "Cache-Control": "public, max-age=604800" },
     },
   );

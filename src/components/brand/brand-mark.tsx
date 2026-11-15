@@ -1,9 +1,50 @@
 import { cn } from "@/lib/utils";
 
 /**
- * App mark for the UI: white rising line on an emerald rounded square — the
- * same drawing as the app icons (app-icon.tsx). Decorative: the app name is
- * always written next to it.
+ * Prumo symbol ("p" as a plumb line) on a 64 grid, shared by the UI mark, the
+ * wordmark's companions and the app icons (app-icon.tsx): a stem and a ring
+ * drawn as strokes (fill none) and a diamond weight (fill + stroke 2.5).
+ */
+export const BRAND_SYMBOL = {
+  viewBox: "0 0 64 64",
+  stem: "M21.5 9V42",
+  ring: { cx: 34, cy: 23.5, r: 13.5 },
+  weight: "M21.5 38.5L29 47L21.5 58L14 47Z",
+} as const;
+
+/** Stroke width from 48 px up. */
+export const BRAND_STROKE = 7;
+/** Stroke width up to 48 px and for the monochrome version. */
+export const BRAND_STROKE_SMALL = 8.5;
+/** Stroke of the diamond weight. */
+export const BRAND_WEIGHT_STROKE = 2.5;
+
+function SymbolPaths({ strokeWidth }: { strokeWidth: number }) {
+  const { stem, ring, weight } = BRAND_SYMBOL;
+  return (
+    <g strokeLinecap="round" strokeLinejoin="round">
+      <path d={stem} fill="none" strokeWidth={strokeWidth} />
+      <circle
+        cx={ring.cx}
+        cy={ring.cy}
+        r={ring.r}
+        fill="none"
+        strokeWidth={strokeWidth}
+      />
+      <path
+        d={weight}
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth={BRAND_WEIGHT_STROKE}
+      />
+    </g>
+  );
+}
+
+/**
+ * App mark for the UI: white Prumo symbol on an emerald rounded square, the
+ * same drawing as the app icons. Decorative: the app name is always written
+ * next to it.
  */
 export function BrandMark({ className }: { className?: string }) {
   return (
@@ -16,21 +57,26 @@ export function BrandMark({ className }: { className?: string }) {
     >
       <svg
         aria-hidden="true"
-        viewBox="0 0 24 24"
-        fill="none"
+        viewBox={BRAND_SYMBOL.viewBox}
         stroke="currentColor"
-        strokeWidth={2.4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="size-[62%]"
+        className="size-[70%]"
       >
-        <path d={BRAND_GLYPH_LINE} />
-        <path d={BRAND_GLYPH_ARROW} />
+        <SymbolPaths strokeWidth={BRAND_STROKE_SMALL} />
       </svg>
     </span>
   );
 }
 
-/** Rising line and arrow head on a 24×24 grid (shared with the app icons). */
-export const BRAND_GLYPH_LINE = "M2.5 17 9 10.5l4 4L21.5 6";
-export const BRAND_GLYPH_ARROW = "M15.5 6h6v6";
+/** Just the symbol in `currentColor` (pair with `text-primary`). Decorative. */
+export function BrandSymbol({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox={BRAND_SYMBOL.viewBox}
+      stroke="currentColor"
+      className={className}
+    >
+      <SymbolPaths strokeWidth={BRAND_STROKE} />
+    </svg>
+  );
+}

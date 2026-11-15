@@ -1,4 +1,4 @@
-# Meu Finan — documentação de design
+# Prumo — documentação de design
 
 Aplicação de controle financeiro pessoal, **mobile-first**, com backend e frontend na **Vercel**.
 

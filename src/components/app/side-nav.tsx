@@ -98,7 +98,7 @@ export function SideNavView({
         className="mb-6 flex items-center gap-2.5 self-start rounded-control px-3 py-1"
       >
         <BrandMark className="size-8" />
-        <span className="text-title-3 text-fg">Meu Finan</span>
+        <span className="text-title-3 text-fg">Prumo</span>
       </Link>
       <div className="mb-5 px-1">{addButton ?? <PlaceholderAddButton />}</div>
       <nav aria-label="Navegação principal" className="flex flex-1 flex-col">

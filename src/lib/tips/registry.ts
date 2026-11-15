@@ -541,6 +541,18 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/retrospectiva", label: "Ver a retrospectiva" },
   },
+  {
+    id: "novidade-prumo",
+    kind: "novidade",
+    // No screen to go to and nothing to point at: it only explains the change.
+    routes: [],
+    anchor: null,
+    title: "Agora o app se chama Prumo",
+    body: "O Meu Finan mudou de nome e de ícone. Suas contas continuam iguais. No iPhone, para ver o ícone novo, tire o app da Tela de Início e adicione de novo.",
+    since: "2026-11-15",
+    order: 31,
+    icon: "sparkles",
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

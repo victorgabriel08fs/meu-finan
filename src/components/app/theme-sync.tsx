@@ -171,6 +171,25 @@ export function useThemePreference() {
 }
 
 /**
+ * Theme control for pages with no session (the public homepage): changes the
+ * device's theme only and clears the synced marker, so the next sign-in
+ * adopts the account's theme. Never use it signed in: `choose` also saves to
+ * the account.
+ */
+export function useDeviceTheme() {
+  const { setTheme } = useTheme();
+  const { theme, resolvedTheme } = useThemeChoice();
+  const chooseOnDevice = useCallback(
+    (next: ThemeChoice) => {
+      applyTheme(next, setTheme);
+      writeStorage(THEME_SYNCED_KEY, null);
+    },
+    [setTheme],
+  );
+  return { theme, resolvedTheme, chooseOnDevice };
+}
+
+/**
  * Adopts the account's theme on this device when it differs from what the
  * device last saw: right after signing in on a new device, after a change
  * made on another one, or when another account used this device last.

@@ -61,7 +61,7 @@ export default async function AccessLinkPage({
       <p className="mt-2 text-body text-fg-2">
         {isReset
           ? `${link.firstName}, defina uma nova senha. As sessões abertas da sua conta serão encerradas.`
-          : "Você recebeu um convite para o Meu Finan. Crie uma senha para entrar: suas finanças ficam só na sua conta."}
+          : "Você recebeu um convite para o Prumo. Crie uma senha para entrar: suas finanças ficam só na sua conta."}
       </p>
       {session ? (
         <SignedInNotice email={session.user.email} />

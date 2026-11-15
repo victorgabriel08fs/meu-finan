@@ -35,7 +35,7 @@ test("com a flag ligada, Ajustes leva a Notificações e o aparelho pode ativá-
   await expect(
     page.getByText(
       blocked
-        ? "As notificações do Meu Finan estão bloqueadas neste aparelho."
+        ? "As notificações do Prumo estão bloqueadas neste aparelho."
         : "Vale só para este aparelho.",
       { exact: false },
     ),

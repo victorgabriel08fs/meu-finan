@@ -118,7 +118,7 @@ test.describe("o grupo, de ponta a ponta", () => {
     await sheet.getByLabel("Nome do grupo").fill(GROUP);
     // The note never tells whether an e-mail has an account.
     await expect(
-      sheet.getByText(/Se houver alguém com esse e-mail no Meu Finan/),
+      sheet.getByText(/Se houver alguém com esse e-mail no Prumo/),
     ).toBeVisible();
     await sheet.getByLabel("E-mail 1").fill("nao-e-um-email");
     await sheet.getByRole("button", { name: "Criar grupo" }).click();

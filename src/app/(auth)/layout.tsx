@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="mb-8 flex items-center gap-3">
           {/* The brand's emerald in both themes, like the app icon. */}
           <BrandMark />
-          <span className="font-bold text-[17px] text-fg">Meu Finan</span>
+          <span className="font-bold text-[17px] text-fg">Prumo</span>
         </div>
         {children}
       </div>

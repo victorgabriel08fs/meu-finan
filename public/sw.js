@@ -1,4 +1,4 @@
-// Service worker of Meu Finan (doc 01 §10): shows Web Push notifications and
+// Service worker of Prumo (doc 01 §10): shows Web Push notifications and
 // keeps the number on the app icon. The server sends a PushMessage
 // (src/lib/push/subscription.ts) as JSON. No fetch handler: offline caching
 // is not here yet, so every request still goes to the network as before.
@@ -7,7 +7,7 @@
 // updateViaCache "none", so a new version takes over on the next page load.
 
 const FALLBACK = {
-  title: "Meu Finan",
+  title: "Prumo",
   body: "Você tem um aviso novo.",
   url: "/inicio",
 };
@@ -53,6 +53,7 @@ self.addEventListener("push", (event) => {
   const options = {
     body: typeof message.body === "string" ? message.body : "",
     icon: "/icons/192.png",
+    badge: "/icons/badge-96.png",
     data: { url: isAppPath(message.url) ? message.url : FALLBACK.url },
   };
   if (typeof message.tag === "string" && message.tag) {
