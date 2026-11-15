@@ -141,7 +141,7 @@ test("com movimento reduzido, o valor que sobrou aparece inteiro de uma vez", as
     const [reais = "0", centavos = "0"] = value
       .replace(/[^\d,]/g, "")
       .split(",");
-    return reais * 100 + Number(centavos);
+    return Number(reais) * 100 + Number(centavos);
   };
   const [reais = "0", centavos = "0"] = spoken.match(/\d[\d.]*/g) ?? [];
   expect(cents(text)).toBe(
