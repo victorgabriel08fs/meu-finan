@@ -1209,7 +1209,7 @@ Configuração única da conta do dono — a **primeira administradora** —, di
 ### 11.2 Login (`/entrar`)
 
 - **Passkey primeiro**: o campo de e-mail usa `autocomplete="username webauthn"` e a página inicia a autenticação condicional (conditional UI; `autoFill` no cliente do plugin de passkey) — o sistema oferece a passkey já no foco do campo. Há também o botão "Entrar com passkey". Passkeys resistem a phishing e não deixam segredo compartilhado no servidor.
-- **E-mail + senha como alternativa**: senha forte, com **no mínimo 12 caracteres** (`minPasswordLength: 12`), hash scrypt (padrão do Better Auth). Erro sempre genérico ("E-mail ou senha incorretos").
+- **E-mail + senha como alternativa**: senha forte, com **no mínimo 12 caracteres** (`minPasswordLength: 12`), hash scrypt (padrão do Better Auth). Senha errada sempre dá o erro genérico ("E-mail ou senha incorretos"); falha de origem, de rede ou do servidor mostra "Não foi possível entrar agora. Tente de novo em instantes." (nunca o nome de uma variável). O Better Auth recusa o login (403 `INVALID_ORIGIN`) quando o app abre por um endereço diferente de `BETTER_AUTH_URL` ou de `BETTER_AUTH_TRUSTED_ORIGINS`; o rpID da passkey é o domínio de `BETTER_AUTH_URL` (ou `PASSKEY_RP_ID`), então trocar de domínio exige entrar com senha e cadastrar passkey nova.
 - **Sem login social e sem link mágico**: cada método a mais é mais uma porta, e um provedor social poderia criar usuários. Endpoints do Better Auth que o app não usa ficam desligados (`disabledPaths`).
 - **Retorno seguro**: `?voltar=` só aceita caminho interno (começa com `/` e não com `//`), para não virar redirecionamento aberto.
 - **2FA TOTP** (plugin `twoFactor`, com códigos de backup) é o próximo passo de endurecimento, na F1.
@@ -1225,7 +1225,7 @@ Configuração única da conta do dono — a **primeira administradora** —, di
 
 Para quando o dono perde o acesso (sem passkey e sem senha). A conta do dono não recebe link de redefinição pelo painel (§11.9), então este é o caminho de volta dela. Não há recuperação por e-mail: a prova de identidade é ter acesso ao projeto na Vercel. Vale para a conta do `OWNER_EMAIL` (ou, só quando a variável não existe, a conta mais antiga, a do primeiro acesso, mesmo que tenha perdido o papel); se o `OWNER_EMAIL` não for de nenhuma conta — por exemplo, um erro de digitação na variável —, a recuperação recusa em vez de assumir outra conta. Também devolve a conta como administradora ativa, caso outro administrador tenha tirado o papel ou desativado a conta. Cada uso entra na auditoria.
 
-1. Definir `RECOVERY_TOKEN` (aleatório e longo) nas variáveis de ambiente de produção da Vercel e fazer redeploy — variáveis novas só valem para deploys novos. Sem a variável, `/recuperar` responde 404.
+1. Definir `RECOVERY_TOKEN` (aleatório e longo) nas variáveis de ambiente de produção da Vercel e fazer redeploy — variáveis novas só valem para deploys novos. Sem a variável, ou com menos de 32 caracteres, `/recuperar` responde 404 (o proxy e as páginas falham fechado; o motivo vai só para o log).
 2. Em `/recuperar`, informar o token e uma nova senha (≥ 12 caracteres, com confirmação); opcionalmente, marcar "Remover todas as passkeys" (aparelho perdido). Não há campo de e-mail: o servidor escolhe a conta (a do `OWNER_EMAIL`), então o token sozinho redefine a senha do dono.
 3. O servidor redefine a senha, **revoga todas as sessões** e, se marcado, apaga as passkeys. Limitador estrito, token comparado em tempo constante, cada uso registrado no log.
 4. Remover `RECOVERY_TOKEN` e fazer redeploy. Entrar com a nova senha e criar uma passkey de novo.
@@ -1442,9 +1442,10 @@ Variáveis de ambiente:
 |---|---|
 | `DATABASE_URL`, `DATABASE_URL_UNPOOLED` | integração Neon |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | manual |
+| `PASSKEY_RP_ID`, `BETTER_AUTH_TRUSTED_ORIGINS` | manual, opcionais — rpID das passkeys (só o domínio) e outras origens aceitas no login (lista por vírgula, sem espaços, sem curinga); `VERCEL_PROJECT_PRODUCTION_URL` (automática) serve de base se `BETTER_AUTH_URL` faltar em produção |
 | `OWNER_EMAIL` | manual — e-mail da conta do dono: o único aceito no primeiro acesso (§11.1), a conta que a recuperação de emergência redefine (§11.4) e a que o painel não exclui nem redefine (§11.9). Sem ela, o dono é a conta mais antiga (a do primeiro acesso) |
-| `SETUP_TOKEN` | manual, aleatório e longo; só até o primeiro acesso — depois, remover |
-| `RECOVERY_TOKEN` | manual, aleatório e longo; **ausente por padrão** — definido só durante uma recuperação de emergência (§11.4) |
+| `SETUP_TOKEN` | manual, aleatório, com 32 caracteres ou mais (com menos, `/primeiro-acesso` fecha); só até o primeiro acesso — depois, remover |
+| `RECOVERY_TOKEN` | manual, aleatório, com 32 caracteres ou mais (com menos, `/recuperar` fecha); **ausente por padrão** — definido só durante uma recuperação de emergência (§11.4) |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob |
 | `CRON_SECRET` | manual (a Vercel envia como `Authorization: Bearer`) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | gerados com `npx web-push generate-vapid-keys`; a pública chega ao navegador pela página de Ajustes › Notificações (sem `NEXT_PUBLIC_`), a privada nunca sai do servidor. Trocar o par invalida as inscrições: cada aparelho ativa de novo |
