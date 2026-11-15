@@ -5,22 +5,14 @@ import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
 import { authClient } from "@/lib/auth-client";
+import {
+  isPasskeyCancel,
+  loginErrorMessage,
+  SIGN_IN_UNAVAILABLE,
+} from "./login-errors";
 
 type Pending = "passkey" | "password" | null;
-
-function messageFor(
-  error: { status?: number; code?: string } | null | undefined,
-) {
-  if (!error) return null;
-  if (error.status === 429) {
-    return "Muitas tentativas. Espere um minuto e tente de novo.";
-  }
-  // Only reached with the right password or passkey: it reveals nothing.
-  if (error.code === "BANNED_USER") return DEACTIVATED_MESSAGE;
-  return "E-mail ou senha incorretos.";
-}
 
 export function LoginForm({
   redirectTo,
@@ -75,16 +67,25 @@ export function LoginForm({
     try {
       const result = await authClient.signIn.passkey();
       if (result?.error) {
-        const { status } = result.error;
+        const { status, name } = result.error as {
+          status?: number;
+          name?: string;
+        };
         const code = "code" in result.error ? result.error.code : undefined;
+        if (isPasskeyCancel({ name, code })) return;
+        // A passkey failure is never "wrong password".
         setError(
           status === 429 || code === "BANNED_USER"
-            ? messageFor({ status, code })
-            : "Não foi possível entrar com a passkey. Tente de novo ou use a senha.",
+            ? loginErrorMessage({ status, code })
+            : SIGN_IN_UNAVAILABLE,
         );
         return;
       }
       finish();
+    } catch (thrown) {
+      if (!isPasskeyCancel(thrown as { name?: string })) {
+        setError(SIGN_IN_UNAVAILABLE);
+      }
     } finally {
       // Once signed in, the spinner stays until the page unloads.
       if (!done.current) setPending(null);
@@ -101,10 +102,12 @@ export function LoginForm({
         password,
       });
       if (signInError) {
-        setError(messageFor(signInError));
+        setError(loginErrorMessage(signInError));
         return;
       }
       finish();
+    } catch {
+      setError(SIGN_IN_UNAVAILABLE);
     } finally {
       if (!done.current) setPending(null);
     }
