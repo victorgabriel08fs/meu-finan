@@ -38,6 +38,11 @@ jobs:
 
       - run: npm ci
 
+      # Só dependências de produção e só alto ou crítico: uma vulnerabilidade
+      # nova que chega ao servidor falha o PR (docs/04-seguranca.md).
+      - name: Auditoria de dependências
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint (Biome)
         run: npm run lint
 
