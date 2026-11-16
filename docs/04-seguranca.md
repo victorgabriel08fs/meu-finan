@@ -14,7 +14,7 @@ Auditoria de 16/11/2026, na versão 0.5.2 (`main` depois do PR #40). Objetivo do
 
 **Nenhum achado crítico.** A base está acima da média para o estágio: sem cadastro público, sessão checada no servidor em toda página, action e rota, isolamento por `userId` com checagem de posse de todo id recebido, tokens de uso único com seletor e verificador (só o hash no banco, comparação em tempo constante), endpoints admin do Better Auth desligados, CSP restrita à própria origem, proteção de CSV injection na exportação, allowlist dos serviços de push (sem SSRF) e nenhum segredo no histórico.
 
-O que falta para o beta é menos código vulnerável e mais **operação**: backup fora da Neon, LGPD (termos, privacidade, exportar e excluir a própria conta), segundo fator para administradores e detecção (logs de login e alertas). Para cobrar, entram cadastro público com verificação de e-mail, pagamentos e limites por plano.
+O que falta para o beta é menos código vulnerável e mais **operação**: backup fora da Neon, LGPD (termos, privacidade, exportar e excluir a própria conta), segundo fator para administradores e detecção (logs de login e alertas). Para cobrar, entram pagamentos e limites por plano; as contas continuam só por convite.
 
 | Severidade | Achado | Situação |
 |---|---|---|
@@ -116,7 +116,7 @@ Inofensivo no `*.vercel.app`. No domínio próprio, todo subdomínio precisa de 
 
 1. **Vercel Pro**: o plano Hobby é só para uso não comercial; cobrar exige o Pro (também traz WAF e regras de firewall).
 2. **Neon pago**: restauração pontual de 7 a 30 dias, sem pausa por inatividade.
-3. **S9 Cadastro público** com verificação de e-mail (Resend, remetente Prumo), "esqueci minha senha" por e-mail e proteção anti-robô. Muda a decisão "contas só por convite": é do dono.
+3. **Contas continuam só por convite** (decisão do dono, 16/11/2026): sem cadastro público. Entra o "esqueci minha senha" por e-mail (Resend, remetente Prumo).
 4. **S10 Pagamentos**: checkout hospedado (Stripe, Mercado Pago ou Pagar.me, com Pix e cartão; nenhum dado de cartão passa pelo app), webhook com assinatura verificada e idempotência, tabela de assinaturas e direitos por plano.
 5. **S11 Limites por plano** no servidor: o registro de flags já resolve pessoa > global > padrão; entra o plano no meio (pessoa > plano > global > padrão), sempre checado em `flaggedAction` e nas páginas.
 6. **Isolamento em profundidade**: Row Level Security no Postgres por `user_id` como segunda barreira, ou um teste que percorra o catálogo e exija filtro por dono em toda consulta.
