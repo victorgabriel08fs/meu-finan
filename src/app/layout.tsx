@@ -71,7 +71,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           dangerouslySetInnerHTML={{ __html: THEME_META_SCRIPT }}
         />
         <Providers>{children}</Providers>
-        <Analytics />
+        {/* Only Vercel serves /_vercel/insights: a local `next start` would 404. */}
+        {process.env.VERCEL === "1" && <Analytics />}
       </body>
     </html>
   );
