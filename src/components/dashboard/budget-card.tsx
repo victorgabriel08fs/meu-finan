@@ -163,14 +163,16 @@ export function BudgetCard({
               key={item.id}
               className="flex min-h-13 flex-wrap items-center gap-x-3 gap-y-1 border-t border-border py-2"
             >
-              <div className="flex min-w-0 flex-[1_1_6rem] items-center gap-3">
+              {/* With very large text the icon goes above, so the amounts keep the
+                  whole width and are not cut off. */}
+              <div className="flex min-w-0 flex-[1_1_6rem] items-center gap-3 @max-tight:flex-col @max-tight:items-start">
                 <CategoryIcon
                   icon={item.categoryIcon}
                   color={item.categoryColor}
                   size="sm"
                   className="size-8"
                 />
-                <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex w-full min-w-0 flex-1 flex-col">
                   <span
                     className={cn(
                       "text-body font-semibold text-fg",

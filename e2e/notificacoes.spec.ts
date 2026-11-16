@@ -324,7 +324,10 @@ test("com o aparelho pronto: a nota do aparelho, 1 aparelho nos Avisos e a prév
   await expect(device).toHaveAttribute("aria-checked", "false");
   // Ready to turn on: the note about this device (it never showed before).
   await expect(
-    page.getByText("Vale só para este aparelho.", { exact: false }),
+    // Visible only: a hidden copy of the streamed panel can linger.
+    page
+      .getByText("Vale só para este aparelho.", { exact: false })
+      .filter({ visible: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /^Enviar prévia dos avisos/ }),
