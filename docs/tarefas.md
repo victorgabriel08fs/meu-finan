@@ -6,6 +6,23 @@ O que falta fazer, em ordem de prioridade. Cada tarefa passa pelos agentes do pr
 
 Ordem definida em 13/11/2026 pelo dono: cada tarefa só depende das anteriores, e as pequenas vêm antes das que pedem mais contexto (uma tarefa por sessão, para caber no limite de tokens). As tarefas 14 (Maior gasto da semana) e 15 (Parcelas a terminar), de 13/11/2026, 16 (Comparado ao mês passado), 17 (Assinaturas do mês), 18 (Etiquetas), 19 (Gasto fora do padrão), 20 (Fechamento do mês) e 21 (Lançamento por texto), de 14/11/2026, a 23 (valor visível com o teclado) e a 24 (Prumo), de 15/11/2026, foram entregues (ver "Entregue"). Os blocos novos entram no Início personalizável (catálogo de blocos, flag `inicio_personalizavel`), cada um com skeleton e erro próprios.
 
+## S. Segurança e lançamento
+
+Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 2026 e o lançamento com planos. Em ordem:
+
+- [ ] **S1 Backup fora da Neon** (A-2): workflow semanal com `pg_dump` (papel só de leitura) criptografado com `age`, guardado fora da Neon (doc 01 §11.7); conferir a janela de restauração do plano; testar uma restauração num branch descartável.
+- [ ] **S2 Termos de uso e política de privacidade** (A-3): páginas públicas, aceite no convite e no primeiro acesso (versão aceita guardada), canal do titular; revisar doc 01 §11.8, que hoje se apoia na exceção de uso particular.
+- [ ] **S3 Exportar meus dados e excluir minha conta** (A-3): ZIP com JSON completo + CSV (doc 01 §11.8) e exclusão pela própria pessoa, ambos com sessão recente; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13).
+- [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
+- [ ] **S5 Login mais duro** (M-2): limite por e-mail além do IP e recusa de senhas vazadas (plugin `haveIBeenPwned` do Better Auth).
+- [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
+- [ ] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
+- [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
+- [x] ~~**S9 Cadastro público**~~: decidido pelo dono em 16/11/2026 que as contas **continuam só por convite**, também com planos. Fica para o beta: convites com limite por administrador e "esqueci minha senha" por e-mail (Resend, remetente Prumo) como alternativa ao link de redefinição do painel.
+- [ ] **S10 Pagamentos** (contas por convite: o plano é escolhido depois de aceitar o convite): checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
+- [ ] **S11 Limites por plano** no servidor: plano na resolução das flags (pessoa > plano > global > padrão).
+- [ ] **S12 Defesa em profundidade**: RLS no Postgres por `user_id` (ou teste de catálogo), CSP sem `'unsafe-inline'` (SRI), pentest externo e `security.txt`.
+
 ## 24b. Prumo: o que ficou de fora
 
 A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
@@ -191,7 +208,7 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 
 ## Entregue
 
-### Lançamento por texto: aviso de conta só quando parece conta (versão 0.5.3) — 16/11/2026
+### Lançamento por texto: aviso de conta só quando parece conta (versão 0.5.6) — 16/11/2026
 
 - [x] "Não achei a conta “X”" só quando “X” é um meio de pagamento (pix, débito, carteira, bancos conhecidos) ou fica a uma letra de uma palavra do nome de uma conta; "na praia" e "no shopping" ficam na descrição, sem aviso (`parse.ts`, `parse.test.ts`).
 - [x] Campo "Escrever o lançamento" a 200%: já tinha largura útil (`e2e/teclado-folha.spec.ts` passa); item tirado das pendências da 23.
@@ -204,6 +221,14 @@ Sem migração ou flag. Variáveis novas, opcionais: `PASSKEY_RP_ID`, `BETTER_AU
 - [x] **Login** distingue senha errada de falha de origem, rede ou servidor ("Não foi possível entrar agora. Tente de novo em instantes."); passkey cancelada fica quieta.
 - [x] **Token com menos de 32 caracteres** fecha `/recuperar` e `/primeiro-acesso` (404, motivo no log) em vez de quebrar a página.
 - [x] Testes: `auth-origins`, `env`, `login-errors`, `proxy` (Vitest). Fica de fora: teste de integração das actions de recuperação e primeiro acesso com token curto.
+
+### Crédito do autor (versão 0.5.4) — 16/11/2026
+
+Pedido do dono: "Feito por Victor Gabriel", com link para o GitHub dele (nova aba), no rodapé da homepage e em Ajustes › Sobre (`src/components/brand/author-credit.tsx`). No roadmap de segurança, S9 fechada: as contas continuam só por convite.
+
+### Auditoria de segurança (versão 0.5.3) — 16/11/2026
+
+Pedido do dono para o beta e os planos. Relatório e roadmap em `docs/04-seguranca.md`: nenhum achado crítico; corrigidos a dependência de produção com vulnerabilidade alta (`@vercel/functions` 3.11.3, pelo lockfile), o Dependabot (`.github/dependabot.yml`) e a auditoria de dependências no CI; o resto virou as tarefas S1 a S12.
 
 ### Nova transação com o teclado (tarefa 23, versão 0.5.1) — 15/11/2026
 
