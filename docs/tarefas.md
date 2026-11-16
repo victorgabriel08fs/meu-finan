@@ -13,7 +13,8 @@ A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
 - **Domínio da Vercel**: o endereço continua o antigo (`meu-finan.vercel.app`); mudar exige trocar `BETTER_AUTH_URL` e recadastrar as passkeys, que ficam presas ao domínio (README › Trocar de domínio).
 - **Remetente de e-mail**: quando houver envio de e-mail, usar o nome Prumo.
 - **Busca no INPI** (classes 9, 36 e 42) e de domínio próprio, antes de divulgar fora da família (risco baixo para uso pessoal, médio como produto). Alternativas de nome: Lastro e Tento.
-- **Imagem Open Graph**, **splash do iOS** e **indexação** da homepage (hoje `noindex`).
+- **Indexação** da homepage (hoje `noindex` na meta, no cabeçalho `X-Robots-Tag` e no `robots.txt`): só depois do domínio novo e da busca no INPI. A imagem Open Graph e o splash do iOS foram entregues em 16/11/2026 (ver "Entregue").
+- **Splash do iPad e na horizontal**, e **splash claro**: fora de escopo (o app abre escuro por padrão).
 - **Continuam `meu-finan` de propósito**: pacote, chaves de `localStorage`, `user-agent` e contas do demo.
 - **Passkeys antigas** podem ter o rótulo "Meu Finan" no gerenciador do aparelho; não há como renomear de fora.
 - **Onboarding** mantém "Seu dinheiro, claro como deveria ser" (decisão do dono); a tagline da marca vale na homepage e no Entrar.
@@ -192,6 +193,14 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Imagem de pré-visualização e splash do iOS (versão 0.6.0) — 16/11/2026
+
+Sem migração, flag ou variável nova. Parte da tarefa 24b.
+
+- [x] **Imagem Open Graph e Twitter** (`/opengraph-image`, `/twitter-image`, 1200x630, escura, com a marca e "Seu dinheiro no prumo."); `metadataBase` vem de `appOrigin()` e `openGraph` na layout e na homepage.
+- [x] **Splash do iOS** (`/splash/dark-{largura}x{altura}.png`, 10 tamanhos de iPhone em retrato, só escuro) ligado por `apple-touch-startup-image`.
+- [x] `proxy.ts` deixa as três rotas passarem sem sessão (crawlers e o iOS vão sem cookie). Testes em Vitest e em `e2e/homepage.spec.ts`.
 
 ### Login e recuperação em produção (versão 0.5.2) — 15/11/2026
 
