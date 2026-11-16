@@ -1,7 +1,9 @@
 /**
  * Suggested category for an imported row, learned from the owner's own
- * entries: explicit "description → category" rules first, then entries with
- * the same description key, then the most similar description.
+ * entries: a rule for exactly this merchant first, then entries with the same
+ * description key, then a rule contained in the description, then the most
+ * similar description. A short learned rule ("uber") so never overrides the
+ * history of a longer description ("uber eats").
  */
 import { descriptionKey } from "./text";
 
@@ -115,6 +117,46 @@ export function merchantKey(description: string): string {
   return tokens.length > 0 ? tokens.join(" ") : key;
 }
 
+/** Shortest description key a learned rule may have. */
+export const MIN_PATTERN_LENGTH = 3;
+
+/**
+ * The pattern a rule learned from this description would have: its whole key
+ * (rules match whole words of the full key, so stop words in the middle stay),
+ * or null when it is too short or only says how the money moved ("pix",
+ * "pagamento"), which would catch unrelated rows.
+ */
+export function learnablePattern(description: string): string | null {
+  const key = descriptionKey(description);
+  if (key.length < MIN_PATTERN_LENGTH) return null;
+  return significantTokens(key).length > 0 ? key : null;
+}
+
+/** "replace": the person picked another category; "confirm": kept it. */
+export type RuleLearning = { pattern: string; mode: "replace" | "confirm" };
+
+/**
+ * What saving an entry teaches, given the category the form filled in by
+ * itself: nothing without a suggestion, a category or a learnable description.
+ */
+export function ruleLearning(input: {
+  description: string | undefined;
+  categoryId: string | null;
+  suggestedCategoryId: string | null | undefined;
+}): RuleLearning | null {
+  const description = input.description?.trim();
+  if (!description || !input.categoryId || !input.suggestedCategoryId) {
+    return null;
+  }
+  const pattern = learnablePattern(description);
+  if (!pattern) return null;
+  return {
+    pattern,
+    mode:
+      input.categoryId === input.suggestedCategoryId ? "confirm" : "replace",
+  };
+}
+
 type Choice = { categoryId: string; uses: number; lastUsedOn: string };
 
 const better = (a: Choice, b: Choice) =>
@@ -167,22 +209,51 @@ export function createCategorySuggester(
   }
 
   const ruleKeys = rules
-    .map((rule) => ({ ...rule, key: descriptionKey(rule.pattern) }))
+    .map((rule) => ({
+      ...rule,
+      key: descriptionKey(rule.pattern),
+      merchant: merchantKey(rule.pattern),
+    }))
     .filter((rule) => rule.key !== "");
+
+  type RuleKey = (typeof ruleKeys)[number];
+  const applies = (rule: RuleKey, kind: EntryKind, accountId: string) =>
+    rule.kind === kind &&
+    (rule.accountId === null || rule.accountId === accountId);
 
   return (description, kind, accountId) => {
     const full = descriptionKey(description);
     if (full === "") return null;
     const key = merchantKey(description);
 
-    // Rules match whole words of the full key ("pix enviado joao" has "pix").
-    const padded = ` ${full} `;
-    let rule: (typeof ruleKeys)[number] | null = null;
+    // 1. A rule for exactly this merchant: this account's, then most used.
+    let exactRule: RuleKey | null = null;
     for (const candidate of ruleKeys) {
-      if (candidate.kind !== kind) continue;
-      if (candidate.accountId !== null && candidate.accountId !== accountId) {
+      if (!applies(candidate, kind, accountId) || candidate.merchant !== key) {
         continue;
       }
+      const specific = candidate.accountId !== null;
+      const current = exactRule?.accountId != null;
+      if (
+        !exactRule ||
+        (specific && !current) ||
+        (specific === current && candidate.hits > exactRule.hits)
+      ) {
+        exactRule = candidate;
+      }
+    }
+    if (exactRule) return { categoryId: exactRule.categoryId, source: "rule" };
+
+    // 2. The same description in the history.
+    const same = exact.get(`${kind}|${key}`);
+    if (same) return { categoryId: same.categoryId, source: "history" };
+
+    // 3. A rule contained in the description, matching whole words of the
+    // full key ("pix enviado joao" has "pix"): the longest, then most used.
+    const padded = ` ${full} `;
+    let rule: RuleKey | null = null;
+    for (const candidate of ruleKeys) {
+      if (!applies(candidate, kind, accountId)) continue;
       if (!padded.includes(` ${candidate.key} `)) continue;
       if (
         !rule ||
@@ -194,9 +265,7 @@ export function createCategorySuggester(
     }
     if (rule) return { categoryId: rule.categoryId, source: "rule" };
 
-    const same = exact.get(`${kind}|${key}`);
-    if (same) return { categoryId: same.categoryId, source: "history" };
-
+    // 4. The most similar description.
     const tokens = significantTokens(key);
     if (tokens.length === 0) return null;
     const own = new Set(tokens);
