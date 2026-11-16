@@ -1,8 +1,9 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
-import { useState } from "react";
+import { LayoutGrid, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
+import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   SHEET_SEARCH_THRESHOLD,
@@ -21,6 +22,8 @@ type CategoryChipsProps = {
   /** Ordered by use in the last 90 days. */
   categories: QuickAddCategory[];
   selectedId: string | null;
+  /** The category "Preencher" put in: badged "sugerida" while selected. */
+  suggestedId: string | null;
   onSelect: (id: string | null) => void;
   kindLabel: string;
 };
@@ -33,6 +36,7 @@ type CategoryChipsProps = {
 export function CategoryChips({
   categories,
   selectedId,
+  suggestedId,
   onSelect,
   kindLabel,
 }: CategoryChipsProps) {
@@ -44,10 +48,23 @@ export function CategoryChips({
       ? [selected, ...top.slice(0, TOP_COUNT - 1)]
       : top;
 
+  // "Preencher" may pick a chip past the edge of the row (desktop): bring it in.
+  const row = useRef<HTMLDivElement>(null);
+  const showSuggested = selectedId !== null && selectedId === suggestedId;
+  useEffect(() => {
+    if (!showSuggested) return;
+    row.current
+      ?.querySelector("[data-selected]")
+      ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [showSuggested]);
+
   return (
     <fieldset className="min-w-0">
       <legend className="sr-only">Categoria de {kindLabel}</legend>
-      <div className="relative -mx-5 flex snap-x gap-2 overflow-x-auto scroll-px-5 px-5 pb-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={row}
+        className="relative -mx-5 flex snap-x gap-2 overflow-x-auto scroll-px-5 px-5 pb-1 scrollbar-none mask-[linear-gradient(to_right,transparent,#000_1rem,#000_calc(100%-1rem),transparent)] *:snap-start [&::-webkit-scrollbar]:hidden"
+      >
         {chips.map((category) => {
           const isSelected = category.id === selectedId;
           return (
@@ -62,6 +79,15 @@ export function CategoryChips({
                   color={category.color}
                   size="sm"
                 />
+              }
+              trailing={
+                isSelected && category.id === suggestedId ? (
+                  <Badge className="min-w-0 shrink bg-surface text-fg-2">
+                    <Sparkles aria-hidden="true" />
+                    <span className="sr-only">, </span>
+                    <span className="truncate">sugerida</span>
+                  </Badge>
+                ) : null
               }
               onClick={() => onSelect(isSelected ? null : category.id)}
             >

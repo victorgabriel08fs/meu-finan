@@ -745,6 +745,11 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
             <CategoryChips
               categories={categories}
               selectedId={categoryId}
+              suggestedId={
+                kind === "income"
+                  ? draft.suggestedIncomeCategoryId
+                  : draft.suggestedExpenseCategoryId
+              }
               kindLabel={KIND_LABEL[kind]}
               onSelect={(id) =>
                 edit(

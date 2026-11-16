@@ -1,7 +1,9 @@
 // "Lançamento por texto" (doc 02 §6.5) against a real (in-memory) Postgres:
 // account and category found among the person's own data, the tags the phrase
-// names, isolation between people, and the action's flag and validation.
-import { and, eq } from "drizzle-orm";
+// names, isolation between people, the action's flag and validation, and the
+// rules learned when an entry is saved with the category it filled in.
+import { randomUUID } from "node:crypto";
+import { and, asc, count, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -31,6 +33,8 @@ type Modules = {
   tags: typeof import("./tags");
   transactions: typeof import("./transactions");
   action: typeof import("../actions/entry-text");
+  entryAction: typeof import("../actions/transactions");
+  rules: typeof import("./category-rules");
 };
 let m: Modules;
 
@@ -57,6 +61,8 @@ beforeAll(async () => {
     tags: await import("./tags"),
     transactions: await import("./transactions"),
     action: await import("../actions/entry-text"),
+    entryAction: await import("../actions/transactions"),
+    rules: await import("./category-rules"),
   };
   for (const who of ["ana", "bruno"] as const) {
     await m.db
@@ -277,5 +283,222 @@ describe("interpretEntryTextAction", () => {
       kind: "expense",
     });
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("aprender regras", () => {
+  const rulesOf = async (who: Who, pattern?: string) =>
+    m.db
+      .select()
+      .from(m.s.categorizationRules)
+      .where(
+        and(
+          eq(m.s.categorizationRules.userId, who),
+          pattern ? eq(m.s.categorizationRules.pattern, pattern) : undefined,
+        ),
+      )
+      .orderBy(asc(m.s.categorizationRules.updatedAt));
+  const ruleCount = async (who: Who) => {
+    const [row] = await m.db
+      .select({ total: count() })
+      .from(m.s.categorizationRules)
+      .where(eq(m.s.categorizationRules.userId, who));
+    return row?.total ?? 0;
+  };
+  const save = (
+    who: Who,
+    description: string | undefined,
+    categoryId: string | null,
+    suggestedCategoryId?: string | null,
+    id?: string,
+  ) =>
+    m.transactions.createTransaction(ctx[who], {
+      ...(id ? { id } : {}),
+      kind: "expense",
+      amountCents: 1_000,
+      accountId: account[`${who}:Nubank`] ?? "",
+      categoryId,
+      description,
+      occurredOn: "2026-11-02",
+      suggestedCategoryId,
+    });
+  const mercado = () => category["ana:Mercado"] ?? "";
+  const restaurantes = () => category["ana:Restaurantes"] ?? "";
+
+  it("learns a correction, which then beats an older majority", async () => {
+    await save("ana", "Feira da vila", mercado());
+    await save("ana", "Feira da vila", mercado());
+    await save("ana", "Feira da vila", restaurantes(), mercado());
+    const [rule, ...rest] = await rulesOf("ana", "feira da vila");
+    expect(rest).toEqual([]);
+    expect(rule).toMatchObject({
+      userId: "ana",
+      categoryId: restaurantes(),
+      accountId: null,
+      hits: 1,
+    });
+    expect((await read("ana", "feira da vila 10")).categoryId).toBe(
+      restaurantes(),
+    );
+  });
+
+  it("counts an accepted suggestion only when a rule exists", async () => {
+    await save("ana", "Feira da vila", restaurantes(), restaurantes());
+    expect((await rulesOf("ana", "feira da vila"))[0]?.hits).toBe(2);
+    await save("ana", "Sorvete da praça", mercado(), mercado());
+    expect(await rulesOf("ana", "sorvete da praca")).toEqual([]);
+  });
+
+  it("a new correction updates the same rule", async () => {
+    const [before] = await rulesOf("ana", "feira da vila");
+    await save("ana", "Feira da vila", mercado(), restaurantes());
+    const [after] = await rulesOf("ana", "feira da vila");
+    expect(after).toMatchObject({
+      id: before?.id,
+      categoryId: mercado(),
+      hits: 1,
+    });
+  });
+
+  it("learns nothing without a suggestion, category or learnable description", async () => {
+    const total = await ruleCount("ana");
+    await save("ana", "Banca nova", restaurantes());
+    await save("ana", "Banca nova", null, mercado());
+    await save("ana", undefined, restaurantes(), mercado());
+    await save("ana", "   ", restaurantes(), mercado());
+    await save("ana", "pix 12", restaurantes(), mercado());
+    await save("ana", "12", restaurantes(), mercado());
+    expect(await ruleCount("ana")).toBe(total);
+  });
+
+  it("a replayed save does not learn twice", async () => {
+    const id = randomUUID();
+    await save("ana", "Feira da vila", restaurantes(), mercado(), id);
+    await save("ana", "Feira da vila", restaurantes(), mercado(), id);
+    expect((await rulesOf("ana", "feira da vila"))[0]).toMatchObject({
+      categoryId: restaurantes(),
+      hits: 1,
+    });
+    // An accepted suggestion replayed counts once too.
+    const again = randomUUID();
+    await save("ana", "Feira da vila", restaurantes(), restaurantes(), again);
+    await save("ana", "Feira da vila", restaurantes(), restaurantes(), again);
+    expect((await rulesOf("ana", "feira da vila"))[0]?.hits).toBe(2);
+  });
+
+  it("only writes a category of the person's own, active, and nothing of anyone else", async () => {
+    const brunoBefore = await rulesOf("bruno");
+    await expect(
+      save("ana", "Chaveiro", category["bruno:Mercado"] ?? "", mercado()),
+    ).rejects.toThrow("Categoria não encontrado(a).");
+    expect(await rulesOf("ana", "chaveiro")).toEqual([]);
+
+    const archived = await m.categories.createCategory("ana", {
+      kind: "expense",
+      name: "Antiga",
+      icon: "carrot",
+      color: "cat-1",
+    });
+    await m.db
+      .update(m.s.categories)
+      .set({ archivedAt: new Date() })
+      .where(eq(m.s.categories.id, archived));
+    await expect(save("ana", "Chaveiro", archived, mercado())).rejects.toThrow(
+      "Esta categoria está arquivada.",
+    );
+    expect(await rulesOf("ana", "chaveiro")).toEqual([]);
+
+    // Another person's id as the suggestion is only compared, never written.
+    await save("ana", "Chaveiro", mercado(), category["bruno:Mercado"]);
+    expect((await rulesOf("ana", "chaveiro"))[0]?.categoryId).toBe(mercado());
+    expect(await rulesOf("bruno")).toEqual(brunoBefore);
+    expect((await read("bruno", "chaveiro 10")).categoryId).toBeNull();
+  });
+
+  it("ignores a rule whose category was archived, until a new correction", async () => {
+    const old = await m.categories.createCategory("ana", {
+      kind: "expense",
+      name: "Pet",
+      icon: "carrot",
+      color: "cat-2",
+    });
+    await save("ana", "Ração do gato", old, mercado());
+    await m.db
+      .update(m.s.categories)
+      .set({ archivedAt: new Date() })
+      .where(eq(m.s.categories.id, old));
+    expect((await read("ana", "ração do gato 90")).categoryId).toBeNull();
+    await save("ana", "Ração do gato", restaurantes(), mercado());
+    expect((await rulesOf("ana", "racao do gato"))[0]?.categoryId).toBe(
+      restaurantes(),
+    );
+  });
+
+  it("keeps at most 500 rules, dropping the least recently used", async () => {
+    const max = m.rules.MAX_CATEGORY_RULES;
+    const brunoTotal = await ruleCount("bruno");
+    const missing = max - (await ruleCount("ana"));
+    const start = Date.UTC(2020, 0, 1);
+    await m.db.insert(m.s.categorizationRules).values(
+      Array.from({ length: missing }, (_, i) => ({
+        userId: "ana",
+        pattern: `enchimento ${i}`,
+        categoryId: mercado(),
+        hits: 1,
+        updatedAt: new Date(start + i * 1000),
+      })),
+    );
+    expect(await ruleCount("ana")).toBe(max);
+    const [oldest] = await rulesOf("ana");
+
+    // Correcting an existing pattern drops nothing.
+    await save("ana", "Feira da vila", mercado(), restaurantes());
+    expect(await ruleCount("ana")).toBe(max);
+    expect((await rulesOf("ana"))[0]?.id).toBe(oldest?.id);
+
+    await save("ana", "Bazar da esquina", restaurantes(), mercado());
+    expect(await ruleCount("ana")).toBe(max);
+    expect((await rulesOf("ana"))[0]?.id).not.toBe(oldest?.id);
+    expect(await rulesOf("ana", oldest?.pattern)).toEqual([]);
+    expect(await rulesOf("ana", "bazar da esquina")).toHaveLength(1);
+    expect(await ruleCount("bruno")).toBe(brunoTotal);
+  });
+
+  describe("createEntryAction", () => {
+    const setFlag = async (enabled: boolean) => {
+      await m.db.delete(m.s.featureFlagOverrides);
+      await m.db
+        .insert(m.s.featureFlagOverrides)
+        .values({ userId: "ana", key: "lancamento_por_texto", enabled });
+    };
+    const create = (description: string, suggestedCategoryId: string) =>
+      m.entryAction.createEntryAction({
+        kind: "expense",
+        amountCents: 500,
+        accountId: account["ana:Nubank"] ?? "",
+        categoryId: restaurantes(),
+        description,
+        occurredOn: "2026-11-03",
+        suggestedCategoryId,
+      });
+
+    it("learns only with the flag on", async () => {
+      await setFlag(false);
+      const off = await create("Quiosque azul", mercado());
+      expect(off?.data?.ids).toHaveLength(1);
+      expect(await rulesOf("ana", "quiosque azul")).toEqual([]);
+
+      await setFlag(true);
+      await create("Quiosque azul", mercado());
+      expect((await rulesOf("ana", "quiosque azul"))[0]?.categoryId).toBe(
+        restaurantes(),
+      );
+    });
+
+    it("validates the suggested id", async () => {
+      await setFlag(true);
+      const bad = await create("Quiosque azul", "not-a-uuid");
+      expect(bad?.validationErrors).toBeDefined();
+    });
   });
 });

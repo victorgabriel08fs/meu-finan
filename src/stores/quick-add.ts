@@ -21,6 +21,12 @@ export type QuickAddDraft = {
   /** Chosen per kind, so switching Despesa ⇄ Receita keeps each choice. */
   expenseCategoryId: string | null;
   incomeCategoryId: string | null;
+  /**
+   * The category "Preencher" put in, per kind; the chip shows "sugerida"
+   * while it is still the chosen one, and saving teaches from it.
+   */
+  suggestedExpenseCategoryId: string | null;
+  suggestedIncomeCategoryId: string | null;
   /** Account (or "De" of a transfer); null = the default account. */
   accountId: string | null;
   /** "Para" of a transfer. */
@@ -53,6 +59,8 @@ export function emptyDraft(kind: EntryKind = "expense"): QuickAddDraft {
     description: "",
     expenseCategoryId: null,
     incomeCategoryId: null,
+    suggestedExpenseCategoryId: null,
+    suggestedIncomeCategoryId: null,
     accountId: null,
     toAccountId: null,
     date: null,

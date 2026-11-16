@@ -1,6 +1,8 @@
 // The category suggester (shared by the statement import and "Lançamento por
-// texto"): explicit rules, then the person's own history. Every query is
-// scoped by the user id on the entry and on the category.
+// texto"): a rule for exactly this merchant, the person's own history, a rule
+// contained in the description, then a similar description (see
+// src/lib/import/suggest.ts). Every query is scoped by the user id on the
+// entry and on the category.
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   type CategoryRule,

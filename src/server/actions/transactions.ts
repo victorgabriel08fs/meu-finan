@@ -13,6 +13,7 @@ import {
   setTransactionPaid,
   updateTransaction,
 } from "@/server/domain/transactions";
+import { isFlagEnabled } from "@/server/flags";
 import { authAction } from "@/server/safe-action";
 import { amountCents, description, idSchema, isoDate, tagIds } from "./schemas";
 
@@ -36,6 +37,8 @@ const entrySchema = z.object({
     .nullable()
     .optional(),
   tagIds: tagIds.optional(),
+  /** The category "Preencher" filled in (only to learn a rule). */
+  suggestedCategoryId: idSchema.nullable().optional(),
 });
 
 const transferSchema = z.object({
@@ -60,7 +63,16 @@ export const createEntryAction = authAction
       refresh();
       return { ids: [] as string[], transferId: result.transferId };
     }
-    const result = await createTransaction(ctx, input);
+    // Learning rules belongs to "Lançamento por texto": ignored when it is off.
+    const suggestedCategoryId =
+      input.suggestedCategoryId &&
+      (await isFlagEnabled("lancamento_por_texto", user.id))
+        ? input.suggestedCategoryId
+        : null;
+    const result = await createTransaction(ctx, {
+      ...input,
+      suggestedCategoryId,
+    });
     refresh();
     return { ids: result.ids, transferId: null };
   });

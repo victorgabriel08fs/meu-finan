@@ -41,7 +41,7 @@ A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
 A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 
 - **Modelo de linguagem**: o parser é determinístico, sem serviço externo (custo, CSP e privacidade a avaliar).
-- **Aprender regras ao salvar**: nada grava `categorization_rules`; a categoria vem das regras que já existem e do histórico. Também não há o selo "sugerida" na categoria.
+- **Aprender em outros lugares**: hoje só o "Preencher" ensina. Faltam o autocomplete da Descrição, a mudança de categoria no Detalhe e a revisão da importação; regra por conta (`account_id` fica nulo); tela para ver e apagar regras; "Desfazer" não desaprende; o limite de 500 regras pode passar por 1 com salvamentos simultâneos.
 - **Tipo pelas palavras** (receita, transferência): o tipo vem do seletor, e o campo some em Transferência.
 - **Parcelas ("3x"), repetição ("todo mês") e nota** no texto; "semana passada", "mês passado", "2 mil" e contas como "12+3".
 - **Apelido de conta**: a conta casa por palavras do nome ("no nubank"); não há apelido salvo.
@@ -208,6 +208,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Lançamento por texto: aprender regras e selo “sugerida” (versão 0.7.0) — 16/11/2026
+
+Salvar uma despesa ou receita cuja categoria veio do "Preencher" ensina `categorization_rules`. Atrás da flag `lancamento_por_texto`. Sem migração.
+
+- [x] **Domínio**: `learnCategoryRule` (`category-rules.ts`) em `createTransaction`, na mesma transação; correção troca a regra, aceite soma `hits`, limite de 500 por pessoa.
+- [x] **Sugestor** (também na importação): regra exata, histórico igual, regra contida, parecido; `learnablePattern` e `ruleLearning` puros.
+- [x] **Tela**: selo "sugerida" no chip da categoria, derivado do que o "Preencher" pôs.
+- [x] Testes: unidade, integração (`entry-text.integration.test.ts`) e e2e (`lancamento-por-texto.spec.ts`, inclusive a 200% em 360 px). O que ficou: "21. Lançamento por texto: o que ficou de fora".
 
 ### Imagem de pré-visualização e splash do iOS (versão 0.6.0) — 16/11/2026
 

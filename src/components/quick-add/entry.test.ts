@@ -249,6 +249,44 @@ describe("buildEntry", () => {
     ).toMatchObject({ ok: false, field: "toAccount" });
   });
 
+  describe("suggested category", () => {
+    const SUGGESTED = "0199e3a0-0000-7000-8000-0000000000c1";
+
+    it("sends the suggestion of the draft's kind", () => {
+      const expense = buildEntry(
+        draft({
+          expenseCategoryId: CATEGORY,
+          suggestedExpenseCategoryId: SUGGESTED,
+          suggestedIncomeCategoryId: CATEGORY,
+        }),
+        context,
+      );
+      expect(expense).toMatchObject({
+        ok: true,
+        payload: { categoryId: CATEGORY, suggestedCategoryId: SUGGESTED },
+      });
+      const income = buildEntry(
+        draft({ kind: "income", suggestedExpenseCategoryId: SUGGESTED }),
+        context,
+      );
+      expect(income.ok && "suggestedCategoryId" in income.payload).toBe(false);
+    });
+
+    it("never sends one with a transfer", () => {
+      const transfer = buildEntry(
+        draft({
+          kind: "transfer",
+          toAccountId: OTHER,
+          suggestedExpenseCategoryId: SUGGESTED,
+        }),
+        context,
+      );
+      expect(transfer.ok && "suggestedCategoryId" in transfer.payload).toBe(
+        false,
+      );
+    });
+  });
+
   describe("tags", () => {
     const TAG_A = "0199e3a0-0000-7000-8000-0000000000a1";
     const TAG_B = "0199e3a0-0000-7000-8000-0000000000a2";

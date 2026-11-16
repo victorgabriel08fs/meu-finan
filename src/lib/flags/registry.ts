@@ -74,7 +74,7 @@ export const FLAGS = {
     label: "Lançamento por texto",
     grammar: { gender: "masculine", plural: false },
     description:
-      "Um campo na Nova transação que entende uma frase como “café 12 no nubank ontem #viagem” e preenche o formulário para conferir. Quando desligado, o campo some e o servidor recusa o pedido.",
+      "Um campo na Nova transação que entende uma frase como “café 12 no nubank ontem #viagem” e preenche o formulário para conferir. Se a pessoa salvar com outra categoria, a próxima frase igual já sugere a escolhida. Quando desligado, o campo some, o servidor recusa o pedido e para de aprender categorias.",
     defaultValue: false,
     owner: "Lançamentos",
     since: "2026-11-14",
