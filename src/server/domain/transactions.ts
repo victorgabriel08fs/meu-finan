@@ -33,6 +33,7 @@ import {
   occurrencesBetween,
   parse,
 } from "@/lib/finance";
+import { ruleLearning } from "@/lib/import/suggest";
 import { db, type Executor } from "@/server/db/client";
 import {
   categories,
@@ -48,6 +49,7 @@ import {
 import { BENEFIT_PAYS_NO_INVOICE, requireAccount } from "./accounts";
 import { ensureInvoice } from "./cards";
 import { requireCategory } from "./categories";
+import { learnCategoryRule } from "./category-rules";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 import {
@@ -87,6 +89,11 @@ export type TransactionInput = {
   recurrence?: RecurrenceInput | null;
   /** Up to ten of the person's active tags; every installment or occurrence gets them. */
   tagIds?: string[];
+  /**
+   * The category the form filled in by itself ("Preencher"), only to learn a
+   * rule from the save; the caller checks the feature flag.
+   */
+  suggestedCategoryId?: string | null;
 };
 
 const statusFor = (
@@ -302,6 +309,17 @@ export async function createTransaction(
     const ids = rows.map((row) => row.id as string);
     await replaceTransactionTags(tx, ids, tagIds);
     if (recurrenceId) await replaceRecurrenceTags(tx, recurrenceId, tagIds);
+    // Once per entry (not per installment), undone with the save if it fails.
+    if (category) {
+      const learning = ruleLearning({
+        description: input.description,
+        categoryId: category.id,
+        suggestedCategoryId: input.suggestedCategoryId,
+      });
+      if (learning) {
+        await learnCategoryRule(tx, ctx.userId, learning, category.id);
+      }
+    }
     return { ids };
   });
 }
