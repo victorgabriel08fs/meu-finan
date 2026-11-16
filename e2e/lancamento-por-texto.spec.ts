@@ -123,7 +123,9 @@ test("aprende a categoria corrigida e mostra o selo “sugerida”", async ({
     return sheet;
   }
   const chip = (sheet: ReturnType<Page["locator"]>, name: string) =>
-    sheet.getByRole("button", { name: new RegExp(`^${name}(, sugerida)?$`) });
+    sheet.getByRole("button", {
+      name: new RegExp(`^${name}(\\s*, sugerida)?$`),
+    });
   const save = async (sheet: ReturnType<Page["locator"]>) => {
     await sheet.getByRole("button", { name: "Salvar despesa" }).click();
     await expect(sheet).toBeHidden({ timeout: 15_000 });
@@ -138,14 +140,14 @@ test("aprende a categoria corrigida e mostra o selo “sugerida”", async ({
   // (b) Suggested from the history, accepted.
   sheet = await fillText(`${PHRASE} 11`);
   await expect(
-    sheet.getByRole("button", { name: "Mercado, sugerida" }),
+    sheet.getByRole("button", { name: /^Mercado\s*, sugerida$/ }),
   ).toHaveAttribute("aria-pressed", "true");
   await save(sheet);
 
   // (c) Suggested, then corrected: the badge goes away with another chip.
   sheet = await fillText(`${PHRASE} 12`);
   await expect(
-    sheet.getByRole("button", { name: "Mercado, sugerida" }),
+    sheet.getByRole("button", { name: /^Mercado\s*, sugerida$/ }),
   ).toBeVisible();
   await expectNoA11yViolations(page);
   await expectNoHorizontalScroll(page, "Nova transação com o selo sugerida");
@@ -156,7 +158,7 @@ test("aprende a categoria corrigida e mostra o selo “sugerida”", async ({
   // (d) The corrected rule beats the two older Mercado entries.
   sheet = await fillText(`${PHRASE} 13`);
   await expect(
-    sheet.getByRole("button", { name: "Restaurantes, sugerida" }),
+    sheet.getByRole("button", { name: /^Restaurantes\s*, sugerida$/ }),
   ).toHaveAttribute("aria-pressed", "true");
 });
 
