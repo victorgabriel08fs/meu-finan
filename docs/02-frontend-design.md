@@ -1157,7 +1157,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
   Cada toque salva na conta a escolha inteira e vale para todos os aparelhos da pessoa. A mudança aparece na hora; se não salvar, a tela volta ao que estava e o toast de erro traz **Tentar de novo**. Skeleton com as alturas das três seções. Não há horário configurável nem horário silencioso: o plano Hobby envia uma vez por dia (doc 01 §9). Os textos de cada aviso estão em §10.3; fatura fechando, orçamento 80%/100% e meta atingida ficam para depois (`docs/tarefas.md`). O ícone do app mostra o número de avisos não lidos, que zera ao abrir o app.
 - **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
 - **Administração** (só administradores, antes de Sobre): Usuários ("3 pessoas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada"), Atividade e Rotina diária ("Cron e avisos") — §6.17.
-- **Sobre**: versão, "Instalar app".
+- **Sobre**: versão, "Feito por Victor Gabriel" (link para o GitHub do autor, nova aba), "Instalar app".
 
 ### 6.15 Notificações (central)
 
@@ -1332,7 +1332,7 @@ Mesma flag e mesmas regras de página (sessão dentro de `<Suspense>`, `error.ts
 | 4 | Planejar | **Planeje sem culpa.** "Orçamentos por categoria, metas com prazo e um simulador de juros compostos, já com CDI, IPCA e imposto de renda." Aviso: "Mercado chegou a 80% do orçamento, e ainda faltam 18 dias." "Simulação com taxa constante. Não é recomendação de investimento." | barra do orçamento até 80%, anel da meta até 62%, curva do simulador desenhada em 800 ms |
 | 5 | Privacidade | **Cada pessoa com as próprias finanças.** "O Prumo é de uso pessoal e familiar. Não existe cadastro aberto: quem administra convida, e cada conta vê só o próprio dinheiro. Nem quem administra vê o seu." Três linhas: passkey ou senha; o olho esconde os valores; CSV quando quiser. | valores viram "••••" (160 ms, largura estável) e a legenda "Valores ocultos" aparece |
 | 6 | Instalar | **Abre como um app.** "Adicione o Prumo à tela de início do celular. Escuro por padrão, claro se você preferir." | o ícone entra numa grade de ícones neutros (fade com escala de 0,9 a 1, 360 ms); o controle **Escuro / Claro** (`radiogroup` "Tema") troca só o tema deste aparelho (`useDeviceTheme().chooseOnDevice()`); ao entrar, o tema da conta passa a valer |
-| 7 | Fecho | wordmark grande; `h2` **Pronto quando você estiver.**; **Entrar**; "Só por convite. Sem convite, fale com quem administra o seu Prumo." | o fio chega ao "p" do wordmark e o losango encaixa nos últimos 15% da rolagem |
+| 7 | Fecho | wordmark grande; `h2` **Pronto quando você estiver.**; **Entrar**; "Só por convite. Sem convite, fale com quem administra o seu Prumo."; rodapé com **Feito por Victor Gabriel** (link para o GitHub, nova aba) | o fio chega ao "p" do wordmark e o losango encaixa nos últimos 15% da rolagem |
 
 - **Fio**: uma linha de 2 px em `--primary` do "p" da abertura ao "p" do fecho, do tamanho do progresso da rolagem, com o losango do wordmark na ponta (`ScrollThread`). Sua posição vem só do CSS (`globals.css`, "Homepage"); só `transform` muda.
 - **Movimento reduzido ou sem JavaScript**: o fio inteiro e parado, os dois wordmarks completos, o teclado com "R$ 64,50" e o toast, o saldo no valor final, o cartão da privacidade já com "Valores ocultos"; nada se desloca (tempos em §3.8).

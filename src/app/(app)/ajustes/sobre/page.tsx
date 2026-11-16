@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
+import { AuthorCredit } from "@/components/brand/author-credit";
 import { DataTable } from "@/components/charts/data-table";
 import { marketRateLabel } from "@/components/planning/market";
 import { Card } from "@/components/ui/card";
@@ -138,9 +139,12 @@ async function About() {
         </p>
       </Topic>
 
-      <p className="px-1 text-caption text-fg-3">
-        Prumo · versão {packageJson.version}
-      </p>
+      <div className="flex flex-col gap-1 px-1">
+        <p className="text-caption text-fg-3">
+          Prumo · versão {packageJson.version}
+        </p>
+        <AuthorCredit />
+      </div>
     </>
   );
 }
