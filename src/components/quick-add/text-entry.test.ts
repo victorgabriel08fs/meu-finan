@@ -74,11 +74,17 @@ describe("applyTextResult", () => {
         "expense",
         choices,
       ).patch,
-    ).toEqual({ expenseCategoryId: "cat-1" });
+    ).toEqual({
+      expenseCategoryId: "cat-1",
+      suggestedExpenseCategoryId: "cat-1",
+    });
     expect(
       applyTextResult(empty, result({ categoryId: "cat-1" }), "income", choices)
         .patch,
-    ).toEqual({ incomeCategoryId: "cat-1" });
+    ).toEqual({
+      incomeCategoryId: "cat-1",
+      suggestedIncomeCategoryId: "cat-1",
+    });
     const chosen = { ...emptyDraft(), expenseCategoryId: "cat-2" };
     expect(
       applyTextResult(
@@ -96,6 +102,29 @@ describe("applyTextResult", () => {
         choices,
       ).patch,
     ).toEqual({});
+  });
+
+  it("marks only the filled category as suggested, of the open type", () => {
+    const chosen = {
+      ...emptyDraft(),
+      expenseCategoryId: "cat-2",
+      suggestedIncomeCategoryId: "cat-1",
+    };
+    const kept = applyTextResult(
+      chosen,
+      result({ categoryId: "cat-1" }),
+      "expense",
+      choices,
+    ).patch;
+    expect(kept.suggestedExpenseCategoryId).toBeUndefined();
+    expect(kept.suggestedIncomeCategoryId).toBeUndefined();
+    const filled = applyTextResult(
+      emptyDraft(),
+      result({ categoryId: "cat-1" }),
+      "expense",
+      choices,
+    ).patch;
+    expect("suggestedIncomeCategoryId" in filled).toBe(false);
   });
 
   it("ignores an account the sheet does not list", () => {

@@ -124,6 +124,8 @@ export type EntryPayload =
         endOn: string | null;
       } | null;
       tagIds?: string[];
+      /** The category "Preencher" put in, so the server can learn from it. */
+      suggestedCategoryId?: string;
     }
   | {
       kind: "transfer";
@@ -257,6 +259,11 @@ export function buildEntry(
     ? draft.tagIds.filter((id) => available.has(id))
     : draft.tagIds;
 
+  const suggested =
+    draft.kind === "expense"
+      ? draft.suggestedExpenseCategoryId
+      : draft.suggestedIncomeCategoryId;
+
   return {
     ok: true,
     amountCents,
@@ -277,6 +284,7 @@ export function buildEntry(
       installments,
       recurrence,
       ...(tagIds.length > 0 ? { tagIds } : {}),
+      ...(suggested ? { suggestedCategoryId: suggested } : {}),
     },
   };
 }

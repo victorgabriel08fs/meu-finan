@@ -88,8 +88,13 @@ export function applyTextResult(
     result.categoryId !== null &&
     categoryIds.has(result.categoryId)
   ) {
-    if (kind === "income") patch.incomeCategoryId = result.categoryId;
-    else patch.expenseCategoryId = result.categoryId;
+    if (kind === "income") {
+      patch.incomeCategoryId = result.categoryId;
+      patch.suggestedIncomeCategoryId = result.categoryId;
+    } else {
+      patch.expenseCategoryId = result.categoryId;
+      patch.suggestedExpenseCategoryId = result.categoryId;
+    }
     filled.category = true;
   }
 

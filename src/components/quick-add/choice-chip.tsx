@@ -32,6 +32,8 @@ type ChoiceChipProps = ComponentProps<"button"> & {
   icon?: ReactNode;
   /** `icon` is a 28px circle: tighter left padding. */
   iconCircle?: boolean;
+  /** After the label, which truncates first (e.g. a "sugerida" badge). */
+  trailing?: ReactNode;
 };
 
 /**
@@ -43,6 +45,7 @@ export function ChoiceChip({
   selected = false,
   icon,
   iconCircle = false,
+  trailing,
   className,
   type,
   children,
@@ -59,7 +62,11 @@ export function ChoiceChip({
       {...props}
     >
       {icon}
-      <span className="min-w-0 truncate">{children}</span>
+      {/* The name keeps some room: a trailing badge shrinks before it. */}
+      <span className={cn("min-w-0 truncate", trailing ? "min-w-12" : null)}>
+        {children}
+      </span>
+      {trailing}
     </button>
   );
 }
