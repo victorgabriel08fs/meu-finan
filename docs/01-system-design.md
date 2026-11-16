@@ -1412,7 +1412,7 @@ Orçamento por rota (p75, 4G): `/inicio` LCP ≤ 2,0 s; `/extrato` primeira pág
 | Logs de funções | Vercel Observability | JSON estruturado com `requestId`, rota, duração, `userId` com hash |
 | Acesso | log de eventos de autenticação | logins, falhas, bloqueios do limitador, uso do primeiro acesso e da recuperação |
 | Core Web Vitals | Vercel Speed Insights | p75 por rota; alerta se LCP > 2,5 s |
-| Visitas | Vercel Web Analytics (`<Analytics />` no layout raiz) | visualizações de página por rota, sem cookies; script e envio em `/_vercel/insights`, na própria origem |
+| Visitas | Vercel Web Analytics (`<Analytics />` no layout raiz, só quando `VERCEL=1`: um `next start` local daria 404) | visualizações de página por rota, sem cookies; script e envio em `/_vercel/insights`, na própria origem |
 | Hábito pessoal | consultas no próprio banco (sem analytics de produto) | dias com registro por semana, origem dos lançamentos, simulações salvas |
 | Jobs | tabela `job_runs` + log | painel simples em `/ajustes/sistema` |
 | Uso dos planos gratuitos | painéis de uso da Vercel e da Neon | conferir de tempos em tempos se o consumo segue dentro dos planos gratuitos |

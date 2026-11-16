@@ -84,6 +84,21 @@ test.describe("sem sessão", () => {
     expect(unknown.status()).toBe(404);
   });
 
+  test("o rodapé dá o crédito do autor, com link para o GitHub", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const credit = page
+      .locator("footer")
+      .getByRole("link", { name: /Victor Gabriel/ });
+    await expect(credit).toHaveAttribute(
+      "href",
+      "https://github.com/victorgabriel08fs",
+    );
+    await expect(credit).toHaveAttribute("target", "_blank");
+    await expect(credit).toHaveAttribute("rel", /noopener/);
+  });
+
   test("Entrar leva para a tela de entrada", async ({ page }) => {
     await page.goto("/");
     await page

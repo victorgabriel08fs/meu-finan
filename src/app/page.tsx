@@ -1,6 +1,7 @@
 import { Eye, FileDown, KeyRound } from "lucide-react";
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import { AuthorCredit } from "@/components/brand/author-credit";
 import { Wordmark } from "@/components/brand/wordmark";
 import { DemoInstall } from "@/components/home/demo-install";
 import { DemoKeypad } from "@/components/home/demo-keypad";
@@ -202,6 +203,10 @@ export default function Home() {
             </p>
           </Reveal>
         </section>
+
+        <footer className="border-t border-border pt-6">
+          <AuthorCredit />
+        </footer>
       </div>
     </main>
   );

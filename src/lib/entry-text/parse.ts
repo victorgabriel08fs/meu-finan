@@ -355,14 +355,79 @@ function buildDescription(tokens: Token[]): string {
 }
 
 /** What follows the first loose "no/na/em…" left over after everything else was read. */
-function unmatchedTerm(tokens: Token[]): string | null {
+/**
+ * Words that name a way to pay: after "no/na/em…" they are meant as an
+ * account even when none matches, so the person hears about it. Anything
+ * else ("na praia", "no shopping") is just part of the description.
+ */
+const PAYMENT_WORDS = new Set([
+  "banco",
+  "bb",
+  "bradesco",
+  "c6",
+  "caixa",
+  "carteira",
+  "cartao",
+  "conta",
+  "credito",
+  "debito",
+  "dinheiro",
+  "inter",
+  "itau",
+  "mercadopago",
+  "neon",
+  "next",
+  "nubank",
+  "nu",
+  "pagbank",
+  "pagseguro",
+  "picpay",
+  "pix",
+  "poupanca",
+  "santander",
+  "sicoob",
+  "sicredi",
+  "vale",
+  "xp",
+]);
+
+/** At most one letter added, removed or changed ("nubnak" is not, "nubak" is). */
+function nearlyEqual(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length
+    ? a.slice(i + 1) === b.slice(i)
+    : a.slice(i) === b.slice(i + 1);
+}
+
+/** The term reads like an account: a way to pay or a near miss of an account's word. */
+function looksLikeAccount(
+  term: string,
+  accounts: readonly EntryTextAccount[],
+): boolean {
+  if (PAYMENT_WORDS.has(term)) return true;
+  if (term.length < 4) return false;
+  return accounts.some((account) =>
+    words(account.name).some(
+      (word) => word.length >= 4 && nearlyEqual(word, term),
+    ),
+  );
+}
+
+function unmatchedTerm(
+  tokens: Token[],
+  accounts: readonly EntryTextAccount[],
+): string | null {
   for (let i = 0; i < tokens.length - 1; i++) {
     const token = tokens[i];
     const next = tokens[i + 1];
     if (!token || token.used || !ACCOUNT_PREPOSITIONS.has(token.fold)) continue;
     if (!next || next.used) continue;
-    const term = words(next.raw).join(" ");
-    if (term !== "")
+    const term = words(next.raw).join("");
+    if (term !== "" && looksLikeAccount(term, accounts))
       return next.raw.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
   }
   return null;
@@ -402,7 +467,9 @@ export function parseEntryText(
     consume(tokens, amount.index, amount.length);
   }
 
-  const unmatchedAccount = account ? null : unmatchedTerm(tokens);
+  const unmatchedAccount = account
+    ? null
+    : unmatchedTerm(tokens, context.accounts);
 
   return {
     amountCents,
