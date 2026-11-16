@@ -173,9 +173,22 @@ describe("parseEntryText", () => {
       const result = parse("almoço 30 no shopping");
       expect(result.accountId).toBeNull();
       expect(result.ambiguousAccount).toBeNull();
-      expect(result.unmatchedAccount).toBe("shopping");
+      expect(result.unmatchedAccount).toBeNull();
       expect(result.description).toBe("almoço no shopping");
       expect(parse("almoço 30 nubank").accountId).toBeNull();
+    });
+
+    it.each([
+      ["na praia", null],
+      ["no shopping", null],
+      ["em casa", null],
+      ["no bradesco", "bradesco"],
+      ["no pix", "pix"],
+      ["no débito", "débito"],
+      ["no nubak", "nubak"],
+      ["no itauu", "itauu"],
+    ])("warns about %s only when it reads like an account", (term, warned) => {
+      expect(parse(`almoço 30 ${term}`).unmatchedAccount).toBe(warned);
     });
 
     it("an equal name beats a longer one", () => {

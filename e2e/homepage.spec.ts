@@ -38,6 +38,52 @@ test.describe("sem sessão", () => {
     await expect(page.getByText(/Meu Finan/)).toHaveCount(0);
   });
 
+  test("pré-visualização de link: og, twitter, splash do iOS e noindex", async ({
+    page,
+    request,
+  }) => {
+    const response = await page.goto("/");
+    expect(response?.headers()["x-robots-tag"]).toContain("noindex");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      /noindex/,
+    );
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+      "content",
+      "Prumo · Seu dinheiro no prumo.",
+    );
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+      "content",
+      "summary_large_image",
+    );
+    const ogImage = await page
+      .locator('meta[property="og:image"]')
+      .getAttribute("content");
+    expect(ogImage).toMatch(/^https?:\/\//);
+    // Sem cookie, como um crawler: o proxy não pode mandar para /entrar.
+    const image = await request.get(new URL(ogImage ?? "").pathname, {
+      maxRedirects: 0,
+    });
+    expect(image.status()).toBe(200);
+    expect(image.headers()["content-type"]).toBe("image/png");
+
+    const startup = page.locator('link[rel="apple-touch-startup-image"]');
+    await expect(startup).toHaveCount(10);
+    for (const link of await startup.all()) {
+      await expect(link).toHaveAttribute("media", /orientation: portrait/);
+    }
+
+    const splash = await request.get("/splash/dark-1170x2532.png", {
+      maxRedirects: 0,
+    });
+    expect(splash.status()).toBe(200);
+    expect(splash.headers()["content-type"]).toBe("image/png");
+    const unknown = await request.get("/splash/qualquer.png", {
+      maxRedirects: 0,
+    });
+    expect(unknown.status()).toBe(404);
+  });
+
   test("o rodapé dá o crédito do autor, com link para o GitHub", async ({
     page,
   }) => {

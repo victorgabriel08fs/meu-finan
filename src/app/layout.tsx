@@ -2,12 +2,14 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { SPLASH_SIZES, splashMedia, splashPath } from "@/lib/brand/splash";
 import {
   DEFAULT_THEME,
   THEME_COLORS,
   THEME_HEAD_SCRIPT,
   THEME_META_SCRIPT,
 } from "@/lib/theme";
+import { appOrigin } from "@/server/env";
 import { PRIVACY_BOOT_SCRIPT } from "@/stores/privacy-boot";
 import "./globals.css";
 
@@ -19,6 +21,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appOrigin()),
   title: { template: "%s · Prumo", default: "Prumo" },
   description: "Controle financeiro pessoal",
   applicationName: "Prumo",
@@ -26,6 +29,15 @@ export const metadata: Metadata = {
     capable: true,
     title: "Prumo",
     statusBarStyle: "default",
+    startupImage: SPLASH_SIZES.map((size) => ({
+      url: splashPath(size),
+      media: splashMedia(size),
+    })),
+  },
+  openGraph: {
+    siteName: "Prumo",
+    locale: "pt_BR",
+    type: "website",
   },
   formatDetection: { telephone: false },
   robots: { index: false, follow: false },
