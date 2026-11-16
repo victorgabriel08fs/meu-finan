@@ -7,7 +7,7 @@ import {
 } from "./brand-mark";
 
 /** Brand emerald (= light --primary). */
-const BRAND_GREEN = "#0A7F58";
+export const BRAND_GREEN = "#0A7F58";
 
 /**
  * - `rounded`: rounded square on transparency (favicon, manifest "any").
@@ -24,7 +24,7 @@ const SYMBOL_SCALE: Record<AppIconVariant, number> = {
 };
 
 /** The Prumo symbol in white, for next/og (strokes and a filled diamond). */
-function SymbolSvg({
+export function SymbolSvg({
   size,
   strokeWidth,
 }: {
