@@ -18,8 +18,8 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
 - [ ] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
 - [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
-- [ ] **S9 Cadastro público** (para os planos; decisão do dono, muda "contas só por convite"): verificação de e-mail (Resend), "esqueci minha senha" por e-mail, anti-robô.
-- [ ] **S10 Pagamentos**: checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
+- [x] ~~**S9 Cadastro público**~~: decidido pelo dono em 16/11/2026 que as contas **continuam só por convite**, também com planos. Fica para o beta: convites com limite por administrador e "esqueci minha senha" por e-mail (Resend, remetente Prumo) como alternativa ao link de redefinição do painel.
+- [ ] **S10 Pagamentos** (contas por convite: o plano é escolhido depois de aceitar o convite): checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
 - [ ] **S11 Limites por plano** no servidor: plano na resolução das flags (pessoa > plano > global > padrão).
 - [ ] **S12 Defesa em profundidade**: RLS no Postgres por `user_id` (ou teste de catálogo), CSP sem `'unsafe-inline'` (SRI), pentest externo e `security.txt`.
 
@@ -218,6 +218,10 @@ Sem migração ou flag. Variáveis novas, opcionais: `PASSKEY_RP_ID`, `BETTER_AU
 - [x] **Login** distingue senha errada de falha de origem, rede ou servidor ("Não foi possível entrar agora. Tente de novo em instantes."); passkey cancelada fica quieta.
 - [x] **Token com menos de 32 caracteres** fecha `/recuperar` e `/primeiro-acesso` (404, motivo no log) em vez de quebrar a página.
 - [x] Testes: `auth-origins`, `env`, `login-errors`, `proxy` (Vitest). Fica de fora: teste de integração das actions de recuperação e primeiro acesso com token curto.
+
+### Crédito do autor (versão 0.5.4) — 16/11/2026
+
+Pedido do dono: "Feito por Victor Gabriel", com link para o GitHub dele (nova aba), no rodapé da homepage e em Ajustes › Sobre (`src/components/brand/author-credit.tsx`). No roadmap de segurança, S9 fechada: as contas continuam só por convite.
 
 ### Auditoria de segurança (versão 0.5.3) — 16/11/2026
 
