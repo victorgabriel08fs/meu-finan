@@ -21,6 +21,11 @@ import { ThemePreview } from "@/components/home/theme-preview";
 export const metadata: Metadata = {
   title: { absolute: "Prumo · Seu dinheiro no prumo." },
   description: "Controle financeiro pessoal",
+  openGraph: {
+    title: "Prumo · Seu dinheiro no prumo.",
+    description: "Controle financeiro pessoal",
+    url: "/",
+  },
 };
 
 const PAGE_VARS = {

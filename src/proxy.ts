@@ -76,10 +76,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Everything except the login page (the homepage is handled above), Better Auth's own endpoints, the cron
-  // route (Bearer CRON_SECRET), Next and Vercel internals (Web Analytics) and public assets (the service
+  // route (Bearer CRON_SECRET), Next and Vercel internals (Web Analytics) and public assets and link/startup images (the service
   // worker included: the browser checks it for updates with or without a
   // session).
   matcher: [
-    "/((?!entrar|api/auth|api/cron|_next/|_vercel/|favicon\\.ico|icon|apple-icon|manifest\\.webmanifest|robots\\.txt|sw\\.js).*)",
+    "/((?!entrar|api/auth|api/cron|_next/|_vercel/|favicon\\.ico|icon|apple-icon|opengraph-image|twitter-image|splash|manifest\\.webmanifest|robots\\.txt|sw\\.js).*)",
   ],
 };
