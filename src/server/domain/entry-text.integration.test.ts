@@ -109,7 +109,8 @@ describe("account and date", () => {
     const other = await read("bruno", "pão 5 na padaria");
     expect(other.accountId).toBeNull();
     expect(other.description).toBe("pão na padaria");
-    expect(other.unmatchedAccount).toBe("padaria");
+    // "padaria" is not like any of Bruno's accounts: no warning either.
+    expect(other.unmatchedAccount).toBeNull();
     await m.accounts.archiveAccount("ana", account["ana:Padaria"] ?? "");
     const archived = await read("ana", "pão 5 na padaria");
     expect(archived.accountId).toBeNull();
