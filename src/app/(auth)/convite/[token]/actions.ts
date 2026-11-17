@@ -5,6 +5,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { returnValidationErrors } from "next-safe-action";
 import { z } from "zod";
+import {
+  LEGAL_OUTDATED,
+  LEGAL_REQUIRED,
+  LEGAL_VERSION,
+} from "@/lib/legal/version";
 import { LEAKED_PASSWORD_MESSAGE } from "@/lib/security/messages";
 import { auth } from "@/server/auth";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
@@ -29,6 +34,9 @@ const acceptSchema = z
       .max(128, "Use no máximo 128 caracteres."),
     confirm: z.string(),
     removePasskeys: z.boolean(),
+    // Invites only: the terms and privacy policy checkbox.
+    acceptedLegal: z.boolean(),
+    legalVersion: z.string().max(20).optional(),
   })
   .refine((input) => input.password === input.confirm, {
     path: ["confirm"],
@@ -38,7 +46,9 @@ const acceptSchema = z
 /**
  * Uses an invite or reset link (doc 01 §11.9): public, so rate-limited per
  * address; the token is checked again (constant time) and claimed in the same
- * transaction that sets the password. Then the person is signed in: an invite
+ * transaction that sets the password. An invite also requires accepting the
+ * terms and privacy policy (a reset does not: the account already exists, and
+ * the DAL's gate asks if needed). Then the person is signed in: an invite
  * gets the default categories and, like the first access, goes to Segurança
  * to be offered a passkey and then on to the onboarding; a reset goes to
  * Segurança to register one again. Right after signing in the session is
@@ -74,6 +84,12 @@ export const acceptAccessLinkAction = actionClient
       );
       throw new ActionError(LINK_UNAVAILABLE);
     }
+    if (link.purpose === "invite") {
+      if (!input.acceptedLegal) throw new ActionError(LEGAL_REQUIRED);
+      if (input.legalVersion !== LEGAL_VERSION) {
+        throw new ActionError(LEGAL_OUTDATED);
+      }
+    }
 
     // Before claiming the link, so a refused password does not use it up.
     if (await isPasswordLeaked(input.password)) {
@@ -86,6 +102,7 @@ export const acceptAccessLinkAction = actionClient
     const accepted = await acceptAccessLink(input.token, {
       passwordHash: await context.password.hash(input.password),
       removePasskeys: input.removePasskeys,
+      legalVersion: input.acceptedLegal ? input.legalVersion : undefined,
     });
     if (accepted.purpose === "invite") {
       await ensureOwnerDefaults(accepted.userId);

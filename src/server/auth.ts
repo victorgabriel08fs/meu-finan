@@ -16,6 +16,7 @@ import { count } from "drizzle-orm";
 import { ADMIN_ROLE } from "@/lib/admin/roles";
 import { stampPasskeySession } from "@/lib/admin/second-factor";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import { LEGAL_REQUIRED, LEGAL_VERSION } from "@/lib/legal/version";
 import { classifyAuthOutcome } from "@/lib/observability/auth-events";
 import {
   guardPasskeyManagement,
@@ -34,6 +35,12 @@ import {
 
 /** Header the setup Server Action uses to hand the setup token to sign-up. */
 export const SETUP_TOKEN_HEADER = "x-meu-finan-setup-token";
+
+/**
+ * Header the setup Server Action uses to say which version of the terms and
+ * privacy policy the person accepted (the checkbox, checked on the server).
+ */
+export const LEGAL_VERSION_HEADER = "x-meu-finan-legal-version";
 
 const DAY = 60 * 60 * 24;
 const BUILD_ONLY_SECRET = "build-only-secret-never-used-to-sign-real-sessions";
@@ -132,6 +139,15 @@ export const auth = betterAuth({
   // Nobody changes session fields through the API: passkeyVerifiedAt is set
   // only by the passkey sign-in (databaseHooks below).
   disabledPaths: [...ADMIN_HTTP_PATHS, "/update-session"],
+  user: {
+    // The accepted version of the terms (src/lib/legal/version.ts), read by
+    // the DAL's gate. `input: false`: /update-user never writes them; only the
+    // sign-up hook, the invite and /aceitar-termos do.
+    additionalFields: {
+      legalVersion: { type: "string", required: false, input: false },
+      legalAcceptedAt: { type: "date", required: false, input: false },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -190,6 +206,12 @@ export const auth = betterAuth({
       if ((row?.total ?? 0) > 0) {
         refuseSignUp("already_done", ctx.headers);
         throw signUpClosed();
+      }
+      // The first account accepts the terms like everyone else (layer 2
+      // records it).
+      if (ctx.headers?.get(LEGAL_VERSION_HEADER) !== LEGAL_VERSION) {
+        refuseSignUp("legal_missing", ctx.headers);
+        throw new APIError("FORBIDDEN", { message: LEGAL_REQUIRED });
       }
       // Last: whoever lacks the token never reaches the leak service.
       await rejectLeakedPassword(ctx.body?.password);
@@ -264,13 +286,20 @@ export const auth = betterAuth({
         // that first account is the administrator. With layer 1 this means
         // OWNER_EMAIL only ever applies to the first account. No queries
         // here: this runs inside the sign-up transaction. Runs after the admin
-        // plugin's hook, so the role set here wins over its default.
+        // plugin's hook, so the role set here wins over its default. Layer 1
+        // already required the accepted terms, so the account records them.
         before: async (user) => {
           if (!isOwnerEmail(user.email, readServerEnv("OWNER_EMAIL"))) {
             refuseSignUp("not_owner_email", undefined);
             throw signUpClosed();
           }
-          return { data: { role: ADMIN_ROLE } };
+          return {
+            data: {
+              role: ADMIN_ROLE,
+              legalVersion: LEGAL_VERSION,
+              legalAcceptedAt: new Date(),
+            },
+          };
         },
       },
     },

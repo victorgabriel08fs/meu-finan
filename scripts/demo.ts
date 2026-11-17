@@ -1,6 +1,7 @@
 // Local demo: recreates the embedded database (PGlite) with 13 months of
 // realistic data for "Ana" (the persona of the mockups, the administrator),
-// plus a regular account (Bruno) and a pending invite (Carla) for
+// plus a regular account (Bruno), a pending invite (Carla) and an account from
+// before the terms of use (Dani, who still has to accept them) for
 // Administração, so the app can be explored right after `npm run demo`.
 // Never runs against Neon.
 //
@@ -32,6 +33,7 @@ import {
   parse,
   toYearMonth,
 } from "../src/lib/finance";
+import { LEGAL_VERSION } from "../src/lib/legal/version";
 import { unusualSpendingKey } from "../src/lib/notifications/schedule";
 import { TIPS } from "../src/lib/tips";
 import {
@@ -94,6 +96,8 @@ const DEMO_EMAIL = "demo@meu-finan.local";
 const DEMO_PASSWORD = "meu-finan-demo";
 const BRUNO_EMAIL = "bruno@meu-finan.local";
 const BRUNO_PASSWORD = "meu-finan-bruno";
+const DANI_EMAIL = "dani@meu-finan.local";
+const DANI_PASSWORD = "meu-finan-dani";
 
 /** Creates .env.local with fresh local secrets the first time. */
 function ensureEnvFile(): boolean {
@@ -155,6 +159,8 @@ async function main(): Promise<void> {
     role: "admin",
     createdAt: since,
     updatedAt: since,
+    legalVersion: LEGAL_VERSION,
+    legalAcceptedAt: new Date(),
   });
   await db.insert(account).values({
     id: randomBytes(16).toString("hex"),
@@ -689,7 +695,7 @@ async function main(): Promise<void> {
   const inviteUrl = await seedPeople({ id: userId, name: "Ana" }, origin);
 
   // Tips -----------------------------------------------------------------------
-  // Off for every account (Ana, Bruno and the pending invite) with --sem-dicas.
+  // Off for every account (Ana, Bruno, Dani and the pending invite) with --sem-dicas.
   const tipsOff = process.argv.includes("--sem-dicas");
   if (tipsOff) {
     const people = await db.select({ id: user.id }).from(user);
@@ -713,6 +719,9 @@ async function main(): Promise<void> {
   console.log("  Bruno · usuário comum, com as próprias finanças");
   console.log(`    E-mail: ${BRUNO_EMAIL}`);
   console.log(`    Senha:  ${BRUNO_PASSWORD}`);
+  console.log("  Dani · usuária comum, ainda sem aceitar os termos de uso");
+  console.log(`    E-mail: ${DANI_EMAIL}`);
+  console.log(`    Senha:  ${DANI_PASSWORD}`);
   console.log("  Carla · convite pendente (vale 72 horas, uma vez só)");
   console.log(`    ${inviteUrl}`);
   if (created) {
@@ -889,6 +898,8 @@ async function seedPeople(
     role: "user",
     createdAt: ago(12, 3),
     updatedAt: ago(11),
+    legalVersion: LEGAL_VERSION,
+    legalAcceptedAt: new Date(),
   });
   await db.insert(account).values({
     id: randomBytes(16).toString("hex"),
@@ -1057,6 +1068,33 @@ async function seedPeople(
     expiresAt: new Date(ago(1).getTime() + ACCESS_LINK_TTL_MS),
   });
 
+  // Dani: joined before the terms existed, so she still has to accept them
+  // (/aceitar-termos); no finances yet, onboarding done ---------------------------
+  const daniId = randomBytes(16).toString("hex");
+  await db.insert(user).values({
+    id: daniId,
+    name: "Dani Souza",
+    email: DANI_EMAIL,
+    emailVerified: false,
+    role: "user",
+    createdAt: ago(20),
+    updatedAt: ago(19),
+  });
+  await db.insert(account).values({
+    id: randomBytes(16).toString("hex"),
+    accountId: daniId,
+    providerId: "credential",
+    userId: daniId,
+    password: await hashPassword(DANI_PASSWORD),
+    createdAt: ago(19),
+    updatedAt: ago(19),
+  });
+  await ensureOwnerDefaults(daniId);
+  await db
+    .update(userSettings)
+    .set({ onboardingDoneAt: ago(19) })
+    .where(eq(userSettings.userId, daniId));
+
   // Activity, oldest first (ids are time-ordered) --------------------------------
   const bruno = { id: brunoId, name: "Bruno Lima", email: BRUNO_EMAIL };
   const carla = {
@@ -1064,6 +1102,7 @@ async function seedPeople(
     name: "Carla Mendes",
     email: "carla@meu-finan.local",
   };
+  const dani = { id: daniId, name: "Dani Souza", email: DANI_EMAIL };
   const entries: (typeof auditLog.$inferInsert)[] = [
     {
       action: "setup.completed",
@@ -1071,6 +1110,26 @@ async function seedPeople(
       actorName: admin.name,
       metadata: { role: "admin" },
       createdAt: ago(395),
+    },
+    {
+      action: "user.created",
+      actorId: admin.id,
+      actorName: admin.name,
+      targetUserId: dani.id,
+      targetName: dani.name,
+      targetEmail: dani.email,
+      metadata: { role: "user" },
+      createdAt: ago(20),
+    },
+    {
+      action: "access_link.accepted",
+      actorId: dani.id,
+      actorName: dani.name,
+      targetUserId: dani.id,
+      targetName: dani.name,
+      targetEmail: dani.email,
+      metadata: { purpose: "invite" },
+      createdAt: ago(19),
     },
     {
       action: "user.created",

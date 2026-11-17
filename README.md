@@ -1,14 +1,15 @@
 # Prumo
 
-Versão 0.5.0. Controle financeiro pessoal, mobile-first e instalável como app (PWA). Seu dinheiro no prumo. Registre um gasto em segundos, veja o mês inteiro em uma tela, planeje orçamentos e metas e simule quanto o dinheiro guardado pode render, já com IR e inflação.
+Versão 0.11.0. Controle financeiro pessoal, mobile-first e instalável como app (PWA). Seu dinheiro no prumo. Registre um gasto em segundos, veja o mês inteiro em uma tela, planeje orçamentos e metas e simule quanto o dinheiro guardado pode render, já com IR e inflação.
 
-> **Uso pessoal ou familiar.** A primeira conta é a sua, de administrador, e outras pessoas só entram por convite seu — cada uma com as próprias finanças, separadas das outras (a administração cuida dos acessos e não mostra o dinheiro de ninguém). Não existe cadastro público, e o login é obrigatório em tudo, porque o app fica em uma URL pública e guarda dados financeiros. A única página aberta a quem não entrou é a **homepage** em `/` (estática, sem dado nenhum e sem cadastro, só o botão Entrar); quem já tem sessão vai direto para o Início.
+> **Uso pessoal ou familiar.** A primeira conta é a sua, de administrador, e outras pessoas só entram por convite seu — cada uma com as próprias finanças, separadas das outras (a administração cuida dos acessos e não mostra o dinheiro de ninguém). Não existe cadastro público, e o login é obrigatório em tudo, porque o app fica em uma URL pública e guarda dados financeiros. As páginas abertas a quem não entrou são a **homepage** em `/` (estática, sem dado nenhum e sem cadastro, só o botão Entrar; quem já tem sessão vai direto para o Início) e os **termos de uso** e a **política de privacidade** (`/termos`, `/privacidade`).
 
 > **Nome técnico.** O app se chamava Meu Finan. O pacote, as chaves locais do navegador, a pasta do repositório e as contas do demo (`@meu-finan.local`) continuam `meu-finan` de propósito, para não perder o que já está guardado nos aparelhos.
 
 ## O que já dá para fazer
 
 - **Marca e homepage pública**: o app se chama Prumo (o "p" minúsculo é um fio de prumo: haste, anel e losango), com ícone novo no app instalado, nos avisos e no manifesto (inclusive o monocromático do Android). A homepage em `/` conta o app em sete partes, com cartões de exemplo (valores inventados, nunca de ninguém) e um fio que acompanha a rolagem. Com movimento reduzido ou sem JavaScript, tudo aparece já pronto. O controle Escuro/Claro da página troca só o tema do aparelho. Quem já usava o app recebe a novidade "Agora o app se chama Prumo". Os sites seguem sem indexação (`noindex`).
+- **Termos de uso e política de privacidade** (LGPD): páginas públicas `/termos` e `/privacidade`, com links na homepage, nas telas de entrada e em Ajustes › Sobre. O primeiro acesso e o convite exigem a caixa "Li e aceito…", conferida no servidor; a conta guarda a versão aceita e o momento, e a Atividade da administração registra. Quem ainda não aceitou a versão atual (as contas de antes dos termos, ou depois de uma mudança relevante) é levado a `/aceitar-termos` na próxima página.
 - **Início**: saldo em contas, previsão para o fim do mês (com agendados e faturas), receitas e despesas, orçamento do mês com ritmo, próximas contas (sempre os próximos 7 dias a partir de hoje), contas e metas. Cada bloco carrega sozinho, com o próprio skeleton e o próprio erro.
 - **Conta de benefício**: um tipo de conta para vale-refeição e vale-alimentação (`/contas/nova?tipo=beneficio`, grupo "Benefícios" em Contas). Fica fora do Saldo em contas, do previsto, do Fluxo e dos avisos, e fora do patrimônio por padrão (dá para ligar em "Incluir no patrimônio"); não paga fatura de cartão e a Nova transação nunca começa nela. No bloco "Quanto dá para gastar por dia", ganha uma linha própria em "Fora do total". Quem já tem uma conta de vale muda o tipo em Editar.
 - **Início personalizável** (atrás da flag `inicio_personalizavel`, desligada por padrão): em "Personalizar o Início" (no fim do Início e em Ajustes › Preferências), mostrar, esconder e reordenar os blocos com "Subir" e "Descer", e trazer blocos dos Relatórios: **Calendário de gastos** (toque no dia abre o relatório nesse dia), **Fluxo de caixa** (saldo dia a dia e o menor saldo previsto), **Para onde foi o dinheiro** (as 5 categorias com mais gasto), **Receitas × despesas por mês** (últimos 6 meses), **Patrimônio** (valor e variação em 6 meses) e **Quanto dá para gastar por dia** (o saldo previsto das contas para gastar, dividido pelos dias que faltam, em cartões lado a lado, um por dia, com hoje primeiro, para os próximos 14 dias até o fim do mês; o orçamento não entra na conta; com 2 ou mais contas para gastar, cada cartão traz também uma linha por conta, com o saldo e o agendado dela e a fatura na conta que a paga, e "Escolher contas" define quais linhas aparecem, na conta e em todos os aparelhos; o total continua com todas; cada conta de benefício tem a sua linha em "Fora do total"). Os blocos dos relatórios seguem o mês em tela e levam ao relatório desse mês ("Ver relatório"); o do gasto por dia parte sempre de hoje e leva ao Fluxo ("Ver fluxo"). **Maior gasto da semana** traz as 3 maiores despesas pagas dos últimos 7 dias (qualquer que seja o mês em tela; fatura, transferências e pendentes ficam fora), cada uma com atalho para o Extrato, e "Ver no Extrato" abre as despesas. **Parcelas a terminar** lista as 3 compras parceladas que acabam primeiro, com o que falta pagar, as parcelas que restam e o mês em que acaba, e diz quanto sai por mês (a próxima parcela de cada compra, atrasadas incluídas); cada linha abre o Extrato nas pendentes dessa compra. **Comparado ao mês passado** mostra o gasto pago do mês até hoje contra o mesmo ponto do mês anterior (os mesmos dias do mês financeiro), no total e nas até 3 categorias que mais mudaram (subcategorias somadas na mãe; só entram as que mudaram R$ 10,00 ou mais), com "Ver relatório"; segue o mês em tela (mês passado: mês inteiro contra o anterior inteiro). **Assinaturas do mês** lista as despesas que se repetem todo mês (até 5, pelo próximo débito), quanto somam por mês e o próximo débito de cada uma, com o selo "subiu" quando a próxima cobrança custa mais do que a última antes deste mês (também quando o valor mudou com "Este e os próximos"); com mais de 5, o rodapé diz "e mais N assinaturas"; cada linha abre o Extrato nas pendentes dessa conta. Nada marca uma recorrência como assinatura: vale toda despesa mensal ativa (aluguel e curso também), e as anuais e semanais ficam de fora. Antes do primeiro registro, os blocos dos relatórios mostram "Sem registros". O Saldo fica sempre no topo. A escolha fica na conta e vale em todos os aparelhos; "Restaurar padrão" volta ao Início do app, com desfazer.
@@ -64,7 +65,7 @@ npm run demo   # cria o .env.local e um banco local com 13 meses de dados de exe
 npm run dev    # http://localhost:3000
 ```
 
-Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administradora). O demo também cria **bruno@meu-finan.local** / **meu-finan-bruno** (Bruno, usuário comum, com as próprias finanças e a importação de extrato desligada só para ele; as notificações e o Início personalizável ficam ligados só para a Ana, o sino e o compartilhamento para os dois) as subcategorias Mercado › Feira e Mercado › Padaria (arquivada) só na conta da Ana, e um convite pendente da Carla, cujo link aparece no fim da saída do `npm run demo`. As dicas de primeiro acesso e as novidades aparecem ligadas (a conta da Ana é anterior a todas as novidades); `npm run demo -- --sem-dicas` cria a mesma demo com os balões desligados. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
+Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administradora). O demo também cria **dani@meu-finan.local** / **meu-finan-dani** (Dani, usuária comum de antes dos termos de uso: sem finanças e sem aceite, cai em `/aceitar-termos`), **bruno@meu-finan.local** / **meu-finan-bruno** (Bruno, usuário comum, com as próprias finanças e a importação de extrato desligada só para ele; as notificações e o Início personalizável ficam ligados só para a Ana, o sino e o compartilhamento para os dois) as subcategorias Mercado › Feira e Mercado › Padaria (arquivada) só na conta da Ana, e um convite pendente da Carla, cujo link aparece no fim da saída do `npm run demo`. As dicas de primeiro acesso e as novidades aparecem ligadas (a conta da Ana é anterior a todas as novidades); `npm run demo -- --sem-dicas` cria a mesma demo com os balões desligados. Para começar do zero (sem dados), rode `npm run db:local -- reset` e faça o primeiro acesso em `/primeiro-acesso` com o `SETUP_TOKEN` do seu `.env.local` (o `OWNER_EMAIL` dele é o e-mail aceito).
 
 ### No celular (mesma rede Wi‑Fi)
 
@@ -89,7 +90,9 @@ Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administ
 
 4. Faça o deploy (`npx vercel --prod` ou um push na branch conectada). O build roda as migrações (`npm run build:vercel`) antes do `next build`.
 
-5. Faça o primeiro acesso (seção abaixo) e cadastre sua passkey.
+5. Defina `PRIVACY_CONTACT_EMAIL` com um e-mail só de contato (não o de login, porque ele fica público em `/privacidade`). Sem ele, a política manda falar com quem administra o app. É lida no build: mudar exige novo deploy. Antes de abrir para pessoas de fora, peça a revisão jurídica dos textos.
+
+6. Faça o primeiro acesso (seção abaixo) e cadastre sua passkey.
 
 Para desenvolver contra a Neon em vez do banco embutido, crie um branch `dev` no console da Neon e coloque a connection string dele em `DATABASE_URL` e `DATABASE_URL_UNPOOLED` do `.env.local` (ou use `npx vercel env pull .env.local`). Com `DATABASE_URL` definida o app usa a Neon, e `npm run db:migrate` aplica as migrações.
 
@@ -104,7 +107,7 @@ Como não há cadastro público, a primeira conta — a sua, de **administrador*
    ```
 
 2. Na Vercel (ambiente Production), defina `OWNER_EMAIL` com o seu e-mail e `SETUP_TOKEN` com o token. Faça um novo deploy: variáveis novas só valem depois dele.
-3. Abra `https://seu-app/primeiro-acesso`, informe o token e cadastre uma passkey (Face ID, digital, Windows Hello ou chave de segurança).
+3. Abra `https://seu-app/primeiro-acesso`, informe o token, aceite os termos de uso e a política de privacidade e cadastre uma passkey (Face ID, digital, Windows Hello ou chave de segurança).
 4. Apague `SETUP_TOKEN` na Vercel e faça um novo deploy. Sem o token, `/primeiro-acesso` fica desativado.
 5. Daqui em diante, entre por `/entrar` com a passkey.
 
@@ -124,6 +127,10 @@ Em **Ajustes › Administração** (ou "Administração" na barra lateral, no co
 **Administrar exige passkey.** Uma senha vazada de administrador não basta: a Administração e as ações dela só abrem numa sessão iniciada (ou confirmada) com passkey. Quem entrou com a senha vê em Ajustes › Administração, no lugar das contagens, "Cadastre uma passkey para abrir" (sem passkey) ou "Confirme com sua passkey para abrir" (com passkey); `/admin/*` leva à tela `/ajustes/seguranca/admin`, e quem não é administrador continua recebendo 404. Confirmar com a passkey abre uma sessão nova no aparelho e encerra a de senha. Enquanto a sessão for de senha, um administrador que já tem passkey não cadastra nem remove passkeys (senão quem tem a senha cadastraria a própria passkey). A confirmação vale pela sessão (30 dias deslizantes). Se o administrador perde o aparelho com a passkey, outro administrador gera um link de redefinição com "Remover todas as passkeys"; para o dono, a saída é a recuperação de emergência.
 
 O painel não mostra as finanças de ninguém e não há personificação. Um link de redefinição abre a conta para a qual foi gerado, por isso a Atividade registra quem o gerou e quando foi usado. A conta do dono (`OWNER_EMAIL` ou, sem ele, a do primeiro acesso) não pode ser excluída nem redefinida pelo painel: ela volta pela recuperação de emergência (seção seguinte). Ninguém se desativa, se rebaixa ou se exclui pelo painel, e sempre sobra um administrador ativo. Quem não é administrador vê a página 404 em `/admin`.
+
+## Termos e privacidade
+
+O texto está em `src/app/(legal)/termos/page.tsx` e `src/app/(legal)/privacidade/page.tsx` (rascunho técnico fiel ao app, não parecer jurídico). Os dois documentos têm uma versão só, `LEGAL_VERSION` em `src/lib/legal/version.ts` (a data de publicação). Correção de texto não muda a versão; mudança relevante, sim: troque a data e todas as contas aceitam de novo em `/aceitar-termos` na próxima página. O aceite fica em `user.legal_version` e `user.legal_accepted_at`, e a Atividade da administração mostra quem aceitou e quando. O canal do titular é o e-mail de `PRIVACY_CONTACT_EMAIL` (veja "Publicar").
 
 ## Recuperação de emergência
 
@@ -240,7 +247,7 @@ O que configurar no Sentry:
 
 ## Segurança
 
-- **Sessão verificada no servidor** em toda página, Server Action e rota de API. O `proxy.ts` só redireciona para `/entrar` quem chega sem cookie de sessão; ele não é a proteção. Ficam de fora apenas `/api/auth/*` (Better Auth), `/api/cron/daily` (protegida pelo `CRON_SECRET`), os arquivos públicos (inclusive a imagem de pré-visualização `/opengraph-image`, `/twitter-image` e o splash `/splash/*`) e as páginas `/entrar`, `/primeiro-acesso`, `/recuperar` e `/convite/[token]` (as três últimas só abrem com o próprio token).
+- **Sessão verificada no servidor** em toda página, Server Action e rota de API. O `proxy.ts` só redireciona para `/entrar` quem chega sem cookie de sessão; ele não é a proteção. Ficam de fora apenas `/api/auth/*` (Better Auth), `/api/cron/daily` (protegida pelo `CRON_SECRET`), os arquivos públicos (inclusive a imagem de pré-visualização `/opengraph-image`, `/twitter-image` e o splash `/splash/*`) as páginas `/termos` e `/privacidade` (estáticas, sem sessão e sem dados) e as páginas `/entrar`, `/primeiro-acesso`, `/recuperar` e `/convite/[token]` (as três últimas só abrem com o próprio token). O aceite dos termos é um portão em `requireUser()`: quem não aceitou a versão atual vai para `/aceitar-termos` em toda página e Server Action; só `requireSignedIn()` (a própria tela de aceite e a sua action) passa sem ele.
 - **Login mais duro**: além do limite por endereço, há um limite por e-mail (10 tentativas em 15 min; a passkey não é afetada). Senhas que aparecem em vazamentos (Have I Been Pwned: só 5 caracteres do hash saem do servidor) são recusadas ao criar ou trocar a senha. `PASSWORD_LEAK_CHECK=off` desliga a checagem (testes e desenvolvimento sem internet).
 - **Cada conta só vê o que é dela**: toda consulta é filtrada pelo usuário da sessão, e o id de tudo que chega do navegador tem a posse conferida.
 - **Exceção do compartilhamento (ADR-13)**: os dados de um grupo moram só nas tabelas compartilhadas (`share_*` e `shared_*`), lidas só por membros ativos do grupo e alteradas só por uma ação explícita de um membro. As tabelas privadas continuam lidas só pela dona, e ninguém escreve nas tabelas privadas de outra pessoa. Quem não é membro recebe "Grupo não encontrado.", igual a um id que não existe. O convite não revela se um e-mail tem conta (resposta neutra, 20 e-mails por dia por pessoa e 3 por e-mail em 30 dias); até aceitar, quem convida vê só o e-mail que digitou. A auditoria registra convite, aceite, recusa, saída e remoção, sem valores nem o nome do grupo.
@@ -256,7 +263,7 @@ O que configurar no Sentry:
 
 | Comando | O que faz |
 |---|---|
-| `npm run demo` | Cria o `.env.local` (se faltar) e recria o banco local: 13 meses de dados da Ana (administradora, com a conta de benefício "Vale-refeição"), o Bruno (usuário comum) e um convite pendente; com `-- --sem-dicas`, desliga os balões de dicas |
+| `npm run demo` | Cria o `.env.local` (se faltar) e recria o banco local: 13 meses de dados da Ana (administradora, com a conta de benefício "Vale-refeição"), o Bruno (usuário comum), a Dani (sem aceite dos termos) e um convite pendente; com `-- --sem-dicas`, desliga os balões de dicas |
 | `npm run dev` | Servidor de desenvolvimento (aplica as migrações no banco local antes) |
 | `npm run db:local -- reset` | Apaga e recria o banco local vazio |
 | `npm run build` | Build de produção (não acessa o banco) |
@@ -287,6 +294,8 @@ meu-finan/
 ├─ src/
 │  ├─ app/
 │  │  ├─ (auth)/             # entrar, primeiro acesso, recuperação e convite
+│  │  ├─ (legal)/            # /termos e /privacidade (públicas e estáticas)
+│  │  ├─ aceitar-termos/     # aceite da versão atual dos termos (portão do requireUser)
 │  │  ├─ (app)/              # telas autenticadas: início, extrato, contas, cartões,
 │  │  │                      # planejar, relatórios, ajustes e administração (admin/)
 │  │  ├─ api/auth/           # rotas do Better Auth
@@ -296,10 +305,11 @@ meu-finan/
 │  │  ├─ ui/                 # componentes base (Button, Sheet, SegmentedControl…)
 │  │  ├─ app/ · brand/ · finance/ · money/ · charts/
 │  │  ├─ dashboard/ · accounts/ · transactions/ · quick-add/ · planning/ · reports/
-│  │  └─ tips/ · admin/ · flags/ · onboarding/ · imports/
+│  │  └─ tips/ · admin/ · flags/ · onboarding/ · imports/ · legal/
 │  ├─ lib/
 │  │  ├─ finance/            # motor financeiro puro (juros, IR, faturas, orçamento…), com testes
 │  │  ├─ flags/              # registro das feature flags e a resolução (pessoa > global > padrão)
+│  │  ├─ legal/              # LEGAL_VERSION e quem precisa aceitar de novo
 │  │  ├─ admin/              # papéis, status, regras da administração e frases da atividade
 │  │  ├─ tips/               # registro das dicas e novidades, seleção por tela e geometria do balão
 │  │  ├─ import/             # leitura de extratos OFX e CSV, sem duplicar, e o CSV de exportação
@@ -307,7 +317,7 @@ meu-finan/
 │  │  └─ format/             # formatação pt-BR (moeda, datas, percentuais)
 │  ├─ server/
 │  │  ├─ auth.ts             # instância do Better Auth
-│  │  ├─ dal.ts              # getSession, requireUser e requireAdmin (checagem no servidor)
+│  │  ├─ dal.ts              # getSession, requireUser (com o portão dos termos) e requireAdmin
 │  │  ├─ safe-action.ts      # clientes das Server Actions (authAction, adminAction, flaggedAction)
 │  │  ├─ flags.ts            # getFlags e isFlagEnabled (feature flags no servidor)
 │  │  ├─ env.ts              # variáveis de ambiente validadas com Zod

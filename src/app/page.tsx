@@ -18,6 +18,7 @@ import { HOME_MOTION_VARS } from "@/components/home/motion";
 import { Reveal } from "@/components/home/reveal";
 import { ScrollThread } from "@/components/home/scroll-thread";
 import { ThemePreview } from "@/components/home/theme-preview";
+import { LegalLinks } from "@/components/legal/legal-links";
 
 export const metadata: Metadata = {
   title: { absolute: "Prumo · Seu dinheiro no prumo." },
@@ -204,8 +205,9 @@ export default function Home() {
           </Reveal>
         </section>
 
-        <footer className="border-t border-border pt-6">
+        <footer className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
           <AuthorCredit />
+          <LegalLinks />
         </footer>
       </div>
     </main>

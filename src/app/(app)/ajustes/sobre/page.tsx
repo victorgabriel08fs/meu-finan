@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { AuthorCredit } from "@/components/brand/author-credit";
 import { DataTable } from "@/components/charts/data-table";
+import { LegalLinks } from "@/components/legal/legal-links";
 import { marketRateLabel } from "@/components/planning/market";
 import { Card } from "@/components/ui/card";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
@@ -144,6 +145,7 @@ async function About() {
           Prumo · versão {packageJson.version}
         </p>
         <AuthorCredit />
+        <LegalLinks className="mt-1" />
       </div>
     </>
   );

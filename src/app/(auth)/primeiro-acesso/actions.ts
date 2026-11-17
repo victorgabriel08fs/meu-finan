@@ -7,10 +7,15 @@ import { redirect } from "next/navigation";
 import { returnValidationErrors } from "next-safe-action";
 import { z } from "zod";
 import {
+  LEGAL_OUTDATED,
+  LEGAL_REQUIRED,
+  LEGAL_VERSION,
+} from "@/lib/legal/version";
+import {
   LEAKED_PASSWORD_MESSAGE,
   PASSWORD_COMPROMISED,
 } from "@/lib/security/messages";
-import { auth, SETUP_TOKEN_HEADER } from "@/server/auth";
+import { auth, LEGAL_VERSION_HEADER, SETUP_TOKEN_HEADER } from "@/server/auth";
 import { db } from "@/server/db/client";
 import { user } from "@/server/db/schema";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
@@ -39,6 +44,8 @@ const setupSchema = z
       .min(12, "Use pelo menos 12 caracteres.")
       .max(128, "Use no máximo 128 caracteres."),
     confirm: z.string(),
+    acceptedLegal: z.literal(true, { error: LEGAL_REQUIRED }),
+    legalVersion: z.string().max(20),
   })
   .refine((input) => input.password === input.confirm, {
     path: ["confirm"],
@@ -49,11 +56,14 @@ const setupSchema = z
  * One-time setup of the first account, the administrator (doc 01 §11.1).
  * Fails closed without SETUP_TOKEN or OWNER_EMAIL, once a user exists, or
  * with a wrong token; Better Auth's own hooks repeat the token and owner
- * checks and make the account an administrator.
+ * checks, require the accepted terms and make the account an administrator.
  */
 export const setupOwner = actionClient
   .inputSchema(setupSchema)
   .action(async ({ parsedInput: input }) => {
+    if (input.legalVersion !== LEGAL_VERSION) {
+      throw new ActionError(LEGAL_OUTDATED);
+    }
     const requestHeaders = await headers();
     const limit = await throttle(`setup:${clientAddress(requestHeaders)}`, {
       windowSeconds: 600,
@@ -98,6 +108,7 @@ export const setupOwner = actionClient
 
     const forwarded = new Headers(requestHeaders);
     forwarded.set(SETUP_TOKEN_HEADER, input.token);
+    forwarded.set(LEGAL_VERSION_HEADER, input.legalVersion);
     let userId: string;
     try {
       const result = await auth.api.signUpEmail({
@@ -127,7 +138,7 @@ export const setupOwner = actionClient
     await recordAudit(db, {
       action: "setup.completed",
       actor: { id: userId, name: input.name },
-      metadata: { role: "admin" },
+      metadata: { role: "admin", legalVersion: LEGAL_VERSION },
     });
     logEvent("auth.setup_done", { userId, ...meta });
     redirect("/ajustes/seguranca?primeiro=1");

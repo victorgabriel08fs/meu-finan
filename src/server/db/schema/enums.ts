@@ -129,6 +129,7 @@ export const AUDIT_ACTIONS = [
   "access_link.revoked",
   "access_link.accepted",
   "access.recovered",
+  "legal.accepted",
   "flag.global_set",
   "flag.user_set",
   "job.run_manual",

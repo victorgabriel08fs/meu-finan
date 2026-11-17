@@ -87,6 +87,41 @@ describe("describeActivity", () => {
     });
   });
 
+  it("tells which terms were accepted", () => {
+    expect(
+      line({
+        action: "access_link.accepted",
+        actorName: "Bruno Lima",
+        metadata: { purpose: "invite", legalVersion: "2026-11-17" },
+      }),
+    ).toEqual({
+      kind: "accepted",
+      title: "Bruno Lima aceitou o convite",
+      detail: "Termos aceitos (versão de 17 de novembro de 2026)",
+    });
+    expect(
+      line({
+        action: "legal.accepted",
+        metadata: { legalVersion: "2026-11-17" },
+      }),
+    ).toEqual({
+      kind: "accepted",
+      title: "Bruno Lima aceitou os termos de uso e a política de privacidade",
+      detail: "Versão de 17 de novembro de 2026",
+    });
+    // A value that is not a day never reaches the screen.
+    expect(
+      line({ action: "legal.accepted", metadata: { legalVersion: "x" } })
+        .detail,
+    ).toBeUndefined();
+    expect(
+      line(
+        { action: "setup.completed", metadata: { legalVersion: "2026-11-17" } },
+        "ana",
+      ).detail,
+    ).toBe("Primeiro acesso, como administrador · termos aceitos");
+  });
+
   it("describes account changes", () => {
     expect(line({ action: "user.banned", metadata: { sessions: 2 } })).toEqual({
       kind: "ban",

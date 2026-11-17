@@ -261,4 +261,9 @@ export type AuditMetadata = {
   job?: string;
   /** share.invited: the e-mail has no account (kept out of the entry). */
   unresolved?: boolean;
+  /**
+   * setup.completed, access_link.accepted (invite), legal.accepted: the
+   * version of the terms and privacy policy accepted (LEGAL_VERSION).
+   */
+  legalVersion?: string;
 };

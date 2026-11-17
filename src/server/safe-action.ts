@@ -4,7 +4,7 @@
 import "server-only";
 import { createSafeActionClient } from "next-safe-action";
 import type { FlagKey } from "@/lib/flags/registry";
-import { getAdmin, requireUser } from "@/server/dal";
+import { getAdmin, requireSignedIn, requireUser } from "@/server/dal";
 import { DomainError, NOT_ALLOWED } from "@/server/domain/errors";
 import { isFlagEnabled } from "@/server/flags";
 import { captureServerError } from "@/server/observability/sentry";
@@ -32,6 +32,15 @@ export const actionClient = createSafeActionClient({
 
 export const authAction = actionClient.use(async ({ next }) => {
   const user = await requireUser();
+  return next({ ctx: { user } });
+});
+
+/**
+ * Only for accepting the terms (/aceitar-termos): checks the session but not
+ * the accepted version, which `authAction` requires.
+ */
+export const signedInAction = actionClient.use(async ({ next }) => {
+  const user = await requireSignedIn();
   return next({ ctx: { user } });
 });
 

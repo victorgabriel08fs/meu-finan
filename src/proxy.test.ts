@@ -34,6 +34,16 @@ describe("proxy matcher", () => {
     }
   });
 
+  it("deixa os termos e a política públicos, com ou sem sessão", () => {
+    for (const path of ["/termos", "/privacidade"]) {
+      expect(matcher.test(path), path).toBe(false);
+    }
+  });
+
+  it("protege /aceitar-termos como qualquer tela", () => {
+    expect(matcher.test("/aceitar-termos")).toBe(true);
+  });
+
   it("continua protegendo as telas e as APIs", () => {
     for (const path of ["/inicio", "/api/x", "/admin", "/convite/abc"]) {
       expect(matcher.test(path), path).toBe(true);

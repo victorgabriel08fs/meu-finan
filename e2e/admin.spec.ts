@@ -61,6 +61,18 @@ test("convida uma pessoa e o convite oferece passkey e leva ao onboarding num na
   await expect(guest.getByLabel("E-mail")).toHaveValue("elisa.e2e@exemplo.com");
   await guest.getByLabel("Senha", { exact: true }).fill("a senha da elisa e2e");
   await guest.getByLabel("Confirme a senha").fill("a senha da elisa e2e");
+  // Sem aceitar os termos o convite não segue: erro na caixa e foco nela.
+  const legal = guest.getByRole("checkbox", { name: /Li e aceito/ });
+  await expect(legal).not.toBeChecked();
+  await guest.getByRole("button", { name: "Criar senha e entrar" }).click();
+  await expect(
+    guest.getByText(
+      "Aceite os termos de uso e a política de privacidade para continuar.",
+    ),
+  ).toBeVisible();
+  await expect(legal).toBeFocused();
+  await expect(guest).toHaveURL(/\/convite\//);
+  await legal.check();
   await guest.getByRole("button", { name: "Criar senha e entrar" }).click();
   // Like the owner's first access: Segurança offers a passkey first.
   await expect(guest).toHaveURL(/\/ajustes\/seguranca\?primeiro=1$/, {

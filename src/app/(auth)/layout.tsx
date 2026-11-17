@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { LegalLinks } from "@/components/legal/legal-links";
 
-/** Public auth pages: a centred column, mobile first (doc 02 §6.1). */
+/**
+ * Public auth pages: a centred column, mobile first (doc 02 §6.1), with the
+ * terms and the privacy policy at the foot.
+ */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col items-center bg-bg px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 sm:justify-center">
@@ -12,6 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <span className="font-bold text-[17px] text-fg">Prumo</span>
         </div>
         {children}
+        <LegalLinks className="mt-10" />
       </div>
     </main>
   );
