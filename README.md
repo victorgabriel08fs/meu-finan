@@ -1,6 +1,6 @@
 # Prumo
 
-Versão 0.12.0. Controle financeiro pessoal, mobile-first e instalável como app (PWA). Seu dinheiro no prumo. Registre um gasto em segundos, veja o mês inteiro em uma tela, planeje orçamentos e metas e simule quanto o dinheiro guardado pode render, já com IR e inflação.
+Versão 0.12.1. Controle financeiro pessoal, mobile-first e instalável como app (PWA). Seu dinheiro no prumo. Registre um gasto em segundos, veja o mês inteiro em uma tela, planeje orçamentos e metas e simule quanto o dinheiro guardado pode render, já com IR e inflação.
 
 > **Uso pessoal ou familiar.** A primeira conta é a sua, de administrador, e outras pessoas só entram por convite seu — cada uma com as próprias finanças, separadas das outras (a administração cuida dos acessos e não mostra o dinheiro de ninguém). Não existe cadastro público, e o login é obrigatório em tudo, porque o app fica em uma URL pública e guarda dados financeiros. As páginas abertas a quem não entrou são a **homepage** em `/` (estática, sem dado nenhum e sem cadastro, só o botão Entrar; quem já tem sessão vai direto para o Início) e os **termos de uso** e a **política de privacidade** (`/termos`, `/privacidade`).
 
