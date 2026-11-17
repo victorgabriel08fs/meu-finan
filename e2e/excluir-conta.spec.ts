@@ -57,6 +57,7 @@ test("Ana convida e Fábio entra com sessão recente", async ({
   await guest.goto(url);
   await guest.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await guest.getByLabel("Confirme a senha").fill(PASSWORD);
+  await guest.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await guest.getByRole("button", { name: "Criar senha e entrar" }).click();
   await expect(guest).toHaveURL(/\/ajustes\/seguranca\?primeiro=1$/, {
     timeout: 30_000,
