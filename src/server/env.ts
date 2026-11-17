@@ -67,6 +67,8 @@ const serverEnvSchemas = {
   VAPID_PRIVATE_KEY: z.string().regex(/^[A-Za-z0-9_-]{43}$/, {
     error: "expected the private key printed by web-push generate-vapid-keys",
   }),
+  // Empty means on; off is for tests, e2e and offline development.
+  PASSWORD_LEAK_CHECK: z.enum(["on", "off"], { error: "expected on or off" }),
 } as const;
 
 export type ServerEnvKey = keyof typeof serverEnvSchemas;
