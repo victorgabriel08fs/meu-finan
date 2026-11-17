@@ -8,6 +8,8 @@ import { LEAKED_PASSWORD_MESSAGE } from "@/lib/security/messages";
 import { auth } from "@/server/auth";
 import { recoverOwnerAccess } from "@/server/domain/recovery";
 import { readServerEnvSafe } from "@/server/env";
+import { logEvent, requestMeta } from "@/server/observability/log";
+import { captureServerMessage } from "@/server/observability/sentry";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress, secretMatches } from "@/server/security/guards";
 import { isPasswordLeaked } from "@/server/security/leaked-passwords";
@@ -40,11 +42,18 @@ const recoverSchema = z
 export const recoverAccess = actionClient
   .inputSchema(recoverSchema)
   .action(async ({ parsedInput: input }) => {
-    const limit = await throttle(`recover:${clientAddress(await headers())}`, {
+    const requestHeaders = await headers();
+    const limit = await throttle(`recover:${clientAddress(requestHeaders)}`, {
       windowSeconds: 900,
       max: 5,
     });
+    const meta = requestMeta(requestHeaders);
+    const refuse = (reason: string) => {
+      logEvent("auth.recovery_failed", { reason, ...meta }, "warn");
+      captureServerMessage("auth.recovery_failed", "warning", { reason });
+    };
     if (!limit.ok) {
+      refuse("rate_limited");
       throw new ActionError(
         `Muitas tentativas. Tente de novo em ${Math.ceil(limit.retryAfterSeconds / 60)} min.`,
       );
@@ -54,9 +63,11 @@ export const recoverAccess = actionClient
     if (recoveryToken.status === "invalid")
       console.error(recoveryToken.problem);
     if (recoveryToken.status !== "ok") {
+      refuse("closed");
       throw new ActionError("Esta tela está fechada.");
     }
     if (!secretMatches(input.token, recoveryToken.value)) {
+      refuse("bad_token");
       throw new ActionError("Código de recuperação inválido.");
     }
 
@@ -64,6 +75,7 @@ export const recoverAccess = actionClient
     if (ownerEmailEnv.status === "invalid") {
       // Never guess the account: an invalid OWNER_EMAIL closes the recovery.
       console.error(ownerEmailEnv.problem);
+      refuse("closed");
       throw new ActionError("Esta tela está fechada.");
     }
     const ownerEmail =
@@ -81,6 +93,7 @@ export const recoverAccess = actionClient
       removePasskeys: input.removePasskeys,
     });
     if (!recovered) {
+      refuse("no_account");
       throw new ActionError(
         ownerEmail
           ? "Nenhuma conta usa o e-mail de OWNER_EMAIL. Confira a variável na Vercel e faça um novo deploy."
@@ -91,10 +104,11 @@ export const recoverAccess = actionClient
     await clearLoginAttempts(recovered.email);
 
     // Server log only (the deployment's owner reads it); never in the URL.
-    console.warn("[auth] acesso recuperado com RECOVERY_TOKEN", {
-      userId: recovered.id,
-      email: recovered.email,
-      removedPasskeys: input.removePasskeys,
-    });
+    logEvent(
+      "auth.recovery_used",
+      { userId: recovered.id, removedPasskeys: input.removePasskeys, ...meta },
+      "warn",
+    );
+    captureServerMessage("auth.recovery_used", "warning");
     redirect("/entrar?recuperado=1");
   });
