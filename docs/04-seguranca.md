@@ -24,7 +24,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 | Médio | M-1 Administrador sem segundo fator obrigatório | Tarefa S4 |
 | Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | Tarefa S5 |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
-| Médio | M-4 Ações caras sem limite por pessoa | Tarefa S7 |
+| Médio | M-4 Ações caras sem limite por pessoa | **Corrigido** (tarefa S7) |
 | Médio | M-5 Sem trilha de login nem alertas | Tarefa S8 |
 | Médio | M-6 CSP com `'unsafe-inline'` em `script-src` | Tarefa S12 (depois do beta) |
 | Baixo | B-1 `esbuild` vulnerável no `drizzle-kit` (só desenvolvimento) | Acompanhar pelo Dependabot |
@@ -79,6 +79,8 @@ Pelo doc 01 §14, cada preview usa um branch da Neon copiado de produção e fic
 ### M-4 Ações caras sem limite por pessoa
 
 Importar extrato (arquivo de até 2 MB), lançamento por texto e exportar CSV não têm `throttle` por pessoa. Uma conta abusiva (ou um script com a sessão de alguém) consome CPU e banco à vontade, e na Vercel isso vira custo.
+
+**Corrigido (S7).** `limitUsage` (`src/server/security/limits.ts`) conta os usos por id da sessão, na tabela `rate_limit`, com janela fixa: analisar extrato, 20 a cada 10 min; confirmar importação, 10 a cada 10 min; lançamento por texto, 30 por minuto; exportar CSV, 10 a cada 10 min. As ações respondem "Espere um pouco e tente de novo" e a rota de exportação responde 429 com `Retry-After`. Desfazer importação não tem limite.
 
 ### M-5 Sem trilha de login nem alertas
 
