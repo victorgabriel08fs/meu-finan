@@ -9,7 +9,8 @@ import { listUserNames } from "@/server/domain/users";
 export const metadata: Metadata = { title: "Flags" };
 
 /**
- * Administração › Flags (doc 02 §6.17); 404 for anyone but an administrator.
+ * Administração › Flags (doc 02 §6.17); 404 for anyone but an administrator,
+ * the passkey confirmation for an administrator who signed in with a password.
  * The intro is static copy, so it renders with the shell at its real height
  * and the cards stream in below it without a jump.
  */
@@ -28,7 +29,7 @@ export default function FlagsPage() {
 }
 
 async function Flags() {
-  await requireAdmin();
+  await requireAdmin("/admin/flags");
   const [flags, people] = await Promise.all([
     listFlagsForAdmin(),
     listUserNames(),

@@ -9,7 +9,8 @@ export const metadata: Metadata = { title: "Usuários" };
 
 /**
  * Administração › Usuários (doc 02 §6.17). The role is checked before any
- * data is read: anyone but an administrator gets the 404 page.
+ * data is read: anyone but an administrator gets the 404 page, and an
+ * administrator without a passkey-confirmed session goes to the confirmation.
  */
 export default function UsuariosPage() {
   return (
@@ -20,7 +21,7 @@ export default function UsuariosPage() {
 }
 
 async function Users() {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("/admin/usuarios");
   const now = new Date();
   const users = await listUsersForAdmin(admin.id, now);
   return <UsersManager users={users} now={now.toISOString()} />;

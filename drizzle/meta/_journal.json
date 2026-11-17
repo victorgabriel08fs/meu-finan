@@ -124,8 +124,15 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1794938180359,
-      "tag": "0017_termos_aceite",
+      "when": 1794938203817,
+      "tag": "0017_session_passkey_verified",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794942798323,
+      "tag": "0018_termos_aceite",
       "breakpoints": true
     }
   ]

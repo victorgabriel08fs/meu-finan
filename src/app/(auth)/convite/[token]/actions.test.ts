@@ -31,6 +31,7 @@ vi.mock("@/server/auth", () => ({
 }));
 vi.mock("@/server/security/throttle", () => ({
   throttle: async () => ({ ok: true }),
+  clearThrottle: async () => {},
 }));
 vi.mock("@/server/db/seed-defaults", () => ({
   ensureOwnerDefaults: vi.fn(),

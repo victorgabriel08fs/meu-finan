@@ -33,7 +33,7 @@ const FIELDS: {
     label: "Senha",
     type: "password",
     autoComplete: "new-password",
-    hint: "Pelo menos 12 caracteres. Depois você cadastra uma passkey.",
+    hint: "Pelo menos 12 caracteres, sem senhas que já vazaram. Depois você cadastra uma passkey.",
   },
   {
     name: "confirm",

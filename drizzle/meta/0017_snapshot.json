@@ -1,5 +1,5 @@
 {
-  "id": "89557c00-542b-4474-b5dc-64228d7c7122",
+  "id": "51cdbc2e-7680-4590-8318-120293c3496d",
   "prevId": "f96d7e10-28d7-46ed-8ed2-1a3a40d995d1",
   "version": "7",
   "dialect": "postgresql",
@@ -1037,6 +1037,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "passkey_verified_at": {
+          "name": "passkey_verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1155,18 +1161,6 @@
         },
         "ban_expires": {
           "name": "ban_expires",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "legal_version": {
-          "name": "legal_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "legal_accepted_at": {
-          "name": "legal_accepted_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

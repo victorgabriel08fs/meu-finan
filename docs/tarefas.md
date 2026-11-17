@@ -13,10 +13,10 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [ ] **S1 Backup fora da Neon** (A-2): workflow semanal com `pg_dump` (papel só de leitura) criptografado com `age`, guardado fora da Neon (doc 01 §11.7); conferir a janela de restauração do plano; testar uma restauração num branch descartável.
 - [x] **S2 Termos de uso e política de privacidade** (A-3), 17/11/2026: páginas públicas `/termos` e `/privacidade`, versão única (`LEGAL_VERSION`), aceite obrigatório no primeiro acesso e no convite (conferido no servidor, gravado em `user.legal_version`/`legal_accepted_at` e na auditoria), `/aceitar-termos` para contas sem a versão atual (portão em `requireUser()`), links na homepage, nas telas de entrada e em Ajustes › Sobre; doc 01 §11.8 revisto (ADR-14). Fica: definir `PRIVACY_CONTACT_EMAIL` na Vercel antes do beta e pedir revisão jurídica dos textos antes dos planos pagos. A S3 deve citar as telas novas em `/privacidade` (`#direitos`) quando existirem, sem trocar `LEGAL_VERSION` se for só acréscimo de como exercer um direito já descrito.
 - [ ] **S3 Exportar meus dados e excluir minha conta** (A-3): ZIP com JSON completo + CSV (doc 01 §11.8) e exclusão pela própria pessoa, ambos com sessão recente; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13).
-- [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
-- [ ] **S5 Login mais duro** (M-2): limite por e-mail além do IP e recusa de senhas vazadas (plugin `haveIBeenPwned` do Better Auth).
+- [x] ~~**S4 Segundo fator para administradores** (M-1)~~: entregue em 17/11/2026 (ver "Entregue"). Fica para decidir: janela de recência curta para a confirmação (hoje vale pela sessão) e TOTP.
+- [x] ~~**S5 Login mais duro** (M-2)~~: entregue em 17/11/2026. Limite de 10 tentativas por e-mail em 15 min (a passkey fica de fora) e recusa de senhas vazadas (Have I Been Pwned, k-anonimato, falha aberta, `PASSWORD_LEAK_CHECK`). O plugin `haveIBeenPwned` do Better Auth não foi registrado (falha fechada, só cobre endpoints do Better Auth e não tem tempo limite): módulo próprio em `src/server/security/leaked-passwords.ts`. Fica para depois: limpeza periódica das linhas antigas de `rate_limit` (uma por e-mail tentado) e, se um proxy (Cloudflare) for posto na frente, usar o cabeçalho de IP dele (`docs/04-seguranca.md`).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
-- [ ] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
+- [x] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
 - [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
 - [x] ~~**S9 Cadastro público**~~: decidido pelo dono em 16/11/2026 que as contas **continuam só por convite**, também com planos. Fica para o beta: convites com limite por administrador e "esqueci minha senha" por e-mail (Resend, remetente Prumo) como alternativa ao link de redefinição do painel.
 - [ ] **S10 Pagamentos** (contas por convite: o plano é escolhido depois de aceitar o convite): checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
@@ -208,6 +208,25 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Passkey obrigatória para administradores (versão 0.9.0) — 17/11/2026
+
+Tarefa S4 (M-1 da auditoria). Migração `0017_session_passkey_verified`; sem flag nem variável nova.
+
+- [x] **Sessão**: `session.passkey_verified_at`, carimbado só por `/passkey/verify-authentication`; `/update-session` desligado; reconfirmar encerra a sessão de senha anterior do aparelho.
+- [x] **Servidor**: `requireAdmin(rota)` e `adminAction` (`getAdmin()`) exigem o carimbo; administrador com passkey e sessão de senha não cadastra nem remove passkeys.
+- [x] **Telas**: `/ajustes/seguranca/admin` (cadastrar ou confirmar), linha em Ajustes › Administração e aviso em Segurança. Quem não é administrador continua com 404.
+- [x] Testes: unidade (`second-factor.test.ts`), integração (`admin-second-factor.integration.test.ts`) e e2e (`admin-passkey.spec.ts`, com autenticador virtual no `auth.setup.ts`).
+- [x] Docs: README (inclusive Trocar de domínio), doc 01 §11, doc 02 §6.17, `docs/04-seguranca.md`.
+
+### Login mais duro (versão 0.8.0) — 17/11/2026
+
+Achado M-2 da auditoria (`docs/04-seguranca.md`). Sem migração; sem flag (endurecimento sempre ligado).
+
+- [x] **Limite por e-mail**: 10 tentativas em 15 min por e-mail (hash em `rate_limit`), zerado por um login bem-sucedido, convite, redefinição ou recuperação; a passkey não conta. 429 `LOGIN_LOCKED` com `retryAfter`.
+- [x] **Senhas vazadas**: Pwned Passwords por k-anonimato, tempo limite de 2,5 s, falha aberta, `PASSWORD_LEAK_CHECK` (`on` por padrão, `off` em testes e e2e). Vale no primeiro acesso, no convite e na redefinição, na recuperação e na troca em Ajustes › Segurança.
+- [x] **Textos**: erro no campo Senha, apoio nos campos de senha nova, mensagem do bloqueio com o tempo de espera.
+- [ ] **Depois**: limpar periodicamente as linhas antigas de `rate_limit`; testes das actions de convite e recuperação com senha vazada (hoje cobertas pelo domínio, pelo hook e pelo e2e do convite com a checagem desligada).
 
 ### Lançamento por texto: aprender regras e selo “sugerida” (versão 0.7.0) — 16/11/2026
 

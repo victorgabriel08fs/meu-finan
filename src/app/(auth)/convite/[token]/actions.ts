@@ -3,12 +3,14 @@
 import { isAPIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { returnValidationErrors } from "next-safe-action";
 import { z } from "zod";
 import {
   LEGAL_OUTDATED,
   LEGAL_REQUIRED,
   LEGAL_VERSION,
 } from "@/lib/legal/version";
+import { LEAKED_PASSWORD_MESSAGE } from "@/lib/security/messages";
 import { auth } from "@/server/auth";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
 import {
@@ -18,6 +20,8 @@ import {
 } from "@/server/domain/access-links";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress } from "@/server/security/guards";
+import { isPasswordLeaked } from "@/server/security/leaked-passwords";
+import { clearLoginAttempts } from "@/server/security/login-attempts";
 import { throttle } from "@/server/security/throttle";
 
 const acceptSchema = z
@@ -75,6 +79,13 @@ export const acceptAccessLinkAction = actionClient
       }
     }
 
+    // Before claiming the link, so a refused password does not use it up.
+    if (await isPasswordLeaked(input.password)) {
+      returnValidationErrors(acceptSchema, {
+        password: { _errors: [LEAKED_PASSWORD_MESSAGE] },
+      });
+    }
+
     const context = await auth.$context;
     const accepted = await acceptAccessLink(input.token, {
       passwordHash: await context.password.hash(input.password),
@@ -84,6 +95,9 @@ export const acceptAccessLinkAction = actionClient
     if (accepted.purpose === "invite") {
       await ensureOwnerDefaults(accepted.userId);
     }
+
+    // A valid link lifts a lock left by failed attempts.
+    await clearLoginAttempts(accepted.email);
 
     try {
       await auth.api.signInEmail({

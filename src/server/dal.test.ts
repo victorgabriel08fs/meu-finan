@@ -24,11 +24,16 @@ const session = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock("@/server/auth", () => ({
   auth: { api: { getSession: async () => session.current } },
 }));
+vi.mock("@/server/domain/passkeys", () => ({
+  countUserPasskeys: async () => 1,
+}));
 
 import { getAdmin, requireAdmin, requireSignedIn, requireUser } from "./dal";
 
 const signedInAs = (role: string, legalVersion: string | null) => {
   session.current = {
+    // Opened with a passkey, so only the terms gate holds an administrator.
+    session: { passkeyVerifiedAt: new Date() },
     user: {
       id: "u1",
       name: "Ana",
@@ -77,7 +82,9 @@ describe("terms gate", () => {
 
   it("holds an administrator back too, in the pages and in the actions", async () => {
     signedInAs("admin", null);
-    await expect(requireAdmin()).rejects.toThrow("redirect:/aceitar-termos");
+    await expect(requireAdmin("/admin/usuarios")).rejects.toThrow(
+      "redirect:/aceitar-termos",
+    );
     await expect(getAdmin()).resolves.toBeNull();
     signedInAs("admin", LEGAL_VERSION);
     await expect(getAdmin()).resolves.toMatchObject({ role: "admin" });

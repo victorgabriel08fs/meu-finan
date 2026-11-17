@@ -31,6 +31,20 @@ describe("readServerEnvSafe", () => {
     expect(JSON.stringify(bad)).not.toContain("sem-arroba");
   });
 
+  it("accepts on or off for PASSWORD_LEAK_CHECK and refuses anything else", () => {
+    vi.stubEnv("PASSWORD_LEAK_CHECK", "off");
+    expect(readServerEnvSafe("PASSWORD_LEAK_CHECK")).toEqual({
+      status: "ok",
+      value: "off",
+    });
+    vi.stubEnv("PASSWORD_LEAK_CHECK", "on");
+    expect(readServerEnvSafe("PASSWORD_LEAK_CHECK").status).toBe("ok");
+    vi.stubEnv("PASSWORD_LEAK_CHECK", "talvez");
+    const bad = readServerEnvSafe("PASSWORD_LEAK_CHECK");
+    expect(bad.status).toBe("invalid");
+    expect(JSON.stringify(bad)).not.toContain("talvez");
+  });
+
   it("matches the proxy's minimum token length", () => {
     expect(MIN_TOKEN_LENGTH).toBe(MIN_SECRET_LENGTH);
   });
