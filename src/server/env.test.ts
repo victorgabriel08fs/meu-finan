@@ -18,6 +18,19 @@ describe("readServerEnvSafe", () => {
     expect(readServerEnvSafe("RECOVERY_TOKEN").status).toBe("ok");
   });
 
+  it("reads PRIVACY_CONTACT_EMAIL as a lower-case e-mail", () => {
+    expect(readServerEnvSafe("PRIVACY_CONTACT_EMAIL").status).toBe("unset");
+    vi.stubEnv("PRIVACY_CONTACT_EMAIL", "Contato@Exemplo.com");
+    expect(readServerEnvSafe("PRIVACY_CONTACT_EMAIL")).toEqual({
+      status: "ok",
+      value: "contato@exemplo.com",
+    });
+    vi.stubEnv("PRIVACY_CONTACT_EMAIL", "sem-arroba");
+    const bad = readServerEnvSafe("PRIVACY_CONTACT_EMAIL");
+    expect(bad.status).toBe("invalid");
+    expect(JSON.stringify(bad)).not.toContain("sem-arroba");
+  });
+
   it("matches the proxy's minimum token length", () => {
     expect(MIN_TOKEN_LENGTH).toBe(MIN_SECRET_LENGTH);
   });

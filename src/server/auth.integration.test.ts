@@ -5,6 +5,7 @@
 // admin plugin's own endpoints stay off.
 import { count, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { LEGAL_VERSION } from "@/lib/legal/version";
 
 vi.mock("server-only", () => ({}));
 // Outside a Next.js request there is no cookie store to write to.
@@ -25,6 +26,7 @@ process.env.SETUP_TOKEN = SETUP_TOKEN;
 type Modules = {
   auth: typeof import("./auth")["auth"];
   header: string;
+  legalHeader: string;
   db: typeof import("./db/client")["db"];
   schema: typeof import("./db/schema");
   throttle: typeof import("./security/throttle")["throttle"];
@@ -39,16 +41,20 @@ beforeAll(async () => {
   m = {
     auth: authModule.auth,
     header: authModule.SETUP_TOKEN_HEADER,
+    legalHeader: authModule.LEGAL_VERSION_HEADER,
     db: client.db,
     schema: await import("./db/schema"),
     throttle: (await import("./security/throttle")).throttle,
   };
 }, 120_000);
 
-const signUp = (email: string, token?: string) =>
+const signUp = (email: string, token?: string, legalVersion?: string) =>
   m.auth.api.signUpEmail({
     body: { name: "Dono", email, password: PASSWORD },
-    headers: new Headers(token ? { [m.header]: token } : {}),
+    headers: new Headers({
+      ...(token ? { [m.header]: token } : {}),
+      ...(token ? { [m.legalHeader]: legalVersion ?? LEGAL_VERSION } : {}),
+    }),
   });
 
 const userCount = async () => {
@@ -70,6 +76,21 @@ describe("single-owner sign-up", () => {
     expect(await userCount()).toBe(0);
   });
 
+  it("refuses the first account without the accepted terms", async () => {
+    const refused = /Aceite os termos de uso/;
+    // No version header, and a version that is not the current one.
+    await expect(
+      m.auth.api.signUpEmail({
+        body: { name: "Dono", email: OWNER_EMAIL, password: PASSWORD },
+        headers: new Headers({ [m.header]: SETUP_TOKEN }),
+      }),
+    ).rejects.toThrow(refused);
+    await expect(
+      signUp(OWNER_EMAIL, SETUP_TOKEN, "2020-01-01"),
+    ).rejects.toThrow(refused);
+    expect(await userCount()).toBe(0);
+  });
+
   it("creates the owner with the token and the owner's e-mail, as administrator", async () => {
     const result = await signUp("Dono@Exemplo.com", SETUP_TOKEN);
     expect(result.user.email).toBe(OWNER_EMAIL);
@@ -79,6 +100,16 @@ describe("single-owner sign-up", () => {
       .from(m.schema.user)
       .where(eq(m.schema.user.id, result.user.id));
     expect(row).toEqual({ role: "admin", banned: false });
+    // The accepted terms are recorded with the account.
+    const [terms] = await m.db
+      .select({
+        version: m.schema.user.legalVersion,
+        at: m.schema.user.legalAcceptedAt,
+      })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.id, result.user.id));
+    expect(terms?.version).toBe(LEGAL_VERSION);
+    expect(terms?.at).toBeInstanceOf(Date);
   });
 
   it("never creates a second user", async () => {
@@ -97,6 +128,24 @@ describe("single-owner sign-up", () => {
         body: { email: OWNER_EMAIL, password: "outra senha qualquer" },
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe("session", () => {
+  it("carries the accepted terms version for the DAL's gate", async () => {
+    const signedIn = await m.auth.api.signInEmail({
+      body: { email: OWNER_EMAIL, password: PASSWORD },
+      returnHeaders: true,
+    });
+    const cookie = (signedIn.headers.get("set-cookie") ?? "")
+      .split(",")
+      .map((part) => part.split(";")[0]?.trim())
+      .filter((part) => part?.includes("session_token"))
+      .join("; ");
+    const session = await m.auth.api.getSession({
+      headers: new Headers({ cookie }),
+    });
+    expect(session?.user.legalVersion).toBe(LEGAL_VERSION);
   });
 });
 
@@ -182,6 +231,19 @@ describe("accounts made by an administrator", () => {
       .from(m.schema.user)
       .where(eq(m.schema.user.email, "bruno@exemplo.com"));
     expect(row?.role).toBe("user");
+
+    // The accepted version is no field for the person either.
+    const before = await m.db
+      .select({ version: m.schema.user.legalVersion })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.email, "bruno@exemplo.com"));
+    expect(before[0]?.version).toBeNull();
+    await updateUser({ legalVersion: LEGAL_VERSION });
+    const after = await m.db
+      .select({ version: m.schema.user.legalVersion })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.email, "bruno@exemplo.com"));
+    expect(after[0]?.version).toBeNull();
   });
 });
 
