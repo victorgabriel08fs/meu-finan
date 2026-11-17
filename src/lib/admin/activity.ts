@@ -148,6 +148,15 @@ export function describeActivity(
           ? `${entry.targetEmail} · com todas as finanças`
           : "Com todas as finanças",
       };
+    // Ajustes › Dados: the person themself, no target.
+    case "user.self_deleted":
+      return {
+        kind: "delete",
+        title: `${actor} excluiu a própria conta`,
+        detail: "Com todas as finanças",
+      };
+    case "data.exported":
+      return { kind: "other", title: `${actor} exportou os próprios dados` };
     case "flag.global_set":
     case "flag.user_set": {
       const name = flagLabel(meta.flag);
