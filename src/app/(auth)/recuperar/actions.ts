@@ -2,7 +2,9 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { returnValidationErrors } from "next-safe-action";
 import { z } from "zod";
+import { LEAKED_PASSWORD_MESSAGE } from "@/lib/security/messages";
 import { auth } from "@/server/auth";
 import { recoverOwnerAccess } from "@/server/domain/recovery";
 import { readServerEnvSafe } from "@/server/env";
@@ -10,6 +12,8 @@ import { logEvent, requestMeta } from "@/server/observability/log";
 import { captureServerMessage } from "@/server/observability/sentry";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress, secretMatches } from "@/server/security/guards";
+import { isPasswordLeaked } from "@/server/security/leaked-passwords";
+import { clearLoginAttempts } from "@/server/security/login-attempts";
 import { throttle } from "@/server/security/throttle";
 
 const recoverSchema = z
@@ -76,6 +80,12 @@ export const recoverAccess = actionClient
     }
     const ownerEmail =
       ownerEmailEnv.status === "ok" ? ownerEmailEnv.value : undefined;
+    if (await isPasswordLeaked(input.password)) {
+      returnValidationErrors(recoverSchema, {
+        password: { _errors: [LEAKED_PASSWORD_MESSAGE] },
+      });
+    }
+
     const context = await auth.$context;
     const recovered = await recoverOwnerAccess({
       ownerEmail,
@@ -90,6 +100,8 @@ export const recoverAccess = actionClient
           : "Ainda não há acesso configurado. Use o primeiro acesso.",
       );
     }
+
+    await clearLoginAttempts(recovered.email);
 
     // Server log only (the deployment's owner reads it); never in the URL.
     logEvent(

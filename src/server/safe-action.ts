@@ -37,8 +37,10 @@ export const authAction = actionClient.use(async ({ next }) => {
 
 /**
  * Actions of Administração. The role is read again from the database on every
- * call (the session lookup has no cookie cache), before the input is even
- * parsed; the domain re-checks it inside the transaction that makes the change.
+ * call (the session lookup has no cookie cache), and the session must have
+ * been opened or confirmed with a passkey (doc 01 §11.9), before the input is
+ * even parsed; the domain re-checks the role inside the transaction that makes
+ * the change.
  */
 export const adminAction = actionClient.use(async ({ next }) => {
   const admin = await getAdmin();

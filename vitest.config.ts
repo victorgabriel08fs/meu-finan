@@ -10,6 +10,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // The suite runs offline; tests that want the leak check turn it on.
+    env: { PASSWORD_LEAK_CHECK: "off" },
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // On a cold cache (CI, first run) the first render of a screen transforms
     // Radix and Motion and can take well over the default 5 s.

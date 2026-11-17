@@ -5,7 +5,9 @@
 // which match the rest of the schema. The CLI cannot load src/server/auth.ts
 // itself (server-only, database client): point --config at a temporary file
 // with the same plugins. Regenerate after upgrading Better Auth or adding
-// plugins, then run `npm run db:generate`.
+// plugins, then run `npm run db:generate`. Beyond the CLI's output:
+// `session.passkeyVerifiedAt` (S4, `session.additionalFields` in
+// src/server/auth.ts), set only on sessions opened with a passkey.
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -52,6 +54,7 @@ export const session = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
+    passkeyVerifiedAt: timestamp("passkey_verified_at", tz),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );

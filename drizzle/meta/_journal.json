@@ -120,6 +120,13 @@
       "when": 1794672154413,
       "tag": "0016_etiquetas",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794938203817,
+      "tag": "0017_session_passkey_verified",
+      "breakpoints": true
     }
   ]
 }

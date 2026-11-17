@@ -73,6 +73,8 @@ const serverEnvSchemas = {
   SENTRY_DSN: z.string().refine(isValidSentryDsn, {
     error: "expected a Sentry DSN (https://<key>@<host>/<project id>)",
   }),
+  // Empty means on; off is for tests, e2e and offline development.
+  PASSWORD_LEAK_CHECK: z.enum(["on", "off"], { error: "expected on or off" }),
 } as const;
 
 export type ServerEnvKey = keyof typeof serverEnvSchemas;

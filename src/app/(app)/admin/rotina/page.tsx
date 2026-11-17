@@ -14,7 +14,7 @@ export const maxDuration = 300;
 /**
  * Administração › Rotina diária (doc 02 §6.17): is the cron alive, how the
  * daily job is set up, its latest runs and "Rodar agora". 404 for anyone but
- * an administrator.
+ * an administrator, the passkey confirmation for an unconfirmed session.
  */
 export default function RotinaPage() {
   return (
@@ -25,7 +25,7 @@ export default function RotinaPage() {
 }
 
 async function Routine() {
-  await requireAdmin();
+  await requireAdmin("/admin/rotina");
   const [runs, config] = await Promise.all([listDailyRuns(), routineConfig()]);
   return (
     <RoutineView runs={runs} config={config} now={new Date().toISOString()} />
