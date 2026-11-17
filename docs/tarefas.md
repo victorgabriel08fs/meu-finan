@@ -14,7 +14,7 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [ ] **S2 Termos de uso e política de privacidade** (A-3): páginas públicas, aceite no convite e no primeiro acesso (versão aceita guardada), canal do titular; revisar doc 01 §11.8, que hoje se apoia na exceção de uso particular.
 - [ ] **S3 Exportar meus dados e excluir minha conta** (A-3): ZIP com JSON completo + CSV (doc 01 §11.8) e exclusão pela própria pessoa, ambos com sessão recente; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13).
 - [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
-- [ ] **S5 Login mais duro** (M-2): limite por e-mail além do IP e recusa de senhas vazadas (plugin `haveIBeenPwned` do Better Auth).
+- [x] ~~**S5 Login mais duro** (M-2)~~: entregue em 17/11/2026. Limite de 10 tentativas por e-mail em 15 min (a passkey fica de fora) e recusa de senhas vazadas (Have I Been Pwned, k-anonimato, falha aberta, `PASSWORD_LEAK_CHECK`). O plugin `haveIBeenPwned` do Better Auth não foi registrado (falha fechada, só cobre endpoints do Better Auth e não tem tempo limite): módulo próprio em `src/server/security/leaked-passwords.ts`. Fica para depois: limpeza periódica das linhas antigas de `rate_limit` (uma por e-mail tentado) e, se um proxy (Cloudflare) for posto na frente, usar o cabeçalho de IP dele (`docs/04-seguranca.md`).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
 - [ ] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
 - [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
@@ -208,6 +208,15 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Login mais duro (versão 0.8.0) — 17/11/2026
+
+Achado M-2 da auditoria (`docs/04-seguranca.md`). Sem migração; sem flag (endurecimento sempre ligado).
+
+- [x] **Limite por e-mail**: 10 tentativas em 15 min por e-mail (hash em `rate_limit`), zerado por um login bem-sucedido, convite, redefinição ou recuperação; a passkey não conta. 429 `LOGIN_LOCKED` com `retryAfter`.
+- [x] **Senhas vazadas**: Pwned Passwords por k-anonimato, tempo limite de 2,5 s, falha aberta, `PASSWORD_LEAK_CHECK` (`on` por padrão, `off` em testes e e2e). Vale no primeiro acesso, no convite e na redefinição, na recuperação e na troca em Ajustes › Segurança.
+- [x] **Textos**: erro no campo Senha, apoio nos campos de senha nova, mensagem do bloqueio com o tempo de espera.
+- [ ] **Depois**: limpar periodicamente as linhas antigas de `rate_limit`; testes das actions de convite e recuperação com senha vazada (hoje cobertas pelo domínio, pelo hook e pelo e2e do convite com a checagem desligada).
 
 ### Lançamento por texto: aprender regras e selo “sugerida” (versão 0.7.0) — 16/11/2026
 

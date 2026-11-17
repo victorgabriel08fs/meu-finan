@@ -22,7 +22,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 | Alto | A-2 Sem backup fora da Neon | Tarefa S1 (antes do beta) |
 | Alto | A-3 LGPD: sem termos, política, exportação e exclusão pelo titular | Tarefas S2 e S3 (antes do beta) |
 | Médio | M-1 Administrador sem segundo fator obrigatório | Tarefa S4 |
-| Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | Tarefa S5 |
+| Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | **Corrigido** (tarefa S5); resta a nota do proxy |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
 | Médio | M-4 Ações caras sem limite por pessoa | Tarefa S7 |
 | Médio | M-5 Sem trilha de login nem alertas | Tarefa S8 |
@@ -68,7 +68,11 @@ O doc 01 §11.8 apoia-se na exceção do uso particular (art. 4º, I). Com pesso
 
 O administrador gera links de redefinição e convites. Uma senha de administrador vazada abre a conta de qualquer pessoa (a vítima percebe, mas depois). A passkey existe, porém é opcional. Exigir passkey (ou TOTP do plugin `twoFactor` do Better Auth) para o papel `admin` fecha isso.
 
-### M-2 Limite de login só por IP
+### M-2 Limite de login só por IP — corrigido (S5)
+
+Corrigido na tarefa S5: 10 tentativas por e-mail em 15 min (zeradas por um login bem-sucedido; durante o bloqueio nem a senha certa entra, a passkey sim) e senhas que aparecem no Have I Been Pwned são recusadas ao criar ou trocar a senha (k-anonimato, falha aberta). Módulo próprio em vez do plugin `haveIBeenPwned`, que falha fechada e não cobre o convite nem a recuperação. Detalhes no doc 01 §11.2. Custo aceito: quem sabe o e-mail de alguém consegue bloquear o login por senha dele por até 15 min (a passkey continua). Pendente: o cabeçalho do proxy abaixo.
+
+Texto original do achado:
 
 O limitador do Better Auth conta por IP e rota (5 por minuto no login). Na Vercel o `X-Forwarded-For` vem do próprio proxy, então o teste acima não se repete lá; mas um ataque distribuído (credential stuffing com muitos IPs) contra uma conta não tem limite por e-mail, e a senha não é conferida contra listas de senhas vazadas. Se um dia houver outro proxy na frente (Cloudflare), o primeiro salto do `X-Forwarded-For` passa a ser falsificável: usar o cabeçalho próprio desse proxy.
 
