@@ -13,6 +13,13 @@ export const BRUNO_PASSWORD = "meu-finan-bruno";
 export const BRUNO_STATE = "e2e/.auth/bruno.json";
 
 /**
+ * A regular account from before the terms of use (no accepted version): the
+ * DAL sends her to /aceitar-termos. No finances.
+ */
+export const DANI_EMAIL = "dani@meu-finan.local";
+export const DANI_PASSWORD = "meu-finan-dani";
+
+/**
  * Resolves once a Server Action carrying `text` (a tip id, say) got its
  * answer. Start it before the click: a full navigation right after a click
  * would cancel the request.

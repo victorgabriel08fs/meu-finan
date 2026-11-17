@@ -2,11 +2,13 @@
 
 import { Check, Clock } from "lucide-react";
 import { useAction } from "next-safe-action/hooks";
-import { type FormEvent, useId, useState } from "react";
+import { type FormEvent, useId, useRef, useState } from "react";
+import { LegalConsent } from "@/components/legal/legal-consent";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LEGAL_REQUIRED, LEGAL_VERSION } from "@/lib/legal/version";
 import { cn } from "@/lib/utils";
 import { acceptAccessLinkAction } from "./actions";
 
@@ -23,7 +25,8 @@ type AcceptFormProps = {
 /**
  * Sets the password of an invite or a reset (doc 02 §6.1): the e-mail is
  * shown read-only (and offered to password managers), the 12-character rule
- * ticks when met, and a reset can also remove the passkeys.
+ * ticks when met, an invite asks to accept the terms and privacy policy, and
+ * a reset can also remove the passkeys.
  */
 export function AcceptForm({
   token,
@@ -35,6 +38,9 @@ export function AcceptForm({
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [removePasskeys, setRemovePasskeys] = useState(false);
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
+  const [legalError, setLegalError] = useState<string>();
+  const consentRef = useRef<HTMLInputElement>(null);
   const { execute, result, isPending, hasNavigated } = useAction(
     acceptAccessLinkAction,
   );
@@ -44,7 +50,20 @@ export function AcceptForm({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    execute({ token, password, confirm, removePasskeys });
+    if (!isReset && !acceptedLegal) {
+      setLegalError(LEGAL_REQUIRED);
+      consentRef.current?.focus();
+      return;
+    }
+    // The server checks the acceptance again.
+    execute({
+      token,
+      password,
+      confirm,
+      removePasskeys,
+      acceptedLegal: !isReset && acceptedLegal,
+      legalVersion: isReset ? undefined : LEGAL_VERSION,
+    });
   };
 
   return (
@@ -137,7 +156,18 @@ export function AcceptForm({
             </span>
           </span>
         </label>
-      ) : null}
+      ) : (
+        <LegalConsent
+          id={`${id}-legal`}
+          ref={consentRef}
+          checked={acceptedLegal}
+          onCheckedChange={(checked) => {
+            setAcceptedLegal(checked);
+            if (checked) setLegalError(undefined);
+          }}
+          error={legalError}
+        />
+      )}
 
       <FieldError id={`${id}-error`}>{result.serverError}</FieldError>
       <Button

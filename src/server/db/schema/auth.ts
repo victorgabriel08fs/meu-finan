@@ -34,6 +34,11 @@ export const user = pgTable("user", {
   banned: boolean("banned").default(false),
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires", tz),
+  // Not from the CLI: the version of the terms and privacy policy the person
+  // accepted (LEGAL_VERSION, src/lib/legal/version.ts) and when. Null until
+  // they accept; the history is in the audit log.
+  legalVersion: text("legal_version"),
+  legalAcceptedAt: timestamp("legal_accepted_at", tz),
 });
 
 export const session = pgTable(

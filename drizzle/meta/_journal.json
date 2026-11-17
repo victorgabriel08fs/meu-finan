@@ -120,6 +120,13 @@
       "when": 1794672154413,
       "tag": "0016_etiquetas",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794938180359,
+      "tag": "0017_termos_aceite",
+      "breakpoints": true
     }
   ]
 }

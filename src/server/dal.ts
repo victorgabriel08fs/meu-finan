@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { hasAdminRole, toUserRole, type UserRole } from "@/lib/admin/roles";
+import { needsLegalAcceptance } from "@/lib/legal/version";
 import { auth } from "@/server/auth";
 
 export type CurrentUser = {
@@ -16,6 +17,8 @@ export type CurrentUser = {
   name: string;
   email: string;
   role: UserRole;
+  /** Version of the terms and privacy policy accepted, or null. */
+  legalVersion: string | null;
 };
 
 /**
@@ -33,22 +36,47 @@ export const getSession = cache(async () => {
 type SessionUser = NonNullable<Awaited<ReturnType<typeof getSession>>>["user"];
 
 function toCurrentUser(user: SessionUser): CurrentUser {
-  const { id, name, email, role } = user;
-  return { id, name, email, role: toUserRole(role) };
+  const { id, name, email, role, legalVersion } = user;
+  return {
+    id,
+    name,
+    email,
+    role: toUserRole(role),
+    legalVersion: legalVersion ?? null,
+  };
 }
 
-/** The signed-in user; redirects to /entrar when there is no valid session. */
-export async function requireUser(): Promise<CurrentUser> {
+/**
+ * The signed-in user, whether or not they accepted the current terms;
+ * redirects to /entrar when there is no valid session. Only /aceitar-termos
+ * and its action use it: everything else goes through {@link requireUser}.
+ */
+export async function requireSignedIn(): Promise<CurrentUser> {
   const session = await getSession();
   if (!session) redirect("/entrar");
   return toCurrentUser(session.user);
 }
 
-/** The signed-in administrator, or null for anyone else. */
+/**
+ * The signed-in user; redirects to /entrar when there is no valid session,
+ * and to /aceitar-termos when they have not accepted the current version of
+ * the terms and privacy policy (doc 01 §11.8).
+ */
+export async function requireUser(): Promise<CurrentUser> {
+  const user = await requireSignedIn();
+  if (needsLegalAcceptance(user.legalVersion)) redirect("/aceitar-termos");
+  return user;
+}
+
+/**
+ * The signed-in administrator, or null for anyone else (an administrator who
+ * has not accepted the current terms included).
+ */
 export async function getAdmin(): Promise<CurrentUser | null> {
   const session = await getSession();
   if (!session || !hasAdminRole(session.user.role)) return null;
-  return toCurrentUser(session.user);
+  const user = toCurrentUser(session.user);
+  return needsLegalAcceptance(user.legalVersion) ? null : user;
 }
 
 /**

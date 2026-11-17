@@ -4,6 +4,7 @@
 // a wrong verifier is "not found", with no hint of which.
 import { and, eq, isNull } from "drizzle-orm";
 import { type AccessLinkState, accessLinkState } from "@/lib/admin/status";
+import { LEGAL_REQUIRED, LEGAL_VERSION } from "@/lib/legal/version";
 import { db } from "@/server/db/client";
 import {
   type AccessLinkPurpose,
@@ -19,6 +20,7 @@ import {
 } from "@/server/security/access-token";
 import { recordAudit } from "./audit";
 import { DomainError } from "./errors";
+import { markLegalAccepted } from "./legal";
 
 export type AccessLinkInfo = {
   state: AccessLinkState;
@@ -94,6 +96,11 @@ export type AcceptLinkInput = {
   passwordHash: string;
   /** Resets only: also remove every passkey (a lost phone). */
   removePasskeys: boolean;
+  /**
+   * Invites only: the version of the terms and privacy policy the person
+   * accepted, which must be the current one.
+   */
+  legalVersion?: string;
 };
 
 export type AcceptedLink = {
@@ -105,8 +112,9 @@ export type AcceptedLink = {
 /**
  * Uses the link: sets the password, ends every session of the account (a
  * reset should lock out whoever had them) and, for a reset, optionally removes
- * the passkeys. Single use even under concurrency: the link is claimed with a
- * conditional update in the same transaction.
+ * the passkeys. An invite also records the accepted terms (and refuses
+ * without them). Single use even under concurrency: the link is claimed with
+ * a conditional update in the same transaction.
  */
 export async function acceptAccessLink(
   token: string,
@@ -135,6 +143,14 @@ export async function acceptAccessLink(
       .for("update");
     if (!claimed || claimed.expiresAt <= now || !owner || owner.banned) {
       throw new DomainError(LINK_UNAVAILABLE);
+    }
+    const isInvite = found.purpose === "invite";
+    if (isInvite) {
+      // Defense in depth: the action already checked the checkbox.
+      if (input.legalVersion !== LEGAL_VERSION) {
+        throw new DomainError(LEGAL_REQUIRED);
+      }
+      await markLegalAccepted(tx, found.userId, now);
     }
 
     const updated = await tx
@@ -171,9 +187,9 @@ export async function acceptAccessLink(
       target: person,
       metadata: {
         purpose: found.purpose,
-        ...(found.purpose === "reset"
-          ? { removedPasskeys: removePasskeys }
-          : {}),
+        ...(isInvite
+          ? { legalVersion: LEGAL_VERSION }
+          : { removedPasskeys: removePasskeys }),
       },
     });
     return {
