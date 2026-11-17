@@ -16,7 +16,7 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
 - [ ] **S5 Login mais duro** (M-2): limite por e-mail além do IP e recusa de senhas vazadas (plugin `haveIBeenPwned` do Better Auth).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
-- [ ] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
+- [x] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
 - [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
 - [x] ~~**S9 Cadastro público**~~: decidido pelo dono em 16/11/2026 que as contas **continuam só por convite**, também com planos. Fica para o beta: convites com limite por administrador e "esqueci minha senha" por e-mail (Resend, remetente Prumo) como alternativa ao link de redefinição do painel.
 - [ ] **S10 Pagamentos** (contas por convite: o plano é escolhido depois de aceitar o convite): checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
