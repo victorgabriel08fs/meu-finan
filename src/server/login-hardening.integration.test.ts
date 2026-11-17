@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { eq, like } from "drizzle-orm";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { LEGAL_VERSION } from "@/lib/legal/version";
 
 vi.mock("server-only", () => ({}));
 vi.mock("better-auth/next-js", () => ({
@@ -25,6 +26,7 @@ process.env.SETUP_TOKEN = SETUP_TOKEN;
 type Modules = {
   auth: typeof import("./auth")["auth"];
   header: string;
+  legalHeader: string;
   db: typeof import("./db/client")["db"];
   schema: typeof import("./db/schema");
   clearLoginAttempts: typeof import("./security/login-attempts")["clearLoginAttempts"];
@@ -39,6 +41,7 @@ beforeAll(async () => {
   m = {
     auth: authModule.auth,
     header: authModule.SETUP_TOKEN_HEADER,
+    legalHeader: authModule.LEGAL_VERSION_HEADER,
     db: client.db,
     schema: await import("./db/schema"),
     clearLoginAttempts: (await import("./security/login-attempts"))
@@ -101,7 +104,10 @@ function sha1Suffix(value: string) {
 async function setupOwner() {
   const result = await m.auth.api.signUpEmail({
     body: { name: "Dono", email: OWNER_EMAIL, password: PASSWORD },
-    headers: new Headers({ [m.header]: SETUP_TOKEN }),
+    headers: new Headers({
+      [m.header]: SETUP_TOKEN,
+      [m.legalHeader]: LEGAL_VERSION,
+    }),
   });
   return result;
 }
@@ -112,7 +118,10 @@ describe("leaked passwords", () => {
     await expect(
       m.auth.api.signUpEmail({
         body: { name: "Dono", email: OWNER_EMAIL, password: LEAKED },
-        headers: new Headers({ [m.header]: SETUP_TOKEN }),
+        headers: new Headers({
+          [m.header]: SETUP_TOKEN,
+          [m.legalHeader]: LEGAL_VERSION,
+        }),
       }),
     ).rejects.toMatchObject({ body: { code: "PASSWORD_COMPROMISED" } });
     expect(fetcher).toHaveBeenCalledTimes(1);

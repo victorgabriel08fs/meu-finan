@@ -20,7 +20,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 |---|---|---|
 | Alto | A-1 Dependência de produção com vulnerabilidade alta | **Corrigido** neste PR |
 | Alto | A-2 Sem backup fora da Neon | Tarefa S1 (antes do beta) |
-| Alto | A-3 LGPD: sem termos, política, exportação e exclusão pelo titular | Tarefas S2 e S3 (antes do beta) |
+| Alto | A-3 LGPD: termos, política e aceite feitos (S2); faltam exportação e exclusão pelo titular | Tarefa S3 (antes do beta) |
 | Médio | M-1 Administrador sem segundo fator obrigatório | **Corrigido** (tarefa S4, versão 0.9.0) |
 | Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | **Corrigido** (tarefa S5); resta a nota do proxy |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
@@ -61,6 +61,8 @@ A suíte existente cobre o resto do isolamento (integração contra o PGlite: co
 O doc 01 §11.7 descreve o export semanal criptografado (`pg_dump` + `age`, pelo GitHub Actions), mas ele não existe no repositório (só há `ci.yml`). Hoje tudo depende da restauração pontual da Neon, cuja janela no plano gratuito é curta. Com dados de terceiros no beta, um `DELETE` errado, uma migração ruim ou a perda da conta da Neon seria irrecuperável.
 
 ### A-3 LGPD
+
+**Atualização (S2, 17/11/2026):** termos de uso, política de privacidade e aceite registrado estão feitos (`/termos`, `/privacidade`, `/aceitar-termos`; doc 01 §11.8 e ADR-14). Faltam a exportação completa e a exclusão pela própria pessoa (S3) e o procedimento de incidente. O texto é um rascunho técnico: pedir revisão jurídica antes dos planos pagos e definir `PRIVACY_CONTACT_EMAIL` na Vercel antes do beta.
 
 O doc 01 §11.8 apoia-se na exceção do uso particular (art. 4º, I). Com pessoas de fora da família no beta, e mais ainda com planos pagos, a exceção deixa de valer: o app passa a ser controlador de dados financeiros pessoais. Faltam **termos de uso**, **política de privacidade** (o que coleta, base legal, operadores Vercel e Neon, retenção, contato), **exportar meus dados** completo e **excluir minha conta** pela própria pessoa (hoje só o administrador exclui; o CSV de lançamentos não cobre contas, metas, orçamentos etc.), além de um procedimento de incidente (comunicar ANPD e titulares).
 

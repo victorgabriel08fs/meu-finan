@@ -2,6 +2,8 @@
 // becomes "Ana desativou Bruno Lima" plus an optional detail line. The person
 // looking at the list reads their own actions as "Você".
 import { FLAGS, isFlagKey } from "@/lib/flags/registry";
+import { fullDateLabel } from "@/lib/format/date";
+import { isLegalVersion } from "@/lib/legal/version";
 
 export type ActivityEntry = {
   action: string;
@@ -20,6 +22,7 @@ export type ActivityEntry = {
     value?: boolean | null;
     job?: string;
     unresolved?: boolean;
+    legalVersion?: string;
   };
 };
 
@@ -51,6 +54,11 @@ function sessionsLabel(count: number): string {
   return count === 1 ? "1 sessão encerrada" : `${count} sessões encerradas`;
 }
 
+/** "17 de novembro de 2026", or null for a value that is not a version. */
+function legalVersionLabel(version: string | undefined): string | null {
+  return version && isLegalVersion(version) ? fullDateLabel(version) : null;
+}
+
 function flagLabel(key: string | undefined): string {
   if (!key) return "uma flag";
   return isFlagKey(key) ? FLAGS[key].label : key;
@@ -70,7 +78,9 @@ export function describeActivity(
       return {
         kind: "setup",
         title: `${actor} configurou o app`,
-        detail: "Primeiro acesso, como administrador",
+        detail: meta.legalVersion
+          ? "Primeiro acesso, como administrador · termos aceitos"
+          : "Primeiro acesso, como administrador",
       };
     case "user.created":
       return {
@@ -99,7 +109,7 @@ export function describeActivity(
         kind: "link_revoked",
         title: `${actor} invalidou o link de ${target}`,
       };
-    case "access_link.accepted":
+    case "access_link.accepted": {
       if (meta.purpose === "reset") {
         return {
           kind: "accepted",
@@ -109,7 +119,21 @@ export function describeActivity(
             : "Senha nova e sessões encerradas",
         };
       }
-      return { kind: "accepted", title: `${target} aceitou o convite` };
+      const version = legalVersionLabel(meta.legalVersion);
+      return {
+        kind: "accepted",
+        title: `${target} aceitou o convite`,
+        detail: version ? `Termos aceitos (versão de ${version})` : undefined,
+      };
+    }
+    case "legal.accepted": {
+      const version = legalVersionLabel(meta.legalVersion);
+      return {
+        kind: "accepted",
+        title: `${target} aceitou os termos de uso e a política de privacidade`,
+        detail: version ? `Versão de ${version}` : undefined,
+      };
+    }
     case "access.recovered":
       return {
         kind: "accepted",

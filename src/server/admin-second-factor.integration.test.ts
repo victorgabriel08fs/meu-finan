@@ -6,6 +6,7 @@
 // before confirming with one. Nobody sets the stamp through the API.
 import { count, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { LEGAL_VERSION } from "@/lib/legal/version";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -62,6 +63,7 @@ beforeAll(async () => {
       email: `${id}@exemplo.com`,
       role,
       emailVerified: true,
+      legalVersion: LEGAL_VERSION,
     });
     await client.db.insert(schema.account).values({
       id: `account-${id}`,

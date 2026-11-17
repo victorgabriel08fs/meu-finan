@@ -56,6 +56,11 @@ const serverEnvSchemas = {
   VERCEL_PROJECT_PRODUCTION_URL: hostname,
   VERCEL_ENV: z.enum(["production", "preview", "development"]),
   OWNER_EMAIL: z.email({ error: "expected an e-mail address" }).toLowerCase(),
+  // The data subject's channel shown in /privacidade (LGPD). Public, not a
+  // secret; read while prerendering, so a change takes a new deploy.
+  PRIVACY_CONTACT_EMAIL: z
+    .email({ error: "expected an e-mail address" })
+    .toLowerCase(),
   SETUP_TOKEN: randomSecret,
   RECOVERY_TOKEN: randomSecret,
   CRON_SECRET: randomSecret,

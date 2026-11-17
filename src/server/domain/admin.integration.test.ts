@@ -5,6 +5,7 @@
 // trail and per-person flags.
 import { and, count, eq, type SQL, sql } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { LEGAL_VERSION } from "@/lib/legal/version";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
@@ -114,6 +115,7 @@ async function accept(token: string, password = PASSWORD) {
   return m.links.acceptAccessLink(token, {
     passwordHash: await hashPassword(password),
     removePasskeys: false,
+    legalVersion: LEGAL_VERSION,
   });
 }
 
@@ -191,6 +193,39 @@ describe("invites", () => {
     expect(bruno?.sessions).toBe(1);
     expect(bruno?.lastActiveAt).not.toBeNull();
     expect(bruno?.openLink).toBeNull();
+  });
+
+  it("records the accepted terms, and refuses an invite without them", async () => {
+    const { id, token } = await invite("Dora", "dora@exemplo.com");
+    const termsOf = async () => {
+      const [row] = await m.db
+        .select({
+          version: m.schema.user.legalVersion,
+          at: m.schema.user.legalAcceptedAt,
+        })
+        .from(m.schema.user)
+        .where(eq(m.schema.user.id, id));
+      return row;
+    };
+    const attempt = async (legalVersion?: string) =>
+      m.links.acceptAccessLink(token, {
+        passwordHash: await hashPassword(PASSWORD),
+        removePasskeys: false,
+        legalVersion,
+      });
+
+    for (const version of [undefined, "2020-01-01"]) {
+      await expect(attempt(version)).rejects.toThrow(/Aceite os termos/);
+    }
+    // The transaction rolled back: nothing recorded, the link still works.
+    expect(await termsOf()).toEqual({ version: null, at: null });
+    expect((await m.links.inspectAccessLink(token))?.state).toBe("valid");
+    await expect(signIn("dora@exemplo.com")).rejects.toThrow();
+
+    await attempt(LEGAL_VERSION);
+    const terms = await termsOf();
+    expect(terms?.version).toBe(LEGAL_VERSION);
+    expect(terms?.at).toBeInstanceOf(Date);
   });
 
   it("refuses an e-mail that already has an account", async () => {
@@ -296,6 +331,12 @@ describe("reset links", () => {
       removePasskeys: true,
     });
     expect(await sessionsOf(id)).toBe(0);
+    // A reset asks for no acceptance and leaves the recorded one alone.
+    const [terms] = await m.db
+      .select({ version: m.schema.user.legalVersion })
+      .from(m.schema.user)
+      .where(eq(m.schema.user.id, id));
+    expect(terms?.version).toBe(LEGAL_VERSION);
     const [keys] = await m.db
       .select({ total: count() })
       .from(m.schema.passkey)
@@ -593,7 +634,7 @@ describe("audit trail", () => {
     expect(items[1]).toMatchObject({
       actorId: id,
       actorName: "Otávio",
-      metadata: { purpose: "invite" },
+      metadata: { purpose: "invite", legalVersion: LEGAL_VERSION },
     });
 
     const everything = await m.db.select().from(m.schema.auditLog);

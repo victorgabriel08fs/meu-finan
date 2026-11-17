@@ -15,6 +15,7 @@ import {
   adminGatePath,
   adminSecondFactor,
 } from "@/lib/admin/second-factor";
+import { needsLegalAcceptance } from "@/lib/legal/version";
 import { auth } from "@/server/auth";
 import { countUserPasskeys } from "@/server/domain/passkeys";
 
@@ -23,6 +24,8 @@ export type CurrentUser = {
   name: string;
   email: string;
   role: UserRole;
+  /** Version of the terms and privacy policy accepted, or null. */
+  legalVersion: string | null;
 };
 
 /**
@@ -40,21 +43,43 @@ export const getSession = cache(async () => {
 type SessionUser = NonNullable<Awaited<ReturnType<typeof getSession>>>["user"];
 
 function toCurrentUser(user: SessionUser): CurrentUser {
-  const { id, name, email, role } = user;
-  return { id, name, email, role: toUserRole(role) };
+  const { id, name, email, role, legalVersion } = user;
+  return {
+    id,
+    name,
+    email,
+    role: toUserRole(role),
+    legalVersion: legalVersion ?? null,
+  };
 }
 
-/** The signed-in user; redirects to /entrar when there is no valid session. */
-export async function requireUser(): Promise<CurrentUser> {
+/**
+ * The signed-in user, whether or not they accepted the current terms;
+ * redirects to /entrar when there is no valid session. Only /aceitar-termos
+ * and its action use it: everything else goes through {@link requireUser}.
+ */
+export async function requireSignedIn(): Promise<CurrentUser> {
   const session = await getSession();
   if (!session) redirect("/entrar");
   return toCurrentUser(session.user);
 }
 
 /**
+ * The signed-in user; redirects to /entrar when there is no valid session,
+ * and to /aceitar-termos when they have not accepted the current version of
+ * the terms and privacy policy (doc 01 §11.8).
+ */
+export async function requireUser(): Promise<CurrentUser> {
+  const user = await requireSignedIn();
+  if (needsLegalAcceptance(user.legalVersion)) redirect("/aceitar-termos");
+  return user;
+}
+
+/**
  * The signed-in administrator and what their session still needs to open
- * Administração (doc 01 §11.9), or null for anyone else. For navigation and
- * the confirmation screen only: it never authorizes anything.
+ * Administração (doc 01 §11.9), or null for anyone else (an administrator who
+ * has not accepted the current terms included). For navigation and the
+ * confirmation screen only: it never authorizes anything.
  */
 export const getAdminAccess = cache(
   async (): Promise<{
@@ -63,13 +88,15 @@ export const getAdminAccess = cache(
   } | null> => {
     const session = await getSession();
     if (!session || !hasAdminRole(session.user.role)) return null;
+    const user = toCurrentUser(session.user);
+    if (needsLegalAcceptance(user.legalVersion)) return null;
     const { passkeyVerifiedAt } = session.session;
     // The passkeys are counted only when the session is not confirmed.
     const passkeyCount = passkeyVerifiedAt
       ? 0
       : await countUserPasskeys(session.user.id);
     return {
-      user: toCurrentUser(session.user),
+      user,
       secondFactor: adminSecondFactor({ passkeyVerifiedAt, passkeyCount }),
     };
   },

@@ -3,11 +3,13 @@ import {
   BookOpen,
   CalendarClock,
   CalendarRange,
+  FileText,
   FileUp,
   History,
   Info,
   KeyRound,
   Lightbulb,
+  LockKeyhole,
   Shapes,
   ShieldCheck,
   Sparkles,
@@ -28,10 +30,13 @@ import { ExportListItem } from "@/components/imports/export-list-item";
 import { NewsBadge, TipsStateLabel } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { adminGatePath } from "@/lib/admin/second-factor";
+import { fullDateLabel } from "@/lib/format/date";
+import { localDayOf } from "@/lib/format/datetime";
 import { getAdminAccess, requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
+import { getLegalAcceptance } from "@/server/domain/legal";
 import { getThemePreference } from "@/server/domain/preferences";
 import { sharingCounts } from "@/server/domain/sharing/groups";
 import { countActiveTags } from "@/server/domain/tags";
@@ -55,7 +60,7 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, tags, theme, tipsOff, flags, adminAccess] =
+  const [ctx, categories, tags, theme, tipsOff, flags, adminAccess, legal] =
     await Promise.all([
       getUserContext(user.id),
       listCategories(user.id),
@@ -64,6 +69,7 @@ async function Settings() {
       getTipsOff(user.id),
       getFlags(user.id),
       getAdminAccess(),
+      getLegalAcceptance(user.id),
     ]);
   // The counts only for a session confirmed with a passkey (doc 01 §11.9);
   // otherwise the section is one row to the confirmation.
@@ -294,6 +300,22 @@ async function Settings() {
             href="/ajustes/sobre"
           />
           <InsetListItem
+            icon={<FileText />}
+            label="Termos de uso"
+            description={
+              legal.acceptedAt
+                ? `Aceitos em ${fullDateLabel(localDayOf(legal.acceptedAt, ctx.timeZone))}`
+                : "As regras para usar o app"
+            }
+            href="/termos"
+          />
+          <InsetListItem
+            icon={<LockKeyhole />}
+            label="Política de privacidade"
+            description="O que guardamos e os seus direitos"
+            href="/privacidade"
+          />
+          <InsetListItem
             icon={<Info />}
             label="Versão"
             trailing={
@@ -329,8 +351,8 @@ function SettingsSkeleton() {
       <Skeleton className="h-41.25 rounded-2xl" />
       {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
       <Skeleton className="h-41.25 rounded-2xl" />
-      {/* Sobre: 36 + 64 + 1 + 52 = 153 */}
-      <Skeleton className="h-38.25 rounded-2xl" />
+      {/* Sobre: 36 + 3 × 64 + 3 hairlines + 52 = 283 */}
+      <Skeleton className="h-70.75 rounded-2xl" />
     </LoadingRegion>
   );
 }
