@@ -8,16 +8,18 @@ import "server-only";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins/admin";
 import { defaultAc } from "better-auth/plugins/admin/access";
 import { count } from "drizzle-orm";
 import { ADMIN_ROLE } from "@/lib/admin/roles";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import { classifyAuthOutcome } from "@/lib/observability/auth-events";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { authOrigins, readServerEnv } from "@/server/env";
+import { hashForLog, logEvent, requestMeta } from "@/server/observability/log";
 import { isOwnerEmail, secretMatches } from "@/server/security/guards";
 
 /** Header the setup Server Action uses to hand the setup token to sign-up. */
@@ -43,6 +45,18 @@ const signUpClosed = () =>
   new APIError("FORBIDDEN", {
     message: "Cadastro desativado: contas novas só por convite.",
   });
+
+function refuseSignUp(reason: string, headers: Headers | undefined): void {
+  try {
+    logEvent(
+      "auth.sign_up_refused",
+      { reason, ...requestMeta(headers) },
+      "warn",
+    );
+  } catch {
+    // Logging never changes the answer.
+  }
+}
 
 /**
  * Better Auth's admin plugin supplies the role and ban columns, the default
@@ -144,10 +158,63 @@ export const auth = betterAuth({
       if (ctx.path !== "/sign-up/email") return;
       const provided = ctx.headers?.get(SETUP_TOKEN_HEADER);
       if (!secretMatches(provided, readServerEnv("SETUP_TOKEN"))) {
+        refuseSignUp("bad_token", ctx.headers);
         throw signUpClosed();
       }
       const [row] = await db.select({ total: count() }).from(schema.user);
-      if ((row?.total ?? 0) > 0) throw signUpClosed();
+      if ((row?.total ?? 0) > 0) {
+        refuseSignUp("already_done", ctx.headers);
+        throw signUpClosed();
+      }
+    }),
+    // Access log: sign-ins, failures and password changes, with no e-mail in
+    // the clear. No queries here (log only). The after hook also runs when the
+    // endpoint threw, with the error in `returned`.
+    after: createAuthMiddleware(async (ctx) => {
+      try {
+        const returned: unknown = ctx.context.returned;
+        const outcome = classifyAuthOutcome({
+          path: ctx.path,
+          sessionUserId: ctx.context.newSession?.user.id ?? null,
+          error: isAPIError(returned)
+            ? {
+                status: returned.statusCode,
+                code:
+                  typeof returned.body?.code === "string"
+                    ? returned.body.code
+                    : undefined,
+              }
+            : null,
+        });
+        if (!outcome) return;
+        const failed = outcome.event.endsWith("_failed");
+        const email =
+          ctx.path === "/sign-in/email" &&
+          failed &&
+          typeof ctx.body?.email === "string"
+            ? ctx.body.email
+            : undefined;
+        logEvent(
+          outcome.event,
+          {
+            method: outcome.method,
+            userId: outcome.userId,
+            status: outcome.status,
+            code: outcome.code,
+            emailHash: email
+              ? hashForLog(email.trim().toLowerCase())
+              : undefined,
+            ...requestMeta(ctx.headers ?? ctx.request?.headers),
+          },
+          failed ? "warn" : "info",
+        );
+      } catch (error) {
+        // Logging never takes the sign-in down.
+        console.error(
+          "[auth-log]",
+          error instanceof Error ? error.name : "unexpected",
+        );
+      }
     }),
   },
   databaseHooks: {
@@ -161,6 +228,7 @@ export const auth = betterAuth({
         // plugin's hook, so the role set here wins over its default.
         before: async (user) => {
           if (!isOwnerEmail(user.email, readServerEnv("OWNER_EMAIL"))) {
+            refuseSignUp("not_owner_email", undefined);
             throw signUpClosed();
           }
           return { data: { role: ADMIN_ROLE } };
