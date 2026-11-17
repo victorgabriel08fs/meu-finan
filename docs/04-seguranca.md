@@ -104,6 +104,8 @@ Só o servidor de desenvolvimento do `esbuild` é afetado, e o `drizzle-kit` nã
 
 Entraram `.github/dependabot.yml` (npm semanal, agrupado; GitHub Actions mensal) e o passo `npm audit --omit=dev --audit-level=high` no CI.
 
+Desde 17/11/2026 o passo roda `scripts/audit-prod.mjs`: mesmo critério (produção, alto ou crítico), com uma lista de exceções, cada uma com motivo. Única exceção: [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf) (ReDoS no `picomatch`, todas as versões, sem correção publicada), que só chega pelo `better-auth` → `vitest` e não roda em produção. Tirar a exceção assim que sair versão corrigida.
+
 ### B-3 HSTS com `preload` e `includeSubDomains`
 
 Inofensivo no `*.vercel.app`. No domínio próprio, todo subdomínio precisa de HTTPS antes de inscrever o domínio na lista de preload (difícil de desfazer).
