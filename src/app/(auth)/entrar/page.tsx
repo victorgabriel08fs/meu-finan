@@ -21,7 +21,9 @@ export default async function LoginPage({
   const notice =
     params.recuperado === "1"
       ? "Acesso recuperado. Entre com a nova senha e cadastre uma passkey de novo, se removeu as antigas."
-      : undefined;
+      : params.excluida === "1"
+        ? "Sua conta foi excluída, com todos os dados."
+        : undefined;
 
   return (
     <>

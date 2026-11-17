@@ -24,6 +24,8 @@ import { PageHeader } from "@/components/app/page-header";
 import { SectionHeader } from "@/components/app/section-header";
 import { ThemeLabel } from "@/components/app/theme-switcher";
 import { ExportListItem } from "@/components/imports/export-list-item";
+import { DataExportListItem } from "@/components/settings/data-export-list-item";
+import { DeleteAccountListItem } from "@/components/settings/delete-account-list-item";
 import { NewsBadge, TipsStateLabel } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { requireUser } from "@/server/dal";
@@ -34,7 +36,7 @@ import { getThemePreference } from "@/server/domain/preferences";
 import { sharingCounts } from "@/server/domain/sharing/groups";
 import { countActiveTags } from "@/server/domain/tags";
 import { getTipsOff } from "@/server/domain/tips";
-import { usersOverview } from "@/server/domain/users";
+import { selfDeleteStatus, usersOverview } from "@/server/domain/users";
 import { getFlags } from "@/server/flags";
 import packageJson from "../../../../package.json";
 
@@ -53,7 +55,7 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, tags, theme, tipsOff, flags, admin] =
+  const [ctx, categories, tags, theme, tipsOff, flags, admin, selfDelete] =
     await Promise.all([
       getUserContext(user.id),
       listCategories(user.id),
@@ -64,6 +66,7 @@ async function Settings() {
       user.role === "admin"
         ? Promise.all([usersOverview(), flagsOverview()])
         : null,
+      selfDeleteStatus(user.id),
     ]);
   const expenses = categories.filter(
     (category) => category.kind === "expense",
@@ -210,6 +213,15 @@ async function Settings() {
             />
           ) : null}
           <ExportListItem />
+          <DataExportListItem />
+          {/* Danger zone: always the last row (doc 02 §6.14). */}
+          <DeleteAccountListItem
+            userId={user.id}
+            email={user.email}
+            name={user.name}
+            blocker={selfDelete.blocker}
+            inGroups={(sharing?.groups ?? 0) > 0}
+          />
         </InsetList>
       </section>
 
@@ -303,8 +315,9 @@ function SettingsSkeleton() {
           only shows with financas_compartilhadas, off by default: size for
           the default. */}
       <Skeleton className="h-41.25 rounded-2xl" />
-      {/* Dados, with importar_extrato on (the default): 36 + 64 + 1 + 64 = 165 */}
-      <Skeleton className="h-41.25 rounded-2xl" />
+      {/* Dados, with importar_extrato on (the default): importar, exportar
+          CSV, exportar tudo and excluir, 36 + 4 × 64 + 3 hairlines = 295 */}
+      <Skeleton className="h-73.75 rounded-2xl" />
       {/* Sobre: 36 + 64 + 1 + 52 = 153 */}
       <Skeleton className="h-38.25 rounded-2xl" />
     </LoadingRegion>

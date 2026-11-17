@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { forgetDevice } from "@/components/push/device";
+import { signOutTo } from "@/components/auth/sign-out";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-error";
@@ -77,22 +77,11 @@ export function SecurityPanel({
     }
   };
 
-  // Outside run(): no refresh while the page unloads. A full page load, not a
-  // client navigation, so nothing this account left in memory (forms, stores,
-  // pages the router keeps mounted) reaches whoever signs in next.
+  // Outside run(): no refresh while the page unloads (signOutTo leaves with a
+  // full page load).
   const signOut = async () => {
     setBusy("sign-out");
-    // This device stops receiving the notifications of the person leaving.
-    await forgetDevice();
-    try {
-      const { error } = await authClient.signOut();
-      if (!error) {
-        window.location.replace("/entrar");
-        return;
-      }
-    } catch {
-      // Offline: the session is still here, like a refused sign-out.
-    }
+    if (await signOutTo("/entrar")) return;
     toast.error("Não foi possível sair. Tente de novo.");
     setBusy(null);
   };
