@@ -24,6 +24,11 @@ import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { authOrigins, readServerEnv } from "@/server/env";
 import { isOwnerEmail, secretMatches } from "@/server/security/guards";
+import { rejectLeakedPassword } from "@/server/security/leaked-passwords";
+import {
+  countEmailSignIn,
+  settleEmailSignIn,
+} from "@/server/security/login-attempts";
 
 /** Header the setup Server Action uses to hand the setup token to sign-up. */
 export const SETUP_TOKEN_HEADER = "x-meu-finan-setup-token";
@@ -151,8 +156,16 @@ export const auth = betterAuth({
     // Layer 1: sign-up only through the setup flow, which forwards the token,
     // and only while no user exists. Runs before the endpoint opens its
     // transaction, so the global client is safe to use here.
+    // Better Auth's haveIBeenPwned plugin is not used (fails closed, covers
+    // only its own endpoints): see leaked-passwords.ts.
     before: createAuthMiddleware(async (ctx) => {
       await guardPasskeyManagement(ctx);
+      if (ctx.path === "/sign-in/email") {
+        return countEmailSignIn(ctx.body?.email);
+      }
+      if (ctx.path === "/change-password") {
+        return rejectLeakedPassword(ctx.body?.newPassword);
+      }
       if (ctx.path !== "/sign-up/email") return;
       const provided = ctx.headers?.get(SETUP_TOKEN_HEADER);
       if (!secretMatches(provided, readServerEnv("SETUP_TOKEN"))) {
@@ -160,8 +173,16 @@ export const auth = betterAuth({
       }
       const [row] = await db.select({ total: count() }).from(schema.user);
       if ((row?.total ?? 0) > 0) throw signUpClosed();
+      // Last: whoever lacks the token never reaches the leak service.
+      await rejectLeakedPassword(ctx.body?.password);
     }),
-    after: createAuthMiddleware(revokeReplacedSession),
+    // A successful password sign-in resets the per-e-mail counter.
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/email") {
+        await settleEmailSignIn(ctx.body?.email, ctx.context.returned);
+      }
+      await revokeReplacedSession(ctx);
+    }),
   },
   databaseHooks: {
     session: {

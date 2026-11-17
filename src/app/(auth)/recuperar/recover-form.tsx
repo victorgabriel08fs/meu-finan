@@ -48,7 +48,8 @@ export function RecoverForm() {
           aria-describedby="password-hint password-error"
         />
         <p id="password-hint" className="text-[13px] text-fg-3 leading-[18px]">
-          Pelo menos 12 caracteres.
+          Pelo menos 12 caracteres. Senhas que já vazaram em outros sites não
+          são aceitas.
         </p>
         <FieldError id="password-error">{errors.password?.[0]}</FieldError>
       </div>

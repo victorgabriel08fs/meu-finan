@@ -651,13 +651,15 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 - **Passkey primeiro**: botão primário **"Entrar com passkey"** (Face ID/biometria) quando o aparelho suporta; campo de e-mail com `autocomplete="username webauthn"` — a autenticação condicional oferece a passkey já no foco do campo.
 - **Senha como alternativa**: "Usar senha" (`ghost`) revela o campo de senha (`autocomplete="current-password"`, botão mostrar/ocultar). Erro: "E-mail ou senha incorretos."; para falha de origem, de rede ou do servidor (senha e passkey): "Não foi possível entrar agora. Tente de novo em instantes."; passkey cancelada não mostra erro.
 - Muitas tentativas: mensagem inline com o tempo de espera devolvido pelo servidor ("Muitas tentativas. Tente de novo em 40 s.").
+- Bloqueio por e-mail (10 tentativas em 15 min): "Muitas tentativas com este e-mail. Tente de novo em 12 min ou entre com a passkey." O botão da passkey continua habilitado.
+- Senha vazada (primeiro acesso, convite, recuperação e Ajustes › Segurança): erro no campo Senha, "Essa senha já apareceu em vazamentos de outros sites. Escolha outra.", sem apagar o que foi digitado. Os campos de senha nova trazem o apoio "Pelo menos 12 caracteres. Senhas que já vazaram em outros sites não são aceitas." (no primeiro acesso: "Pelo menos 12 caracteres, sem senhas que já vazaram. Depois você cadastra uma passkey.").
 - Depois de entrar, volta para a tela de `?voltar=` (só caminhos internos) ou para o Início.
 - Sem "Continuar com Google", sem link por e-mail e sem atalho para a recuperação — ela só existe quando o dono a liga.
 
 **Primeiro acesso** (`/primeiro-acesso`) — usado uma única vez
 
 - Só abre enquanto não existe usuário e com `SETUP_TOKEN` e `OWNER_EMAIL` configurados; caso contrário, 404 sem pistas.
-- Campos: código de configuração (apoio: "O valor de SETUP_TOKEN definido na Vercel."), seu nome, e-mail, senha e "Confirme a senha" (`autocomplete="new-password"`; apoio: "Pelo menos 12 caracteres. Depois você cadastra uma passkey.").
+- Campos: código de configuração (apoio: "O valor de SETUP_TOKEN definido na Vercel."), seu nome, e-mail, senha e "Confirme a senha" (`autocomplete="new-password"`; apoio: "Pelo menos 12 caracteres, sem senhas que já vazaram. Depois você cadastra uma passkey.").
 - Botão primário "Criar acesso". Erros: "Código de configuração inválido.", "Use o e-mail configurado para o dono do app." (nunca mostra o e-mail certo) ou "Não foi possível criar o acesso. Confira os dados."
 - Em seguida, Ajustes › Segurança com "Acesso criado. Agora cadastre uma passkey para entrar com Face ID, digital ou o PIN do aparelho…", o botão de cadastrar a passkey e "Pular e continuar" ("Continuar: primeiros passos" depois de cadastrar). Depois, onboarding (§6.2).
 
@@ -1496,6 +1498,8 @@ Textos de vazio:
 | Lançamento salvo | Despesa de R$ 64,50 salva · **Desfazer** |
 | Excluído | Lançamento excluído · **Desfazer** |
 | Etiqueta | Etiqueta viagem criada. · Etiqueta viagem arquivada. · **Desfazer** · Etiqueta viagem restaurada. |
+| Login bloqueado por e-mail | Muitas tentativas com este e-mail. Tente de novo em 12 min ou entre com a passkey. |
+| Senha vazada | Essa senha já apareceu em vazamentos de outros sites. Escolha outra. |
 | Erro de rede | Não conseguimos salvar. Verifique a conexão. · **Tentar de novo** |
 | Orçamento 80% | Mercado chegou a 80% do orçamento, e ainda faltam 18 dias. |
 | Orçamento estourado | Restaurantes passou R$ 10 do orçamento de outubro. |

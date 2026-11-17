@@ -16,6 +16,10 @@ import {
   PASSKEY_CONFIRMATION_REQUIRED,
 } from "@/lib/admin/second-factor";
 import { authClient } from "@/lib/auth-client";
+import {
+  LEAKED_PASSWORD_MESSAGE,
+  PASSWORD_COMPROMISED,
+} from "@/lib/security/messages";
 
 export type PasskeyItem = {
   id: string;
@@ -53,6 +57,7 @@ function errorMessage(error: AuthError, fallback: string): string {
   if (error.code === PASSKEY_CONFIRMATION_REQUIRED) {
     return PASSKEY_CONFIRMATION_MESSAGE;
   }
+  if (error.code === PASSWORD_COMPROMISED) return LEAKED_PASSWORD_MESSAGE;
   if (error.code === "SESSION_NOT_FRESH" || error.status === 403) {
     return "Por segurança, saia e entre de novo para fazer isso.";
   }
@@ -355,13 +360,17 @@ function PasswordCard() {
               autoComplete="new-password"
               value={next}
               onChange={(event) => setNext(event.target.value)}
-              aria-describedby="new-password-hint"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={
+                error ? "new-password-hint password-error" : "new-password-hint"
+              }
             />
             <p
               id="new-password-hint"
               className="text-[13px] text-fg-3 leading-[18px]"
             >
-              Pelo menos 12 caracteres.
+              Pelo menos 12 caracteres. Senhas que já vazaram em outros sites
+              não são aceitas.
             </p>
           </div>
           <div className="flex flex-col gap-2">
