@@ -408,8 +408,9 @@ export const viewport: Viewport = {
 | Pelo avatar | `/ajustes/*` · `/importar` | perfil e preferências |
 | Atrás da flag `financas_compartilhadas` (Ajustes › Organização; barra lateral no desktop; bloco do Início) | `/compartilhado` · `/compartilhado/[grupo]` (`?mes=`) · `/compartilhado/[grupo]/caixinhas` · `/compartilhado/[grupo]/caixinhas/[caixinha]` | grupos e convites · um grupo · caixinhas do grupo · uma caixinha (§6.18) |
 | Administradores (Ajustes; barra lateral no desktop) | `/admin/usuarios` · `/admin/flags` · `/admin/atividade` · `/admin/rotina` | contas e convites · feature flags · auditoria · rotina diária (§6.17) |
+| Com sessão, sem o aceite da versão atual | `/aceitar-termos` | aceite dos termos (§6.20); toda outra tela leva para ela |
 | Onboarding | `/onboarding` | 4 passos, logo depois do primeiro acesso ou do convite |
-| Sem sessão | `/` · `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | homepage (§6.19) · login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
+| Sem sessão | `/` · `/termos` · `/privacidade` · `/entrar` · `/primeiro-acesso` · `/recuperar` · `/convite/[token]` | homepage (§6.19) · termos de uso e política de privacidade (§6.20, abertas também com sessão) · login · configuração única da primeira conta · recuperação de emergência · convite ou link de redefinição (§6.1) |
 
 Não há "Criar conta": a primeira conta é a do dono, que administra, e as outras chegam por convite (doc 01 §11). Há uma homepage pública em `/`, sem cadastro (§6.19); quem já tem sessão vai de `/` para o Início. Todas as rotas fora das cinco acima exigem sessão, verificada no servidor; as de Administração exigem também o papel de administrador, e quem não o tem vê a página 404.
 
@@ -658,6 +659,7 @@ Convenções desta seção: wireframes em 390 px; valores de exemplo iguais aos 
 
 - Só abre enquanto não existe usuário e com `SETUP_TOKEN` e `OWNER_EMAIL` configurados; caso contrário, 404 sem pistas.
 - Campos: código de configuração (apoio: "O valor de SETUP_TOKEN definido na Vercel."), seu nome, e-mail, senha e "Confirme a senha" (`autocomplete="new-password"`; apoio: "Pelo menos 12 caracteres. Depois você cadastra uma passkey.").
+- A caixa "Li e aceito os Termos de uso e a Política de privacidade." (obrigatória, desmarcada; os links abrem em nova aba, §6.20) fica entre "Confirme a senha" e o botão; sem marcar, o erro "Aceite os termos de uso e a política de privacidade para continuar." aparece sob a caixa.
 - Botão primário "Criar acesso". Erros: "Código de configuração inválido.", "Use o e-mail configurado para o dono do app." (nunca mostra o e-mail certo) ou "Não foi possível criar o acesso. Confira os dados."
 - Em seguida, Ajustes › Segurança com "Acesso criado. Agora cadastre uma passkey para entrar com Face ID, digital ou o PIN do aparelho…", o botão de cadastrar a passkey e "Pular e continuar" ("Continuar: primeiros passos" depois de cadastrar). Depois, onboarding (§6.2).
 
@@ -1157,7 +1159,7 @@ Listas agrupadas (raio 16, linhas de 52 px):
   Cada toque salva na conta a escolha inteira e vale para todos os aparelhos da pessoa. A mudança aparece na hora; se não salvar, a tela volta ao que estava e o toast de erro traz **Tentar de novo**. Skeleton com as alturas das três seções. Não há horário configurável nem horário silencioso: o plano Hobby envia uma vez por dia (doc 01 §9). Os textos de cada aviso estão em §10.3; fatura fechando, orçamento 80%/100% e meta atingida ficam para depois (`docs/tarefas.md`). O ícone do app mostra o número de avisos não lidos, que zera ao abrir o app.
 - **Dados**: importar (atrás da flag `importar_extrato`), exportar tudo (backup em ZIP), **apagar todos os dados** (zona de perigo no fim, `--danger`): o diálogo pede para digitar "apagar"; apaga os dados financeiros e os anexos, mantém o acesso (senha e passkeys) e volta ao onboarding.
 - **Administração** (só administradores, antes de Sobre): Usuários ("3 pessoas · 1 convite pendente"), Flags ("Todas no padrão" ou "1 flag ajustada"), Atividade e Rotina diária ("Cron e avisos") — §6.17.
-- **Sobre**: versão, "Feito por Victor Gabriel" (link para o GitHub do autor, nova aba), "Instalar app".
+- **Sobre**: versão, "Termos de uso" ("Aceitos em 17 de novembro de 2026") e "Política de privacidade" ("O que guardamos e os seus direitos") — links para `/termos` e `/privacidade` (§6.20) —, "Feito por Victor Gabriel" (link para o GitHub do autor, nova aba), "Instalar app". `/ajustes/sobre` fecha com a versão, o crédito e os dois links.
 
 ### 6.15 Notificações (central)
 
@@ -1338,6 +1340,17 @@ Mesma flag e mesmas regras de página (sessão dentro de `<Suspense>`, `error.ts
 - **Movimento reduzido ou sem JavaScript**: o fio inteiro e parado, os dois wordmarks completos, o teclado com "R$ 64,50" e o toast, o saldo no valor final, o cartão da privacidade já com "Valores ocultos"; nada se desloca (tempos em §3.8).
 - **Acessibilidade**: axe sem violações nos dois temas, a 360 px e no desktop; a 200% de texto, sem rolagem lateral a 360 e 430 px.
 - **Indexação**: continua `noindex` (app por convite, domínio provisório); abrir só a `/` quando houver domínio próprio.
+
+### 6.20 Termos, privacidade e aceite
+
+17/11/2026, tarefa S2, sem flag nem dica (obrigação legal vale para todos; doc 01 §11.8, ADR-14).
+
+- **`/termos` e `/privacidade`**: públicas e estáticas (sem sessão, sem cookie, sem banco; o proxy nem roda nelas, com ou sem sessão). Coluna de até 680 px, cabeçalho com a marca "Prumo" (link para `/`, que com sessão vai ao Início), `h1` `title-1`, "Versão de 17 de novembro de 2026" (`caption`, `--text-3`), sumário "Nesta página" com âncoras e seções com `h2` `headline` e corpo `body` em `--text-2`, até `max-w-prose`. Rodapé com os dois links e o crédito "Feito por". Só tokens: legível nos dois temas. O contato vem de `PRIVACY_CONTACT_EMAIL` (link `mailto:`); sem ele, "pelo contato de quem administra o seu Prumo". Termos em 12 seções (do "O que é o Prumo" ao "Contato"); política em 12 (do "Quem cuida dos seus dados" a "Mudanças"), com a base legal, os operadores, a retenção e os direitos do titular. O texto é um rascunho técnico fiel ao app; pede revisão jurídica antes dos planos pagos.
+- **Links**: rodapé da homepage (ao lado do "Feito por"; empilha no celular), fim das telas de entrada (`(auth)`: `/entrar`, `/primeiro-acesso`, `/recuperar`, `/convite`) e Ajustes › Sobre (§6.14).
+- **Caixa de aceite** (`LegalConsent`): "Li e aceito os [Termos de uso] e a [Política de privacidade]." com os links em nova aba ("(abre em nova aba)" só para leitor de tela), alvo de 44 px, `aria-invalid` e erro sob a caixa. Obrigatória no primeiro acesso e no convite (não no link de redefinição). Sem marcar: o erro "Aceite os termos de uso e a política de privacidade para continuar." e o foco vai para a caixa. Se o texto mudou entre abrir e enviar: "Os termos foram atualizados. Recarregue a página e leia a nova versão."
+- **`/aceitar-termos`**: para quem tem sessão mas ainda não aceitou a versão atual (contas de antes dos termos, ou depois de uma mudança relevante); toda outra tela e Server Action leva para cá. Coluna centrada de 440 px, sem navegação. `h1` "Antes de continuar"; "O Prumo agora tem termos de uso e uma política de privacidade. Leia e aceite para continuar usando o app." (com versão anterior: "Os termos de uso e a política de privacidade mudaram em {data}. …"); três pontos com ícone ("Suas finanças ficam só na sua conta: nem quem administra vê os valores.", "Nada de publicidade nem venda dos seus dados.", "Você pode pedir uma cópia ou a exclusão dos seus dados quando quiser."); a caixa; "Aceitar e continuar" (primário) e "Sair" (`ghost`, carga completa da página); rodapé `caption`: "Se não quiser aceitar, saia e peça a exclusão dos seus dados pelo contato da política de privacidade." Quem já aceitou e abre a rota vai ao Início. Aceitar leva ao Início.
+- **Atividade** (§6.17): "{Nome} aceitou os termos de uso e a política de privacidade" com "Versão de 17 de novembro de 2026"; o convite aceito ganha "Termos aceitos (versão de …)" e o primeiro acesso, "· termos aceitos".
+- **Acessibilidade**: axe sem violações nas três telas; sem rolagem lateral a 360 px e a 200% de texto.
 
 ## 7. Padrões de interação
 
