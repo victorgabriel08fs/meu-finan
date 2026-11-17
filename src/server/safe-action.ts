@@ -4,7 +4,8 @@
 import "server-only";
 import { createSafeActionClient } from "next-safe-action";
 import type { FlagKey } from "@/lib/flags/registry";
-import { getAdmin, requireUser } from "@/server/dal";
+import { RECENT_SIGN_IN_REQUIRED } from "@/lib/security/recent-sign-in";
+import { getAdmin, getRecentSignIn, requireUser } from "@/server/dal";
 import { DomainError, NOT_ALLOWED } from "@/server/domain/errors";
 import { isFlagEnabled } from "@/server/flags";
 
@@ -56,3 +57,14 @@ export function flaggedAction(key: FlagKey, offMessage: string) {
     return next();
   });
 }
+
+/**
+ * `authAction` that also needs a recent sign-in (Ajustes › Dados: excluir
+ * minha conta). Refuses with RECENT_SIGN_IN_REQUIRED, which the client
+ * recognises to offer "Sair e entrar de novo".
+ */
+export const recentSignInAction = authAction.use(async ({ next }) => {
+  const signIn = await getRecentSignIn();
+  if (!signIn?.recent) throw new ActionError(RECENT_SIGN_IN_REQUIRED);
+  return next();
+});

@@ -9,6 +9,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { hasAdminRole, toUserRole, type UserRole } from "@/lib/admin/roles";
+import { isRecentSignIn } from "@/lib/security/recent-sign-in";
 import { auth } from "@/server/auth";
 
 export type CurrentUser = {
@@ -42,6 +43,24 @@ export async function requireUser(): Promise<CurrentUser> {
   const session = await getSession();
   if (!session) redirect("/entrar");
   return toCurrentUser(session.user);
+}
+
+/**
+ * The signed-in user and whether they signed in within the last few minutes
+ * (src/lib/security/recent-sign-in.ts), for exporting or deleting their data;
+ * null when signed out. The session is created at sign-in and never renewed
+ * in place, so its createdAt is the moment of the sign-in.
+ */
+export async function getRecentSignIn(): Promise<{
+  user: CurrentUser;
+  recent: boolean;
+} | null> {
+  const session = await getSession();
+  if (!session) return null;
+  return {
+    user: toCurrentUser(session.user),
+    recent: isRecentSignIn(new Date(session.session.createdAt), new Date()),
+  };
 }
 
 /** The signed-in administrator, or null for anyone else. */
