@@ -12,7 +12,7 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 
 - [ ] **S1 Backup fora da Neon** (A-2): workflow semanal com `pg_dump` (papel só de leitura) criptografado com `age`, guardado fora da Neon (doc 01 §11.7); conferir a janela de restauração do plano; testar uma restauração num branch descartável.
 - [ ] **S2 Termos de uso e política de privacidade** (A-3): páginas públicas, aceite no convite e no primeiro acesso (versão aceita guardada), canal do titular; revisar doc 01 §11.8, que hoje se apoia na exceção de uso particular.
-- [ ] **S3 Exportar meus dados e excluir minha conta** (A-3): ZIP com JSON completo + CSV (doc 01 §11.8) e exclusão pela própria pessoa, ambos com sessão recente; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13).
+- [x] ~~**S3 Exportar meus dados e excluir minha conta**~~ (A-3, v0.8.0): ZIP com JSON completo, CSV e LEIA-ME (download direto de `/api/export/data`) e exclusão pela própria pessoa, ambos com login recente de 15 min; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13). Ficou de fora: **apagar todos os dados** (mantém o acesso e volta ao onboarding, doc 01 §11.8) e anexos no ZIP e na exclusão (não há comprovantes guardados; apagar os blobs quando existirem).
 - [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
 - [ ] **S5 Login mais duro** (M-2): limite por e-mail além do IP e recusa de senhas vazadas (plugin `haveIBeenPwned` do Better Auth).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.

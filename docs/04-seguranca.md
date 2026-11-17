@@ -20,7 +20,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 |---|---|---|
 | Alto | A-1 Dependência de produção com vulnerabilidade alta | **Corrigido** neste PR |
 | Alto | A-2 Sem backup fora da Neon | Tarefa S1 (antes do beta) |
-| Alto | A-3 LGPD: sem termos, política, exportação e exclusão pelo titular | Tarefas S2 e S3 (antes do beta) |
+| Alto | A-3 LGPD: sem termos e política (exportação e exclusão pelo titular resolvidas na S3, v0.8.0) | Tarefa S2 (antes do beta) |
 | Médio | M-1 Administrador sem segundo fator obrigatório | Tarefa S4 |
 | Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | Tarefa S5 |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
@@ -61,6 +61,8 @@ A suíte existente cobre o resto do isolamento (integração contra o PGlite: co
 O doc 01 §11.7 descreve o export semanal criptografado (`pg_dump` + `age`, pelo GitHub Actions), mas ele não existe no repositório (só há `ci.yml`). Hoje tudo depende da restauração pontual da Neon, cuja janela no plano gratuito é curta. Com dados de terceiros no beta, um `DELETE` errado, uma migração ruim ou a perda da conta da Neon seria irrecuperável.
 
 ### A-3 LGPD
+
+**Parcialmente resolvido (S3, v0.8.0):** Ajustes › Dados tem **Exportar todos os dados** (ZIP com JSON completo, CSV e LEIA-ME) e **Excluir minha conta** (cascata do painel, sai dos grupos), ambos com login recente de 15 min; o dono e o último administrador ativo não se excluem. Faltam os termos e a política (S2) e o procedimento de incidente. O texto abaixo é o diagnóstico original.
 
 O doc 01 §11.8 apoia-se na exceção do uso particular (art. 4º, I). Com pessoas de fora da família no beta, e mais ainda com planos pagos, a exceção deixa de valer: o app passa a ser controlador de dados financeiros pessoais. Faltam **termos de uso**, **política de privacidade** (o que coleta, base legal, operadores Vercel e Neon, retenção, contato), **exportar meus dados** completo e **excluir minha conta** pela própria pessoa (hoje só o administrador exclui; o CSV de lançamentos não cobre contas, metas, orçamentos etc.), além de um procedimento de incidente (comunicar ANPD e titulares).
 
