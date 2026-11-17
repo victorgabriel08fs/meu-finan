@@ -67,3 +67,14 @@ describe("authOrigins", () => {
     expect(authOrigins().rpId).toBe("exemplo.com");
   });
 });
+
+describe("SENTRY_DSN", () => {
+  it("accepts a DSN and rejects garbage without echoing it", () => {
+    vi.stubEnv("SENTRY_DSN", "https://abc@o1.ingest.us.sentry.io/1");
+    expect(readServerEnvSafe("SENTRY_DSN").status).toBe("ok");
+    vi.stubEnv("SENTRY_DSN", "isto-nao-e-dsn");
+    const bad = readServerEnvSafe("SENTRY_DSN");
+    expect(bad.status).toBe("invalid");
+    expect(JSON.stringify(bad)).not.toContain("isto-nao-e-dsn");
+  });
+});

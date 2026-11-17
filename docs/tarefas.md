@@ -17,11 +17,23 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [x] ~~**S5 Login mais duro** (M-2)~~: entregue em 17/11/2026. Limite de 10 tentativas por e-mail em 15 min (a passkey fica de fora) e recusa de senhas vazadas (Have I Been Pwned, k-anonimato, falha aberta, `PASSWORD_LEAK_CHECK`). O plugin `haveIBeenPwned` do Better Auth não foi registrado (falha fechada, só cobre endpoints do Better Auth e não tem tempo limite): módulo próprio em `src/server/security/leaked-passwords.ts`. Fica para depois: limpeza periódica das linhas antigas de `rate_limit` (uma por e-mail tentado) e, se um proxy (Cloudflare) for posto na frente, usar o cabeçalho de IP dele (`docs/04-seguranca.md`).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
 - [x] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
-- [ ] **S8 Observabilidade** (M-5): Sentry com `beforeSend` sem valores, descrições e e-mails (origem na CSP), log de login e falhas, alerta quando o cron falhar.
+- [x] ~~**S8 Observabilidade** (M-5)~~: entregue em 17/11/2026 (ver "Entregue" e "S8. Observabilidade: o que ficou de fora").
 - [x] ~~**S9 Cadastro público**~~: decidido pelo dono em 16/11/2026 que as contas **continuam só por convite**, também com planos. Fica para o beta: convites com limite por administrador e "esqueci minha senha" por e-mail (Resend, remetente Prumo) como alternativa ao link de redefinição do painel.
 - [ ] **S10 Pagamentos** (contas por convite: o plano é escolhido depois de aceitar o convite): checkout hospedado com Pix e cartão, webhook assinado e idempotente, assinaturas e direitos por plano. Antes: Vercel Pro (o Hobby não permite uso comercial) e Neon pago.
 - [ ] **S11 Limites por plano** no servidor: plano na resolução das flags (pessoa > plano > global > padrão).
 - [ ] **S12 Defesa em profundidade**: RLS no Postgres por `user_id` (ou teste de catálogo), CSP sem `'unsafe-inline'` (SRI), pentest externo e `security.txt`.
+
+## S8. Observabilidade: o que ficou de fora
+
+A tarefa foi entregue em 17/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Login na auditoria** (`audit_log`): não entrou. A auditoria é a trilha da administração e pede um ator; login vai para o log JSON da Vercel.
+- **Source maps e release no Sentry**: sem `withSentryConfig` nem `SENTRY_AUTH_TOKEN`; os erros chegam com o código minificado.
+- **Tunnel**: um bloqueador de anúncios pode barrar o envio do navegador; o servidor não é afetado.
+- **Tracing e Session Replay**: ficam desligados (Speed Insights já cobre desempenho; o replay gravaria telas com valores).
+- **Erros do navegador antes de o SDK carregar** se perdem (o SDK é carregado sob demanda, só com DSN).
+- **`sendDefaultPii`**: não existe no SDK 11; o `scrubEvent` remove `user`, cookies, corpo e IP.
+- **Alertas do Sentry** (e-mail em pico de erros e do monitor `daily-job`): configurados no painel pelo dono (README › Observabilidade).
 
 ## 24b. Prumo: o que ficou de fora
 
@@ -208,6 +220,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Observabilidade (versão 0.10.0) — 17/11/2026
+
+Sentry opcional e log estruturado de acesso (docs/04 M-5). Sem migração. Variáveis novas: `SENTRY_DSN` e `NEXT_PUBLIC_SENTRY_DSN` (opcionais).
+
+- [x] **Sentry opcional** (`@sentry/nextjs` 11.13.0), carregado só com DSN: sem DSN, nenhum byte no navegador e nada muda em dev, testes e build. Sem tracing, replay, source maps nem `sendDefaultPii`.
+- [x] **Scrubber** (`src/lib/observability/scrub.ts`): `beforeSend` e `beforeBreadcrumb` sem valores, descrições, observações, e-mails, tokens, cookies, corpos nem query strings; `/convite/<token>` vira `/convite/[token]`. Origem do Sentry na CSP (`connect-src`), derivada do DSN público.
+- [x] **Log JSON de acesso**: login (sucesso e falha), troca de senha, bloqueio do limitador, primeiro acesso, recuperação e convite, com e-mail e IP só como HMAC e o país da Vercel.
+- [x] **Cron diário** no Sentry Crons (monitor `daily-job`: falha e execução perdida) e captura dos passos que falharam; erros de Server Action e das telas de erro também vão ao Sentry.
+- [x] Testes: unidade (DSN, scrubber, linha de log, eventos de auth, monitor do cron), integração (`auth.integration.test.ts`) e rota do cron (`route.test.ts`). O que ficou: "S8. Observabilidade: o que ficou de fora".
 
 ### Passkey obrigatória para administradores (versão 0.9.0) — 17/11/2026
 

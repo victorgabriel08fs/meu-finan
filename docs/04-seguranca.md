@@ -25,7 +25,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 | Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | **Corrigido** (tarefa S5); resta a nota do proxy |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
 | Médio | M-4 Ações caras sem limite por pessoa | **Corrigido** (tarefa S7) |
-| Médio | M-5 Sem trilha de login nem alertas | Tarefa S8 |
+| Médio | M-5 Sem trilha de login nem alertas | **Corrigido** (tarefa S8, 17/11/2026) |
 | Médio | M-6 CSP com `'unsafe-inline'` em `script-src` | Tarefa S12 (depois do beta) |
 | Baixo | B-1 `esbuild` vulnerável no `drizzle-kit` (só desenvolvimento) | Acompanhar pelo Dependabot |
 | Baixo | B-2 Sem Dependabot nem auditoria no CI | **Corrigido** neste PR |
@@ -93,6 +93,8 @@ Importar extrato (arquivo de até 2 MB), lançamento por texto e exportar CSV n�
 ### M-5 Sem trilha de login nem alertas
 
 O doc 01 §13 prevê log de eventos de autenticação e Sentry; nenhum dos dois existe. Hoje não há como saber se alguém está tentando senhas, se uma sessão nova surgiu de outro país ou se o cron falhou, a não ser abrindo o painel.
+
+**Resolvido na tarefa S8 (17/11/2026).** Log JSON de login, falhas, bloqueios do limitador, primeiro acesso, recuperação e convite (e-mail e IP só como HMAC, com o país da Vercel); Sentry opcional com scrubber de valores, descrições e e-mails; monitor do cron diário (`daily-job`) que avisa quando o job falha ou não roda. Os alertas por e-mail são configurados no painel do Sentry (README › Observabilidade). Login não entra no `audit_log`, que é a trilha da administração.
 
 ### M-6 CSP com `'unsafe-inline'`
 

@@ -18,6 +18,7 @@ import {
   inspectAccessLink,
   LINK_UNAVAILABLE,
 } from "@/server/domain/access-links";
+import { logEvent, requestMeta } from "@/server/observability/log";
 import { ActionError, actionClient } from "@/server/safe-action";
 import { clientAddress } from "@/server/security/guards";
 import { isPasswordLeaked } from "@/server/security/leaked-passwords";
@@ -61,7 +62,13 @@ export const acceptAccessLinkAction = actionClient
       windowSeconds: 900,
       max: 10,
     });
+    const meta = requestMeta(requestHeaders);
     if (!limit.ok) {
+      logEvent(
+        "auth.invite_failed",
+        { reason: "rate_limited", ...meta },
+        "warn",
+      );
       throw new ActionError(
         `Muitas tentativas. Tente de novo em ${Math.ceil(limit.retryAfterSeconds / 60)} min.`,
       );
@@ -70,6 +77,11 @@ export const acceptAccessLinkAction = actionClient
     // Cheap checks before the (deliberately slow) password hash.
     const link = await inspectAccessLink(input.token);
     if (!link || link.state !== "valid") {
+      logEvent(
+        "auth.invite_failed",
+        { reason: "link_unavailable", ...meta },
+        "warn",
+      );
       throw new ActionError(LINK_UNAVAILABLE);
     }
     if (link.purpose === "invite") {
@@ -99,6 +111,11 @@ export const acceptAccessLinkAction = actionClient
     // A valid link lifts a lock left by failed attempts.
     await clearLoginAttempts(accepted.email);
 
+    logEvent("auth.invite_accepted", {
+      userId: accepted.userId,
+      purpose: accepted.purpose,
+      ...meta,
+    });
     try {
       await auth.api.signInEmail({
         body: { email: accepted.email, password: input.password },

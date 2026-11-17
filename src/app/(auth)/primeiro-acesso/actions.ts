@@ -21,6 +21,7 @@ import { user } from "@/server/db/schema";
 import { ensureOwnerDefaults } from "@/server/db/seed-defaults";
 import { recordAudit } from "@/server/domain/audit";
 import { readServerEnvSafe } from "@/server/env";
+import { logEvent, requestMeta } from "@/server/observability/log";
 import { ActionError, actionClient } from "@/server/safe-action";
 import {
   clientAddress,
@@ -68,7 +69,11 @@ export const setupOwner = actionClient
       windowSeconds: 600,
       max: 5,
     });
+    const meta = requestMeta(requestHeaders);
+    const refuse = (reason: string) =>
+      logEvent("auth.setup_failed", { reason, ...meta }, "warn");
     if (!limit.ok) {
+      refuse("rate_limited");
       throw new ActionError(
         `Muitas tentativas. Tente de novo em ${Math.ceil(limit.retryAfterSeconds / 60)} min.`,
       );
@@ -80,19 +85,23 @@ export const setupOwner = actionClient
       if (gate.status === "invalid") console.error(gate.problem);
     }
     if (setupToken.status !== "ok" || ownerEmailEnv.status !== "ok") {
+      refuse("closed");
       throw new ActionError("Esta tela está fechada.");
     }
     const ownerEmail = ownerEmailEnv.value;
     if (!secretMatches(input.token, setupToken.value)) {
+      refuse("bad_token");
       throw new ActionError("Código de configuração inválido.");
     }
     const [row] = await db.select({ total: count() }).from(user);
     if ((row?.total ?? 0) > 0) {
+      refuse("already_done");
       throw new ActionError(
         "O acesso já foi configurado. Entre pela tela de login.",
       );
     }
     if (!isOwnerEmail(input.email, ownerEmail)) {
+      refuse("not_owner_email");
       // Never echo OWNER_EMAIL back.
       throw new ActionError("Use o e-mail configurado para o dono do app.");
     }
@@ -131,5 +140,6 @@ export const setupOwner = actionClient
       actor: { id: userId, name: input.name },
       metadata: { role: "admin", legalVersion: LEGAL_VERSION },
     });
+    logEvent("auth.setup_done", { userId, ...meta });
     redirect("/ajustes/seguranca?primeiro=1");
   });

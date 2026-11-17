@@ -290,3 +290,61 @@ describe("throttle", () => {
     );
   });
 });
+
+describe("auth log", () => {
+  const lines = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls
+      .map((call) => String(call[0]))
+      .filter((line) => line.startsWith("{"))
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+  it("logs a wrong password without the e-mail or the password", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(
+      m.auth.api.signInEmail({
+        body: { email: OWNER_EMAIL, password: "senha errada demais" },
+      }),
+    ).rejects.toThrow();
+    const found = lines(warn).filter((l) => l.event === "auth.sign_in_failed");
+    expect(found).toHaveLength(1);
+    expect(found[0]).toMatchObject({ method: "password" });
+    expect(found[0]?.emailHash).toMatch(/^[0-9a-f]{16}$/);
+    const raw = JSON.stringify(warn.mock.calls);
+    expect(raw).not.toContain(OWNER_EMAIL);
+    expect(raw).not.toContain("senha errada demais");
+    warn.mockRestore();
+  });
+
+  it("logs a successful sign-in with the user id", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    await m.auth.api.signInEmail({
+      body: { email: OWNER_EMAIL, password: PASSWORD },
+    });
+    const found = lines(info).filter((l) => l.event === "auth.sign_in");
+    expect(found).toHaveLength(1);
+    expect(typeof found[0]?.userId).toBe("string");
+    info.mockRestore();
+  });
+
+  it("logs a deactivated account as BANNED_USER", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(
+      m.auth.api.signInEmail({
+        body: { email: "carla@exemplo.com", password: PASSWORD },
+      }),
+    ).rejects.toThrow();
+    const found = lines(warn).filter((l) => l.event === "auth.sign_in_failed");
+    expect(found[0]?.code).toBe("BANNED_USER");
+    warn.mockRestore();
+  });
+
+  it("logs a sign-up without the token, without the e-mail", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(signUp("intruso@exemplo.com")).rejects.toThrow();
+    const found = lines(warn).filter((l) => l.event === "auth.sign_up_refused");
+    expect(found).toHaveLength(1);
+    expect(found[0]?.reason).toBe("bad_token");
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("intruso@");
+    warn.mockRestore();
+  });
+});

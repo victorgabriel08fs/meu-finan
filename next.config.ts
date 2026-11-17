@@ -1,9 +1,14 @@
 import type { NextConfig } from "next";
+import { parseSentryDsn } from "./src/lib/observability/dsn";
 
 const isDev = process.env.NODE_ENV === "development";
 // Vercel serves every deployment over HTTPS. A local `next start` runs on plain
 // HTTP, where upgrade-insecure-requests would rewrite asset URLs to https://.
 const isVercel = process.env.VERCEL === "1";
+// The public Sentry DSN is inlined in the client build, so its exact origin is
+// decided at build time; without it Sentry is off in the browser and the CSP
+// does not change.
+const sentryOrigin = parseSentryDsn(process.env.NEXT_PUBLIC_SENTRY_DSN)?.origin;
 
 /**
  * Content-Security-Policy without nonces.
@@ -26,8 +31,9 @@ const isVercel = process.env.VERCEL === "1";
  * and next/font serves the font files from /_next/static, covered by
  * font-src 'self'. Vercel Web Analytics loads its script from and reports to
  * /_vercel/insights on this origin; only development loads the debug script
- * from va.vercel-scripts.com. A new third-party origin (Sentry, Vercel Blob uploads) must
- * be added to the matching directive.
+ * from va.vercel-scripts.com. Sentry enters connect-src only when the public
+ * DSN is set, with the exact origin of the DSN. A new third-party origin
+ * (Vercel Blob uploads) must be added to the matching directive.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -37,7 +43,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob:",
   "font-src 'self'",
   // Development also needs the HMR WebSocket.
-  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
+  `connect-src 'self'${sentryOrigin ? ` ${sentryOrigin}` : ""}${isDev ? " ws: wss:" : ""}`,
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

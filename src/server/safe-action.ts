@@ -7,6 +7,7 @@ import type { FlagKey } from "@/lib/flags/registry";
 import { getAdmin, requireSignedIn, requireUser } from "@/server/dal";
 import { DomainError, NOT_ALLOWED } from "@/server/domain/errors";
 import { isFlagEnabled } from "@/server/flags";
+import { captureServerError } from "@/server/observability/sentry";
 
 /** An error whose message is safe to show to the user (pt-BR). */
 export class ActionError extends Error {
@@ -24,6 +25,7 @@ export const actionClient = createSafeActionClient({
       return error.message;
     }
     console.error("[action]", error);
+    captureServerError(error, { kind: "action" });
     return "Algo deu errado. Tente novamente.";
   },
 });

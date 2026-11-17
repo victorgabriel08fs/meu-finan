@@ -1,7 +1,18 @@
+import {
+  cronCheckInStatus,
+  DAILY_MONITOR_CONFIG,
+  DAILY_MONITOR_SLUG,
+} from "@/lib/observability/cron-monitor";
 import { readServerEnv } from "@/server/env";
 import { isAuthorizedCronRequest } from "@/server/jobs/cron-auth";
 import { DAILY_JOB, runDailyJob } from "@/server/jobs/daily";
 import { recordRejectedCronCall } from "@/server/jobs/job-run-store";
+import { logEvent } from "@/server/observability/log";
+import {
+  captureServerError,
+  captureServerMessage,
+  sentrySdk,
+} from "@/server/observability/sentry";
 
 export const maxDuration = 300;
 
@@ -22,7 +33,11 @@ export async function GET(request: Request): Promise<Response> {
     "vercel-cron/",
   );
   if (!isAuthorizedCronRequest(authorization, cronSecret())) {
-    if (fromVercel) await recordRejectedCronCall(DAILY_JOB);
+    if (fromVercel) {
+      await recordRejectedCronCall(DAILY_JOB);
+      logEvent("cron.daily.rejected", {}, "error");
+      captureServerMessage("cron.daily.rejected", "error");
+    }
     return Response.json(
       {
         ok: false,
@@ -32,17 +47,55 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  // Check-ins only for Vercel's own cron, so a manual call never hides a missed run.
+  const sentry = fromVercel ? await sentrySdk() : null;
+  const checkInId = sentry?.captureCheckIn(
+    { monitorSlug: DAILY_MONITOR_SLUG, status: "in_progress" },
+    DAILY_MONITOR_CONFIG,
+  );
   try {
-    const summary = await runDailyJob({
-      trigger: fromVercel ? "cron" : "manual",
-    });
+    const trigger = fromVercel ? "cron" : "manual";
+    const summary = await runDailyJob({ trigger });
     const failed = summary.status === "failed";
+    const failedSteps = summary.steps.filter(
+      (step) => step.status === "failed" || step.status === "partial",
+    );
+    // Only the step name goes out; the error text stays in job_runs.
+    for (const step of failedSteps) {
+      captureServerMessage(
+        "cron.daily.step_failed",
+        failed ? "error" : "warning",
+        { job: DAILY_JOB, step: step.name },
+      );
+    }
+    sentry?.captureCheckIn({
+      checkInId,
+      monitorSlug: DAILY_MONITOR_SLUG,
+      status: cronCheckInStatus(summary.status),
+      duration: summary.durationMs / 1000,
+    });
+    logEvent(
+      "cron.daily.finished",
+      {
+        status: summary.status,
+        durationMs: summary.durationMs,
+        trigger,
+        failedSteps: failedSteps.map((step) => step.name).join(",") || null,
+      },
+      summary.status === "ok" ? "info" : "error",
+    );
     return Response.json(
       { ok: !failed, ...summary },
       { status: failed ? 500 : 200, headers: NO_STORE },
     );
   } catch (error) {
     console.error("[cron] the daily job crashed", error);
+    captureServerError(error, { job: DAILY_JOB });
+    sentry?.captureCheckIn({
+      checkInId,
+      monitorSlug: DAILY_MONITOR_SLUG,
+      status: "error",
+    });
     return Response.json(
       {
         ok: false,
@@ -50,6 +103,8 @@ export async function GET(request: Request): Promise<Response> {
       },
       { status: 500, headers: NO_STORE },
     );
+  } finally {
+    await sentry?.flush(2000);
   }
 }
 

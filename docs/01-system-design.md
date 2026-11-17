@@ -206,7 +206,7 @@ sequenceDiagram
 | Imagens dinâmicas | `next/og` (`ImageResponse`) | cartão de compartilhamento da simulação |
 | PDF | `@react-pdf/renderer` | relatórios exportados (runtime Node) |
 | Parsers | papaparse (CSV) + parser OFX próprio (SGML 1.x e XML 2.x) | |
-| Observabilidade | Vercel Observability, Speed Insights; **Sentry** opcional, em fase posterior | métricas de hábito saem do próprio banco (§13) |
+| Observabilidade | Vercel Observability, Speed Insights; **Sentry** opcional | métricas de hábito saem do próprio banco (§13) |
 | Qualidade | Biome (lint/format), **Vitest 5** + Testing Library, fast-check, **Playwright** | e2e em viewports de iPhone e Pixel |
 | Pacotes | **npm** | Node.js 24 |
 
@@ -964,7 +964,7 @@ Uma pessoa gera ~1.500–5.000 lançamentos/ano. Com os índices acima, agregaç
 export const actionClient = createSafeActionClient({
   handleServerError(e) {
     if (e instanceof AppError) return e.publicMessage;
-    console.error(e); // logs da Vercel (e o Sentry, quando entrar)
+    console.error(e); // logs da Vercel (e o Sentry, quando houver DSN)
     return 'Algo deu errado. Tente novamente.';
   },
 });
@@ -1084,7 +1084,7 @@ Formato único em actions e handlers: `{ ok: false, error: { code, message, fiel
 | `RATE_LIMITED` | 429 | muitas tentativas de login, primeiro acesso ou recuperação (limitador do Better Auth) | mensagem com tempo de espera |
 | `LOGIN_LOCKED` | 429 | 10 tentativas de login com senha para o mesmo e-mail em 15 min (§11.2); o corpo traz `retryAfter` em segundos | "Muitas tentativas com este e-mail. Tente de novo em N min ou entre com a passkey." |
 | `PASSWORD_COMPROMISED` | 400 | a senha nova aparece em vazamentos conhecidos (§11.2) | "Essa senha já apareceu em vazamentos de outros sites. Escolha outra." |
-| `INTERNAL` | 500 | inesperado (vai aos logs; ao Sentry, quando ativado) | toast genérico + "Tentar de novo" |
+| `INTERNAL` | 500 | inesperado (vai aos logs e ao Sentry, quando ativado) | toast genérico + "Tentar de novo" |
 
 ---
 
@@ -1295,7 +1295,7 @@ O matcher protege por padrão: uma página nova já nasce atrás do redirecionam
 | Clickjacking | `frame-ancestors 'none'` |
 | Redirecionamento aberto | `voltar` só aceita caminho interno |
 | Upload malicioso | allowlist de MIME (`image/jpeg`, `image/png`, `image/webp`, `application/pdf`, OFX, CSV), limite de 10 MB, nome aleatório |
-| Vazamento em logs | logs estruturados sem PII (sem valores, descrições ou e-mails); o Sentry, se entrar, com `beforeSend` removendo esses campos |
+| Vazamento em logs | logs estruturados sem PII (sem valores, descrições ou e-mails); o Sentry, quando há DSN, com `beforeSend` removendo esses campos |
 | Segredos | só nas variáveis de ambiente da Vercel, por ambiente (§14); nunca no repositório nem com prefixo `NEXT_PUBLIC_`; `SETUP_TOKEN` e `RECOVERY_TOKEN` só enquanto estão em uso. Única exceção: a credencial só de leitura do backup, como segredo do GitHub Actions (§11.7) |
 
 **Atenção ao limitador**: ele só atua nas requisições que passam pelo handler do Better Auth (`/api/auth/*`); uma chamada direta a `auth.api` dentro de uma Server Action não é contada. Por isso o primeiro acesso e a recuperação passam pelo handler (o cadastro com hook; a recuperação como endpoint de um plugin próprio) ou aplicam a mesma contagem por conta própria.
@@ -1421,13 +1421,13 @@ Orçamento por rota (p75, 4G): `/inicio` LCP ≤ 2,0 s; `/extrato` primeira pág
 
 | Sinal | Ferramenta | Uso |
 |---|---|---|
-| Erros (cliente e servidor) | logs da Vercel; **Sentry** opcional, em fase posterior | com Sentry: alerta em pico de erros e release tracking por deploy |
+| Erros (cliente e servidor) | logs da Vercel; **Sentry** opcional (`SENTRY_DSN` e `NEXT_PUBLIC_SENTRY_DSN`; desligado sem DSN), com `beforeSend` que remove valores, descrições, e-mails, tokens, cookies, corpos e query strings (`src/lib/observability/scrub.ts`); sem tracing, replay nem source maps | alerta em pico de erros; erros de Server Action e das telas de erro; a origem do Sentry entra na CSP (`connect-src`) só com o DSN público |
 | Logs de funções | Vercel Observability | JSON estruturado com `requestId`, rota, duração, `userId` com hash |
-| Acesso | log de eventos de autenticação | logins, falhas, bloqueios do limitador, uso do primeiro acesso e da recuperação |
+| Acesso | log JSON de eventos de autenticação (`auth.sign_in`, `auth.sign_in_failed`, `auth.rate_limited`, `auth.setup_*`, `auth.recovery_*`, `auth.invite_*`) | logins, falhas, bloqueios do limitador, uso do primeiro acesso e da recuperação; e-mail e IP só como HMAC de 16 hex, país pelo cabeçalho da Vercel; fora do `audit_log` (que é a trilha da administração) |
 | Core Web Vitals | Vercel Speed Insights | p75 por rota; alerta se LCP > 2,5 s |
 | Visitas | Vercel Web Analytics (`<Analytics />` no layout raiz, só quando `VERCEL=1`: um `next start` local daria 404) | visualizações de página por rota, sem cookies; script e envio em `/_vercel/insights`, na própria origem |
 | Hábito pessoal | consultas no próprio banco (sem analytics de produto) | dias com registro por semana, origem dos lançamentos, simulações salvas |
-| Jobs | tabela `job_runs` + log | painel simples em `/ajustes/sistema` |
+| Jobs | tabela `job_runs` + log JSON + Sentry Crons | painel em `/admin/rotina`; o monitor `daily-job` avisa quando o cron falha ou não roda |
 | Uso dos planos gratuitos | painéis de uso da Vercel e da Neon | conferir de tempos em tempos se o consumo segue dentro dos planos gratuitos |
 
 Métricas de hábito (calculadas no banco, sem valores monetários): dias com pelo menos um lançamento por semana, origem dos lançamentos (manual, importação, recorrência), parcelados criados, simulações salvas e orçamentos criados.
@@ -1463,7 +1463,7 @@ Variáveis de ambiente:
 | `CRON_SECRET` | manual (a Vercel envia como `Authorization: Bearer`) |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | gerados com `npx web-push generate-vapid-keys`; a pública chega ao navegador pela página de Ajustes › Notificações (sem `NEXT_PUBLIC_`), a privada nunca sai do servidor. Trocar o par invalida as inscrições: cada aparelho ativa de novo |
 | `RESEND_API_KEY` | Resend — opcional, fase posterior |
-| `SENTRY_DSN`, `SENTRY_AUTH_TOKEN` | Sentry — opcional, fase posterior |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Sentry — opcional, mesmo valor nas duas (DSN não é segredo); recomendado só em Production; a pública entra no build. Sem `SENTRY_AUTH_TOKEN`: não há upload de source maps |
 
 Mudanças de variáveis na Vercel só valem para deploys novos: depois de criar ou remover `SETUP_TOKEN` e `RECOVERY_TOKEN`, faça redeploy.
 
