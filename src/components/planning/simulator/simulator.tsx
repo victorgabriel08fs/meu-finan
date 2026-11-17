@@ -21,12 +21,7 @@ import {
   StickySummary,
   YearTableCard,
 } from "./simulator-results";
-
-/**
- * The last inputs, per account on this device (doc 02 §6.11); never shared,
- * never required. The key carries the user id: a device can be shared.
- */
-const storageKey = (userId: string) => `meu-finan:simulador:v1:${userId}`;
+import { simulatorStorageKey } from "./storage";
 
 /** The key before it carried the account: whose inputs it holds is unknown. */
 const UNSCOPED_STORAGE_KEY = "meu-finan:simulador:v1";
@@ -61,7 +56,7 @@ export function CompoundSimulator({
   today,
   userId,
 }: CompoundSimulatorProps) {
-  const inputsKey = storageKey(userId);
+  const inputsKey = simulatorStorageKey(userId);
   const [state, setState] = useState<SimulatorState>(DEFAULT_STATE);
   const [lastValid, setLastValid] = useState<SimulatorState>(DEFAULT_STATE);
   const [selected, setSelected] = useState<number | null>(null);

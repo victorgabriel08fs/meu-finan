@@ -138,6 +138,8 @@ export const AUDIT_ACTIONS = [
   "share.declined",
   "share.left",
   "share.removed",
+  "user.self_deleted",
+  "data.exported",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

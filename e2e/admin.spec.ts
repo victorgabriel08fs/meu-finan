@@ -109,6 +109,10 @@ test("convida uma pessoa e o convite oferece passkey e leva ao onboarding num na
   await expect(guest.getByRole("heading", { name: "Seu mês" })).toBeVisible();
   await guest.getByRole("button", { name: "Concluir" }).click();
   await expect(guest).toHaveURL(/\/inicio$/, { timeout: 30_000 });
+  // The cursor stays where "Concluir" was, and the "Tudo pronto" toast can
+  // come up right under it: Sonner pauses a hovered toast, and tips wait for
+  // toasts to leave, so the balloon would never come. Move it away.
+  await guest.mouse.move(0, 0);
   const tip = guest.getByRole("dialog", { name: "Registre em segundos" });
   await expect(tip).toBeVisible({ timeout: 30_000 });
   await expect(tip.getByText("Dica 1 de 3")).toBeVisible();

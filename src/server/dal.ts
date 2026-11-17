@@ -16,6 +16,7 @@ import {
   adminSecondFactor,
 } from "@/lib/admin/second-factor";
 import { needsLegalAcceptance } from "@/lib/legal/version";
+import { isRecentSignIn } from "@/lib/security/recent-sign-in";
 import { auth } from "@/server/auth";
 import { countUserPasskeys } from "@/server/domain/passkeys";
 
@@ -73,6 +74,24 @@ export async function requireUser(): Promise<CurrentUser> {
   const user = await requireSignedIn();
   if (needsLegalAcceptance(user.legalVersion)) redirect("/aceitar-termos");
   return user;
+}
+
+/**
+ * The signed-in user and whether they signed in within the last few minutes
+ * (src/lib/security/recent-sign-in.ts), for exporting or deleting their data;
+ * null when signed out. The session is created at sign-in and never renewed
+ * in place, so its createdAt is the moment of the sign-in.
+ */
+export async function getRecentSignIn(): Promise<{
+  user: CurrentUser;
+  recent: boolean;
+} | null> {
+  const session = await getSession();
+  if (!session) return null;
+  return {
+    user: toCurrentUser(session.user),
+    recent: isRecentSignIn(new Date(session.session.createdAt), new Date()),
+  };
 }
 
 /**

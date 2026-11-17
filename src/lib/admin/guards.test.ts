@@ -6,6 +6,9 @@ import {
   LAST_ADMIN_MESSAGE,
   OWNER_DELETE_MESSAGE,
   OWNER_LINK_MESSAGE,
+  SELF_DELETE_LAST_ADMIN_MESSAGE,
+  SELF_DELETE_OWNER_MESSAGE,
+  selfDeleteBlocker,
 } from "./guards";
 
 const ana: GuardAccount = { id: "ana", role: "admin", banned: false };
@@ -62,7 +65,7 @@ describe("accountActionBlocker", () => {
     );
   });
 
-  it("keeps the last active administrator", () => {
+  it("keeps the last active administrator (a deactivated one does not count)", () => {
     // Another administrator that is deactivated does not count.
     const alone = {
       actorId: "x",
@@ -163,5 +166,53 @@ describe("accountActionBlocker", () => {
         expect(result === null || typeof result === "string").toBe(true);
       }
     }
+  });
+});
+
+describe("selfDeleteBlocker", () => {
+  it("lets a regular account delete itself", () => {
+    expect(
+      selfDeleteBlocker({
+        account: bruno,
+        activeAdminIds: ["ana"],
+        isOwner: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("never lets the owner's account go", () => {
+    expect(
+      selfDeleteBlocker({
+        account: ana,
+        activeAdminIds: ["ana", "bia"],
+        isOwner: true,
+      }),
+    ).toBe(SELF_DELETE_OWNER_MESSAGE);
+    expect(
+      selfDeleteBlocker({ account: bruno, activeAdminIds: [], isOwner: true }),
+    ).toBe(SELF_DELETE_OWNER_MESSAGE);
+  });
+
+  it("keeps the last active administrator (a deactivated one does not count)", () => {
+    expect(
+      selfDeleteBlocker({
+        account: bia,
+        activeAdminIds: ["bia"],
+        isOwner: false,
+      }),
+    ).toBe(SELF_DELETE_LAST_ADMIN_MESSAGE);
+    expect(
+      selfDeleteBlocker({
+        account: bia,
+        activeAdminIds: ["ana", "bia"],
+        isOwner: false,
+      }),
+    ).toBeNull();
+  });
+
+  it("lets a deactivated account through (the session check stops it first)", () => {
+    expect(
+      selfDeleteBlocker({ account: carla, activeAdminIds: [], isOwner: false }),
+    ).toBeNull();
   });
 });

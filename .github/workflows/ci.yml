@@ -39,9 +39,10 @@ jobs:
       - run: npm ci
 
       # Só dependências de produção e só alto ou crítico: uma vulnerabilidade
-      # nova que chega ao servidor falha o PR (docs/04-seguranca.md).
+      # nova que chega ao servidor falha o PR (docs/04-seguranca.md). Exceções,
+      # com motivo, em scripts/audit-prod.mjs.
       - name: Auditoria de dependências
-        run: npm audit --omit=dev --audit-level=high
+        run: node scripts/audit-prod.mjs
 
       - name: Lint (Biome)
         run: npm run lint
