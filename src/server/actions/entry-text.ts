@@ -4,7 +4,8 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 import { getUserContext } from "@/server/domain/context";
 import { interpretEntryText, TEXT_ENTRY_OFF } from "@/server/domain/entry-text";
-import { flaggedAction } from "@/server/safe-action";
+import { ActionError, flaggedAction } from "@/server/safe-action";
+import { limitUsage } from "@/server/security/limits";
 
 /**
  * Reads the phrase of the "Nova transação" text field (flag
@@ -27,6 +28,11 @@ export const interpretEntryTextAction = flaggedAction(
     }),
   )
   .action(async ({ parsedInput, ctx: { user } }) => {
+    if (!(await limitUsage("entryText", user.id)).ok) {
+      throw new ActionError(
+        "Muitos pedidos seguidos. Espere um minuto e tente de novo.",
+      );
+    }
     const ctx = await getUserContext(user.id);
     const result = await interpretEntryText(ctx, parsedInput);
     if (result.tagsChanged) refresh();

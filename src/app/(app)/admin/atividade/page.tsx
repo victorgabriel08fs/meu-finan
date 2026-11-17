@@ -14,7 +14,7 @@ const CURSOR =
 
 /**
  * Administração › Atividade (doc 02 §6.17); 404 for anyone but an
- * administrator. `?antes=<id>` pages back from that entry (ids are
+ * administrator, the passkey confirmation for an unconfirmed session. `?antes=<id>` pages back from that entry (ids are
  * time-ordered).
  */
 export default function AtividadePage({
@@ -32,7 +32,7 @@ async function Activity({
 }: {
   searchParams: PageProps<"/admin/atividade">["searchParams"];
 }) {
-  const { id: viewerId } = await requireAdmin();
+  const { id: viewerId } = await requireAdmin("/admin/atividade");
   const params = await searchParams;
   const before =
     typeof params.antes === "string" && CURSOR.test(params.antes)

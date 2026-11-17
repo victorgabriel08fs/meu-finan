@@ -33,6 +33,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       DATABASE_URL: "pglite:.data/pglite",
+      // The invite in admin.spec.ts must not depend on the internet.
+      PASSWORD_LEAK_CHECK: "off",
       BETTER_AUTH_URL: `http://localhost:${PORT}`,
       // A fresh pair per run: Ajustes › Notificações needs the keys to offer
       // its switch. Nothing is delivered (no real push service is reached).

@@ -1,9 +1,11 @@
 // Fixed-window attempt limiter for Server Actions that run outside Better Auth's
 // own limiter (first access, recovery). Shares Better Auth's rate_limit table
 // with a distinct key prefix, so no Redis is needed.
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, type Executor } from "@/server/db/client";
 import { rateLimit } from "@/server/db/schema";
+
+const KEY_PREFIX = "meu-finan:";
 
 export type ThrottleRule = { windowSeconds: number; max: number };
 export type ThrottleResult =
@@ -28,7 +30,7 @@ export async function throttle(
     .insert(rateLimit)
     .values({
       id: crypto.randomUUID(),
-      key: `meu-finan:${key}`,
+      key: `${KEY_PREFIX}${key}`,
       count: 1,
       lastRequest: now,
     })
@@ -49,4 +51,14 @@ export async function throttle(
     ok: false,
     retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
   };
+}
+
+/** Forgets the attempts counted for `key` (e.g. after a successful sign-in). */
+export async function clearThrottle(
+  key: string,
+  options: { executor?: Executor } = {},
+): Promise<void> {
+  await (options.executor ?? db)
+    .delete(rateLimit)
+    .where(eq(rateLimit.key, `${KEY_PREFIX}${key}`));
 }

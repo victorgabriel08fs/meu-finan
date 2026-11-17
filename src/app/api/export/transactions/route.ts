@@ -4,6 +4,7 @@ import { transactionsCsv } from "@/lib/import/export";
 import { getSession } from "@/server/dal";
 import { getUserContext } from "@/server/domain/context";
 import { listExportRows } from "@/server/domain/imports";
+import { limitUsage } from "@/server/security/limits";
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -38,6 +39,17 @@ export async function GET(request: NextRequest): Promise<Response> {
   const end = dateParam(params.get("fim"));
   if (start === null || end === null || (start && end && start > end)) {
     return failure(400, "BAD_REQUEST", "Período inválido.");
+  }
+
+  const limit = await limitUsage("exportCsv", session.user.id);
+  if (!limit.ok) {
+    const response = failure(
+      429,
+      "RATE_LIMITED",
+      "Muitas exportações seguidas. Espere alguns minutos e tente de novo.",
+    );
+    response.headers.set("Retry-After", String(limit.retryAfterSeconds));
+    return response;
   }
 
   try {

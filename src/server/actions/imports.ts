@@ -18,12 +18,16 @@ import {
   undoImport,
 } from "@/server/domain/imports";
 import { ActionError, flaggedAction } from "@/server/safe-action";
+import { limitUsage } from "@/server/security/limits";
 import { idSchema, isoDate } from "./schemas";
 
 /**
  * Every step of "Importar extrato" sits behind the importar_extrato flag
  * (doc 01 §11.10): with it off, the server refuses even if the UI is stale.
  */
+const TOO_MANY_IMPORTS =
+  "Muitas importações seguidas. Espere alguns minutos e tente de novo.";
+
 const importAction = flaggedAction(
   "importar_extrato",
   "A importação de extratos está desativada no momento.",
@@ -83,6 +87,9 @@ function parseOptions(text: string | null): StatementOptions {
 export const analyzeImportAction = importAction
   .inputSchema(z.instanceof(FormData, { error: "Envio inválido." }))
   .action(async ({ parsedInput: form, ctx: { user } }) => {
+    if (!(await limitUsage("importAnalyze", user.id)).ok) {
+      throw new ActionError(TOO_MANY_IMPORTS);
+    }
     const fields = analyzeFields.safeParse({
       accountId: form.get("accountId"),
       file: form.get("file"),
@@ -165,6 +172,9 @@ export const confirmImportAction = importAction
     }),
   )
   .action(async ({ parsedInput, ctx: { user } }) => {
+    if (!(await limitUsage("importConfirm", user.id)).ok) {
+      throw new ActionError(TOO_MANY_IMPORTS);
+    }
     const result = await confirmImport(
       await getUserContext(user.id),
       parsedInput,
