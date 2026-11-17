@@ -14,7 +14,12 @@ import { admin } from "better-auth/plugins/admin";
 import { defaultAc } from "better-auth/plugins/admin/access";
 import { count } from "drizzle-orm";
 import { ADMIN_ROLE } from "@/lib/admin/roles";
+import { stampPasskeySession } from "@/lib/admin/second-factor";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import {
+  guardPasskeyManagement,
+  revokeReplacedSession,
+} from "@/server/auth-second-factor";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { authOrigins, readServerEnv } from "@/server/env";
@@ -110,7 +115,9 @@ export const auth = betterAuth({
       rateLimit: schema.rateLimit,
     },
   }),
-  disabledPaths: ADMIN_HTTP_PATHS,
+  // Nobody changes session fields through the API: passkeyVerifiedAt is set
+  // only by the passkey sign-in (databaseHooks below).
+  disabledPaths: [...ADMIN_HTTP_PATHS, "/update-session"],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -126,6 +133,10 @@ export const auth = betterAuth({
     // ban on the user row), so revoking a session, deactivating an account or
     // removing an administrator takes effect on the next request.
     cookieCache: { enabled: false },
+    // Set when the session is opened with a passkey: Administração needs it.
+    additionalFields: {
+      passkeyVerifiedAt: { type: "date", required: false, input: false },
+    },
   },
   rateLimit: {
     enabled: true,
@@ -148,6 +159,7 @@ export const auth = betterAuth({
     // Better Auth's haveIBeenPwned plugin is not used (fails closed, covers
     // only its own endpoints): see leaked-passwords.ts.
     before: createAuthMiddleware(async (ctx) => {
+      await guardPasskeyManagement(ctx);
       if (ctx.path === "/sign-in/email") {
         return countEmailSignIn(ctx.body?.email);
       }
@@ -169,9 +181,17 @@ export const auth = betterAuth({
       if (ctx.path === "/sign-in/email") {
         await settleEmailSignIn(ctx.body?.email, ctx.context.returned);
       }
+      await revokeReplacedSession(ctx);
     }),
   },
   databaseHooks: {
+    session: {
+      create: {
+        // Stamps the session born from a passkey sign-in (doc 01 §11.9). No
+        // queries: it may run inside a transaction.
+        before: async (_session, context) => stampPasskeySession(context?.path),
+      },
+    },
     user: {
       create: {
         // Layer 2, for every path that could create a user through Better

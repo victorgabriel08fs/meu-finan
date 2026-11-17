@@ -71,7 +71,7 @@ Entre com **demo@meu-finan.local** e a senha **meu-finan-demo** (Ana, a administ
 2. No `.env.local`, troque `BETTER_AUTH_URL` por `http://192.168.0.10:3000` e reinicie o `npm run dev`. O login confere a origem, então use esse endereço também no computador enquanto ele estiver assim.
 3. No celular, abra `http://192.168.0.10:3000` e entre com a senha. Se o Windows perguntar, libere o Node.js no firewall para redes privadas.
 
-> Passkeys funcionam em `localhost` e no deploy (HTTPS). Pelo IP da rede o navegador não libera WebAuthn sem HTTPS: use a senha.
+> Passkeys funcionam em `localhost` e no deploy (HTTPS). Pelo IP da rede o navegador não libera WebAuthn sem HTTPS: use a senha. Sem passkey, uma conta de administrador não abre a Administração (veja abaixo); no desenvolvimento local, use `localhost` e, sem aparelho com passkey, o autenticador virtual do Chrome (DevTools › Mais ferramentas › WebAuthn). No demo, a Ana (administradora) entra com a senha e, ao abrir a Administração, cadastra a passkey.
 
 ## Publicar (Vercel + Neon)
 
@@ -120,6 +120,8 @@ Em **Ajustes › Administração** (ou "Administração" na barra lateral, no co
 - **Desativa e reativa** (desativar encerra as sessões, invalida o link aberto e impede o login; os dados ficam), **encerra sessões**, **muda o papel** e **exclui a conta** com todos os dados (é preciso digitar o e-mail).
 - Vê a **Atividade**: quem fez o quê, sobre quem e quando.
 
+**Administrar exige passkey.** Uma senha vazada de administrador não basta: a Administração e as ações dela só abrem numa sessão iniciada (ou confirmada) com passkey. Quem entrou com a senha vê em Ajustes › Administração, no lugar das contagens, "Cadastre uma passkey para abrir" (sem passkey) ou "Confirme com sua passkey para abrir" (com passkey); `/admin/*` leva à tela `/ajustes/seguranca/admin`, e quem não é administrador continua recebendo 404. Confirmar com a passkey abre uma sessão nova no aparelho e encerra a de senha. Enquanto a sessão for de senha, um administrador que já tem passkey não cadastra nem remove passkeys (senão quem tem a senha cadastraria a própria passkey). A confirmação vale pela sessão (30 dias deslizantes). Se o administrador perde o aparelho com a passkey, outro administrador gera um link de redefinição com "Remover todas as passkeys"; para o dono, a saída é a recuperação de emergência.
+
 O painel não mostra as finanças de ninguém e não há personificação. Um link de redefinição abre a conta para a qual foi gerado, por isso a Atividade registra quem o gerou e quando foi usado. A conta do dono (`OWNER_EMAIL` ou, sem ele, a do primeiro acesso) não pode ser excluída nem redefinida pelo painel: ela volta pela recuperação de emergência (seção seguinte). Ninguém se desativa, se rebaixa ou se exclui pelo painel, e sempre sobra um administrador ativo. Quem não é administrador vê a página 404 em `/admin`.
 
 ## Recuperação de emergência
@@ -159,6 +161,7 @@ Se o app passar a abrir em outro endereço (domínio novo na Vercel, por exemplo
 1. Troque `BETTER_AUTH_URL` pelo endereço novo (com `https://`, sem barra no fim) e faça um novo deploy.
 2. Entre com e-mail e senha: as passkeys antigas ficam presas ao domínio antigo e não valem no novo.
 3. Cadastre uma passkey nova em Ajustes › Segurança.
+4. **Administradores**: as passkeys antigas continuam cadastradas, então a sessão de senha não consegue cadastrar outra nem confirmar (o app pede uma passkey que já vale). O dono usa a recuperação de emergência (`/recuperar`) com "Remover todas as passkeys"; os outros administradores recebem de outro administrador um link de redefinição com a mesma opção. Depois, cadastre a passkey nova e confirme para abrir a Administração.
 
 Para o endereço antigo continuar entrando, deixe-o em `BETTER_AUTH_TRUSTED_ORIGINS` (separados por vírgula, sem espaços). `PASSKEY_RP_ID` só é preciso se o domínio das passkeys for diferente do de `BETTER_AUTH_URL`. Se `/recuperar` ou `/primeiro-acesso` responderem 404, confira se o token tem 32 caracteres ou mais.
 
@@ -228,7 +231,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 - **Login mais duro**: além do limite por endereço, há um limite por e-mail (10 tentativas em 15 min; a passkey não é afetada). Senhas que aparecem em vazamentos (Have I Been Pwned: só 5 caracteres do hash saem do servidor) são recusadas ao criar ou trocar a senha. `PASSWORD_LEAK_CHECK=off` desliga a checagem (testes e desenvolvimento sem internet).
 - **Cada conta só vê o que é dela**: toda consulta é filtrada pelo usuário da sessão, e o id de tudo que chega do navegador tem a posse conferida.
 - **Exceção do compartilhamento (ADR-13)**: os dados de um grupo moram só nas tabelas compartilhadas (`share_*` e `shared_*`), lidas só por membros ativos do grupo e alteradas só por uma ação explícita de um membro. As tabelas privadas continuam lidas só pela dona, e ninguém escreve nas tabelas privadas de outra pessoa. Quem não é membro recebe "Grupo não encontrado.", igual a um id que não existe. O convite não revela se um e-mail tem conta (resposta neutra, 20 e-mails por dia por pessoa e 3 por e-mail em 30 dias); até aceitar, quem convida vê só o e-mail que digitou. A auditoria registra convite, aceite, recusa, saída e remoção, sem valores nem o nome do grupo.
-- **Administração**: `requireAdmin()` nas páginas e `adminAction` nas Server Actions releem o papel no banco a cada requisição; as regras (ninguém age sobre a própria conta, sempre sobra um administrador ativo, a conta do dono não é excluída nem redefinida) e a auditoria rodam na mesma transação da mudança, com as contas travadas. As rotas HTTP do plugin admin do Better Auth ficam desligadas, e não existe personificação.
+- **Administração**: `requireAdmin()` nas páginas e `adminAction` nas Server Actions releem o papel no banco a cada requisição e exigem uma sessão aberta ou confirmada com passkey (coluna `session.passkey_verified_at`, carimbada só por `/passkey/verify-authentication`; `/update-session` fica desligado); as regras (ninguém age sobre a própria conta, sempre sobra um administrador ativo, a conta do dono não é excluída nem redefinida) e a auditoria rodam na mesma transação da mudança, com as contas travadas. As rotas HTTP do plugin admin do Better Auth ficam desligadas, e não existe personificação.
 - **Convites e links de redefinição**: token em duas partes (seletor + verificador de 32 bytes), só o SHA-256 do verificador no banco, comparação em tempo constante, uso único, 72 h, limite de tentativas por endereço na página e na action; o token nunca vai para log nem para a auditoria.
 - **Limite por pessoa nas ações caras**: analisar extrato (20 a cada 10 min), confirmar importação (10 a cada 10 min), lançamento por texto (30 por minuto) e exportar CSV (10 a cada 10 min; a rota responde 429 com `Retry-After`). Regras em `src/server/security/limits.ts`.
 - **Cabeçalhos** ([`next.config.ts`](next.config.ts)): HSTS, Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy` e `X-Robots-Tag: noindex, nofollow`. O `robots.txt` bloqueia todos os robôs.
@@ -253,7 +256,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://seu-app/api/cron/daily
 | `npm run test:watch` | Testes em modo observação |
 | `npm run test:coverage` | Testes com cobertura |
 | `npm run check` | Lint, tipos e testes (rode antes de abrir um pull request) |
-| `npm run test:e2e` | Recria os dados de demonstração (com as dicas desligadas), faz o build e roda o Playwright num celular emulado; `e2e/tips.spec.ts` liga as dicas, testa e desliga de novo; o setup salva também a sessão do Bruno (`e2e/.auth/bruno.json`) para as telas em que duas pessoas agem; `e2e/axe.ts` (`expectNoA11yViolations`) roda o axe-core com as regras WCAG 2.0, 2.1 e 2.2 A e AA |
+| `npm run test:e2e` | Recria os dados de demonstração (com as dicas desligadas), faz o build e roda o Playwright num celular emulado; `e2e/tips.spec.ts` liga as dicas, testa e desliga de novo; o setup cadastra uma passkey para a Ana num autenticador virtual (CDP) e confirma com ela, salvando a sessão confirmada (`e2e/.auth/owner.json`) e a credencial (`e2e/.auth/owner-passkey.json`, usada por `e2e/admin-passkey.spec.ts`), e salva também a sessão do Bruno (`e2e/.auth/bruno.json`) para as telas em que duas pessoas agem; `e2e/axe.ts` (`expectNoA11yViolations`) roda o axe-core com as regras WCAG 2.0, 2.1 e 2.2 A e AA |
 | `npm run db:generate` | Gera uma migração SQL a partir do schema Drizzle |
 | `npm run db:migrate` | Aplica as migrações pendentes |
 | `npm run db:studio` | Abre o Drizzle Studio |

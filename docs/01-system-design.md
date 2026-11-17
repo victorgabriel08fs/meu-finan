@@ -54,7 +54,7 @@
 
 | ID | Módulo | Requisito |
 |---|---|---|
-| RF-01 | Acesso | Configuração única da primeira conta, a administradora (`/primeiro-acesso`); demais contas por convite (`/convite/[token]`); login por passkey e por e-mail + senha forte; sessões revogáveis; recuperação de emergência do dono (`/recuperar`); 2FA TOTP na F1. Sem cadastro público (§11) |
+| RF-01 | Acesso | Configuração única da primeira conta, a administradora (`/primeiro-acesso`); demais contas por convite (`/convite/[token]`); login por passkey e por e-mail + senha forte; passkey obrigatória para administrar (§11.9); sessões revogáveis; recuperação de emergência do dono (`/recuperar`); 2FA TOTP na F1 para as demais contas. Sem cadastro público (§11) |
 | RF-02 | Onboarding | Criar primeira conta com saldo atual, escolher categorias sugeridas, definir dia de início do mês financeiro |
 | RF-03 | Contas | CRUD de contas (corrente, poupança, dinheiro, investimento, cartão de crédito, outra); arquivar; ajustar saldo (gera lançamento de ajuste); ordenar |
 | RF-04 | Lançamentos | Receita, despesa e transferência; status pago/pendente; data; categoria/subcategoria; tags; notas; anexo (comprovante) |
@@ -1217,13 +1217,15 @@ Configuração única da conta do dono — a **primeira administradora** —, di
 - **Senhas vazadas**: ao criar ou trocar a senha (primeiro acesso, convite, redefinição, `/recuperar` e Ajustes › Segurança), a senha é conferida no Have I Been Pwned por k-anonimato (§10, integrações) e, se aparecer, é recusada (400 `PASSWORD_COMPROMISED`). Módulo próprio em vez do plugin `haveIBeenPwned` do Better Auth, que falha fechada (sem o serviço ninguém cria senha), só cobre endpoints do Better Auth (o convite e a recuperação fazem o hash por conta própria) e não tem tempo limite. O login não consulta o serviço.
 - **Sem login social e sem link mágico**: cada método a mais é mais uma porta, e um provedor social poderia criar usuários. Endpoints do Better Auth que o app não usa ficam desligados (`disabledPaths`).
 - **Retorno seguro**: `?voltar=` só aceita caminho interno (começa com `/` e não com `//`), para não virar redirecionamento aberto.
-- **2FA TOTP** (plugin `twoFactor`, com códigos de backup) é o próximo passo de endurecimento, na F1.
+- **Administradores** precisam de uma sessão aberta com passkey (§11.9).
+- **2FA TOTP** (plugin `twoFactor`, com códigos de backup) para as demais contas é o próximo passo de endurecimento, na F1.
 
 ### 11.3 Sessões
 
 - Sessão em banco (Better Auth), cookie `HttpOnly`, `Secure`, `SameSite=Lax`.
 - **30 dias, deslizante**: `expiresIn` de 30 dias, renovada com o uso (`updateAge`); sem uso por 30 dias, expira.
 - **Revogável**: Ajustes › Segurança lista as sessões (aparelho, último uso) e encerra uma, as outras ou todas; sair encerra a sessão no servidor, não só no navegador. Se o cookie cache for usado, fica curto (minutos): é o atraso máximo para uma revogação valer.
+- **Sessão confirmada com passkey**: `session.passkey_verified_at` (campo adicional, `input: false`) é carimbado pelo hook `databaseHooks.session.create.before` só quando a sessão nasce em `/passkey/verify-authentication` (login por passkey ou reconfirmação); `/update-session` fica desligado. Reconfirmar abre uma sessão nova e encerra a de senha anterior do mesmo aparelho (hook `after`). O carimbo vive enquanto a sessão viver.
 - **Sessão recente para operações sensíveis**: trocar a senha, criar ou remover passkey, encerrar sessões, exportar ou apagar todos os dados exigem uma sessão criada há pouco (`session.freshAge`); se não for, o app pede para entrar de novo (com passkey, um toque).
 
 ### 11.4 Recuperação de emergência (`/recuperar`)
@@ -1233,7 +1235,7 @@ Para quando o dono perde o acesso (sem passkey e sem senha). A conta do dono nã
 1. Definir `RECOVERY_TOKEN` (aleatório e longo) nas variáveis de ambiente de produção da Vercel e fazer redeploy — variáveis novas só valem para deploys novos. Sem a variável, ou com menos de 32 caracteres, `/recuperar` responde 404 (o proxy e as páginas falham fechado; o motivo vai só para o log).
 2. Em `/recuperar`, informar o token e uma nova senha (≥ 12 caracteres, fora de vazamentos conhecidos, com confirmação); opcionalmente, marcar "Remover todas as passkeys" (aparelho perdido). Não há campo de e-mail: o servidor escolhe a conta (a do `OWNER_EMAIL`), então o token sozinho redefine a senha do dono.
 3. O servidor redefine a senha, **revoga todas as sessões** e, se marcado, apaga as passkeys. Limitador estrito, token comparado em tempo constante, cada uso registrado no log.
-4. Remover `RECOVERY_TOKEN` e fazer redeploy. Entrar com a nova senha e criar uma passkey de novo.
+4. Remover `RECOVERY_TOKEN` e fazer redeploy. Entrar com a nova senha e criar uma passkey de novo; para abrir a Administração, cadastrar a passkey e confirmar com ela (§11.9).
 
 ### 11.5 Verificação em cada camada
 
@@ -1242,8 +1244,8 @@ Para quando o dono perde o acesso (sem passkey e sem senha). A conta do dono nã
 | `proxy.ts` | sem cookie de sessão → redireciona para `/entrar?voltar=…`; em `/`, sem cookie mostra a homepage e com cookie vai para `/inicio` | não: só olha a presença do cookie |
 | Páginas e layouts (RSC) | `requireUser()` do DAL, dentro de `<Suspense>` (Cache Components) | sim |
 | Server Actions | `authAction` chama `requireUser()` antes de validar a entrada | sim |
-| Páginas da administração | `requireAdmin()` dentro de `<Suspense>`, antes de ler qualquer dado: quem não é administrador recebe a página 404 | sim |
-| Actions da administração | `adminAction` relê o papel no banco a cada chamada; o domínio confere de novo dentro da transação que faz a mudança | sim |
+| Páginas da administração | `requireAdmin(rota)` dentro de `<Suspense>`, antes de ler qualquer dado: quem não é administrador recebe a página 404; administrador sem sessão confirmada com passkey vai para `/ajustes/seguranca/admin` | sim |
+| Actions da administração | `adminAction` relê o papel no banco a cada chamada e exige a sessão confirmada com passkey (`getAdmin()`); o domínio confere de novo dentro da transação que faz a mudança | sim |
 | Funcionalidade atrás de flag | `isFlagEnabled` na página, `flaggedAction` nas actions (§11.10) | sim |
 | Route Handlers | `getSession()` no início; sem sessão → 401 `UNAUTHORIZED` | sim |
 | Cron | `Authorization: Bearer ${CRON_SECRET}`; sem a variável, 401 | sim |
@@ -1336,6 +1338,7 @@ Preservar os dados também é não perdê-los.
 
 Papéis pelo **plugin admin do Better Auth**: `administrador` e `usuário` (coluna `role`), e a desativação (`banned`): o plugin recusa criar sessão para conta desativada, com senha ou passkey. Os papéis do plugin não incluem personificação nem definir senha ou e-mail de outra pessoa, e **as rotas HTTP do plugin ficam desligadas** (`disabledPaths`): as mudanças passam só pelas Server Actions do painel, que aplicam as regras abaixo e gravam a auditoria na mesma transação.
 
+- **Segundo fator**: o papel não basta. `/admin/*` e as `adminAction` exigem sessão aberta ou confirmada com passkey (§11.3). Administrador sem carimbo vai para `/ajustes/seguranca/admin`: sem passkey cadastrada, cadastra a primeira (confiança no primeiro uso, inevitável sem outro fator); com passkey, confirma com ela. Sem carimbo e com passkey, não cadastra nem remove passkeys (`PASSKEY_CONFIRMATION_REQUIRED`), senão quem tem a senha cadastraria a própria passkey ou apagaria as do dono. Sem exigir verificação do usuário (UV) da passkey e sem janela de recência. Perdeu o aparelho: outro administrador gera link de redefinição com "Remover todas as passkeys"; o dono usa a recuperação (§11.4). Quem é promovido a administrador usa a sessão de senha na confirmação; uma passkey cadastrada antes por quem tinha a senha dele não é detectável (risco residual).
 - **Convidar pessoa**: nome, e-mail e papel. A conta nasce sem senha, com as finanças vazias e isoladas, e o administrador recebe um **link de convite** para copiar ou compartilhar (`navigator.share`). O link aparece uma única vez: no banco fica só o hash.
 - **Links de acesso** (`/convite/[token]`): `<seletor>.<verificador>` — o seletor (12 bytes) encontra a linha e o verificador (32 bytes aleatórios) é comparado em tempo constante com o SHA-256 guardado. Uso único, validade de 72 h, no máximo um link aberto por pessoa (um novo invalida o anterior). Página e action públicas com limite de tentativas por endereço; token desconhecido ou adulterado dá 404 sem dizer por quê.
 - **Aceitar**: a pessoa define a senha (12+ caracteres, fora de vazamentos conhecidos: a checagem vem antes de usar o link, que continua valendo se a senha for recusada), entra na hora, o app oferece criar uma passkey neste aparelho (como no §11.1) e em seguida vem o onboarding; `ensureOwnerDefaults` cria as preferências e as categorias padrão. Quem já está conectado no aparelho precisa sair antes, para não trocar de conta sem perceber.

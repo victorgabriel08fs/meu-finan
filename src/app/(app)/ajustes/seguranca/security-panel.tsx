@@ -4,12 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
+import { PasskeyConfirmButton } from "@/components/admin/admin-passkey-gate";
 import { forgetDevice } from "@/components/push/device";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  PASSKEY_CONFIRMATION_MESSAGE,
+  PASSKEY_CONFIRMATION_REQUIRED,
+} from "@/lib/admin/second-factor";
 import { authClient } from "@/lib/auth-client";
 import {
   LEAKED_PASSWORD_MESSAGE,
@@ -48,6 +53,10 @@ type AuthError = { status?: number; code?: string; message?: string } | null;
 /** Sensitive operations need a recent sign-in (Better Auth freshAge). */
 function errorMessage(error: AuthError, fallback: string): string {
   if (!error) return fallback;
+  // An administrator who signed in with a password (doc 01 §11.9).
+  if (error.code === PASSKEY_CONFIRMATION_REQUIRED) {
+    return PASSKEY_CONFIRMATION_MESSAGE;
+  }
   if (error.code === PASSWORD_COMPROMISED) return LEAKED_PASSWORD_MESSAGE;
   if (error.code === "SESSION_NOT_FRESH" || error.status === 403) {
     return "Por segurança, saia e entre de novo para fazer isso.";
@@ -62,12 +71,18 @@ export function SecurityPanel({
   sessions,
   firstAccess,
   accessReset = false,
+  passkeyConfirmation = null,
 }: {
   passkeys: PasskeyItem[];
   sessions: SessionItem[];
   firstAccess: boolean;
   /** Arrived from a reset link (/convite): the new password is set. */
   accessReset?: boolean;
+  /**
+   * The user id of an administrator who signed in with a password and has a
+   * passkey: they confirm with it before touching passkeys or Administração.
+   */
+  passkeyConfirmation?: string | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -125,6 +140,19 @@ export function SecurityPanel({
             ? "Cadastre uma passkey neste aparelho para entrar sem digitar a senha."
             : "Confira abaixo as passkeys que continuam valendo."}
         </output>
+      ) : null}
+
+      {passkeyConfirmation ? (
+        <div className="flex flex-col gap-4 rounded-card bg-primary-soft px-5 py-4 text-on-primary-soft">
+          <p className="text-[15px] leading-[22px]">
+            Você entrou com senha. Para mexer nas passkeys e abrir a
+            Administração, confirme com uma passkey que você já tem.
+          </p>
+          <PasskeyConfirmButton
+            userId={passkeyConfirmation}
+            className="w-full"
+          />
+        </div>
       ) : null}
 
       <PasskeysCard passkeys={passkeys} busy={busy} run={run} />

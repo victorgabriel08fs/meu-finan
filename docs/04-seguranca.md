@@ -21,7 +21,7 @@ O que falta para o beta é menos código vulnerável e mais **operação**: back
 | Alto | A-1 Dependência de produção com vulnerabilidade alta | **Corrigido** neste PR |
 | Alto | A-2 Sem backup fora da Neon | Tarefa S1 (antes do beta) |
 | Alto | A-3 LGPD: sem termos, política, exportação e exclusão pelo titular | Tarefas S2 e S3 (antes do beta) |
-| Médio | M-1 Administrador sem segundo fator obrigatório | Tarefa S4 |
+| Médio | M-1 Administrador sem segundo fator obrigatório | **Corrigido** (tarefa S4, versão 0.9.0) |
 | Médio | M-2 Limite de login só por IP, sem checagem de senha vazada | **Corrigido** (tarefa S5); resta a nota do proxy |
 | Médio | M-3 Previews com cópia dos dados de produção | Tarefa S6 (verificar no painel) |
 | Médio | M-4 Ações caras sem limite por pessoa | **Corrigido** (tarefa S7) |
@@ -67,6 +67,8 @@ O doc 01 §11.8 apoia-se na exceção do uso particular (art. 4º, I). Com pesso
 ### M-1 Administrador sem segundo fator obrigatório
 
 O administrador gera links de redefinição e convites. Uma senha de administrador vazada abre a conta de qualquer pessoa (a vítima percebe, mas depois). A passkey existe, porém é opcional. Exigir passkey (ou TOTP do plugin `twoFactor` do Better Auth) para o papel `admin` fecha isso.
+
+**Corrigido na tarefa S4 (versão 0.9.0).** A Administração e as `adminAction` exigem uma sessão aberta ou confirmada com passkey: `session.passkey_verified_at` é carimbado só em `/passkey/verify-authentication` (doc 01 §11.3 e §11.9). Administrador que já tem passkey não cadastra nem remove passkeys com sessão de senha. Riscos que ficam: (1) o primeiro cadastro de passkey de um administrador que ainda não tem nenhuma é confiança no primeiro uso, feito com a sessão de senha; (2) quem é promovido a administrador pode já ter uma passkey cadastrada por quem tinha a senha dele; (3) a confirmação vale pela sessão (30 dias deslizantes), sem janela de recência curta; (4) a passkey não exige verificação do usuário (UV).
 
 ### M-2 Limite de login só por IP — corrigido (S5)
 

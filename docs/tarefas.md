@@ -13,7 +13,7 @@ Da auditoria de 16/11/2026 (`docs/04-seguranca.md`), para o beta em dezembro de 
 - [ ] **S1 Backup fora da Neon** (A-2): workflow semanal com `pg_dump` (papel só de leitura) criptografado com `age`, guardado fora da Neon (doc 01 §11.7); conferir a janela de restauração do plano; testar uma restauração num branch descartável.
 - [ ] **S2 Termos de uso e política de privacidade** (A-3): páginas públicas, aceite no convite e no primeiro acesso (versão aceita guardada), canal do titular; revisar doc 01 §11.8, que hoje se apoia na exceção de uso particular.
 - [ ] **S3 Exportar meus dados e excluir minha conta** (A-3): ZIP com JSON completo + CSV (doc 01 §11.8) e exclusão pela própria pessoa, ambos com sessão recente; a exclusão reusa a cascata do painel e sai dos grupos (ADR-13).
-- [ ] **S4 Segundo fator para administradores** (M-1): passkey obrigatória para o papel `admin` antes de abrir `/admin` e as `adminAction`.
+- [x] ~~**S4 Segundo fator para administradores** (M-1)~~: entregue em 17/11/2026 (ver "Entregue"). Fica para decidir: janela de recência curta para a confirmação (hoje vale pela sessão) e TOTP.
 - [x] ~~**S5 Login mais duro** (M-2)~~: entregue em 17/11/2026. Limite de 10 tentativas por e-mail em 15 min (a passkey fica de fora) e recusa de senhas vazadas (Have I Been Pwned, k-anonimato, falha aberta, `PASSWORD_LEAK_CHECK`). O plugin `haveIBeenPwned` do Better Auth não foi registrado (falha fechada, só cobre endpoints do Better Auth e não tem tempo limite): módulo próprio em `src/server/security/leaked-passwords.ts`. Fica para depois: limpeza periódica das linhas antigas de `rate_limit` (uma por e-mail tentado) e, se um proxy (Cloudflare) for posto na frente, usar o cabeçalho de IP dele (`docs/04-seguranca.md`).
 - [ ] **S6 Previews** (M-3): confirmar Vercel Authentication em todos os previews; trocar a cópia de produção por um banco de demonstração.
 - [x] **S7 Limites por pessoa** (M-4): `throttle` em importar extrato, lançamento por texto e exportar CSV.
@@ -208,6 +208,16 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Passkey obrigatória para administradores (versão 0.9.0) — 17/11/2026
+
+Tarefa S4 (M-1 da auditoria). Migração `0017_session_passkey_verified`; sem flag nem variável nova.
+
+- [x] **Sessão**: `session.passkey_verified_at`, carimbado só por `/passkey/verify-authentication`; `/update-session` desligado; reconfirmar encerra a sessão de senha anterior do aparelho.
+- [x] **Servidor**: `requireAdmin(rota)` e `adminAction` (`getAdmin()`) exigem o carimbo; administrador com passkey e sessão de senha não cadastra nem remove passkeys.
+- [x] **Telas**: `/ajustes/seguranca/admin` (cadastrar ou confirmar), linha em Ajustes › Administração e aviso em Segurança. Quem não é administrador continua com 404.
+- [x] Testes: unidade (`second-factor.test.ts`), integração (`admin-second-factor.integration.test.ts`) e e2e (`admin-passkey.spec.ts`, com autenticador virtual no `auth.setup.ts`).
+- [x] Docs: README (inclusive Trocar de domínio), doc 01 §11, doc 02 §6.17, `docs/04-seguranca.md`.
 
 ### Login mais duro (versão 0.8.0) — 17/11/2026
 

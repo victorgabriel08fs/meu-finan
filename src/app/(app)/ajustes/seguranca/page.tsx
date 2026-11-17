@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { auth } from "@/server/auth";
-import { getSession, requireUser } from "@/server/dal";
+import { getAdminAccess, getSession, requireUser } from "@/server/dal";
 import { describeDevice } from "./device";
 import {
   type PasskeyItem,
@@ -35,13 +35,14 @@ async function SecurityContent({
 }: {
   searchParams: PageProps<"/ajustes/seguranca">["searchParams"];
 }) {
-  await requireUser();
+  const user = await requireUser();
   const requestHeaders = await headers();
-  const [passkeys, sessions, current, params] = await Promise.all([
+  const [passkeys, sessions, current, params, adminAccess] = await Promise.all([
     auth.api.listPasskeys({ headers: requestHeaders }),
     auth.api.listSessions({ headers: requestHeaders }),
     getSession(),
     searchParams,
+    getAdminAccess(),
   ]);
 
   const passkeyItems: PasskeyItem[] = passkeys.map((item) => ({
@@ -65,6 +66,9 @@ async function SecurityContent({
       sessions={sessionItems}
       firstAccess={params.primeiro === "1"}
       accessReset={params.redefinido === "1"}
+      passkeyConfirmation={
+        adminAccess?.secondFactor === "confirm" ? user.id : null
+      }
     />
   );
 }
