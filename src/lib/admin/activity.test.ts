@@ -210,4 +210,34 @@ describe("describeActivity", () => {
       detail: "Primeiro acesso, como administrador",
     });
   });
+
+  it("describes deleting one's own account and exporting one's data", () => {
+    expect(
+      line({
+        action: "user.self_deleted",
+        actorId: null,
+        actorName: "Bruno Lima",
+        targetUserId: null,
+        targetName: "Bruno Lima",
+        metadata: { role: "user" },
+      }),
+    ).toEqual({
+      kind: "delete",
+      title: "Bruno Lima excluiu a própria conta",
+      detail: "Com todas as finanças",
+    });
+    expect(
+      line({
+        action: "data.exported",
+        actorId: "bruno",
+        actorName: "Bruno Lima",
+        targetUserId: null,
+        targetName: null,
+        targetEmail: null,
+      }),
+    ).toEqual({
+      kind: "other",
+      title: "Bruno Lima exportou os próprios dados",
+    });
+  });
 });

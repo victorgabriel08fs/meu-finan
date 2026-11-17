@@ -337,6 +337,7 @@ describe("novidades feed", () => {
         context: withImport,
       }),
     ).toEqual([
+      "novidade-exportar-e-excluir",
       "novidade-retrospectiva-do-mes",
       "novidade-prumo",
       "novidade-etiquetas",

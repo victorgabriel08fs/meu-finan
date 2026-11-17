@@ -553,6 +553,18 @@ export const TIPS: readonly Tip[] = [
     order: 31,
     icon: "sparkles",
   },
+  {
+    id: "novidade-exportar-e-excluir",
+    kind: "novidade",
+    routes: [],
+    anchor: null,
+    title: "Seus dados, do seu jeito",
+    body: "Em Ajustes › Dados, baixe uma cópia de tudo em um arquivo ZIP ou exclua a sua conta quando quiser.",
+    since: "2026-11-17",
+    order: 32,
+    icon: "sparkles",
+    link: { href: "/ajustes#ajustes-dados", label: "Abrir Ajustes" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

@@ -112,3 +112,37 @@ export function accountActionBlocker(
   }
   return null;
 }
+
+// Deleting one's own account (Ajustes › Dados) -----------------------------------
+
+export const SELF_DELETE_OWNER_MESSAGE =
+  "A conta do dono do app não pode ser excluída.";
+export const SELF_DELETE_LAST_ADMIN_MESSAGE =
+  "Você é o único administrador ativo. Torne outra pessoa administradora antes de excluir a sua conta.";
+
+/**
+ * Why a person may not delete their own account, or null when they may. The
+ * owner's account never goes (/recuperar would have nothing to restore), and
+ * the last active administrator stays (with the rows locked, so two
+ * administrators deleting themselves at once cannot both pass).
+ */
+export function selfDeleteBlocker({
+  account,
+  activeAdminIds,
+  isOwner,
+}: {
+  account: GuardAccount;
+  /** Administrators that are not deactivated, read with the account. */
+  activeAdminIds: readonly string[];
+  isOwner: boolean;
+}): string | null {
+  if (isOwner) return SELF_DELETE_OWNER_MESSAGE;
+  if (
+    account.role === "admin" &&
+    !account.banned &&
+    !activeAdminIds.some((id) => id !== account.id)
+  ) {
+    return SELF_DELETE_LAST_ADMIN_MESSAGE;
+  }
+  return null;
+}

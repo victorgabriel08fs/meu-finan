@@ -193,9 +193,9 @@ export default function PrivacyPage() {
         </ul>
         <p>
           Para pedir, fale conosco <PrivacyContact />. Respondemos em até 15
-          dias. No app, você já corrige seus dados e baixa seus lançamentos em
-          CSV (Ajustes › Dados). Você também pode reclamar à Autoridade Nacional
-          de Proteção de Dados (ANPD), em gov.br/anpd.
+          dias. No app, você já corrige seus dados, baixa uma cópia completa
+          deles e exclui sua conta (Ajustes › Dados). Você também pode reclamar
+          à Autoridade Nacional de Proteção de Dados (ANPD), em gov.br/anpd.
         </p>
       </LegalSection>
 

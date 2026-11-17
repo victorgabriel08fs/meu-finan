@@ -3,7 +3,9 @@
 // financial tables of someone else, except deleting an account with all its
 // data. Every write runs in one transaction that locks the accounts involved
 // (and the administrators), re-checks that the actor is still an active
-// administrator, asks the guards and records the audit entry.
+// administrator, asks the guards and records the audit entry. The person
+// themself can also delete their own account (Ajustes › Dados), under the
+// same lock, except the owner's and the last active administrator's.
 import { generateRandomString } from "better-auth/crypto";
 import {
   and,
@@ -19,7 +21,11 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { type AccountAction, accountActionBlocker } from "@/lib/admin/guards";
+import {
+  type AccountAction,
+  accountActionBlocker,
+  selfDeleteBlocker,
+} from "@/lib/admin/guards";
 import { hasAdminRole, toUserRole, type UserRole } from "@/lib/admin/roles";
 import { type AccountStatus, accountStatus } from "@/lib/admin/status";
 import { db, type Transaction } from "@/server/db/client";
@@ -256,7 +262,32 @@ async function lockAccounts(
   actorId: string,
   targetId: string | null,
 ): Promise<Locked> {
-  const ids = targetId ? [actorId, targetId] : [actorId];
+  const { accounts, activeAdminIds } = await lockRows(
+    tx,
+    targetId ? [actorId, targetId] : [actorId],
+  );
+  const actor = accounts.find((row) => row.id === actorId);
+  if (!actor || actor.banned || !hasAdminRole(actor.role)) {
+    throw new DomainError(NOT_ALLOWED);
+  }
+  return {
+    actor,
+    target: targetId
+      ? (accounts.find((row) => row.id === targetId) ?? null)
+      : null,
+    activeAdminIds,
+  };
+}
+
+/**
+ * Locks the accounts `ids` and every administrator (FOR UPDATE), the same
+ * rows in the same query for every write here, so an administrator and the
+ * person themself acting on one account are serialised.
+ */
+async function lockRows(
+  tx: Transaction,
+  ids: string[],
+): Promise<{ accounts: LockedAccount[]; activeAdminIds: string[] }> {
   const rows = await tx
     .select({
       id: user.id,
@@ -275,15 +306,8 @@ async function lockAccounts(
       banned: row.banned === true,
     }),
   );
-  const actor = accounts.find((row) => row.id === actorId);
-  if (!actor || actor.banned || !hasAdminRole(actor.role)) {
-    throw new DomainError(NOT_ALLOWED);
-  }
   return {
-    actor,
-    target: targetId
-      ? (accounts.find((row) => row.id === targetId) ?? null)
-      : null,
+    accounts,
     activeAdminIds: accounts
       .filter((row) => row.role === "admin" && !row.banned)
       .map((row) => row.id),
@@ -659,5 +683,77 @@ export async function deleteUserAccount(
     await detachDeletedAccount(tx, target.id);
     await tx.delete(user).where(eq(user.id, target.id));
     return { name: target.name, email: target.email };
+  });
+}
+
+// The person themself (Ajustes › Dados) ------------------------------------------
+
+/**
+ * Whether "Excluir minha conta" would be refused, for the screen to explain
+ * before the tap. A plain read: deleteOwnAccount checks again, locked.
+ */
+export async function selfDeleteStatus(
+  userId: string,
+): Promise<{ blocker: string | null }> {
+  const [rows, owner] = await Promise.all([
+    db
+      .select({ id: user.id, role: user.role, banned: user.banned })
+      .from(user)
+      .where(or(eq(user.id, userId), like(user.role, "%admin%"))),
+    recoveryTarget(readServerEnv("OWNER_EMAIL")),
+  ]);
+  const accounts = rows.map((row) => ({
+    id: row.id,
+    role: toUserRole(row.role),
+    banned: row.banned === true,
+  }));
+  const self = accounts.find((row) => row.id === userId);
+  if (!self) return { blocker: NOT_ALLOWED };
+  return {
+    blocker: selfDeleteBlocker({
+      account: self,
+      activeAdminIds: accounts
+        .filter((row) => row.role === "admin" && !row.banned)
+        .map((row) => row.id),
+      isOwner: owner?.id === userId,
+    }),
+  };
+}
+
+/**
+ * "Excluir minha conta": the person's own account and all its data, like
+ * deleteUserAccount (cascade, groups detached, audit entry in the same
+ * transaction), with the e-mail typed as the confirmation. The owner's
+ * account and the last active administrator are refused, with the rows
+ * locked. When attachments exist (Vercel Blob), delete their blobs after the
+ * commit and add them to the data archive; today there are none.
+ */
+export async function deleteOwnAccount(
+  userId: string,
+  confirmEmail: string,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const { accounts, activeAdminIds } = await lockRows(tx, [userId]);
+    const self = accounts.find((row) => row.id === userId);
+    if (!self || self.banned) throw new DomainError(NOT_ALLOWED);
+    const owner = await recoveryTarget(readServerEnv("OWNER_EMAIL"), tx);
+    const blocker = selfDeleteBlocker({
+      account: self,
+      activeAdminIds,
+      isOwner: owner?.id === self.id,
+    });
+    if (blocker) throw new DomainError(blocker);
+    if (normalizeEmail(confirmEmail) !== normalizeEmail(self.email)) {
+      throw new DomainError("Digite o e-mail da sua conta para confirmar.");
+    }
+    await recordAudit(tx, {
+      action: "user.self_deleted",
+      actor: self,
+      target: auditTarget(self),
+      metadata: { role: self.role },
+    });
+    // Groups keep the name and the history (ADR-13); open invites go away.
+    await detachDeletedAccount(tx, self.id);
+    await tx.delete(user).where(eq(user.id, self.id));
   });
 }

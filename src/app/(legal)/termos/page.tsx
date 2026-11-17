@@ -135,8 +135,9 @@ export default function TermsPage() {
       <LegalSection {...topic(7)}>
         <ul>
           <li>
-            Você pode parar de usar o Prumo quando quiser e pedir a exclusão da
-            sua conta e dos seus dados pelo contato no fim desta página.
+            Você pode parar de usar o Prumo quando quiser e excluir sua conta e
+            seus dados em Ajustes › Dados, ou pedir pelo contato no fim desta
+            página.
           </li>
           <li>
             Quem administra o app pode desativar ou excluir uma conta que viole
