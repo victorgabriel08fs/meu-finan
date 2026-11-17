@@ -5,6 +5,8 @@ import { expect, type Page } from "@playwright/test";
 export const EMAIL = "demo@meu-finan.local";
 export const PASSWORD = "meu-finan-demo";
 export const OWNER_STATE = "e2e/.auth/owner.json";
+/** The passkey the setup registers for the demo administrator (CDP format). */
+export const OWNER_PASSKEY = "e2e/.auth/owner-passkey.json";
 
 /** A regular account (not an administrator) with its own data. */
 export const BRUNO_EMAIL = "bruno@meu-finan.local";

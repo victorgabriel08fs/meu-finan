@@ -6,6 +6,7 @@ import {
   FileUp,
   History,
   Info,
+  KeyRound,
   Lightbulb,
   Shapes,
   ShieldCheck,
@@ -26,7 +27,8 @@ import { ThemeLabel } from "@/components/app/theme-switcher";
 import { ExportListItem } from "@/components/imports/export-list-item";
 import { NewsBadge, TipsStateLabel } from "@/components/tips/news";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
-import { requireUser } from "@/server/dal";
+import { adminGatePath } from "@/lib/admin/second-factor";
+import { getAdminAccess, requireUser } from "@/server/dal";
 import { listCategories } from "@/server/domain/categories";
 import { getUserContext } from "@/server/domain/context";
 import { flagsOverview } from "@/server/domain/flag-admin";
@@ -53,7 +55,7 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, tags, theme, tipsOff, flags, admin] =
+  const [ctx, categories, tags, theme, tipsOff, flags, adminAccess] =
     await Promise.all([
       getUserContext(user.id),
       listCategories(user.id),
@@ -61,10 +63,14 @@ async function Settings() {
       getThemePreference(user.id),
       getTipsOff(user.id),
       getFlags(user.id),
-      user.role === "admin"
-        ? Promise.all([usersOverview(), flagsOverview()])
-        : null,
+      getAdminAccess(),
     ]);
+  // The counts only for a session confirmed with a passkey (doc 01 §11.9);
+  // otherwise the section is one row to the confirmation.
+  const admin =
+    adminAccess?.secondFactor === "ok"
+      ? await Promise.all([usersOverview(), flagsOverview()])
+      : null;
   const expenses = categories.filter(
     (category) => category.kind === "expense",
   ).length;
@@ -212,6 +218,24 @@ async function Settings() {
           <ExportListItem />
         </InsetList>
       </section>
+
+      {adminAccess && !admin ? (
+        <section aria-labelledby="ajustes-administracao">
+          <SectionHeader id="ajustes-administracao" title="Administração" />
+          <InsetList aria-labelledby="ajustes-administracao">
+            <InsetListItem
+              icon={<KeyRound />}
+              label="Administração"
+              description={
+                adminAccess.secondFactor === "register"
+                  ? "Cadastre uma passkey para abrir"
+                  : "Confirme com sua passkey para abrir"
+              }
+              href={adminGatePath("/admin/usuarios")}
+            />
+          </InsetList>
+        </section>
+      ) : null}
 
       {admin ? (
         <section aria-labelledby="ajustes-administracao">

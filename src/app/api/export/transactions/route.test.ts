@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   getUserContext: vi.fn(),
   listExportRows: vi.fn(),
+  limitUsage: vi.fn(),
 }));
+
+vi.mock("@/server/security/limits", () => ({ limitUsage: mocks.limitUsage }));
 
 vi.mock("@/server/dal", () => ({ getSession: mocks.getSession }));
 vi.mock("@/server/domain/context", () => ({
@@ -44,6 +47,7 @@ beforeEach(() => {
     todayIso: "2026-10-15",
   }));
   mocks.listExportRows.mockResolvedValue([ROW]);
+  mocks.limitUsage.mockResolvedValue({ ok: true, remaining: 9 });
 });
 
 describe("GET /api/export/transactions", () => {
@@ -103,6 +107,24 @@ describe("GET /api/export/transactions", () => {
       start: undefined,
       end: undefined,
     });
+  });
+
+  it("answers 429 with Retry-After when the person exported too much", async () => {
+    mocks.limitUsage.mockResolvedValue({ ok: false, retryAfterSeconds: 240 });
+    const response = await GET(request());
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("240");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect((await response.json()).error.code).toBe("RATE_LIMITED");
+    expect(mocks.limitUsage).toHaveBeenCalledWith("exportCsv", "owner");
+    expect(mocks.listExportRows).not.toHaveBeenCalled();
+  });
+
+  it("counts the limit only after the session and the period are valid", async () => {
+    mocks.getSession.mockResolvedValue(null);
+    await GET(request());
+    await GET(request("?inicio=ontem"));
+    expect(mocks.limitUsage).not.toHaveBeenCalled();
   });
 
   it("answers 500 when the export fails", async () => {

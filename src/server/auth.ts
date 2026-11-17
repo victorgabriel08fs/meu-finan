@@ -14,11 +14,21 @@ import { admin } from "better-auth/plugins/admin";
 import { defaultAc } from "better-auth/plugins/admin/access";
 import { count } from "drizzle-orm";
 import { ADMIN_ROLE } from "@/lib/admin/roles";
+import { stampPasskeySession } from "@/lib/admin/second-factor";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import {
+  guardPasskeyManagement,
+  revokeReplacedSession,
+} from "@/server/auth-second-factor";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { authOrigins, readServerEnv } from "@/server/env";
 import { isOwnerEmail, secretMatches } from "@/server/security/guards";
+import { rejectLeakedPassword } from "@/server/security/leaked-passwords";
+import {
+  countEmailSignIn,
+  settleEmailSignIn,
+} from "@/server/security/login-attempts";
 
 /** Header the setup Server Action uses to hand the setup token to sign-up. */
 export const SETUP_TOKEN_HEADER = "x-meu-finan-setup-token";
@@ -105,7 +115,9 @@ export const auth = betterAuth({
       rateLimit: schema.rateLimit,
     },
   }),
-  disabledPaths: ADMIN_HTTP_PATHS,
+  // Nobody changes session fields through the API: passkeyVerifiedAt is set
+  // only by the passkey sign-in (databaseHooks below).
+  disabledPaths: [...ADMIN_HTTP_PATHS, "/update-session"],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -121,6 +133,10 @@ export const auth = betterAuth({
     // ban on the user row), so revoking a session, deactivating an account or
     // removing an administrator takes effect on the next request.
     cookieCache: { enabled: false },
+    // Set when the session is opened with a passkey: Administração needs it.
+    additionalFields: {
+      passkeyVerifiedAt: { type: "date", required: false, input: false },
+    },
   },
   rateLimit: {
     enabled: true,
@@ -140,7 +156,16 @@ export const auth = betterAuth({
     // Layer 1: sign-up only through the setup flow, which forwards the token,
     // and only while no user exists. Runs before the endpoint opens its
     // transaction, so the global client is safe to use here.
+    // Better Auth's haveIBeenPwned plugin is not used (fails closed, covers
+    // only its own endpoints): see leaked-passwords.ts.
     before: createAuthMiddleware(async (ctx) => {
+      await guardPasskeyManagement(ctx);
+      if (ctx.path === "/sign-in/email") {
+        return countEmailSignIn(ctx.body?.email);
+      }
+      if (ctx.path === "/change-password") {
+        return rejectLeakedPassword(ctx.body?.newPassword);
+      }
       if (ctx.path !== "/sign-up/email") return;
       const provided = ctx.headers?.get(SETUP_TOKEN_HEADER);
       if (!secretMatches(provided, readServerEnv("SETUP_TOKEN"))) {
@@ -148,9 +173,25 @@ export const auth = betterAuth({
       }
       const [row] = await db.select({ total: count() }).from(schema.user);
       if ((row?.total ?? 0) > 0) throw signUpClosed();
+      // Last: whoever lacks the token never reaches the leak service.
+      await rejectLeakedPassword(ctx.body?.password);
+    }),
+    // A successful password sign-in resets the per-e-mail counter.
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-in/email") {
+        await settleEmailSignIn(ctx.body?.email, ctx.context.returned);
+      }
+      await revokeReplacedSession(ctx);
     }),
   },
   databaseHooks: {
+    session: {
+      create: {
+        // Stamps the session born from a passkey sign-in (doc 01 §11.9). No
+        // queries: it may run inside a transaction.
+        before: async (_session, context) => stampPasskeySession(context?.path),
+      },
+    },
     user: {
       create: {
         // Layer 2, for every path that could create a user through Better

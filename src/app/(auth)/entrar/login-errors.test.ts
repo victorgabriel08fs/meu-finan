@@ -22,6 +22,16 @@ describe("loginErrorMessage", () => {
       /desativ/i,
     );
   });
+  it("shows the per-e-mail lock with the wait from the server", () => {
+    const message = loginErrorMessage({
+      status: 429,
+      code: "LOGIN_LOCKED",
+      retryAfter: 600,
+    });
+    expect(message).toMatch(/este e-mail/);
+    expect(message).toContain("10 min");
+    expect(message).toContain("passkey");
+  });
   it("does not blame the password for origin, server or network failures", () => {
     expect(loginErrorMessage({ status: 403, code: "INVALID_ORIGIN" })).toBe(
       SIGN_IN_UNAVAILABLE,
