@@ -4,7 +4,12 @@ import { isAPIError } from "better-auth/api";
 import { count } from "drizzle-orm";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { returnValidationErrors } from "next-safe-action";
 import { z } from "zod";
+import {
+  LEAKED_PASSWORD_MESSAGE,
+  PASSWORD_COMPROMISED,
+} from "@/lib/security/messages";
 import { auth, SETUP_TOKEN_HEADER } from "@/server/auth";
 import { db } from "@/server/db/client";
 import { user } from "@/server/db/schema";
@@ -97,6 +102,11 @@ export const setupOwner = actionClient
       userId = result.user.id;
     } catch (error) {
       if (isAPIError(error)) {
+        if (error.body?.code === PASSWORD_COMPROMISED) {
+          returnValidationErrors(setupSchema, {
+            password: { _errors: [LEAKED_PASSWORD_MESSAGE] },
+          });
+        }
         throw new ActionError(
           "Não foi possível criar o acesso. Confira os dados.",
         );

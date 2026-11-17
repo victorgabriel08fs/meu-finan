@@ -11,6 +11,10 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
+import {
+  LEAKED_PASSWORD_MESSAGE,
+  PASSWORD_COMPROMISED,
+} from "@/lib/security/messages";
 
 export type PasskeyItem = {
   id: string;
@@ -44,6 +48,7 @@ type AuthError = { status?: number; code?: string; message?: string } | null;
 /** Sensitive operations need a recent sign-in (Better Auth freshAge). */
 function errorMessage(error: AuthError, fallback: string): string {
   if (!error) return fallback;
+  if (error.code === PASSWORD_COMPROMISED) return LEAKED_PASSWORD_MESSAGE;
   if (error.code === "SESSION_NOT_FRESH" || error.status === 403) {
     return "Por segurança, saia e entre de novo para fazer isso.";
   }
@@ -327,13 +332,17 @@ function PasswordCard() {
               autoComplete="new-password"
               value={next}
               onChange={(event) => setNext(event.target.value)}
-              aria-describedby="new-password-hint"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={
+                error ? "new-password-hint password-error" : "new-password-hint"
+              }
             />
             <p
               id="new-password-hint"
               className="text-[13px] text-fg-3 leading-[18px]"
             >
-              Pelo menos 12 caracteres.
+              Pelo menos 12 caracteres. Senhas que já vazaram em outros sites
+              não são aceitas.
             </p>
           </div>
           <div className="flex flex-col gap-2">
