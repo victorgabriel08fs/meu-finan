@@ -75,7 +75,7 @@ export function AcceptForm({
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           aria-invalid={errors.password ? true : undefined}
-          aria-describedby={`${id}-password-hint ${id}-password-error`}
+          aria-describedby={`${id}-password-hint ${id}-password-leak-hint ${id}-password-error`}
         />
         <p
           id={`${id}-password-hint`}
@@ -95,6 +95,12 @@ export function AcceptForm({
           <span className="sr-only">
             {longEnough ? ": atingido" : ": ainda não"}
           </span>
+        </p>
+        <p
+          id={`${id}-password-leak-hint`}
+          className="text-[13px] text-fg-3 leading-[18px]"
+        >
+          Senhas que já vazaram em outros sites não são aceitas.
         </p>
         <FieldError id={`${id}-password-error`}>
           {errors.password?.[0]}

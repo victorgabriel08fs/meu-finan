@@ -1,6 +1,10 @@
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import { LOGIN_LOCKED, loginLockedMessage } from "@/lib/security/messages";
 
-export type LoginError = { status?: number; code?: string } | null | undefined;
+export type LoginError =
+  | { status?: number; code?: string; retryAfter?: number }
+  | null
+  | undefined;
 
 export const WRONG_CREDENTIALS = "E-mail ou senha incorretos.";
 export const SIGN_IN_UNAVAILABLE =
@@ -14,6 +18,7 @@ export const SIGN_IN_UNAVAILABLE =
  */
 export function loginErrorMessage(error: LoginError): string | null {
   if (!error) return null;
+  if (error.code === LOGIN_LOCKED) return loginLockedMessage(error.retryAfter);
   if (error.status === 429) {
     return "Muitas tentativas. Espere um minuto e tente de novo.";
   }
