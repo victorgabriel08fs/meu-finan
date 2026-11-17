@@ -9,13 +9,13 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { hasAdminRole, toUserRole, type UserRole } from "@/lib/admin/roles";
-import { isRecentSignIn } from "@/lib/security/recent-sign-in";
 import {
   type AdminSecondFactor,
   type AdminSectionPath,
   adminGatePath,
   adminSecondFactor,
 } from "@/lib/admin/second-factor";
+import { isRecentSignIn } from "@/lib/security/recent-sign-in";
 import { auth } from "@/server/auth";
 import { countUserPasskeys } from "@/server/domain/passkeys";
 

@@ -57,17 +57,25 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const [ctx, categories, tags, theme, tipsOff, flags, adminAccess, selfDelete] =
-    await Promise.all([
-      getUserContext(user.id),
-      listCategories(user.id),
-      countActiveTags(user.id),
-      getThemePreference(user.id),
-      getTipsOff(user.id),
-      getFlags(user.id),
-      getAdminAccess(),
-      selfDeleteStatus(user.id),
-    ]);
+  const [
+    ctx,
+    categories,
+    tags,
+    theme,
+    tipsOff,
+    flags,
+    adminAccess,
+    selfDelete,
+  ] = await Promise.all([
+    getUserContext(user.id),
+    listCategories(user.id),
+    countActiveTags(user.id),
+    getThemePreference(user.id),
+    getTipsOff(user.id),
+    getFlags(user.id),
+    getAdminAccess(),
+    selfDeleteStatus(user.id),
+  ]);
   // The counts only for a session confirmed with a passkey (doc 01 §11.9);
   // otherwise the section is one row to the confirmation.
   const admin =
