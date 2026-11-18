@@ -13,7 +13,8 @@ type FitLabelsProps = {
  * sit at fixed positions in %, but their width follows the text size and the
  * chart's width). Children mark a label with `data-fit` and a `data-priority`
  * (higher stays first); the survivors are chosen greedily by priority, then by
- * order, from the real boxes, so it holds at any width and text size. Hidden
+ * order, from the real boxes (a point marked `data-fit-obstacle` is not a
+ * label: it stays and no label may cover it), so it holds at any width and text size. Hidden
  * with `visibility`, so nothing moves. The chart itself stays static markup.
  */
 export function FitLabels({ className, ariaHidden, children }: FitLabelsProps) {
@@ -32,7 +33,10 @@ export function FitLabels({ className, ariaHidden, children }: FitLabelsProps) {
           priority: Number(label.dataset.priority ?? 0),
         }))
         .sort((a, b) => b.priority - a.priority || a.order - b.order);
-      const kept: DOMRect[] = [];
+      // Points (`data-fit-obstacle`) are never hidden: no label covers them.
+      const kept: DOMRect[] = [
+        ...root.querySelectorAll<HTMLElement>("[data-fit-obstacle]"),
+      ].map((point) => point.getBoundingClientRect());
       const gap = 4;
       for (const { label } of ordered) {
         const box = label.getBoundingClientRect();

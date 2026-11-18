@@ -106,6 +106,7 @@ export function LineChart({
             return (
               <span key={index} aria-hidden="true">
                 <span
+                  data-fit-obstacle=""
                   className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--line) ring-2 ring-surface"
                   style={{ left: `${x}%`, top: `${y}%` }}
                 />
@@ -116,7 +117,7 @@ export function LineChart({
                   style={{
                     left: `${x}%`,
                     top: `${y}%`,
-                    transform: `translate(${SHIFT[labelAnchor(x)]}, ${below ? "8px" : "calc(-100% - 8px)"})`,
+                    transform: `translate(${SHIFT[labelAnchor(x)]}, ${below ? "0.5rem" : "calc(-100% - 0.5rem)"})`,
                   }}
                 >
                   {text}
@@ -126,7 +127,7 @@ export function LineChart({
           })}
         </FitLabels>
       </div>
-      <FitLabels className="relative mt-1.5 mr-11 h-4" ariaHidden>
+      <FitLabels className="relative mt-1.5 mr-11 min-h-4" ariaHidden>
         {xLabels.map((item, position) => {
           const percent = single ? 50 : item.position * 100;
           return (

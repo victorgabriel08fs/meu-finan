@@ -64,7 +64,8 @@ A tarefa foi entregue em 14/11/2026 (ver "Entregue"). Fica para depois:
 
 A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
 
-- **"Salvar" no fim da rolagem a 200%** em 360 px: tipo, valor e teclado próprio cabem juntos, mas "Salvar" só aparece depois de rolar.
+- **Nova transação a 100% em 360 px, depois de "Preencher"**: entre o valor e o teclado só aparecem ~40 px do formulário.
+- **Nova transação a 200% em 360 px de largura**: o teclado próprio pede rolagem, e "Salvar" continua no fim da rolagem (fixo cobriria o tipo e o valor; o rodapé tem ~177 px). Fixo a partir de 390 × 844.
 - **Teste em aparelho iOS real**: o teclado do iOS é simulado nos testes por um `visualViewport` falso.
 
 ## 20b. Retrospectiva do mês: o que ficou de fora
@@ -199,7 +200,6 @@ A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
 - **Nova transação**: tirar os cartões do destino da transferência quando a origem é benefício (o servidor já recusa).
 - **"Vale-alimentação" cortado** nos cartões do dia a 100% (aparece inteiro a 200% e para o leitor de tela).
 - **"Benefício · fora do patrimônio"** cortado na linha de /contas a 360 px.
-- **Skeleton a 200%** do gasto por dia mais baixo que o conteúdo (já era assim).
 - **Saldo atual negativo**: o campo ignora o sinal de menos, então "Benefício não fica com saldo negativo." não aparece pelo formulário.
 - **Salto de ~52 px** quando o bloco chega com benefício (aceito).
 
@@ -212,14 +212,23 @@ A tarefa foi entregue em 12/11/2026 (ver "Entregue"). Fica para depois:
 
 Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 200% de texto em 360 px:
 
-- **Skeletons exatos a 200%**: as alturas são as de 100%, então o conteúdo ainda empurra a tela ao chegar.
-- **Gráfico de poupança** (Relatórios › Visão geral) a 200%: ~60 px de altura, e os rótulos encostam na linha.
-- **Chip de variação do Saldo** a 200%: quebra em 4 linhas (~160 px).
+- **Gráfico de poupança** (Relatórios › Visão geral) a 200%: perde o rótulo do mínimo e o do eixo, e "Ver como tabela" quebra em 3 linhas.
+- **Chip de variação do Saldo** a 200%: quebra em 3 linhas, não em 2.
+- **Skeleton de "Próximas contas"** tem uma conta só.
 - **Termo único**: "Admin" na lista de usuários e "Administrador" na folha. Escolher um (doc 02 §10.4).
-- **Onboarding e telas de entrada** (`/entrar`, `/primeiro-acesso`, `/recuperar`, `/convite`) a 200%: só foram varridas, sem ajuste nem teste.
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
 ## Entregue
+
+### Texto a 200% em 360 px (versão 0.12.2) — 18/11/2026
+
+- [x] **Nova transação**: o rodapé com "Salvar" fica fixo no fim da folha a 200% (`stickyFooter` em `sheet.tsx`); se cobriria o tipo e o valor ao abrir, volta a rolar com o conteúdo: fixo a partir de 390 × 844, ainda no fim da rolagem a 360 px de largura.
+- [x] **Chip de variação do Saldo**: ícone, valor e mês no mesmo fluxo de texto, em vez de três linhas.
+- [x] **Telas de entrada** (`/entrar`, `/primeiro-acesso`, `/recuperar`, `/convite`): textos em `rem`; `e2e/entrada-texto-grande.spec.ts`.
+- [x] **Gráfico de poupança**: rótulos do gráfico de linha com margem em `rem` e `data-fit-obstacle`.
+- [x] **Skeletons**: alturas do admin em `rem` e degraus em `rem` dos blocos do Início para 200% em 360 px; `e2e/skeleton-200.spec.ts` compara cada skeleton com o bloco carregado.
+- [x] **Chip "sugerida"**: o leitor de tela lê "Mercado, sugerida"; **404**: título hifenizado, sem quebrar no meio da palavra.
+- O que ficou: "23. Modal de lançamento" e "Acessibilidade — depois".
 
 ### Observabilidade (versão 0.10.0) — 17/11/2026
 

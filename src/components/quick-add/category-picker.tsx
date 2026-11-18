@@ -84,7 +84,6 @@ export function CategoryChips({
                 isSelected && category.id === suggestedId ? (
                   <Badge className="min-w-0 shrink bg-surface text-fg-2">
                     <Sparkles aria-hidden="true" />
-                    <span className="sr-only">, </span>
                     <span className="truncate">sugerida</span>
                   </Badge>
                 ) : null
@@ -92,6 +91,11 @@ export function CategoryChips({
               onClick={() => onSelect(isSelected ? null : category.id)}
             >
               {category.name}
+              {isSelected && category.id === suggestedId ? (
+                // Inline and 0 px wide: an sr-only (absolute) span would get
+                // a space before it in the name ("Mercado , sugerida").
+                <span className="text-[0px]">,</span>
+              ) : null}
             </ChoiceChip>
           );
         })}

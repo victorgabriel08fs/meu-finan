@@ -18,17 +18,15 @@ export default async function RecoverPage() {
 
   return (
     <>
-      <h1 className="font-bold text-[28px] text-fg leading-[34px] tracking-[-0.02em]">
-        Recuperar acesso
-      </h1>
-      <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
+      <h1 className="text-title-1 text-fg">Recuperar acesso</h1>
+      <p className="mt-2 text-body text-fg-2">
         Defina uma nova senha para a conta do dono do app (a do OWNER_EMAIL) com
         o código de recuperação. Todas as sessões abertas serão encerradas, e a
         conta volta a ser administradora.
       </p>
       <p
         role="note"
-        className="mt-4 rounded-control bg-warning-soft px-4 py-3 text-[14px] text-warning leading-5"
+        className="mt-4 rounded-control bg-warning-soft px-4 py-3 text-callout text-warning"
       >
         Depois de recuperar, apague a variável RECOVERY_TOKEN na Vercel e faça
         um novo deploy: assim esta tela volta a ficar fechada.

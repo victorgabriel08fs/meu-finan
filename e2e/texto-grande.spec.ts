@@ -327,3 +327,60 @@ test("Quanto dá para gastar, por conta, a 200% em 360 px com quatro linhas e o 
     }
   }
 });
+
+test("a 200% em 360 px o chip de variação do Saldo cabe em até três linhas", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/inicio");
+  await page.addStyleTag({ content: BIG_TEXT });
+  const hero = page.locator("section[aria-labelledby=saldo-em-contas]");
+  await expect(hero).toBeVisible({ timeout: 30_000 });
+  const box = await hero.locator("span.min-h-7\\.5").first().boundingBox();
+  expect(box?.height ?? 999).toBeLessThanOrEqual(130);
+});
+
+test("gráfico de poupança a 200% em 360 px: plot alto, rótulos sem sobreposição", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/relatorios/visao-geral");
+  await page.addStyleTag({ content: BIG_TEXT });
+  const heading = page.getByText("Taxa de poupança").first();
+  await expect(heading).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(600);
+  const result = await page.evaluate(() => {
+    const title = [...document.querySelectorAll("h2,h3")].find((e) =>
+      e.textContent?.includes("Taxa de poupança"),
+    );
+    const chart = (
+      title?.closest("section, [data-slot=card]") ??
+      title?.parentElement?.parentElement
+    )?.querySelector<HTMLElement>("[role=img]");
+    if (!chart) return null;
+    const boxes = (selector: string, visibleOnly: boolean) =>
+      [...chart.querySelectorAll<HTMLElement>(selector)]
+        .filter((e) => !visibleOnly || e.style.visibility !== "hidden")
+        .map((e) => e.getBoundingClientRect());
+    return {
+      plot: chart.children[0]?.getBoundingClientRect().height ?? 0,
+      labels: boxes("[data-fit]", true).map((b) => b.toJSON()),
+      points: boxes("[data-fit-obstacle]", false).map((b) => b.toJSON()),
+    };
+  });
+  if (!result) throw new Error("sem gráfico");
+  expect(result.plot).toBeGreaterThanOrEqual(150);
+  const overlap = (a: DOMRect, b: DOMRect) =>
+    a.left < b.right &&
+    a.right > b.left &&
+    a.top < b.bottom &&
+    a.bottom > b.top;
+  const { labels, points } = result as unknown as {
+    labels: DOMRect[];
+    points: DOMRect[];
+  };
+  labels.forEach((a, i) => {
+    for (const b of labels.slice(i + 1)) expect(overlap(a, b)).toBe(false);
+    for (const point of points) expect(overlap(a, point)).toBe(false);
+  });
+});

@@ -36,7 +36,7 @@ function UsersSkeleton() {
       </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-[234px] rounded-2xl" />
+        <Skeleton className="h-58.5 rounded-2xl" />
       </div>
     </LoadingRegion>
   );

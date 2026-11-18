@@ -178,6 +178,9 @@ for (const size of SIZES) {
       }
       await page.waitForTimeout(500);
       await expectTypeAndAmount(sheet, page, "com o valor preenchido");
+      await expect(
+        sheet.getByRole("button", { name: "Salvar despesa" }),
+      ).toBeVisible();
 
       // 3. System keyboard on the description (iOS), then back to the amount.
       const description = sheet.getByPlaceholder("Descrição (opcional)");
@@ -215,6 +218,56 @@ for (const size of SIZES) {
       );
     });
   }
+}
+
+// Task 23 (doc 02 §5.14): a 200% the whole panel scrolls, but Salvar stays at
+// the bottom of the screen instead of at the end of the scroll, while it does
+// not cover the type and amount (at 360 px wide it scrolls along, and the test
+// above keeps type and amount in view there).
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 412, height: 915 },
+] as const) {
+  test(`a 200% Salvar fica à vista sem rolar, a ${size.width}x${size.height}`, async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize(size);
+    await page.goto("/inicio");
+    await page.addStyleTag({ content: BIG_TEXT });
+    await page.getByRole("button", { name: "Nova transação" }).first().click();
+    const sheet = page.getByRole("dialog", { name: "Nova transação" });
+    await expect(sheet).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(600);
+    const keypad = sheet.getByRole("group", { name: "Teclado numérico" });
+    for (const key of ["1", "2"]) {
+      await keypad
+        .getByRole("button", { name: key, exact: true })
+        .dispatchEvent("click");
+    }
+    await page.waitForTimeout(400);
+    const panel = sheet.locator("[data-slot=sheet-panel]");
+    const save = sheet.getByRole("button", { name: "Salvar despesa" });
+    await panel.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await expectUnobstructed(save, "Salvar despesa no topo", size.height);
+    await expectTypeAndAmount(sheet, page, "com Salvar fixo");
+
+    await panel.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.waitForTimeout(300);
+    await expectUnobstructed(save, "Salvar despesa no fim", size.height);
+    const footer = await sheet
+      .locator("[data-slot=sheet-footer]")
+      .boundingBox();
+    const last = await sheet
+      .getByLabel("Adicionar outra em seguida")
+      .boundingBox();
+    if (!footer || !last) throw new Error("sem medidas");
+    expect(last.y + last.height).toBeLessThanOrEqual(footer.y + 1);
+  });
 }
 
 test("rascunho restaurado: tipo e valor seguem à vista a 360x560", async ({

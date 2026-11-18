@@ -64,9 +64,9 @@ function ActivitySkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-2">
       <Skeleton className="h-10 w-48" />
-      <Skeleton className="h-[204px] rounded-2xl" />
+      <Skeleton className="h-51 rounded-2xl" />
       <Skeleton className="mt-2 h-10 w-40" />
-      <Skeleton className="h-[136px] rounded-2xl" />
+      <Skeleton className="h-34 rounded-2xl" />
     </LoadingRegion>
   );
 }

@@ -63,7 +63,7 @@ describe("HomeBlockSkeleton", () => {
       render("month-totals").split("h-37 rounded-card @min-[23rem]:h-32.5"),
     ).toHaveLength(3);
     expect(render("budget")).toContain(
-      "h-99.75 rounded-card @min-[21rem]:h-94.75",
+      "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[21rem]:h-94.75",
     );
   });
 
@@ -94,10 +94,10 @@ describe("HomeBlockSkeleton", () => {
     ).toHaveLength(3);
     // The budget's pace line breaks later without "N% do mês decorrido".
     expect(of("budget", "past")).toContain(
-      "h-99.75 rounded-card @min-[24.5625rem]:h-94.75",
+      "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[24.5625rem]:h-94.75",
     );
     expect(of("budget", "future")).toContain(
-      "h-99.75 rounded-card @min-[26.1875rem]:h-94.75",
+      "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[26.1875rem]:h-94.75",
     );
     // The ranking of a past month wraps its title later; a month ahead has
     // nothing paid, so it is the invite's size.
@@ -246,5 +246,18 @@ describe("HomeBlockSkeleton of Quanto dá para gastar por dia", () => {
       of({ lines: 3, chooser: true }),
     );
     expect(of({ lines: 0, benefitLines: 0, chooser: false })).toBe(of());
+  });
+
+  it("has a step for slots under 12rem (large text on a phone)", () => {
+    for (const id of [
+      "balance",
+      "budget",
+      "goals",
+      "upcoming-bills",
+    ] as const) {
+      expect(renderToStaticMarkup(<HomeBlockSkeleton id={id} />)).toContain(
+        "@max-[12rem]:h-",
+      );
+    }
   });
 });

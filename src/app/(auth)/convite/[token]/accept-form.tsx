@@ -115,10 +115,7 @@ export function AcceptForm({
             {longEnough ? ": atingido" : ": ainda não"}
           </span>
         </p>
-        <p
-          id={`${id}-password-leak-hint`}
-          className="text-[13px] text-fg-3 leading-[18px]"
-        >
+        <p id={`${id}-password-leak-hint`} className="text-caption text-fg-3">
           Senhas que já vazaram em outros sites não são aceitas.
         </p>
         <FieldError id={`${id}-password-error`}>
