@@ -136,6 +136,9 @@ export const auth = betterAuth({
       rateLimit: schema.rateLimit,
     },
   }),
+  // A session and its user in one query (findSession's join), through the
+  // relations in src/server/db/schema/relations.ts.
+  advanced: { database: { joins: true } },
   // Nobody changes session fields through the API: passkeyVerifiedAt is set
   // only by the passkey sign-in (databaseHooks below).
   disabledPaths: [...ADMIN_HTTP_PATHS, "/update-session"],
