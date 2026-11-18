@@ -195,6 +195,14 @@ type SheetContentProps = Omit<
    */
   pinTop?: boolean;
   /**
+   * With `fullHeight` and a panel that scrolls as a whole (`pinTop` false, or
+   * a short panel): the footer stays stuck at the bottom instead of going
+   * along with the content, unless it would cover the element marked
+   * `data-sheet-keep` (e.g. the amount) when the sheet opens: then it scrolls
+   * along again, so what matters first is never hidden under it.
+   */
+  stickyFooter?: boolean;
+  /**
    * For a sheet as tall as its content: the footer stays at the bottom only
    * while the sheet can be 32rem tall. With large text (rem grows) or a short
    * screen the whole sheet, header and footer included, scrolls as one, so the
@@ -253,6 +261,26 @@ function useShortScreen(enabled: boolean): boolean {
   return short;
 }
 
+/**
+ * Whether a footer stuck at the bottom would cover the `data-sheet-keep`
+ * element with the sheet scrolled to the top.
+ */
+function coversKept(contentEl: HTMLElement, footerEl: HTMLElement): boolean {
+  const kept = contentEl.querySelector<HTMLElement>("[data-sheet-keep]");
+  if (!kept) return false;
+  let scroller: HTMLElement | null = kept.parentElement;
+  while (scroller && scroller !== contentEl.parentElement) {
+    const { overflowY } = getComputedStyle(scroller);
+    if (overflowY === "auto" || overflowY === "scroll") break;
+    scroller = scroller.parentElement;
+  }
+  if (!scroller) return false;
+  const box = scroller.getBoundingClientRect();
+  const keptBottom =
+    kept.getBoundingClientRect().bottom - box.top + scroller.scrollTop;
+  return keptBottom > scroller.clientHeight - footerEl.offsetHeight;
+}
+
 export function SheetContent({
   title,
   description,
@@ -266,6 +294,7 @@ export function SheetContent({
   topClassName,
   topRef,
   pinTop = true,
+  stickyFooter = false,
   flowFooter = false,
   focusTitle = false,
   onOpenAutoFocus,
@@ -299,6 +328,9 @@ export function SheetContent({
   // A full-height panel under 32rem (in the page's rem: large text counts)
   // scrolls its footer along instead of keeping it stuck over the content.
   const [shortPanel, setShortPanel] = useState(false);
+  const [footerTooTall, setFooterTooTall] = useState(false);
+  const scrollsFooter =
+    !pinned && shortPanel && !(stickyFooter && !footerTooTall);
   useLayoutEffect(() => {
     if (!contentEl || !hasFooter) return;
     const footerEl = contentEl.querySelector<HTMLElement>(
@@ -309,7 +341,9 @@ export function SheetContent({
       const rem = Number.parseFloat(
         getComputedStyle(document.documentElement).fontSize,
       );
-      setShortPanel((panelRef.current?.clientHeight ?? 0) < 32 * rem);
+      const panelHeight = panelRef.current?.clientHeight ?? 0;
+      setShortPanel(panelHeight < 32 * rem);
+      setFooterTooTall(coversKept(contentEl, footerEl));
       contentEl.style.setProperty(
         "--sheet-footer-h",
         `${footerEl.offsetHeight}px`,
@@ -319,6 +353,8 @@ export function SheetContent({
     const observer = new ResizeObserver(update);
     observer.observe(footerEl);
     if (panelRef.current) observer.observe(panelRef.current);
+    const kept = contentEl.querySelector<HTMLElement>("[data-sheet-keep]");
+    if (kept) observer.observe(kept);
     return () => {
       observer.disconnect();
       contentEl.style.removeProperty("--sheet-footer-h");
@@ -479,10 +515,10 @@ export function SheetContent({
                     ? cn(
                         "sticky bottom-0 mt-auto bg-surface",
                         // Fade above a footer that stays over the content.
-                        !(fullHeight ? !pinned && shortPanel : flow) &&
+                        !(fullHeight ? scrollsFooter : flow) &&
                           "before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-linear-to-t before:from-surface before:to-transparent",
                         fullHeight
-                          ? !pinned && shortPanel && "static"
+                          ? scrollsFooter && "static"
                           : flow && "static",
                       )
                     : "shrink-0",

@@ -634,25 +634,28 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
 
   const topBlock = (
     <>
-      <SegmentedControl
-        options={KIND_OPTIONS}
-        value={kind}
-        ariaLabel="Tipo de lançamento"
-        onValueChange={(value) => {
-          if (isEntryKind(value)) edit({ kind: value });
-        }}
-      />
-      <AmountDisplay
-        ref={amountRef}
-        expression={draft.expression}
-        kind={kind}
-        message={amountMessage}
-        messageTone={amountError ? "error" : "hint"}
-        messageId={amountMessageId}
-        shakeSignal={shakeSignal}
-        active={keypadVisible}
-        onActivate={activateAmount}
-      />
+      {/* Kept above a stuck footer (SheetContent `stickyFooter`). */}
+      <div data-sheet-keep="" className="flex flex-col gap-4">
+        <SegmentedControl
+          options={KIND_OPTIONS}
+          value={kind}
+          ariaLabel="Tipo de lançamento"
+          onValueChange={(value) => {
+            if (isEntryKind(value)) edit({ kind: value });
+          }}
+        />
+        <AmountDisplay
+          ref={amountRef}
+          expression={draft.expression}
+          kind={kind}
+          message={amountMessage}
+          messageTone={amountError ? "error" : "hint"}
+          messageId={amountMessageId}
+          shakeSignal={shakeSignal}
+          active={keypadVisible}
+          onActivate={activateAmount}
+        />
+      </div>
       {keypadShown && isPhone && !docked ? (
         <Keypad onKey={pressKey} className="pointer-fine:hidden" />
       ) : null}
@@ -668,6 +671,7 @@ function QuickAddContent({ data }: { data: QuickAddSheetData }) {
       topClassName="flex flex-col gap-4 pb-2"
       topRef={topRef}
       pinTop={pinTop}
+      stickyFooter={isPhone && !pinTop}
       top={topBlock}
       footer={footer}
       onKeyDown={onSheetKeyDown}
