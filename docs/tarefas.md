@@ -35,6 +35,17 @@ A tarefa foi entregue em 17/11/2026 (ver "Entregue"). Fica para depois:
 - **`sendDefaultPii`**: não existe no SDK 11; o `scrubEvent` remove `user`, cookies, corpo e IP.
 - **Alertas do Sentry** (e-mail em pico de erros e do monitor `daily-job`): configurados no painel pelo dono (README › Observabilidade).
 
+## Entrar com Google: o que ficou de fora
+
+A tarefa foi entregue em 18/11/2026 (ver "Entregue"). Fica para depois:
+
+- [ ] **Entrar com a Apple**: tarefa à parte. Pede Apple Developer Program, Services ID, domínio verificado e `client_secret` em JWT assinado com a chave `.p8` (vale até 6 meses: rotação ou assinatura em tempo de execução); o retorno `form_post` e o e-mail de relay pedem teste em aparelho real (doc 01 ADR-15).
+- [ ] **Conferir o login com Google no PWA instalado do iPhone**: no modo standalone o redirecionamento pode abrir um navegador interno e deixar o cookie fora do app. Se quebrar, esconder o botão no iOS instalado (depois da hidratação) com a nota "No app instalado, entre com passkey ou senha." Conferir também no Android.
+- [ ] **Aceitar o convite com o Google** (o convite grava senha e termos na mesma transação).
+- [ ] **Mostrar "Google vinculado" no painel de administração** e **incluir o vínculo no ZIP de exportação** (LGPD).
+- [ ] **One Tap / ID token** (hoje recusado de propósito).
+- [ ] **Ligar a flag em produção**: criar o cliente OAuth, definir as variáveis, ligar só para o dono, vincular e ligar para todos (README › Publicar, passo 7).
+
 ## 24b. Prumo: o que ficou de fora
 
 A tarefa foi entregue em 15/11/2026 (ver "Entregue"). Fica para depois:
@@ -228,6 +239,13 @@ A tarefa foi entregue em 18/11/2026 (ver "Entregue"). Fica para depois:
 - **Troca de mês** mostra o skeleton por um instante (aceito pelo dono, doc 02 §5.17).
 
 ## Entregue
+
+### Entrar com Google (versão 0.13.0) — 18/11/2026
+
+- [x] **Google só por vínculo explícito** (doc 01 §11.2 e ADR-15): "Continuar com o Google" em `/entrar` e card "Conta Google" em Ajustes › Segurança (vincular e desvincular). Sem cadastro pelo Google, sem vínculo pelo e-mail, sem tokens guardados; índice único em `account` (migração 0020).
+- [x] **Flag `entrar_com_google`** (desligada por padrão) e variáveis `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`; guardas no servidor, eventos de log e novidade com `when: { flag }`.
+- [x] Redefinição e `/recuperar` com "remover passkeys" apagam o vínculo; `/privacidade` cita o Google.
+- [x] Testes: unitários, integração contra o PGlite (`social-login.integration.test.ts`) e e2e com `accounts.google.com` interceptado (`e2e/entrar-google.spec.ts`).
 
 ### Desempenho (versão 0.12.3) — 18/11/2026
 
