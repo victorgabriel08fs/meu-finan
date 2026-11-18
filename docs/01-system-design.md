@@ -588,6 +588,9 @@ create unique index txn_external on transactions (account_id, external_id)      
 -- inclui linhas excluídas de propósito: uma ocorrência apagada não é recriada pelo cron
 create unique index txn_recurrence_occ on transactions (recurrence_id, occurred_on) where recurrence_id is not null;
 create index txn_search        on transactions using gin (f_unaccent(lower(description)) gin_trgm_ops);
+create index txn_import        on transactions (import_id)                          where import_id is not null;   -- lista de importações e "Desfazer"
+create index txn_installment_plan on transactions (installment_plan_id)             where installment_plan_id is not null;
+create index txn_user_expense_created on transactions (user_id, created_at desc nulls first) where deleted_at is null and kind = 'expense';  -- conta da última despesa (Nova transação)
 
 create table transaction_tags (
   transaction_id uuid not null references transactions(id) on delete cascade,
@@ -1091,13 +1094,16 @@ Formato único em actions e handlers: `{ ok: false, error: { code, message, fiel
 
 ## 8. Cache e invalidação
 
-Dados financeiros são **por usuário** e mudam a cada lançamento, então o cache serve para não recalcular agregações caras (relatórios de 12 meses, dashboard), não para servir dado velho.
+Dados financeiros são **por usuário** e mudam a cada lançamento, em qualquer aparelho. Por isso as finanças de uma pessoa **não têm cache entre requisições**: o banco responde em 1 a 3 ms e o dado nunca fica velho. O que se evita é ler a mesma coisa duas vezes na mesma requisição.
 
 - **Cache Components está ligado** (`cacheComponents: true` no `next.config.ts`). Ler a sessão (cookies/headers) é dado de requisição: só dentro de `<Suspense>` — fora dele é erro de build — e nunca com `await` no topo de um layout, que seguraria o segmento inteiro.
 - O **usuário atual** pode usar `'use cache: private'`: o resultado fica só no navegador (nunca num cache do servidor) e as telas autenticadas continuam com prefetch.
-- Funções de leitura agregada usam `'use cache'` + `cacheTag(...)`. O `userId` entra como **argumento** (faz parte da chave); cookies/headers não podem ser lidos dentro de `'use cache'` — a sessão é resolvida fora, pelo DAL, e só o id entra. Chaves e tags ficam em texto puro: usar o id, nunca e-mail ou valores.
+- **Leitura por requisição**: o que o layout e a página precisam em comum (linha de `user_settings`, contas, categorias por uso, `getUserContext`) é lido uma vez com o `cache` do React, em `src/server/domain/request-reads.ts`. Vale só para leitura de renderização, nunca para leitura feita depois de uma escrita na mesma action, e nunca dentro de transação (com `executor`, leitura direta).
+- **`'use cache'` só para dado global**: hoje, `getMarketRates` (`rates`, `cacheLife('hours')`, invalidada pelo cron diário). Nunca com dado de uma pessoa; só chamado depois de `requireUser()`, para o build sem banco não executá-lo. Os feriados (tag `holidays`) seguem sem cache. Se um dia houver cache por pessoa, o `userId` entra como **argumento** (faz parte da chave); cookies/headers não podem ser lidos dentro de `'use cache'`, e chaves e tags ficam em texto puro (o id, nunca e-mail ou valores).
 - Etiquetas: sem cache (leituras diretas, `refresh()` nas actions).
 - Mutações chamam `updateTag()` (leitura das próprias escritas na mesma navegação) para as tags afetadas.
+
+As tags `u:{id}:…` abaixo estão **reservadas** (nenhuma é usada hoje; as actions chamam `refresh()`). Só `rates` está em uso.
 
 | Tag | Invalidada por |
 |---|---|

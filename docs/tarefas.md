@@ -218,7 +218,24 @@ Sobrou da tarefa "Acessibilidade e textos" (entregue em 06/11/2026), medido a 20
 - **Termo único**: "Admin" na lista de usuários e "Administrador" na folha. Escolher um (doc 02 §10.4).
 - **Desktop a 200%**: só se garante a ausência de rolagem lateral a 1280 px; o resto do layout não foi revisto.
 
+## Desempenho: o que ficou de fora
+
+A tarefa foi entregue em 18/11/2026 (ver "Entregue"). Fica para depois:
+
+- **Feriados com `'use cache'`** (P14): `storedHolidays` é global e a tag `holidays` já está reservada no doc 01 §8; não entrou nesta etapa.
+- **`LazyMotion` só nos layouts do `(app)` e da homepage**: hoje está em `Providers`, que envolve tudo, e `/entrar` e as telas de convite carregam o runtime de movimento sem usá-lo. Mover para os dois layouts tira esse peso dessas telas.
+- **Cache de finanças por pessoa** (`'use cache'` com tags `u:{id}:…`): descartado (doc 01 §8); só `rates` tem cache.
+- **Troca de mês** mostra o skeleton por um instante (aceito pelo dono, doc 02 §5.17).
+
 ## Entregue
+
+### Desempenho (versão 0.12.3) — 18/11/2026
+
+- [x] **Primeiro carregamento menor**: zod só no servidor (esquemas de push e de notificações em `src/server/actions/schemas.ts`); movimento com `LazyMotion` e `m.*` e o alias `motion/react` → `framer-motion` no `next.config.ts` (o Biome recusa `motion.*` e `zod` em `src/lib` e `src/components`); o formulário da Nova transação sai do primeiro carregamento (pré-carga no ocioso e no toque).
+- [x] **Menos leituras por requisição**: contas da Nova transação (`listAccountOptions`) e categorias por uso só com `user_id`; `user_settings`, contas e dicas lidos uma vez por requisição; Metas, Meta e Cartão sem leitura dupla; Patrimônio, Início, relatórios, Ajustes e Extrato com leituras em paralelo; sessão e usuário numa query (`advanced.database.joins`).
+- [x] **Taxas com `'use cache'`** (`rates`, `cacheLife('hours')`, invalidada pelo cron diário).
+- [x] **Índices** (migração 0019): `txn_import`, `txn_installment_plan` e `txn_user_expense_created`.
+- [x] Doc 01 §8 corrigido (sem cache de finanças por pessoa); doc 02 §3.8, §5.17 e §9.6 atualizados.
 
 ### Texto a 200% em 360 px (versão 0.12.2) — 18/11/2026
 
