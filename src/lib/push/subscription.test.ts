@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  badgeNumber,
-  isAppPath,
-  isPushServiceEndpoint,
-  pushSubscriptionSchema,
-} from "./subscription";
+import { pushSubscriptionSchema } from "@/server/actions/schemas";
+import { badgeNumber, isAppPath, isPushServiceEndpoint } from "./subscription";
 
 const KEYS = {
   p256dh:

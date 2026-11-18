@@ -3,7 +3,6 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { visibleNotificationTypes } from "@/lib/notifications/kinds";
-import { notificationPreferencesSchema } from "@/lib/notifications/preferences";
 import {
   countUnreadNotifications,
   dismissNotification,
@@ -18,6 +17,7 @@ import { getFlags, isFlagEnabled } from "@/server/flags";
 import { previewReminders } from "@/server/reminders";
 import { ActionError, adminAction, flaggedAction } from "@/server/safe-action";
 import { throttle } from "@/server/security/throttle";
+import { notificationPreferencesSchema } from "./schemas";
 
 const FLAG_OFF = "As notificações não estão disponíveis.";
 

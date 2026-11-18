@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { notificationPreferencesSchema } from "@/server/actions/schemas";
 import {
   NOTIFICATION_TYPES,
   REMINDER_NOTIFICATION_TYPES,
@@ -8,7 +9,6 @@ import {
   availableReminderEvents,
   DEFAULT_NOTIFICATION_PREFERENCES,
   enabledReminderEvents,
-  notificationPreferencesSchema,
   resolveNotificationPreferences,
 } from "./preferences";
 

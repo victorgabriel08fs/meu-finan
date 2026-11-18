@@ -1,7 +1,7 @@
 // Web Push subscriptions (doc 01 §8, §10): what the browser hands over when a
 // person turns notifications on, and the message the service worker
-// (public/sw.js) shows. Pure: no I/O, shared by the server and the browser.
-import { z } from "zod";
+// (public/sw.js) shows. Pure: no I/O, shared by the server and the browser,
+// so no zod here (the schema lives in src/server/actions/schemas.ts).
 
 /**
  * Hosts of the browsers' push services. The server POSTs every notification
@@ -36,28 +36,15 @@ export function isPushServiceEndpoint(endpoint: string): boolean {
   );
 }
 
-/** Base64url (padding tolerated), the encoding of the subscription keys. */
-const base64url = (min: number, max: number) =>
-  z
-    .string()
-    .min(min)
-    .max(max)
-    .regex(/^[A-Za-z0-9_-]+={0,2}$/);
-
-/** `PushSubscription.toJSON()`, as the browser sends it. */
-export const pushSubscriptionSchema = z.object({
-  endpoint: z.string().max(1024).refine(isPushServiceEndpoint, {
-    error: "Serviço de notificações desconhecido.",
-  }),
-  expirationTime: z.number().nullish(),
-  keys: z.object({
-    // Uncompressed P-256 public key (65 bytes) and auth secret (16 bytes).
-    p256dh: base64url(80, 100),
-    auth: base64url(16, 32),
-  }),
-});
-
-export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
+/**
+ * `PushSubscription.toJSON()`, as the browser sends it. The server validates
+ * it with `pushSubscriptionSchema` (src/server/actions/schemas.ts).
+ */
+export type PushSubscriptionInput = {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: { p256dh: string; auth: string };
+};
 
 /**
  * What one push carries to the service worker. Kept short: push services cap
