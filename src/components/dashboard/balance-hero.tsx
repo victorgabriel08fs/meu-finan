@@ -128,18 +128,20 @@ function MonthChangeChip({
   return (
     <span
       className={cn(
-        "inline-flex min-h-7.5 flex-wrap items-center gap-x-1.5 rounded-full px-3 py-1 text-caption font-semibold",
+        "inline-flex min-h-7.5 items-start gap-x-1.5 rounded-full @max-tight:rounded-control px-3 py-1 text-caption font-semibold",
         up ? "bg-primary-soft text-on-primary-soft" : "bg-surface-2 text-fg-2",
       )}
     >
-      <Icon aria-hidden="true" className="size-4" />
-      <Money
-        cents={cents}
-        variant="caption"
-        sign="always"
-        className="font-semibold text-inherit"
-      />
-      <span>em {monthName}</span>
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <span className="min-w-0">
+        <Money
+          cents={cents}
+          variant="caption"
+          sign="always"
+          className="font-semibold text-inherit"
+        />{" "}
+        <span>em {monthName}</span>
+      </span>
     </span>
   );
 }
