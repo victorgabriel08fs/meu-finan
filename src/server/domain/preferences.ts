@@ -1,7 +1,11 @@
 // Owner preferences kept on the account (user_settings). The theme is the
 // only one read outside getUserContext: the app shell needs it on its own;
 // the Início reads its blocks on its own too, and the daily job the notices.
+// While rendering, all of them come from one read of the row per request
+// (settingsRowOf); with an executor (actions, jobs, transactions) they read
+// the table directly.
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { cache } from "react";
 import { type HomeLayout, resolveHomeLayout } from "@/lib/home/layout";
 import {
   type NotificationPreferences,
@@ -18,16 +22,43 @@ import {
 } from "@/server/db/schema";
 import { notFound } from "./errors";
 
-/** The account's theme (doc 02 §6.14); the default when there is no row yet. */
-export async function getThemePreference(
-  userId: string,
-  executor: Executor = db,
-): Promise<Theme> {
-  const [row] = await executor
-    .select({ theme: userSettings.theme })
+/**
+ * The person's settings row, read once per request (null without a row):
+ * getUserContext, the theme of the shell and the Início's blocks share it.
+ * Only for rendering: never after a write in the same request.
+ */
+export const settingsRowOf = cache(async (userId: string) => {
+  const [row] = await db
+    .select({
+      timezone: userSettings.timezone,
+      monthStartDay: userSettings.monthStartDay,
+      theme: userSettings.theme,
+      homeLayout: userSettings.homeLayout,
+      homeBlockSettings: userSettings.homeBlockSettings,
+    })
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
     .limit(1);
+  return row ?? null;
+});
+
+/**
+ * The account's theme (doc 02 §6.14); the default when there is no row yet.
+ * Without an executor, from the request's row (settingsRowOf).
+ */
+export async function getThemePreference(
+  userId: string,
+  executor?: Executor,
+): Promise<Theme> {
+  const row = executor
+    ? (
+        await executor
+          .select({ theme: userSettings.theme })
+          .from(userSettings)
+          .where(eq(userSettings.userId, userId))
+          .limit(1)
+      )[0]
+    : await settingsRowOf(userId);
   return row?.theme ?? DEFAULT_THEME;
 }
 
@@ -52,17 +83,22 @@ export async function setThemePreference(
 /**
  * The person's Início (doc 02 §6.3): what they saved, merged with the block
  * catalog; the app's default when they never changed it. `today` (the
- * person's) marks the recent blocks "Novo".
+ * person's) marks the recent blocks "Novo". Without an executor, from the
+ * request's row (settingsRowOf).
  */
 export async function getHomeLayout(
   userId: string,
-  { today, executor = db }: { today?: string; executor?: Executor } = {},
+  { today, executor }: { today?: string; executor?: Executor } = {},
 ): Promise<HomeLayout> {
-  const [row] = await executor
-    .select({ homeLayout: userSettings.homeLayout })
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
-    .limit(1);
+  const row = executor
+    ? (
+        await executor
+          .select({ homeLayout: userSettings.homeLayout })
+          .from(userSettings)
+          .where(eq(userSettings.userId, userId))
+          .limit(1)
+      )[0]
+    : await settingsRowOf(userId);
   return resolveHomeLayout(row?.homeLayout ?? null, { today });
 }
 
@@ -86,12 +122,15 @@ export async function setHomeLayout(
 
 /**
  * What the person changed in single blocks of the Início, as stored (null:
- * nothing); src/lib/home/block-settings.ts reads it.
+ * nothing); src/lib/home/block-settings.ts reads it. Without an executor,
+ * from the request's row (settingsRowOf).
  */
 export async function getHomeBlockSettings(
   userId: string,
-  executor: Executor = db,
+  executor?: Executor,
 ): Promise<StoredHomeBlockSettings | null> {
+  if (!executor)
+    return (await settingsRowOf(userId))?.homeBlockSettings ?? null;
   const [row] = await executor
     .select({ settings: userSettings.homeBlockSettings })
     .from(userSettings)

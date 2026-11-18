@@ -62,6 +62,8 @@ export type AccountListItem = {
   balanceCents: number;
   /** Pending entries (future-dated or not yet paid). */
   pendingCents: number;
+  /** The balance the account started with (part of balanceCents). */
+  initialBalanceCents: number;
   includeInNetWorth: boolean;
   archived: boolean;
   card: {
@@ -139,6 +141,7 @@ export async function listAccounts(
     icon: row.icon,
     balanceCents: row.initial + row.paid,
     pendingCents: row.pending,
+    initialBalanceCents: row.initial,
     includeInNetWorth: row.includeInNetWorth,
     archived: row.archivedAt !== null,
     card:
@@ -152,6 +155,50 @@ export async function listAccounts(
             dueDay: row.dueDay,
             paymentAccountId: row.paymentAccountId,
           }
+        : null,
+  }));
+}
+
+export type AccountOption = {
+  id: string;
+  name: string;
+  type: FinAccountType;
+  icon: string;
+  color: ColorToken;
+  /** The card's cycle (the invoice hint); null outside cards. */
+  card: { closingDay: number; dueDay: number } | null;
+};
+
+/**
+ * The active accounts without balances, in the same order as listAccounts:
+ * what a picker needs (the Nova transação), with no sum over the ledger.
+ */
+export async function listAccountOptions(
+  userId: string,
+  executor: Executor = db,
+): Promise<AccountOption[]> {
+  const rows = await executor
+    .select({
+      id: finAccounts.id,
+      name: finAccounts.name,
+      type: finAccounts.type,
+      icon: finAccounts.icon,
+      color: finAccounts.color,
+      closingDay: creditCardDetails.closingDay,
+      dueDay: creditCardDetails.dueDay,
+    })
+    .from(finAccounts)
+    .leftJoin(
+      creditCardDetails,
+      eq(creditCardDetails.accountId, finAccounts.id),
+    )
+    .where(and(eq(finAccounts.userId, userId), isNull(finAccounts.archivedAt)))
+    .orderBy(asc(finAccounts.sortOrder), asc(finAccounts.createdAt));
+  return rows.map(({ closingDay, dueDay, ...account }) => ({
+    ...account,
+    card:
+      account.type === "credit_card" && closingDay !== null && dueDay !== null
+        ? { closingDay, dueDay }
         : null,
   }));
 }

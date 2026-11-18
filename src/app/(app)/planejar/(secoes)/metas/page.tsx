@@ -5,10 +5,10 @@ import { SharedBoxesSection } from "@/components/sharing/shared-boxes-section";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { toYearMonth } from "@/lib/finance";
 import { requireUser } from "@/server/dal";
-import { listAccounts } from "@/server/domain/accounts";
 import { getUserContext } from "@/server/domain/context";
 import { listGoals } from "@/server/domain/goals";
 import { getMarketRates } from "@/server/domain/rates";
+import { accountsOf } from "@/server/domain/request-reads";
 import { listMyBoxes } from "@/server/domain/sharing/boxes";
 import { isFlagEnabled } from "@/server/flags";
 
@@ -27,7 +27,7 @@ async function Goals() {
   const ctx = await getUserContext(user.id);
   const [goals, accounts, market, sharedBoxes] = await Promise.all([
     listGoals(ctx),
-    listAccounts(user.id),
+    accountsOf(ctx),
     getMarketRates(),
     // The group's boxes only exist for people with the flag (ADR-13).
     isFlagEnabled("financas_compartilhadas", user.id).then((on) =>

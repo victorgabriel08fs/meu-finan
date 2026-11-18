@@ -1,6 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import type { TipsSnapshot } from "@/lib/tips";
-import { requireUser } from "@/server/dal";
+import { getSession, requireUser } from "@/server/dal";
 import { getTipsSnapshot } from "@/server/domain/tips";
 import { getFlags } from "@/server/flags";
 import { TipsHost } from "./tips-host";
@@ -16,10 +16,18 @@ export async function TipsLoader() {
   const user = await requireUser();
   let snapshot: TipsSnapshot;
   try {
-    snapshot = await getTipsSnapshot(user.id, {
-      role: user.role,
-      flags: await getFlags(user.id),
-    });
+    const [flags, session] = await Promise.all([
+      getFlags(user.id),
+      getSession(),
+    ]);
+    snapshot = await getTipsSnapshot(
+      user.id,
+      { role: user.role, flags },
+      // The session (deduplicated per request) already has the user row.
+      {
+        ownerCreatedAt: session ? new Date(session.user.createdAt) : undefined,
+      },
+    );
   } catch (error) {
     unstable_rethrow(error);
     console.error("[tips] could not load the user's tips", error);

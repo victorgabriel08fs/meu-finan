@@ -6,7 +6,11 @@ import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+vi.mock("next/cache", () => ({
+  refresh: vi.fn(),
+  cacheTag: vi.fn(),
+  cacheLife: vi.fn(),
+}));
 const afterTasks = vi.hoisted(() => [] as Promise<unknown>[]);
 vi.mock("next/server", () => ({
   after: (task: () => Promise<unknown>) => {

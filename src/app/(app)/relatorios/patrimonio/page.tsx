@@ -58,8 +58,13 @@ async function NetWorth({
     />
   );
 
-  // A window that ended before the first record would project flat balances.
-  const first = await firstRecordOn(ctx);
+  // A window that ended before the first record would project flat balances
+  // (the series, read alongside, is then dropped). One month more: the change
+  // is measured from the end of the month before.
+  const [first, series] = await Promise.all([
+    firstRecordOn(ctx),
+    netWorthBreakdown(ctx, range, period + 1),
+  ]);
   if (first && isBeforeFirstRecord(range.end, first)) {
     const firstMonth = periodMonthOf(ctx, first);
     const copy = noRecordsCopy(range.month, firstMonth);
@@ -89,10 +94,8 @@ async function NetWorth({
     );
   }
 
-  // One month more: the change is measured from the end of the month before.
   // A window that began before the first record starts at it (the months
   // before it would be a flat line of zeros), keeping the base month.
-  const series = await netWorthBreakdown(ctx, range, period + 1);
   const firstMonth = first ? periodMonthOf(ctx, first) : null;
   const points = trimToFirstRecord(series, firstMonth);
   const startsAt = points.length < series.length ? firstMonth : null;

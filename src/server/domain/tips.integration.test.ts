@@ -199,6 +199,12 @@ describe("tips per user", () => {
     ]);
     const state = await snapshot("invited");
     expect(state.createdOn).toBe("2026-10-20");
+    // The session's createdAt (tips-loader) saves a read, never the invite's.
+    const fromSession = await tips.getTipsSnapshot("invited", VIEWER, {
+      timeZone: ZONE,
+      ownerCreatedAt: new Date("2026-09-01T12:00:00Z"),
+    });
+    expect(fromSession.createdOn).toBe("2026-10-20");
     // Only the novidades shipped after the invite was accepted are new to
     // this person (the flagged ones need their flag on).
     expect(
@@ -216,6 +222,15 @@ describe("tips per user", () => {
       "novidade-caixinhas",
       "novidade-subcategorias",
     ]);
+  });
+
+  it("takes the account's creation from the session when given", async () => {
+    const state = await tips.getTipsSnapshot("owner", VIEWER, {
+      timeZone: ZONE,
+      ownerCreatedAt: new Date("2026-10-15T02:00:00Z"),
+    });
+    expect(state.createdOn).toBe((await snapshot()).createdOn);
+    expect(state.createdOn).toBe("2026-10-14");
   });
 
   it("has no creation day for an unknown user", async () => {

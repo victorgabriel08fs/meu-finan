@@ -40,6 +40,7 @@ const account = (overrides: Partial<AccountListItem>): AccountListItem => ({
   icon: "landmark",
   balanceCents: 892_015,
   pendingCents: 0,
+  initialBalanceCents: 0,
   includeInNetWorth: true,
   archived: false,
   card: null,

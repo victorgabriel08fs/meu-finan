@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
 import { heatFill, heatTextClass } from "@/components/charts/heat-scale";
 import { cn } from "@/lib/utils";
 import type { RecapDayCell } from "./model";
@@ -50,7 +50,7 @@ export function RecapBar({
       )}
       style={{ height }}
     >
-      <motion.div
+      <m.div
         className="h-full origin-left rounded-chip"
         style={{ width: `${width}%`, background: color }}
         initial={reduce ? false : { scaleX: 0 }}
@@ -102,7 +102,7 @@ export function RecapRing({
           stroke="var(--surface-3)"
           strokeWidth={stroke}
         />
-        <motion.circle
+        <m.circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -148,7 +148,7 @@ export function RecapDayStrip({ weeks }: { weeks: (RecapDayCell | null)[][] }) {
         ))}
       </div>
       {weeks.map((week, weekIndex) => (
-        <motion.div
+        <m.div
           // biome-ignore lint/suspicious/noArrayIndexKey: weeks never reorder
           key={weekIndex}
           className="grid grid-cols-7 gap-1.5"
@@ -165,7 +165,7 @@ export function RecapDayStrip({ weeks }: { weeks: (RecapDayCell | null)[][] }) {
         >
           {week.map((cell, cellIndex) =>
             cell ? (
-              <motion.span
+              <m.span
                 key={cell.date}
                 initial={reduce || !cell.top ? false : { scale: 1 }}
                 animate={
@@ -185,13 +185,13 @@ export function RecapDayStrip({ weeks }: { weeks: (RecapDayCell | null)[][] }) {
                 style={{ background: heatFill(cell.level) ?? undefined }}
               >
                 {cell.day}
-              </motion.span>
+              </m.span>
             ) : (
               // biome-ignore lint/suspicious/noArrayIndexKey: padding cells have no id
               <span key={`pad-${cellIndex}`} className="aspect-square" />
             ),
           )}
-        </motion.div>
+        </m.div>
       ))}
     </div>
   );

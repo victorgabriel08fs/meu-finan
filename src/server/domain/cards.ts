@@ -21,6 +21,7 @@ import {
   transactions,
 } from "@/server/db/schema";
 import {
+  type AccountListItem,
   BENEFIT_PAYS_NO_INVOICE,
   listAccounts,
   requireAccount,
@@ -127,13 +128,25 @@ export type CardOverview = {
   currentReferenceMonth: string;
 };
 
+/**
+ * One of the person's active cards. `accounts` is the person's list when the
+ * caller already read it (archived ones are refused all the same); without
+ * it, the list is read here.
+ */
 export async function getCardOverview(
   ctx: UserContext,
   accountId: string,
+  accounts?: AccountListItem[],
 ): Promise<CardOverview> {
-  const accounts = await listAccounts(ctx.userId);
-  const account = accounts.find((item) => item.id === accountId);
-  if (!account || account.type !== "credit_card" || !account.card) {
+  const account = (accounts ?? (await listAccounts(ctx.userId))).find(
+    (item) => item.id === accountId,
+  );
+  if (
+    !account ||
+    account.archived ||
+    account.type !== "credit_card" ||
+    !account.card
+  ) {
     throw notFound("Cartão");
   }
   const owedToday = Math.max(0, -account.balanceCents);

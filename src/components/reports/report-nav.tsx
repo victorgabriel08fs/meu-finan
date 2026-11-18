@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useId, useLayoutEffect, useRef } from "react";
@@ -128,7 +128,7 @@ function ReportTabsView({
               >
                 {view.label}
                 {current ? (
-                  <motion.span
+                  <m.span
                     layoutId={layoutId}
                     transition={UNDERLINE_SPRING}
                     aria-hidden="true"

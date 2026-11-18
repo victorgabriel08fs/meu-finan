@@ -282,6 +282,7 @@ Coreografia:
 - **Homepage pública (exceção ao "sem animações decorativas longas" do §1)**: só em `/` (§6.19), com os tempos da Retrospectiva e sempre ligada à rolagem ou à entrada do elemento na tela, uma vez cada. Os tempos ficam só em `src/components/home/motion.ts`: entrada de 480 ms subindo 24 px com stagger de 100 ms (até 4 elementos), contagem de 1 s, a haste do "p" caindo em 600 ms ao carregar, valores virando "••••" em 160 ms, o toast do teclado em 240 ms. O fio que desce pela página, o teclado do exemplo digitando "R$ 64,50" e o peso que encaixa no fim seguem a rolagem (nada se move sozinho). Só `transform` e `opacity`. Com `prefers-reduced-motion`, ou sem JavaScript: tudo já no estado final, o fio inteiro, só o fade de 120 ms. Nada muda fora dessa tela.
 - **Retrospectiva (exceção ao "sem animações decorativas longas" do §1)**: só em `/retrospectiva` (§6.12). Teto de 1 s por animação (15/11/2026, tarefa 22; antes 800 ms, discretas demais). Troca de parte: entra em 360 ms com 48 px de deslocamento, sai em 200 ms. O conteúdo começa 180 ms depois, com `Reveal` de 480 ms subindo 24 px e stagger de 100 ms em no máximo 5 elementos. Número que conta de 0 ao valor em 1 s (ease-out cúbico, começa quando o número já está visível e termina exatamente no valor); barras crescem em 800 ms e anel fecha em 1 s (`--ease-enter`); um único pulso de 480 ms no destaque da parte (ícone da Abertura, dia de maior gasto, ícone do maior gasto). A Abertura também anima ao abrir (a parte só monta depois da hidratação). Valores em lista não contam. Toda animação está ligada a um dado, sem loop, sem confete e sem som; tudo dura até cerca de 1,8 s depois do toque. Com `prefers-reduced-motion`: valores, barras e anéis já no valor final, sem stagger, sem deslocamento e troca de parte por fade de 120 ms. Os tempos ficam só em `src/components/recap/motion.ts`. Nada muda fora dessa tela.
 - **Lista**: itens novos entram com fade + 8 px (stagger 20 ms, no máximo 8 itens); linha recém-criada recebe um realce `--primary-soft` que esmaece em 1,2 s.
+- **Como o movimento é carregado**: `LazyMotion` em `src/components/providers.tsx` (`strict`, com `domMax` carregado à parte em `src/components/ui/motion-features.ts`, por causa de `layoutId` e `drag`) e todo componente anima com `m.*`, nunca `motion.*` (o Biome recusa a importação de `motion`). O pacote `motion/react` faz `import * as` do `framer-motion`, o que mantém tudo no primeiro carregamento; por isso o `next.config.ts` aponta `turbopack.resolveAlias: { "motion/react": "framer-motion" }` (mesmo código, exports que o tree-shaking corta).
 - **`prefers-reduced-motion`**: todo deslocamento vira fade de 120 ms; sem contagem de números, sem stagger, sem crescimento de barras.
 
 ### 3.9 Ícones
@@ -620,7 +621,7 @@ Sonner, posição inferior acima da tab bar (`bottom: 64px + safe-area + 12px`),
 
 ### 5.17 Skeleton
 
-Blocos `--surface-2` com o **formato exato** do conteúdo final (mesmas alturas → zero CLS). Brilho diagonal de 1,2 s (desligado com movimento reduzido). Ao **recarregar** dados já exibidos, nunca voltar ao skeleton: manter o conteúdo a 60% de opacidade com spinner discreto.
+Blocos `--surface-2` com o **formato exato** do conteúdo final (mesmas alturas → zero CLS). Brilho diagonal de 1,2 s (desligado com movimento reduzido). Ao **recarregar o mesmo mês** (ações, `refresh()`, filtros do Extrato), nunca voltar ao skeleton: manter o conteúdo a 60% de opacidade com spinner discreto. Na **troca de mês** o skeleton aparece por um instante (decisão do dono, 18/11/2026: manter o conteúdo antigo pediria outro modelo de navegação).
 
 No Início, cada skeleton tem a altura medida do bloco carregado. A altura segue a **largura do próprio bloco** (container query), não a da tela: o mesmo bloco quebra uma linha a mais numa coluna estreita do `xl` e num celular pequeno. Quando a forma muda com o mês (o Fluxo de caixa num mês passado, no atual ou num futuro), o skeleton também segue a **fase do mês** em tela.
 
@@ -1471,8 +1472,8 @@ Textos de vazio:
 
 ### 9.6 Implementação
 
-- Recharts (via shadcn Charts) carregado com `next/dynamic` e skeleton de mesma altura; o container inclui a faixa do eixo X (sem rolagem interna).
-- Sparklines, anéis e meters em SVG próprio (leves, renderizáveis no servidor).
+- Gráficos, sparklines, anéis e meters em SVG próprio (leves, renderizáveis no servidor, sem biblioteca de gráficos), com skeleton de mesma altura; o container inclui a faixa do eixo X (sem rolagem interna).
+- Movimento: `LazyMotion` e `m.*` (§3.8). Zod só no servidor (`src/server`): `src/lib` e `src/components` não o importam (Biome).
 - Dados chegam agregados do servidor, em centavos; formatação só na borda.
 
 ---
@@ -1652,9 +1653,9 @@ export default function manifest(): MetadataRoute.Manifest {
 ## 13. Performance de front-end
 
 - **Server Components por padrão**; ilhas de cliente pequenas (teclado, sheets, gráficos, filtros).
-- **Pré-carregar** a sheet "Nova transação" no `requestIdleCallback` após o primeiro render — abrir precisa ser instantâneo.
+- **Pré-carregar** a sheet "Nova transação" no `requestIdleCallback` após o primeiro render — abrir precisa ser instantâneo. O formulário (`quick-add-form.tsx`) vem em outro pedaço de código, pré-carregado no ocioso e no toque do "+" (`preload.ts`), para sair do primeiro carregamento de toda tela.
 - **Prefetch** das rotas da tab bar (`<Link prefetch>`).
-- Gráficos com `next/dynamic` + skeleton de mesma altura.
+- Gráficos em SVG próprio, com skeleton de mesma altura.
 - Listas longas: virtualização a partir de 200 linhas (TanStack Virtual) mantendo cabeçalhos fixos.
 - Fonte variável única (Manrope), `display: swap`, pré-carregada pelo `next/font`.
 - Ícones importados individualmente; sem bibliotecas de data/números pesadas (formatação com tabelas próprias e `Intl`).

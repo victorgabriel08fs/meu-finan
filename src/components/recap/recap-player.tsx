@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   Fragment,
@@ -112,7 +112,7 @@ function Backdrop({ index }: { index: number }) {
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
     >
-      <motion.div
+      <m.div
         className="absolute top-0 right-0 size-28 rounded-full bg-primary-soft opacity-70"
         animate={{
           x: `${drift.a[0]}%`,
@@ -121,7 +121,7 @@ function Backdrop({ index }: { index: number }) {
         }}
         transition={transition}
       />
-      <motion.div
+      <m.div
         className="absolute bottom-0 left-1/2 -ml-14 size-28 rounded-full bg-surface-2"
         animate={{
           x: `${drift.b[0]}%`,
@@ -143,7 +143,7 @@ function Progress({ index, total }: { index: number; total: number }) {
           key={i}
           className="h-1 flex-1 overflow-hidden rounded-full bg-surface-3"
         >
-          <motion.div
+          <m.div
             className="h-full origin-left rounded-full bg-primary"
             initial={false}
             animate={{ scaleX: i <= index ? 1 : 0 }}
@@ -350,7 +350,7 @@ function Player({
       <h1 className="sr-only">{kicker}</h1>
       <AnimatePresence mode="wait" custom={direction.current}>
         {hydrated && slide ? (
-          <motion.div
+          <m.div
             key={slide.id}
             custom={direction.current}
             variants={variants}
@@ -370,7 +370,7 @@ function Player({
             }}
           >
             <SlideView slide={slide} onRestart={() => go("first")} />
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
     </RecapFrame>

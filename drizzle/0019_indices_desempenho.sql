@@ -1,0 +1,3 @@
+CREATE INDEX "txn_import" ON "transactions" USING btree ("import_id") WHERE "transactions"."import_id" is not null;--> statement-breakpoint
+CREATE INDEX "txn_installment_plan" ON "transactions" USING btree ("installment_plan_id") WHERE "transactions"."installment_plan_id" is not null;--> statement-breakpoint
+CREATE INDEX "txn_user_expense_created" ON "transactions" USING btree ("user_id","created_at" DESC NULLS FIRST) WHERE "transactions"."deleted_at" is null and "transactions"."kind" = 'expense';

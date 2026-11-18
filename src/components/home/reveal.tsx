@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type { ReactNode } from "react";
 import {
   EASE_ENTER,
@@ -29,7 +29,7 @@ export function Reveal({
 }) {
   const { ref, entrance } = useEntrance<HTMLDivElement>();
   return (
-    <motion.div
+    <m.div
       ref={ref}
       initial={false}
       animate={entrance === "armed" ? HIDDEN : SHOWN}
@@ -45,6 +45,6 @@ export function Reveal({
       className={className}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }

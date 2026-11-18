@@ -62,6 +62,8 @@ export default function AjustesPage() {
 
 async function Settings() {
   const user = await requireUser();
+  const flagsRead = getFlags(user.id);
+  const adminRead = getAdminAccess();
   const [
     ctx,
     categories,
@@ -72,31 +74,34 @@ async function Settings() {
     adminAccess,
     legal,
     selfDelete,
+    admin,
+    sharing,
   ] = await Promise.all([
     getUserContext(user.id),
     listCategories(user.id),
     countActiveTags(user.id),
     getThemePreference(user.id),
     getTipsOff(user.id),
-    getFlags(user.id),
-    getAdminAccess(),
+    flagsRead,
+    adminRead,
     getLegalAcceptance(user.id),
     selfDeleteStatus(user.id),
+    // The counts only for a session confirmed with a passkey (doc 01 §11.9);
+    // otherwise the section is one row to the confirmation.
+    adminRead.then((access) =>
+      access?.secondFactor === "ok"
+        ? Promise.all([usersOverview(), flagsOverview()])
+        : null,
+    ),
+    // Compartilhado (financas_compartilhadas): "2 grupos · 1 convite".
+    flagsRead.then((on) =>
+      on.financas_compartilhadas ? sharingCounts(user.id) : null,
+    ),
   ]);
-  // The counts only for a session confirmed with a passkey (doc 01 §11.9);
-  // otherwise the section is one row to the confirmation.
-  const admin =
-    adminAccess?.secondFactor === "ok"
-      ? await Promise.all([usersOverview(), flagsOverview()])
-      : null;
   const expenses = categories.filter(
     (category) => category.kind === "expense",
   ).length;
   const incomes = categories.length - expenses;
-  // Compartilhado (financas_compartilhadas): "2 grupos · 1 convite".
-  const sharing = flags.financas_compartilhadas
-    ? await sharingCounts(user.id)
-    : null;
 
   return (
     <>

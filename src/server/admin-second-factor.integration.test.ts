@@ -138,6 +138,25 @@ describe("password sessions", () => {
     expect(session?.user.id).toBe("ana");
     expect(session?.session.passkeyVerifiedAt ?? null).toBeNull();
   });
+
+  it("are read with their user in one query (advanced.database.joins)", async () => {
+    request.cookie = anaCookie;
+    const at = new Date("2026-11-18T12:00:00Z");
+    await stampSessions("ana", at);
+    const joined = vi.spyOn(m.db.query.session, "findFirst");
+    const session = await m.auth.api.getSession({
+      headers: new Headers({ cookie: anaCookie }),
+    });
+    expect(joined).toHaveBeenCalledTimes(1);
+    joined.mockRestore();
+    expect(session?.user).toMatchObject({
+      id: "ana",
+      role: "admin",
+      legalVersion: LEGAL_VERSION,
+    });
+    expect(session?.session.passkeyVerifiedAt).toEqual(at);
+    await stampSessions("ana", null);
+  });
 });
 
 describe("Data Access Layer", () => {

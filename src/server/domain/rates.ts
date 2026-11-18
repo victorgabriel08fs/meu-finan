@@ -1,6 +1,7 @@
 // Market rates for projections (doc 03 §2.3): the latest values synced from the
 // BCB by the daily cron, or documented estimates until the first sync.
 import { desc, eq } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
 import { db } from "@/server/db/client";
 import { marketRates } from "@/server/db/schema";
 
@@ -23,7 +24,26 @@ export const ESTIMATED_RATES = {
   ipcaAnnual: 0.045,
 } as const;
 
+/**
+ * Cache tag of every market_rates read. The daily sync
+ * (src/server/jobs/steps/sync-market-rates.ts) revalidates it.
+ */
+export const RATES_CACHE_TAG = "rates";
+
+/**
+ * The rates, cached across requests (`'use cache'`): global data that
+ * changes once a day, revalidated by the sync. Call it only after
+ * requireUser(), never while prerendering (the build has no database).
+ */
 export async function getMarketRates(): Promise<MarketRates> {
+  "use cache";
+  cacheTag(RATES_CACHE_TAG);
+  cacheLife("hours");
+  return loadMarketRates();
+}
+
+/** The rates straight from market_rates (getMarketRates caches this). */
+export async function loadMarketRates(): Promise<MarketRates> {
   const latest = (index: "cdi" | "selic") =>
     db
       .select({ value: marketRates.value, refDate: marketRates.refDate })

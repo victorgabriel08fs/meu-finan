@@ -97,6 +97,13 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   allowedDevOrigins: lanDevOrigins(),
   turbopack: {
+    // motion/react is `import * as fm from "framer-motion"` plus `export *`:
+    // the namespace import keeps every export of framer-motion (the full
+    // `motion` component with all its features) in the first load, and
+    // LazyMotion (src/components/providers.tsx) saves nothing. framer-motion
+    // is the same code (motion pins its version) with named exports that
+    // tree-shake.
+    resolveAlias: { "motion/react": "framer-motion" },
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],

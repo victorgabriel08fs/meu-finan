@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useAnimate, useReducedMotion } from "motion/react";
+import { m, useAnimate, useReducedMotion } from "motion/react";
 import { type KeyboardEvent, type Ref, useEffect } from "react";
 import { formatBRL } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
@@ -139,7 +139,7 @@ function Caret({ visible }: { visible: boolean }) {
   const reduceMotion = useReducedMotion();
   if (!visible) return <span aria-hidden="true" className="ml-1 w-0.5" />;
   return (
-    <motion.span
+    <m.span
       aria-hidden="true"
       className="ml-1 h-10 w-0.5 rounded-full bg-primary"
       animate={reduceMotion ? undefined : { opacity: [1, 1, 0, 0] }}

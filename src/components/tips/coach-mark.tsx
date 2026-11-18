@@ -5,7 +5,7 @@ import {
   AnimatePresence,
   animate,
   type MotionValue,
-  motion,
+  m,
   useIsPresent,
   useMotionValue,
   useReducedMotion,
@@ -326,7 +326,7 @@ export function CoachMark({
       {...{ [COACH_MARK_ATTRIBUTE]: "" }}
       className="pointer-events-none fixed inset-0 z-40"
     >
-      <motion.svg
+      <m.svg
         aria-hidden="true"
         className="absolute inset-0 size-full"
         initial={{ opacity: 0 }}
@@ -335,22 +335,22 @@ export function CoachMark({
         transition={{ duration: 0.24, ease: [0.2, 0, 0, 1] }}
       >
         {/* The dimmed area takes the tap; the hole (evenodd) lets it through. */}
-        <motion.path
+        <m.path
           d={dimPath}
           fillRule="evenodd"
           className="pointer-events-auto fill-[color-mix(in_srgb,var(--scrim)_72%,transparent)]"
           onClick={() => callbacks.current.onNext()}
         />
-        <motion.path
+        <m.path
           d={ringPath}
           fill="none"
           strokeWidth={2}
           className="stroke-primary/70"
         />
         {reduceMotion ? null : <Pulse key={tip.id} hole={hole} />}
-      </motion.svg>
+      </m.svg>
 
-      <motion.div
+      <m.div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
@@ -396,7 +396,7 @@ export function CoachMark({
             </div>
           </Balloon>
         </AnimatePresence>
-      </motion.div>
+      </m.div>
     </div>,
     document.body,
   );
@@ -411,7 +411,7 @@ function Balloon({ side, children }: { side: TipSide; children: ReactNode }) {
   const present = useIsPresent();
   const [entered, setEntered] = useState(false);
   return (
-    <motion.div
+    <m.div
       initial={{ opacity: 0, scale: 0.96, ...ENTER_OFFSET[side] }}
       animate={{
         opacity: 1,
@@ -428,7 +428,7 @@ function Balloon({ side, children }: { side: TipSide; children: ReactNode }) {
       )}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -462,7 +462,7 @@ function Pulse({ hole }: { hole: HoleValues }) {
     return () => controls.stop();
   }, [progress]);
   return (
-    <motion.path
+    <m.path
       d={d}
       fill="none"
       strokeWidth={2}
@@ -498,7 +498,7 @@ function Arrow({ side, at }: { side: TipSide; at: MotionValue<number> }) {
     },
   }[side];
   return (
-    <motion.svg
+    <m.svg
       aria-hidden="true"
       width={vertical ? 2 * ARROW : ARROW}
       height={vertical ? ARROW : 2 * ARROW}
@@ -511,6 +511,6 @@ function Arrow({ side, at }: { side: TipSide; at: MotionValue<number> }) {
         fill="none"
         className="stroke-transparent dark:stroke-white/6"
       />
-    </motion.svg>
+    </m.svg>
   );
 }

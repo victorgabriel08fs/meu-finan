@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { visibleNotificationTypes } from "@/lib/notifications/kinds";
-import { badgeNumber, pushSubscriptionSchema } from "@/lib/push/subscription";
+import { badgeNumber } from "@/lib/push/subscription";
 import {
   countUnreadNotifications,
   markNotificationsRead,
@@ -17,6 +17,7 @@ import { getFlags, isFlagEnabled } from "@/server/flags";
 import { sendPush, vapidKeys } from "@/server/push";
 import { ActionError, authAction, flaggedAction } from "@/server/safe-action";
 import { throttle } from "@/server/security/throttle";
+import { pushSubscriptionSchema } from "./schemas";
 
 /**
  * Notifications on this device (Ajustes › Notificações, doc 02 §6.14), behind
