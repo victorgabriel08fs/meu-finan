@@ -26,7 +26,12 @@ import {
 import { earliestDate } from "@/lib/reports/coverage";
 import { db } from "@/server/db/client";
 import { finAccounts, transactions } from "@/server/db/schema";
-import { type AccountListItem, listAccounts } from "./accounts";
+import {
+  type AccountListItem,
+  type AccountOption,
+  listAccountOptions,
+  listAccounts,
+} from "./accounts";
 import { listInvoices } from "./cards";
 import type { UserContext } from "./context";
 import { getHomeBlockSettings } from "./preferences";
@@ -35,6 +40,24 @@ import { pendingEntries } from "./transactions";
 /** The person's accounts: the Saldo, the Contas, the first run and the Fluxo. */
 export const accountsOf = cache(
   (ctx: UserContext): Promise<AccountListItem[]> => listAccounts(ctx.userId),
+);
+
+/**
+ * The person's accounts, archived ones too: Metas, a meta, a card and the
+ * Patrimônio. Never after a write in the same action (read listAccounts).
+ */
+export const allAccountsOf = cache(
+  (ctx: UserContext): Promise<AccountListItem[]> =>
+    listAccounts(ctx.userId, { includeArchived: true }),
+);
+
+/**
+ * The active accounts without balances (no sum over the ledger): the Nova
+ * transação, in every page, and the tips' "has an account".
+ */
+export const accountOptionsOf = cache(
+  (ctx: UserContext): Promise<AccountOption[]> =>
+    listAccountOptions(ctx.userId),
 );
 
 /**

@@ -1,6 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { requireUser } from "@/server/dal";
-import { ACCOUNT_TYPE_LABELS, listAccounts } from "@/server/domain/accounts";
+import { ACCOUNT_TYPE_LABELS } from "@/server/domain/accounts";
 import { getUserContext } from "@/server/domain/context";
 import { getQuickAddData } from "@/server/domain/quick-add";
 import { isFlagEnabled } from "@/server/flags";
@@ -34,32 +34,22 @@ export async function QuickAddLoader() {
   let data: QuickAddSheetData;
   try {
     const ctx = await getUserContext(user.id);
-    const [quickAdd, accounts, textEntry] = await Promise.all([
+    const [quickAdd, textEntry] = await Promise.all([
       getQuickAddData(ctx),
-      listAccounts(ctx.userId),
       // A flag that cannot be read must not take the sheet down.
       isFlagEnabled("lancamento_por_texto", user.id).catch((error) => {
         unstable_rethrow(error);
         return false;
       }),
     ]);
-    const cards = new Map(
-      accounts.map((account) => [account.id, account.card]),
-    );
     data = {
       timeZone: ctx.timeZone,
-      accounts: quickAdd.accounts.map((account) => {
-        const card = cards.get(account.id);
-        return {
-          ...account,
-          typeLabel: isAccountType(account.type)
-            ? ACCOUNT_TYPE_LABELS[account.type]
-            : "Conta",
-          card: card
-            ? { closingDay: card.closingDay, dueDay: card.dueDay }
-            : null,
-        };
-      }),
+      accounts: quickAdd.accounts.map((account) => ({
+        ...account,
+        typeLabel: isAccountType(account.type)
+          ? ACCOUNT_TYPE_LABELS[account.type]
+          : "Conta",
+      })),
       expenseCategories: quickAdd.expenseCategories.map(toCategory),
       incomeCategories: quickAdd.incomeCategories.map(toCategory),
       lastAccountId: quickAdd.lastAccountId,

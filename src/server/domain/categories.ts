@@ -68,7 +68,9 @@ export async function categoriesByUse(
     .from(categories)
     .leftJoin(
       transactions,
+      // user_id lets txn_user_cat_date serve (the categories are hers anyway).
       and(
+        eq(transactions.userId, userId),
         eq(transactions.categoryId, categories.id),
         isNull(transactions.deletedAt),
         gte(transactions.occurredOn, sinceIso),

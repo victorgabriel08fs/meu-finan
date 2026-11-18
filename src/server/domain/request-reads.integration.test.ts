@@ -133,3 +133,101 @@ describe("firstRecordOn", () => {
     );
   });
 });
+
+describe("listAccountOptions and the Nova transação", () => {
+  it("lists only the person's active accounts, in order, with the card's cycle and no balance", async () => {
+    await person("opcoes");
+    await person("outra-pessoa");
+    const checking = await d.accounts.createAccount("opcoes", {
+      name: "Corrente",
+      type: "checking",
+      initialBalanceCents: 50_000,
+    });
+    const card = await d.accounts.createAccount("opcoes", {
+      name: "Cartão",
+      type: "credit_card",
+      initialBalanceCents: 0,
+      card: { limitCents: 100_000, closingDay: 5, dueDay: 12 },
+    });
+    const old = await d.accounts.createAccount("opcoes", {
+      name: "Antiga",
+      type: "cash",
+      initialBalanceCents: 0,
+    });
+    await d.accounts.archiveAccount("opcoes", old);
+    await d.accounts.createAccount("outra-pessoa", {
+      name: "De outra pessoa",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+
+    const options = await d.accounts.listAccountOptions("opcoes");
+    const full = await d.accounts.listAccounts("opcoes");
+    expect(options.map((item) => item.id)).toEqual(full.map((a) => a.id));
+    expect(options.map((item) => item.id)).toEqual([checking, card]);
+    expect(options[0]).toEqual({
+      id: checking,
+      name: "Corrente",
+      type: "checking",
+      icon: full[0]?.icon,
+      color: full[0]?.color,
+      card: null,
+    });
+    expect(options[1]?.card).toEqual({ closingDay: 5, dueDay: 12 });
+
+    const { getQuickAddData } = await import("./quick-add");
+    const quickAdd = await getQuickAddData(await ctxOf("opcoes"));
+    expect(quickAdd.accounts.map((item) => [item.id, item.card])).toEqual([
+      [checking, null],
+      [card, { closingDay: 5, dueDay: 12 }],
+    ]);
+  });
+
+  it("counts only the person's own entries in the categories by use", async () => {
+    await person("uso");
+    const accountId = await account("uso", "2026-09-01T12:00:00Z");
+    const { listCategories, categoriesByUse } = await import("./categories");
+    const categories = await listCategories("uso");
+    const rarely = categories.filter((item) => item.kind === "expense").at(-1);
+    if (!rarely) throw new Error("categoria");
+    const ctx = await ctxOf("uso");
+    await d.transactions.createTransaction(ctx, {
+      kind: "expense",
+      amountCents: 1_000,
+      accountId,
+      categoryId: rarely.id,
+      description: "Uso",
+      occurredOn: "2026-10-10",
+    });
+    const byUse = await categoriesByUse("uso", "expense", "2026-07-16");
+    expect(byUse[0]?.id).toBe(rarely.id);
+  });
+
+  it("defaults the form to the last entry's account, but never a caixinha or a benefício", async () => {
+    await person("ultima");
+    const checking = await d.accounts.createAccount("ultima", {
+      name: "Corrente",
+      type: "checking",
+      initialBalanceCents: 0,
+    });
+    const box = await d.accounts.createAccount("ultima", {
+      name: "Caixinha",
+      type: "savings_box",
+      initialBalanceCents: 10_000,
+    });
+    const { getQuickAddData } = await import("./quick-add");
+    expect((await getQuickAddData(await ctxOf("ultima"))).lastAccountId).toBe(
+      checking,
+    );
+    const ctx = await ctxOf("ultima");
+    await d.transactions.createTransaction(ctx, {
+      kind: "expense",
+      amountCents: 500,
+      accountId: box,
+      categoryId: null,
+      description: "Da caixinha",
+      occurredOn: "2026-10-13",
+    });
+    expect((await getQuickAddData(ctx)).lastAccountId).toBe(checking);
+  });
+});
