@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { DemoCard } from "./home-section";
 import { HOME_ICON_MS, HOME_ICON_SCALE } from "./motion";
@@ -23,7 +23,7 @@ export function DemoInstall() {
         <div className="grid grid-cols-4 gap-x-4 gap-y-5">
           {Array.from({ length: SLOTS }, (_, slot) =>
             slot === APP_SLOT ? (
-              <motion.div
+              <m.div
                 key="app"
                 initial={false}
                 animate={
@@ -38,7 +38,7 @@ export function DemoInstall() {
                 <span className="text-micro text-fg [overflow-wrap:normal]">
                   Prumo
                 </span>
-              </motion.div>
+              </m.div>
             ) : (
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholders

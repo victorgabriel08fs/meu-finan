@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  motion,
+  m,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
@@ -69,9 +69,9 @@ export function ScrollThread() {
       <div className="home-thread-rail" />
       {live ? (
         <>
-          <motion.div className="home-thread-line" style={{ scaleY }} />
-          <motion.div className="home-thread-carrier" style={{ y }}>
-            <motion.div className="home-thread-weight" style={{ scale }}>
+          <m.div className="home-thread-line" style={{ scaleY }} />
+          <m.div className="home-thread-carrier" style={{ y }}>
+            <m.div className="home-thread-weight" style={{ scale }}>
               <svg aria-hidden="true" viewBox="-10 -1.5 20 25">
                 <path
                   d={WEIGHT_PATH}
@@ -80,8 +80,8 @@ export function ScrollThread() {
                   strokeLinejoin="round"
                 />
               </svg>
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </>
       ) : (
         <div className="home-thread-line" />

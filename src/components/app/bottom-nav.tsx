@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
@@ -60,7 +60,7 @@ export function BottomNavView({
         >
           <span className="relative flex h-[min(1.875rem,36px)] w-[min(3.5rem,100%)] items-center justify-center">
             {active ? (
-              <motion.span
+              <m.span
                 layoutId="bottom-nav-pill"
                 transition={SELECTION_SPRING}
                 className="absolute inset-0 rounded-full bg-primary-soft"

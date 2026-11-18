@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/components/finance/category-icon";
@@ -148,7 +148,7 @@ export function OrderSheet({
     >
       <ol className="overflow-hidden rounded-2xl border border-border">
         {draft.map((category, index) => (
-          <motion.li
+          <m.li
             key={category.id}
             layout="position"
             transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
@@ -198,7 +198,7 @@ export function OrderSheet({
                 </span>
               ) : null}
             </span>
-          </motion.li>
+          </m.li>
         ))}
       </ol>
       <output className="sr-only">{status}</output>

@@ -15,7 +15,7 @@ import type { Entrance } from "./use-entrance";
 /**
  * "R$ 0,00" counting up to `target` (cents) once the entrance plays, ending
  * exactly on it. At rest it is the final amount. Render it as the child of a
- * `motion.span`.
+ * `m.span`.
  */
 export function useCountText(
   target: number,

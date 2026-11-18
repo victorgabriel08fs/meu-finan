@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import Link from "next/link";
 import { type KeyboardEvent, type ReactNode, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -120,7 +120,7 @@ export function SegmentedControl({
             )}
           >
             {selected ? (
-              <motion.span
+              <m.span
                 layoutId={layoutId}
                 transition={SELECTION_SPRING}
                 className={thumbClass}
@@ -182,7 +182,7 @@ export function SegmentedLinks({
                 )}
               >
                 {active ? (
-                  <motion.span
+                  <m.span
                     layoutId={layoutId}
                     transition={SELECTION_SPRING}
                     className={thumbClass}

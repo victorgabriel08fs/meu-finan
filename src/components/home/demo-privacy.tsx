@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, EyeOff } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type { ReactNode } from "react";
 import { formatBRL } from "@/lib/format/money";
 import { DemoCard, DemoLabel } from "./home-section";
@@ -32,22 +32,22 @@ function Swap({
     <span
       className={`inline-grid max-w-full [overflow-wrap:normal] ${className ?? ""}`}
     >
-      <motion.span
+      <m.span
         initial={false}
         animate={{ opacity: before ? 1 : 0 }}
         transition={transition}
         className="col-start-1 row-start-1 min-w-0"
       >
         {shown}
-      </motion.span>
-      <motion.span
+      </m.span>
+      <m.span
         initial={false}
         animate={{ opacity: before ? 0 : 1 }}
         transition={transition}
         className="col-start-1 row-start-1 min-w-0"
       >
         {hidden}
-      </motion.span>
+      </m.span>
     </span>
   );
 }
@@ -103,14 +103,14 @@ export function DemoPrivacy() {
             </span>
           </p>
         </div>
-        <motion.p
+        <m.p
           initial={false}
           animate={{ opacity: entrance === "armed" ? 0 : 1 }}
           transition={entrance === "play" ? SWAP : { duration: 0 }}
           className="text-caption text-fg-3"
         >
           Valores ocultos
-        </motion.p>
+        </m.p>
       </DemoCard>
     </div>
   );

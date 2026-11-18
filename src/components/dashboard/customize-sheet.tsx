@@ -8,7 +8,7 @@ import {
   Lock,
   SlidersHorizontal,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -219,7 +219,7 @@ export function HomeBlockList({
           const description = `${ids}-${entry.id}-descricao`;
           const badge = `${ids}-${entry.id}-novo`;
           return (
-            <motion.li
+            <m.li
               key={entry.id}
               layout="position"
               transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
@@ -301,7 +301,7 @@ export function HomeBlockList({
                   }
                 />
               )}
-            </motion.li>
+            </m.li>
           );
         })}
       </ol>

@@ -43,5 +43,48 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/lib/**", "src/components/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "zod": "src/lib and src/components reach the browser: keep zod schemas in src/server (src/server/actions/schemas.ts).",
+                  "motion/react": {
+                    "importNames": ["motion"],
+                    "message": "Use `m` from \"motion/react\": LazyMotion (src/components/providers.tsx) loads the features, and `motion.*` would bring them all into the first load."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "motion/react": {
+                    "importNames": ["motion"],
+                    "message": "Use `m` from \"motion/react\": LazyMotion (src/components/providers.tsx) loads the features, and `motion.*` would bring them all into the first load."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

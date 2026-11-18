@@ -8,7 +8,7 @@ import {
   Repeat,
   TriangleAlert,
 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CategoryIcon } from "@/components/finance/category-icon";
@@ -59,7 +59,7 @@ function Reveal({
   children: ReactNode;
 }) {
   const reduce = useReducedMotion();
-  const Tag = as === "li" ? motion.li : motion.div;
+  const Tag = as === "li" ? m.li : m.div;
   return (
     <Tag
       className={className}
@@ -186,13 +186,13 @@ export function IntroSlide({ slide }: { slide: SlideOf<"intro"> }) {
   const reduce = useReducedMotion();
   return (
     <Column className="items-center text-center">
-      <motion.div
+      <m.div
         initial={reduce ? false : { opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: RECAP_REVEAL_MS / 1000, ease: EASE_ENTER }}
       >
         <RecapRing value={1} size={96} stroke={3} delay={stagger(0)}>
-          <motion.span
+          <m.span
             className="flex"
             initial={reduce ? false : { scale: 0.6 }}
             animate={reduce ? undefined : { scale: [0.6, 1.08, 1] }}
@@ -207,14 +207,14 @@ export function IntroSlide({ slide }: { slide: SlideOf<"intro"> }) {
               className="size-8 text-primary"
               strokeWidth={1.75}
             />
-          </motion.span>
+          </m.span>
         </RecapRing>
-      </motion.div>
+      </m.div>
       <div className="flex flex-col items-center gap-3">
         <Reveal index={1}>
           <p className="text-overline text-primary">RETROSPECTIVA</p>
         </Reveal>
-        <motion.div
+        <m.div
           initial={reduce ? false : { opacity: 0, y: RECAP_RISE_PX }}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -226,7 +226,7 @@ export function IntroSlide({ slide }: { slide: SlideOf<"intro"> }) {
           <SlideTitle className="text-[length:min(2.5rem,11vw)] leading-tight">
             {slide.title}
           </SlideTitle>
-        </motion.div>
+        </m.div>
         <Reveal index={3}>
           <p className="text-headline text-fg-2">{slide.range}</p>
         </Reveal>
@@ -305,7 +305,7 @@ export function LeftSlide({ slide }: { slide: SlideOf<"left"> }) {
   const up = slide.mood === "up";
   return (
     <Column>
-      <motion.div
+      <m.div
         className={cn(
           "flex flex-col gap-6 text-center",
           up && "rounded-[2.5rem] bg-primary-soft px-5 py-10",
@@ -344,7 +344,7 @@ export function LeftSlide({ slide }: { slide: SlideOf<"left"> }) {
             </p>
           </Reveal>
         ) : null}
-      </motion.div>
+      </m.div>
     </Column>
   );
 }
@@ -449,13 +449,13 @@ export function BiggestSlide({ slide }: { slide: SlideOf<"biggest"> }) {
   const reduce = useReducedMotion();
   return (
     <Column className="items-center text-center">
-      <motion.div
+      <m.div
         initial={reduce ? false : { opacity: 0, scale: 0.5 }}
         animate={reduce ? { opacity: 1 } : { opacity: 1, scale: [0.5, 1.1, 1] }}
         transition={{ duration: RECAP_POP_MS / 1000, ease: EASE_ENTER }}
       >
         <CategoryIcon icon={slide.icon} color={slide.color} size="lg" />
-      </motion.div>
+      </m.div>
       <Reveal index={1} className="flex flex-col items-center gap-2">
         <SlideTitle className="text-title-3 text-fg-2">
           {slide.title}
@@ -542,7 +542,7 @@ function ComparisonArrow({ up, delay }: { up: boolean; delay: number }) {
   const reduce = useReducedMotion();
   const Icon = up ? ArrowUp : ArrowDown;
   return (
-    <motion.span
+    <m.span
       className="flex"
       initial={reduce ? false : { opacity: 0, y: up ? 8 : -8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -553,7 +553,7 @@ function ComparisonArrow({ up, delay }: { up: boolean; delay: number }) {
       }}
     >
       <Icon aria-hidden="true" className="size-4" />
-    </motion.span>
+    </m.span>
   );
 }
 

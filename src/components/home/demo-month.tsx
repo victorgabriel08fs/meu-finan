@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { formatBRL } from "@/lib/format/money";
 import { DemoCard, DemoLabel } from "./home-section";
 import { DEMO } from "./model";
@@ -33,7 +33,7 @@ function Bar({
         <span className="tabular-nums text-fg">{formatBRL(amount)}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-        <motion.div
+        <m.div
           initial={false}
           animate={{ scaleX: entrance === "armed" ? 0 : 1 }}
           transition={entranceTransition(entrance, HOME_GROW_MS)}
@@ -59,9 +59,7 @@ export function DemoMonth() {
       <DemoCard className="gap-5">
         <div className="flex flex-col gap-1">
           <DemoLabel>Saldo em contas</DemoLabel>
-          <motion.p className="text-display tabular-nums text-fg">
-            {balance}
-          </motion.p>
+          <m.p className="text-display tabular-nums text-fg">{balance}</m.p>
           <p className="text-callout text-fg-2">
             Previsto para o fim do mês{" "}
             <span className="tabular-nums text-fg">
@@ -89,7 +87,7 @@ export function DemoMonth() {
           <p className="text-overline uppercase text-fg-3">Próximas contas</p>
           <ul className="flex flex-col">
             {DEMO.upcoming.map((bill, index) => (
-              <motion.li
+              <m.li
                 key={bill.name}
                 initial={false}
                 animate={
@@ -111,7 +109,7 @@ export function DemoMonth() {
                 <span className="tabular-nums text-fg">
                   {formatBRL(bill.amount)}
                 </span>
-              </motion.li>
+              </m.li>
             ))}
           </ul>
         </div>

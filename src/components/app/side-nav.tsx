@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -157,7 +157,7 @@ function SideNavLink({
         )}
       >
         {active ? (
-          <motion.span
+          <m.span
             layoutId="side-nav-pill"
             transition={SELECTION_SPRING}
             className="absolute inset-0 rounded-control bg-primary-soft"

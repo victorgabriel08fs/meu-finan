@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import {
   animate,
-  motion,
+  m,
   type PanInfo,
   useDragControls,
   useMotionValue,
@@ -413,7 +413,7 @@ export function SheetContent({
         )}
         {...props}
       >
-        <motion.div
+        <m.div
           ref={panelRef}
           data-slot="sheet-panel"
           drag="y"
@@ -528,7 +528,7 @@ export function SheetContent({
               </div>
             ) : null}
           </div>
-        </motion.div>
+        </m.div>
       </Dialog.Content>
     </Dialog.Portal>
   );

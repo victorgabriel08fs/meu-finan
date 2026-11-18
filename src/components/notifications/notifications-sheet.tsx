@@ -1,7 +1,7 @@
 "use client";
 
 import { BellOff, X } from "lucide-react";
-import { motion, type PanInfo } from "motion/react";
+import { m, type PanInfo } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -390,7 +390,7 @@ function NoticeRow({
       >
         Dispensar
       </span>
-      <motion.div
+      <m.div
         drag="x"
         dragDirectionLock
         dragConstraints={{ left: 0, right: 0 }}
@@ -453,7 +453,7 @@ function NoticeRow({
         <IconButton label="Dispensar" onClick={() => void dismissItem()}>
           <X />
         </IconButton>
-      </motion.div>
+      </m.div>
     </li>
   );
 }

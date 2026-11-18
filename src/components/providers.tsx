@@ -1,6 +1,6 @@
 "use client";
 
-import { MotionConfig } from "motion/react";
+import { LazyMotion, MotionConfig } from "motion/react";
 import { ThemeProvider, useTheme } from "next-themes";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import {
@@ -14,9 +14,17 @@ import { DEFAULT_THEME, THEME_COLORS, THEME_STORAGE_KEY } from "@/lib/theme";
 import { usePrivacyStore } from "@/stores/privacy";
 
 /**
+ * motion's features come in a chunk of their own after the page (they are
+ * not needed for the first paint). `strict` makes a `motion.*` left anywhere
+ * fail loudly: use `m.*`.
+ */
+const loadMotionFeatures = () =>
+  import("@/components/ui/motion-features").then((mod) => mod.default);
+
+/**
  * App-wide client providers: theme (next-themes on <html data-theme>, dark
- * by default; see src/lib/theme.ts), URL state (nuqs), motion that honours
- * prefers-reduced-motion, and the toaster.
+ * by default; see src/lib/theme.ts), URL state (nuqs), motion (loaded lazily)
+ * that honours prefers-reduced-motion, and the toaster.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -28,12 +36,14 @@ export function Providers({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <NuqsAdapter>
-        <MotionConfig reducedMotion="user">
-          {children}
-          <AppToaster />
-          <ThemeMetaSync />
-          <PrivacyRehydrate />
-        </MotionConfig>
+        <LazyMotion features={loadMotionFeatures} strict>
+          <MotionConfig reducedMotion="user">
+            {children}
+            <AppToaster />
+            <ThemeMetaSync />
+            <PrivacyRehydrate />
+          </MotionConfig>
+        </LazyMotion>
       </NuqsAdapter>
     </ThemeProvider>
   );

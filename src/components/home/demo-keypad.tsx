@@ -2,7 +2,7 @@
 
 import { Delete } from "lucide-react";
 import {
-  motion,
+  m,
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
@@ -67,7 +67,7 @@ export function DemoKeypad() {
               className="relative flex h-10 items-center justify-center overflow-hidden rounded-chip bg-surface-2 text-headline text-fg"
             >
               {key === pressed && !saved ? (
-                <motion.span
+                <m.span
                   key={step}
                   className="absolute inset-0 bg-primary-soft"
                   initial={{ opacity: 1 }}
@@ -81,7 +81,7 @@ export function DemoKeypad() {
             </span>
           ))}
         </div>
-        <motion.p
+        <m.p
           initial={false}
           animate={
             saved ? { opacity: 1, y: 0 } : { opacity: 0, y: HOME_TOAST_RISE_PX }
@@ -95,7 +95,7 @@ export function DemoKeypad() {
           <span className="shrink-0 font-bold text-(--toast-action)">
             Desfazer
           </span>
-        </motion.p>
+        </m.p>
       </DemoCard>
     </div>
   );

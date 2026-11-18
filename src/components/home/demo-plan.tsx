@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import { formatBRL } from "@/lib/format/money";
 import { DemoCard, DemoLabel } from "./home-section";
 import { curvePath, DEMO } from "./model";
@@ -37,17 +37,17 @@ export function DemoPlan() {
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-headline text-fg">{DEMO.budget.name}</span>
-            <motion.span
+            <m.span
               initial={false}
               animate={{ opacity: armed ? 0 : 1 }}
               transition={after}
               className="text-callout font-semibold tabular-nums text-fg"
             >
               {percent(DEMO.budgetShare)}
-            </motion.span>
+            </m.span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-2">
-            <motion.div
+            <m.div
               initial={false}
               animate={{ scaleX: armed ? 0 : 1 }}
               transition={grow}
@@ -80,7 +80,7 @@ export function DemoPlan() {
                 strokeWidth={RING_STROKE}
                 className="stroke-surface-2"
               />
-              <motion.circle
+              <m.circle
                 cx={RING / 2}
                 cy={RING / 2}
                 r={(RING - RING_STROKE) / 2}
@@ -108,14 +108,14 @@ export function DemoPlan() {
         <div className="flex flex-col gap-3 border-t border-border pt-5">
           <div className="flex items-baseline justify-between gap-3">
             <DemoLabel>Em 10 anos</DemoLabel>
-            <motion.span
+            <m.span
               initial={false}
               animate={{ opacity: armed ? 0 : 1 }}
               transition={after}
               className="text-headline tabular-nums text-fg"
             >
               {formatBRL(CURVE_MAX)}
-            </motion.span>
+            </m.span>
           </div>
           <svg
             aria-hidden="true"
@@ -131,7 +131,7 @@ export function DemoPlan() {
               strokeDasharray="1 5"
               className="stroke-border-strong"
             />
-            <motion.path
+            <m.path
               d={CURVE}
               strokeWidth={2.5}
               className="stroke-primary"
