@@ -44,7 +44,7 @@ async function Flags() {
 function FlagsSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-4">
-      <Skeleton className="h-[430px] rounded-card" />
+      <Skeleton className="h-107.5 rounded-card" />
     </LoadingRegion>
   );
 }

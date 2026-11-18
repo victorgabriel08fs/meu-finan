@@ -241,9 +241,9 @@ const TILE_SKELETON: Record<ReportPhase, string> = {
  * and in a month ahead (422px), against 336px in the current one.
  */
 const BUDGET_SKELETON: Record<ReportPhase, string> = {
-  past: "h-99.75 rounded-card @min-[24.5625rem]:h-94.75",
-  current: "h-99.75 rounded-card @min-[21rem]:h-94.75",
-  future: "h-99.75 rounded-card @min-[26.1875rem]:h-94.75",
+  past: "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[24.5625rem]:h-94.75",
+  current: "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[21rem]:h-94.75",
+  future: "h-99.75 rounded-card @max-[12rem]:h-228.5 @min-[26.1875rem]:h-94.75",
 };
 
 /**
@@ -410,12 +410,19 @@ export function HomeBlockSkeleton({
     // without either never sees a gap open and close.
     case "shared":
       return null;
+    // Under 12rem (a 360px phone with text at 200%: the slot is 9.25rem) the
+    // text wraps so much that the heights above fall short: the steps
+    // `@max-[12rem]` are the loaded heights measured there (e2e/skeleton-200).
     // Heights measured in the app (Ana of the demo, 360 to 1440px). Narrow
     // blocks (small phones, the xl columns) wrap a line more in the tiles'
     // support text and in the budget: measured by the block's own width (an
     // @container inside the skeleton), not the screen's.
     case "balance":
-      return <Skeleton className="h-61.25 rounded-card" />;
+      return (
+        <div className="@container">
+          <Skeleton className="h-61.25 rounded-card @max-[12rem]:h-112" />
+        </div>
+      );
     case "month-totals":
       return (
         <div className="@container">
@@ -442,7 +449,9 @@ export function HomeBlockSkeleton({
               <Skeleton className="h-3.5 w-24 rounded-chip" />
             </div>
           )}
-          <Skeleton className="h-21.5 rounded-card" />
+          <div className="@container">
+            <Skeleton className="h-21.5 rounded-card @max-[12rem]:h-58" />
+          </div>
         </SectionSkeleton>
       );
     case "accounts":
@@ -458,7 +467,9 @@ export function HomeBlockSkeleton({
     case "goals":
       return (
         <SectionSkeleton>
-          <Skeleton className="h-38 rounded-card" />
+          <div className="@container">
+            <Skeleton className="h-38 rounded-card @max-[12rem]:h-74" />
+          </div>
         </SectionSkeleton>
       );
     // Most months have no highlight: reserving room would leave a gap.

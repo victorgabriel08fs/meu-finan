@@ -36,9 +36,9 @@ function RoutineSkeleton() {
   return (
     <LoadingRegion className="flex flex-col gap-5">
       <Skeleton className="h-16 rounded-2xl" />
-      <Skeleton className="h-[168px] rounded-2xl" />
+      <Skeleton className="h-42 rounded-2xl" />
       <Skeleton className="h-14 rounded-control" />
-      <Skeleton className="h-[204px] rounded-2xl" />
+      <Skeleton className="h-51 rounded-2xl" />
     </LoadingRegion>
   );
 }
