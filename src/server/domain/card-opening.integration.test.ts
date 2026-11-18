@@ -151,6 +151,30 @@ describe("valor inicial da fatura de um cartão novo", () => {
     expect(account?.balanceCents).toBe(-123_456);
   });
 
+  it("gives the same overview from the list the page already read, and refuses what is not an active card of the person's", async () => {
+    const ctx = await ctxOf("ana");
+    const all = await d.accounts.listAccounts("ana", { includeArchived: true });
+    expect(await d.cards.getCardOverview(ctx, card, all)).toEqual(
+      await d.cards.getCardOverview(ctx, card),
+    );
+    const notCard = all.find((item) => item.type !== "credit_card");
+    if (notCard) {
+      await expect(
+        d.cards.getCardOverview(ctx, notCard.id, all),
+      ).rejects.toThrow();
+    }
+    // An archived card in the list passed in is refused all the same.
+    const archived = all.map((item) =>
+      item.id === card ? { ...item, archived: true } : item,
+    );
+    await expect(
+      d.cards.getCardOverview(ctx, card, archived),
+    ).rejects.toThrow();
+    await expect(
+      d.cards.getCardOverview(ctx, "00000000-0000-7000-8000-000000000000", all),
+    ).rejects.toThrow();
+  });
+
   it("leaves the instalments of later months on their own invoices", async () => {
     const ctx = await ctxOf("ana");
     await d.transactions.createTransaction(ctx, {

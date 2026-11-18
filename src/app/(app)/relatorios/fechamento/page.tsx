@@ -64,7 +64,11 @@ async function Closing({
     ctx,
     parseMonthParam((await searchParams).mes),
   );
-  const first = await firstRecordOn(ctx);
+  // The closing is read alongside and dropped when there is nothing to show.
+  const [first, closing] = await Promise.all([
+    firstRecordOn(ctx),
+    monthClosing(ctx, range),
+  ]);
 
   // No month has closed with records yet: nothing to switch between.
   if (!first || first >= current.start) {
@@ -119,7 +123,6 @@ async function Closing({
     );
   }
 
-  const closing = await monthClosing(ctx, range);
   if (!closing) return null;
   const month = monthName(closing.month);
   const currentMonthName = monthName(closing.currentMonth);

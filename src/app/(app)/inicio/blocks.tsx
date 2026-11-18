@@ -347,9 +347,12 @@ async function SpendingCalendarBlockLoader({ ctx, range }: HomeBlockProps) {
 
 /** Fluxo de caixa: the report's daily balance for the month on screen. */
 async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
-  const before = await noRecordsBefore(ctx, range);
+  // Read together; the report is dropped when the month has no records.
+  const [before, report] = await Promise.all([
+    noRecordsBefore(ctx, range),
+    cashFlowReport(ctx, range),
+  ]);
   if (before) return before;
-  const report = await cashFlowReport(ctx, range);
   if (!report.hasAccounts) return <CashFlowNoAccountsInvite />;
   if (isCashFlowEmpty(report)) {
     return <CashFlowInvite monthName={monthName(range.month)} />;
@@ -374,13 +377,11 @@ async function CashFlowBlockLoader({ ctx, range }: HomeBlockProps) {
  * opens on that same month (`?periodo=1&mes=`).
  */
 async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
-  const before = await noRecordsBefore(ctx, range);
+  const [before, { items, totalCents }] = await Promise.all([
+    noRecordsBefore(ctx, range),
+    categoryBreakdown(ctx, range.start, range.end),
+  ]);
   if (before) return before;
-  const { items, totalCents } = await categoryBreakdown(
-    ctx,
-    range.start,
-    range.end,
-  );
   if (items.length === 0) {
     return <CategoryBreakdownInvite monthName={monthName(range.month)} />;
   }
@@ -410,9 +411,11 @@ async function CategoryBreakdownBlockLoader({ ctx, range }: HomeBlockProps) {
 /** Receitas × despesas: the 6 months up to the one on screen. */
 async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
   const end = seriesEnd(ctx, range);
-  const before = await noRecordsBefore(ctx, end);
+  const [before, months] = await Promise.all([
+    noRecordsBefore(ctx, end),
+    monthlySeries(ctx, end, INCOME_EXPENSE_BLOCK_MONTHS),
+  ]);
   if (before) return before;
-  const months = await monthlySeries(ctx, end, INCOME_EXPENSE_BLOCK_MONTHS);
   if (
     months.every((month) => month.incomeCents === 0 && month.expenseCents === 0)
   ) {
@@ -439,16 +442,14 @@ async function IncomeExpenseBlockLoader({ ctx, range }: HomeBlockProps) {
 
 /** Patrimônio: the end of each of the last months, up to the one on screen. */
 async function NetWorthBlockLoader({ ctx, range }: HomeBlockProps) {
-  const before = await noRecordsBefore(ctx, seriesEnd(ctx, range));
+  const [before, points, first] = await Promise.all([
+    noRecordsBefore(ctx, seriesEnd(ctx, range)),
+    netWorthSeries(ctx, seriesEnd(ctx, range), NET_WORTH_BLOCK_POINTS),
+    firstRecordOn(ctx),
+  ]);
   if (before) return before;
-  const points = await netWorthSeries(
-    ctx,
-    seriesEnd(ctx, range),
-    NET_WORTH_BLOCK_POINTS,
-  );
   if (points.every((point) => point.cents === 0)) return <NetWorthInvite />;
   // Starts at the first record, like the report (months before it are zeros).
-  const first = await firstRecordOn(ctx);
   const shown = trimToFirstRecord(
     points,
     first ? periodMonthOf(ctx, first) : null,
@@ -494,9 +495,11 @@ async function DailySpendBlockLoader({ ctx, range }: HomeBlockProps) {
  * each category's detail open on that same month.
  */
 async function MonthComparisonBlockLoader({ ctx, range }: HomeBlockProps) {
-  const before = await noRecordsBefore(ctx, range);
+  const [before, comparison] = await Promise.all([
+    noRecordsBefore(ctx, range),
+    monthComparison(ctx, range),
+  ]);
   if (before) return before;
-  const comparison = await monthComparison(ctx, range);
   if (!comparison) {
     return <MonthComparisonFutureInvite monthName={monthName(range.month)} />;
   }

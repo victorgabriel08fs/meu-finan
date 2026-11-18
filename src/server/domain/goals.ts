@@ -25,6 +25,7 @@ import { type AccountListItem, listAccounts, requireAccount } from "./accounts";
 import type { UserContext } from "./context";
 import { DomainError, notFound } from "./errors";
 import { getMarketRates, type MarketRates } from "./rates";
+import { accountsOf } from "./request-reads";
 import { createTransfer } from "./transactions";
 
 export type GoalItem = {
@@ -138,6 +139,10 @@ function toGoalItem(
 const byId = (accounts: AccountListItem[]) =>
   new Map(accounts.map((account) => [account.id, account]));
 
+/**
+ * The active goals. Reads the request's accounts (accountsOf), so call it
+ * while rendering, never after a write in the same action.
+ */
 export async function listGoals(ctx: UserContext): Promise<GoalItem[]> {
   const [rows, accounts, market] = await Promise.all([
     db
@@ -145,7 +150,7 @@ export async function listGoals(ctx: UserContext): Promise<GoalItem[]> {
       .from(goals)
       .where(and(eq(goals.userId, ctx.userId), isNull(goals.archivedAt)))
       .orderBy(asc(goals.createdAt)),
-    listAccounts(ctx.userId),
+    accountsOf(ctx),
     getMarketRates(),
   ]);
   const active = byId(accounts);
@@ -167,6 +172,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
  * One of the user's goals, archived ones included, or null when the id is
  * malformed, unknown or someone else's (doc 01 §7.4: never reveal which).
+ * Reads the request's accounts (accountsOf): for rendering only.
  */
 export async function getGoal(
   ctx: UserContext,
@@ -179,7 +185,7 @@ export async function getGoal(
       .from(goals)
       .where(and(eq(goals.id, id), eq(goals.userId, ctx.userId)))
       .limit(1),
-    listAccounts(ctx.userId),
+    accountsOf(ctx),
     getMarketRates(),
   ]);
   const row = rows[0];

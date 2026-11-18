@@ -32,13 +32,12 @@ import { db } from "@/server/db/client";
 import {
   type CategoryKind,
   categories,
-  finAccounts,
   transactions,
 } from "@/server/db/schema";
-import { listAccounts } from "./accounts";
 import { type PeriodRange, toRange, type UserContext } from "./context";
 import {
   accountsOf,
+  allAccountsOf,
   cardInvoicesOf,
   paidByAccountDaySince,
   pendingUntil,
@@ -239,57 +238,61 @@ export async function netWorthSeries(
   const periods = trailingPeriods(current, count);
   const first = periods[0];
   if (!first) return [];
-  const accounts = (
-    await listAccounts(ctx.userId, { includeArchived: true })
-  ).filter((account) => account.includeInNetWorth);
+  const accounts = (await allAccountsOf(ctx)).filter(
+    (account) => account.includeInNetWorth,
+  );
   if (accounts.length === 0)
     return periods.map((p) => ({ month: p.month, cents: 0 }));
   const ids = accounts.map((account) => account.id);
 
-  const [initialRow] = await db
-    .select({
-      total:
-        sql<number>`coalesce(sum(${finAccounts.initialBalanceCents}), 0)`.mapWith(
-          Number,
-        ),
-    })
-    .from(finAccounts)
-    .where(inArray(finAccounts.id, ids));
-  const [beforeRow] = await db
-    .select({
-      total: sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
-        Number,
-      ),
-    })
-    .from(transactions)
-    .where(
-      and(
-        inArray(transactions.accountId, ids),
-        isNull(transactions.deletedAt),
-        eq(transactions.status, "paid"),
-        lt(transactions.occurredOn, first.start),
-      ),
-    );
+  // The starting balances come with the accounts; the two sums are apart.
+  const initial = accounts.reduce(
+    (sum, account) => sum + account.initialBalanceCents,
+    0,
+  );
   const bucket = sql<string>`to_char(date_trunc('month', ${transactions.occurredOn} - ${ctx.monthStartDay - 1}::int), 'YYYY-MM')`;
-  const monthly = await db
-    .select({
-      month: bucket,
-      total: sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
-        Number,
+  const [[beforeRow], monthly] = await Promise.all([
+    db
+      .select({
+        total:
+          sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
+            Number,
+          ),
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.accountId, ids),
+          isNull(transactions.deletedAt),
+          eq(transactions.status, "paid"),
+          lt(transactions.occurredOn, first.start),
+        ),
       ),
-    })
-    .from(transactions)
-    .where(
-      and(
-        inArray(transactions.accountId, ids),
-        isNull(transactions.deletedAt),
-        eq(transactions.status, "paid"),
-        between(transactions.occurredOn, first.start, iso(parse(current.end))),
-      ),
-    )
-    .groupBy(sql`1`);
+    db
+      .select({
+        month: bucket,
+        total:
+          sql<number>`coalesce(sum(${transactions.amountCents}), 0)`.mapWith(
+            Number,
+          ),
+      })
+      .from(transactions)
+      .where(
+        and(
+          inArray(transactions.accountId, ids),
+          isNull(transactions.deletedAt),
+          eq(transactions.status, "paid"),
+          between(
+            transactions.occurredOn,
+            first.start,
+            iso(parse(current.end)),
+          ),
+        ),
+      )
+      .groupBy(sql`1`),
+  ]);
   const byMonth = new Map(monthly.map((row) => [row.month, row.total]));
-  let running = (initialRow?.total ?? 0) + (beforeRow?.total ?? 0);
+  let running = initial + (beforeRow?.total ?? 0);
   return periods.map((period) => {
     running += byMonth.get(period.month) ?? 0;
     return { month: period.month, cents: running };
@@ -320,9 +323,9 @@ export async function netWorthBreakdown(
   const periods = trailingPeriods(current, count);
   const first = periods[0];
   if (!first) return [];
-  const accounts = (
-    await listAccounts(ctx.userId, { includeArchived: true })
-  ).filter((account) => account.includeInNetWorth);
+  const accounts = (await allAccountsOf(ctx)).filter(
+    (account) => account.includeInNetWorth,
+  );
   if (accounts.length === 0) {
     return periods.map((period) => ({
       month: period.month,

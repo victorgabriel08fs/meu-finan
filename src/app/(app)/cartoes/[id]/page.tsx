@@ -100,7 +100,7 @@ async function CardDetail({
 
   let overview: Awaited<ReturnType<typeof getCardOverview>>;
   try {
-    overview = await getCardOverview(ctx, account.id);
+    overview = await getCardOverview(ctx, account.id, accounts);
   } catch (error) {
     if (!(error instanceof DomainError)) throw error;
     return (

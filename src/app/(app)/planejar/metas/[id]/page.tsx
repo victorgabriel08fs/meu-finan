@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion, Skeleton } from "@/components/ui/skeleton";
 import { toYearMonth } from "@/lib/finance";
 import { requireUser } from "@/server/dal";
-import { listAccounts } from "@/server/domain/accounts";
 import { getUserContext } from "@/server/domain/context";
 import { getGoal, goalContributions } from "@/server/domain/goals";
 import { getMarketRates } from "@/server/domain/rates";
+import { accountsOf } from "@/server/domain/request-reads";
 
 export const metadata: Metadata = { title: "Meta" };
 
@@ -45,7 +45,7 @@ async function GoalDetail({
   const [{ id }, ctx] = await Promise.all([params, getUserContext(user.id)]);
   const [goal, accounts, market] = await Promise.all([
     getGoal(ctx, id),
-    listAccounts(user.id),
+    accountsOf(ctx),
     getMarketRates(),
   ]);
 

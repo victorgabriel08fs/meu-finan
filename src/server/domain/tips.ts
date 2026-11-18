@@ -22,6 +22,7 @@ import {
   userTips,
 } from "@/server/db/schema";
 import { getUserContext } from "./context";
+import { accountOptionsOf } from "./request-reads";
 
 /** Row that turns every balloon off ("Não mostrar mais dicas"). Not a tip id. */
 export const TIPS_OFF_ROW = "*";
@@ -37,28 +38,35 @@ export type TipViewer = { role: UserRole; flags: Flags };
 /**
  * The facts tip conditions read (TipContext): accounts and passkeys from
  * single-table queries, the role and the flags tips ask about from the viewer.
+ * Without an executor, the accounts are the request's (accountOptionsOf, the
+ * read the Nova transação makes anyway).
  */
 export async function getTipContext(
   userId: string,
   viewer: TipViewer,
-  executor: Executor = db,
+  executor?: Executor,
 ): Promise<TipContext> {
-  const [account, key] = await Promise.all([
+  const [hasAccounts, key] = await Promise.all([
     executor
-      .select({ id: finAccounts.id })
-      .from(finAccounts)
-      .where(
-        and(eq(finAccounts.userId, userId), isNull(finAccounts.archivedAt)),
-      )
-      .limit(1),
-    executor
+      ? executor
+          .select({ id: finAccounts.id })
+          .from(finAccounts)
+          .where(
+            and(eq(finAccounts.userId, userId), isNull(finAccounts.archivedAt)),
+          )
+          .limit(1)
+          .then((rows) => rows.length > 0)
+      : getUserContext(userId)
+          .then(accountOptionsOf)
+          .then((accounts) => accounts.length > 0),
+    (executor ?? db)
       .select({ id: passkey.id })
       .from(passkey)
       .where(eq(passkey.userId, userId))
       .limit(1),
   ]);
   return {
-    hasAccounts: account.length > 0,
+    hasAccounts,
     hasPasskey: key.length > 0,
     role: viewer.role,
     flags: TIP_FLAG_KEYS.filter((key) => viewer.flags[key]),
@@ -69,27 +77,35 @@ type SnapshotOptions = {
   executor?: Executor;
   /** IANA zone for the day the account came into use; defaults to the user's. */
   timeZone?: string;
+  /**
+   * When the account was created, as the session already has it (saves a
+   * read of `user`). Only for this same user.
+   */
+  ownerCreatedAt?: Date;
 };
 
 /** Everything the browser needs to pick tips, read once per page load. */
 export async function getTipsSnapshot(
   userId: string,
   viewer: TipViewer,
-  { executor = db, timeZone }: SnapshotOptions = {},
+  { executor, timeZone, ownerCreatedAt }: SnapshotOptions = {},
 ): Promise<TipsSnapshot> {
-  const [owner, joined, rows, context, zone] = await Promise.all([
-    executor
-      .select({ createdAt: user.createdAt })
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1),
-    executor
+  const run = executor ?? db;
+  const [createdAt, joined, rows, context, zone] = await Promise.all([
+    ownerCreatedAt ??
+      run
+        .select({ createdAt: user.createdAt })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1)
+        .then((owner) => owner[0]?.createdAt),
+    run
       .select({ usedAt: min(accessLinks.usedAt) })
       .from(accessLinks)
       .where(
         and(eq(accessLinks.userId, userId), eq(accessLinks.purpose, "invite")),
       ),
-    executor
+    run
       .select({ tipId: userTips.tipId })
       .from(userTips)
       .where(eq(userTips.userId, userId)),
@@ -99,7 +115,7 @@ export async function getTipsSnapshot(
   // An invited person starts using the app when they accept the invite, not
   // when an administrator created the account; reset links do not count.
   // Without an invite (the first administrator), the account's creation.
-  const startedAt = joined[0]?.usedAt ?? owner[0]?.createdAt;
+  const startedAt = joined[0]?.usedAt ?? createdAt;
   return {
     seen: rows.map((row) => row.tipId).filter(isTipId),
     off: rows.some((row) => row.tipId === TIPS_OFF_ROW),

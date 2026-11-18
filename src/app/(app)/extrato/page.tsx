@@ -69,17 +69,21 @@ async function Statement({
   searchParams: PageProps<"/extrato">["searchParams"];
 }) {
   const user = await requireUser();
-  const ctx = await getUserContext(user.id);
-  const parsed = parseStatementParams(await searchParams);
+  const [ctx, query] = await Promise.all([
+    getUserContext(user.id),
+    searchParams,
+  ]);
+  const parsed = parseStatementParams(query);
   const range = resolvePeriod(ctx, parsed.month);
   const currentMonth = resolvePeriod(ctx, null).month;
 
-  const [accounts, categories, tags] = await Promise.all([
+  const [accounts, categories, tags, flags] = await Promise.all([
     listAccounts(ctx.userId, { includeArchived: true }),
     // Archived ones too: the filter of a parent brings its archived
     // subcategories, and a link to an archived category still filters.
     listCategoriesForAdmin(ctx.userId),
     listTags(ctx.userId, { includeArchived: true }),
+    getFlags(ctx.userId),
   ]);
   // Ids from the URL count only when they are the user's own.
   const accountId = accounts.some((item) => item.id === parsed.accountId)
@@ -103,7 +107,12 @@ async function Statement({
     categoryId || tagId || filters.kind || filters.status || filters.q,
   );
 
-  const [list, totals, flags] = await Promise.all([
+  // "Dividir" and "Dividida em Casa" (financas_compartilhadas): the groups
+  // the person is in, read only with the flag on, alongside the list.
+  const shareTargets = flags.financas_compartilhadas
+    ? listShareTargets(ctx.userId)
+    : null;
+  const [list, totals] = await Promise.all([
     listTransactions(ctx, {
       start: range.start,
       end: range.end,
@@ -119,17 +128,14 @@ async function Statement({
     totalsFromList
       ? null
       : periodTotals(ctx, range.start, range.end, accountId ?? undefined),
-    getFlags(ctx.userId),
   ]);
-  // "Dividir" and "Dividida em Casa" (financas_compartilhadas): the groups
-  // the person is in, read only with the flag on.
   const [annotated, sharing] = await Promise.all([
     flags.alerta_dia_nao_util
       ? withNonBusinessDue(list.items, ctx.todayIso)
       : list.items,
-    flags.financas_compartilhadas
+    shareTargets
       ? Promise.all([
-          listShareTargets(ctx.userId),
+          shareTargets,
           transactionShares(
             ctx.userId,
             list.items

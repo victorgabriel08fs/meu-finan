@@ -64,8 +64,12 @@ async function CashFlow({
     />
   );
 
-  // A month that ended before the first record would project a flat balance.
-  const first = await firstRecordOn(ctx);
+  // A month that ended before the first record would project a flat balance
+  // (the report, read alongside, is then dropped).
+  const [first, report] = await Promise.all([
+    firstRecordOn(ctx),
+    cashFlowReport(ctx, range),
+  ]);
   if (first && isBeforeFirstRecord(range.end, first)) {
     const firstMonth = periodMonthOf(ctx, first);
     const copy = noRecordsCopy(range.month, firstMonth);
@@ -93,8 +97,6 @@ async function CashFlow({
       </>
     );
   }
-
-  const report = await cashFlowReport(ctx, range);
 
   if (!report.hasAccounts || isCashFlowEmpty(report)) {
     return (

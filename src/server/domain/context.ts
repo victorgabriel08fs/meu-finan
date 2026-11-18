@@ -14,6 +14,7 @@ import {
 } from "@/lib/finance";
 import { db, type Executor } from "@/server/db/client";
 import { userSettings } from "@/server/db/schema";
+import { settingsRowOf } from "./preferences";
 
 export const DEFAULT_TIME_ZONE = "America/Sao_Paulo";
 
@@ -29,7 +30,8 @@ type ContextOptions = { executor?: Executor; now?: number };
 
 /**
  * The user's context. Without options the result is memoised for the
- * request, so the layout and the page share one settings query.
+ * request, and the settings row is the one the theme and the Início read
+ * too (settingsRowOf): one settings query per request.
  */
 export function getUserContext(
   userId: string,
@@ -40,7 +42,9 @@ export function getUserContext(
     : requestUserContext(userId);
 }
 
-const requestUserContext = cache((userId: string) => loadUserContext(userId));
+const requestUserContext = cache(async (userId: string) =>
+  contextFrom(userId, await settingsRowOf(userId), Date.now()),
+);
 
 async function loadUserContext(
   userId: string,
@@ -54,8 +58,16 @@ async function loadUserContext(
     .from(userSettings)
     .where(eq(userSettings.userId, userId))
     .limit(1);
+  return contextFrom(userId, settings ?? null, options.now ?? Date.now());
+}
+
+function contextFrom(
+  userId: string,
+  settings: { timezone: string; monthStartDay: number } | null,
+  now: number,
+): UserContext {
   const timeZone = settings?.timezone ?? DEFAULT_TIME_ZONE;
-  const today = localDateIn(options.now ?? Date.now(), timeZone);
+  const today = localDateIn(now, timeZone);
   return {
     userId,
     timeZone,
