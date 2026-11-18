@@ -6,6 +6,7 @@
 // before confirming with one. Nobody sets the stamp through the API.
 import { count, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { SOCIAL_CONFIRMATION_MESSAGE } from "@/lib/admin/second-factor";
 import { LEGAL_VERSION } from "@/lib/legal/version";
 
 vi.mock("server-only", () => ({}));
@@ -281,6 +282,33 @@ describe("passkey management", () => {
     const bruno = attempts(brunoCookie, "pk-bruno");
     await expect(bruno.register()).resolves.toBeTruthy();
     await expect(bruno.remove()).resolves.toBeTruthy();
+  });
+});
+
+describe("Google link management", () => {
+  it("is blocked for an unconfirmed administrator who has a passkey", async () => {
+    await m.db
+      .insert(m.schema.featureFlags)
+      .values({ key: "entrar_com_google", enabled: true });
+    await stampSessions("ana", null);
+    await addPasskey("ana");
+    const headers = new Headers({ cookie: anaCookie });
+    const blocked = {
+      body: {
+        code: "PASSKEY_CONFIRMATION_REQUIRED",
+        message: SOCIAL_CONFIRMATION_MESSAGE,
+      },
+    };
+    await expect(
+      m.auth.api.linkSocialAccount({
+        headers,
+        body: { provider: "google", callbackURL: "/ajustes/seguranca" },
+      }),
+    ).rejects.toMatchObject(blocked);
+    await expect(
+      m.auth.api.unlinkAccount({ headers, body: { accountId: "qualquer" } }),
+    ).rejects.toMatchObject(blocked);
+    await m.db.delete(m.schema.featureFlags);
   });
 });
 

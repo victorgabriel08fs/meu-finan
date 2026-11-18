@@ -79,3 +79,16 @@ export function adminGatePath(returnTo: AdminSectionPath): string {
 export const PASSKEY_CONFIRMATION_REQUIRED = "PASSKEY_CONFIRMATION_REQUIRED";
 export const PASSKEY_CONFIRMATION_MESSAGE =
   "Confirme com uma passkey que você já tem antes de mexer nas passkeys.";
+
+/**
+ * Better Auth endpoints that link or unlink a social account: for an
+ * administrator they need the same confirmation as managing passkeys, or
+ * whoever has the password links their own Google and signs in with it.
+ */
+export const SOCIAL_MANAGEMENT_PATHS: readonly string[] = [
+  "/link-social",
+  "/unlink-account",
+];
+
+export const SOCIAL_CONFIRMATION_MESSAGE =
+  "Confirme com uma passkey que você já tem antes de vincular ou desvincular o Google.";

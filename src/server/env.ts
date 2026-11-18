@@ -78,6 +78,18 @@ const serverEnvSchemas = {
   SENTRY_DSN: z.string().refine(isValidSentryDsn, {
     error: "expected a Sentry DSN (https://<key>@<host>/<project id>)",
   }),
+  // Optional, both or neither: the OAuth client of Google Cloud ("Web
+  // application"). Without them the "Continuar com o Google" button never
+  // shows (src/server/auth-social.ts).
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .regex(/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/, {
+      error:
+        "expected the OAuth client ID from Google Cloud (…apps.googleusercontent.com)",
+    }),
+  GOOGLE_CLIENT_SECRET: z
+    .string()
+    .min(20, { error: "expected the OAuth client secret from Google Cloud" }),
   // Empty means on; off is for tests, e2e and offline development.
   PASSWORD_LEAK_CHECK: z.enum(["on", "off"], { error: "expected on or off" }),
 } as const;

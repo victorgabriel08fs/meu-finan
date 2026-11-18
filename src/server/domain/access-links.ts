@@ -21,6 +21,7 @@ import {
 import { recordAudit } from "./audit";
 import { DomainError } from "./errors";
 import { markLegalAccepted } from "./legal";
+import { deleteSocialLinks } from "./social-links";
 
 export type AccessLinkInfo = {
   state: AccessLinkState;
@@ -176,8 +177,10 @@ export async function acceptAccessLink(
     }
     await tx.delete(session).where(eq(session.userId, found.userId));
     const removePasskeys = found.purpose === "reset" && input.removePasskeys;
+    let removedSocialLinks = false;
     if (removePasskeys) {
       await tx.delete(passkey).where(eq(passkey.userId, found.userId));
+      removedSocialLinks = await deleteSocialLinks(tx, found.userId);
     }
 
     const person = { id: found.userId, name: owner.name, email: owner.email };
@@ -189,7 +192,7 @@ export async function acceptAccessLink(
         purpose: found.purpose,
         ...(isInvite
           ? { legalVersion: LEGAL_VERSION }
-          : { removedPasskeys: removePasskeys }),
+          : { removedPasskeys: removePasskeys, removedSocialLinks }),
       },
     });
     return {

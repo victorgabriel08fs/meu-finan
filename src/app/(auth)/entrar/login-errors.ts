@@ -1,4 +1,5 @@
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
+import { SIGN_IN_UNAVAILABLE } from "@/lib/auth/social";
 import { LOGIN_LOCKED, loginLockedMessage } from "@/lib/security/messages";
 
 export type LoginError =
@@ -7,8 +8,7 @@ export type LoginError =
   | undefined;
 
 export const WRONG_CREDENTIALS = "E-mail ou senha incorretos.";
-export const SIGN_IN_UNAVAILABLE =
-  "Não foi possível entrar agora. Tente de novo em instantes.";
+export { SIGN_IN_UNAVAILABLE };
 
 /**
  * What to tell the person after a failed sign-in. Only a real rejection of

@@ -153,7 +153,7 @@ export function AcceptForm({
             onChange={(event) => setRemovePasskeys(event.target.checked)}
           />
           <span>
-            Remover todas as passkeys
+            Remover todas as passkeys e a conta Google vinculada
             <span className="block text-caption text-fg-3">
               Use se perdeu um aparelho. Depois cadastre uma passkey nova.
             </span>

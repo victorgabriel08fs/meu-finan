@@ -75,6 +75,21 @@ export async function isFlagEnabled(
 }
 
 /**
+ * A flag's global value (stored or default), ignoring every per-person value:
+ * for requests without a person, such as the sign-in screen.
+ */
+export async function isFlagEnabledForEveryone(
+  key: FlagKey,
+  executor: Executor = db,
+): Promise<boolean> {
+  const globals = await executor
+    .select({ key: featureFlags.key, enabled: featureFlags.enabled })
+    .from(featureFlags)
+    .where(eq(featureFlags.key, key));
+  return resolveFlags(globals, [])[key];
+}
+
+/**
  * The signed-in person's flags for FlagsProvider (the app shell creates the
  * promise without awaiting it; Client Components read it inside <Suspense>).
  * Signed out: the registry defaults.

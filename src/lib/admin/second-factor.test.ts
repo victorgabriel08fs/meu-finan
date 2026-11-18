@@ -85,6 +85,8 @@ describe("stampPasskeySession", () => {
       "/sign-in/email",
       "/sign-up/email",
       "/passkey/verify-registration",
+      // A Google sign-in is never a passkey.
+      "/callback/:id",
       undefined,
     ]) {
       expect(stampPasskeySession(path, at)).toBeUndefined();
