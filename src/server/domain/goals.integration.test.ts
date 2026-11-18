@@ -4,6 +4,8 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// getMarketRates is `'use cache'`: outside Next, its cache calls do nothing.
+vi.mock("next/cache", () => ({ cacheTag: vi.fn(), cacheLife: vi.fn() }));
 process.env.DATABASE_URL = "pglite:memory";
 
 type Domain = {
