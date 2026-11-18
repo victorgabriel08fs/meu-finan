@@ -118,7 +118,7 @@ export function LoginForm({
       {notice ? (
         <output
           aria-live="polite"
-          className="rounded-control bg-primary-soft px-4 py-3 text-[14px] text-on-primary-soft leading-5"
+          className="rounded-control bg-primary-soft px-4 py-3 text-callout text-on-primary-soft"
         >
           {notice}
         </output>
@@ -149,7 +149,7 @@ export function LoginForm({
         Entrar com passkey
       </Button>
 
-      <div className="flex items-center gap-3 text-[13px] text-fg-3">
+      <div className="flex items-center gap-3 text-caption text-fg-3">
         <span className="h-px flex-1 bg-border" />
         ou com e-mail e senha
         <span className="h-px flex-1 bg-border" />

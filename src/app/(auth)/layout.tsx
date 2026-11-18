@@ -9,11 +9,11 @@ import { LegalLinks } from "@/components/legal/legal-links";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main className="flex min-h-dvh flex-col items-center bg-bg px-4 pt-[max(2.5rem,env(safe-area-inset-top))] pb-10 sm:justify-center">
-      <div className="w-full max-w-[400px]">
+      <div className="w-full max-w-100">
         <div className="mb-8 flex items-center gap-3">
           {/* The brand's emerald in both themes, like the app icon. */}
           <BrandMark />
-          <span className="font-bold text-[17px] text-fg">Prumo</span>
+          <span className="text-headline text-fg">Prumo</span>
         </div>
         {children}
         <LegalLinks className="mt-10" />

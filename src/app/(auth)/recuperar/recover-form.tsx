@@ -47,7 +47,7 @@ export function RecoverForm() {
           aria-invalid={errors.password ? true : undefined}
           aria-describedby="password-hint password-error"
         />
-        <p id="password-hint" className="text-[13px] text-fg-3 leading-[18px]">
+        <p id="password-hint" className="text-caption text-fg-3">
           Pelo menos 12 caracteres. Senhas que já vazaram em outros sites não
           são aceitas.
         </p>
@@ -66,7 +66,7 @@ export function RecoverForm() {
         />
         <FieldError id="confirm-error">{errors.confirm?.[0]}</FieldError>
       </div>
-      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[15px] text-fg leading-[22px]">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-body text-fg">
         <input
           type="checkbox"
           className="mt-0.5 size-5 accent-[var(--primary)]"
@@ -75,7 +75,7 @@ export function RecoverForm() {
         />
         <span>
           Remover todas as passkeys
-          <span className="block text-[13px] text-fg-3 leading-[18px]">
+          <span className="block text-caption text-fg-3">
             Use se perdeu o aparelho. Depois cadastre uma passkey nova.
           </span>
         </span>

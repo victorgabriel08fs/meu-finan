@@ -28,10 +28,8 @@ export default async function SetupPage() {
 
   return (
     <>
-      <h1 className="font-bold text-[28px] text-fg leading-[34px] tracking-[-0.02em]">
-        Primeiro acesso
-      </h1>
-      <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
+      <h1 className="text-title-1 text-fg">Primeiro acesso</h1>
+      <p className="mt-2 text-body text-fg-2">
         Crie o acesso de quem administra o app. Esta tela funciona uma única
         vez: depois dela, pessoas novas só entram por convite.
       </p>

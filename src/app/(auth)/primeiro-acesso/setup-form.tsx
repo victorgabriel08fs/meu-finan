@@ -98,7 +98,7 @@ export function SetupForm() {
               }
             />
             {field.hint ? (
-              <p id={hintId} className="text-[13px] text-fg-3 leading-[18px]">
+              <p id={hintId} className="text-caption text-fg-3">
                 {field.hint}
               </p>
             ) : null}

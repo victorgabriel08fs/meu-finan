@@ -25,7 +25,9 @@ export function NotFoundMessage({ href, label }: NotFoundMessageProps) {
       >
         <Compass strokeWidth={1.75} />
       </span>
-      <h1 className="mt-5 text-title-1 text-fg">Página não encontrada</h1>
+      <h1 className="mt-5 text-title-1 text-balance hyphens-auto text-fg">
+        Página não encontrada
+      </h1>
       <p className="mt-2 text-body text-fg-2">
         O endereço pode estar incompleto, ou esta página não está disponível
         para a sua conta.

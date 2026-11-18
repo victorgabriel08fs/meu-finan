@@ -27,12 +27,8 @@ export default async function LoginPage({
 
   return (
     <>
-      <h1 className="font-bold text-[28px] text-fg leading-[34px] tracking-[-0.02em]">
-        Entrar
-      </h1>
-      <p className="mt-2 text-[15px] text-fg-2 leading-[22px]">
-        Seu dinheiro no prumo.
-      </p>
+      <h1 className="text-title-1 text-fg">Entrar</h1>
+      <p className="mt-2 text-body text-fg-2">Seu dinheiro no prumo.</p>
       <LoginForm redirectTo={target} notice={notice} />
     </>
   );
