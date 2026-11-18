@@ -7,7 +7,8 @@
 // with the same plugins. Regenerate after upgrading Better Auth or adding
 // plugins, then run `npm run db:generate`. Beyond the CLI's output:
 // `session.passkeyVerifiedAt` (S4, `session.additionalFields` in
-// src/server/auth.ts), set only on sessions opened with a passkey.
+// src/server/auth.ts), set only on sessions opened with a passkey, and the
+// unique index on `account` (provider, account id).
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -17,6 +18,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 const tz = { withTimezone: true } as const;
@@ -85,7 +87,15 @@ export const account = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("account_userId_idx").on(table.userId)],
+  (table) => [
+    index("account_userId_idx").on(table.userId),
+    // One link per provider account: two simultaneous links of the same
+    // Google account cannot both land (ADR-15).
+    uniqueIndex("account_provider_account_uidx").on(
+      table.providerId,
+      table.accountId,
+    ),
+  ],
 );
 
 export const verification = pgTable(
