@@ -134,6 +134,13 @@
       "when": 1794942798323,
       "tag": "0018_termos_aceite",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794962556866,
+      "tag": "0019_indices_desempenho",
+      "breakpoints": true
     }
   ]
 }

@@ -100,6 +100,16 @@ export const transactions = pgTable(
     index("txn_transfer")
       .on(t.transferId)
       .where(sql`${t.transferId} is not null`),
+    // The list of imports and "Desfazer importação"; also the ON DELETE.
+    index("txn_import").on(t.importId).where(sql`${t.importId} is not null`),
+    // The entries of an installment plan; also the ON DELETE CASCADE.
+    index("txn_installment_plan")
+      .on(t.installmentPlanId)
+      .where(sql`${t.installmentPlanId} is not null`),
+    // The account of the latest expense, the Nova transação's default.
+    index("txn_user_expense_created")
+      .on(t.userId, t.createdAt.desc().nullsFirst())
+      .where(sql`${t.deletedAt} is null and ${t.kind} = 'expense'`),
     uniqueIndex("txn_external")
       .on(t.accountId, t.externalId)
       .where(sql`${t.externalId} is not null`),
