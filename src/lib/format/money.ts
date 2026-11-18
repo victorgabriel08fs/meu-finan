@@ -38,6 +38,8 @@ const compactFormat = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
   notation: "compact",
+  // Explicit: some ICU versions keep the currency's minimum and print "1,0 mil".
+  minimumFractionDigits: 0,
   maximumFractionDigits: 1,
 });
 const compactSmallFormat = new Intl.NumberFormat("pt-BR", {
