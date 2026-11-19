@@ -141,6 +141,13 @@
       "when": 1794962556866,
       "tag": "0019_indices_desempenho",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795042024467,
+      "tag": "0020_conta_provedor_unico",
+      "breakpoints": true
     }
   ]
 }

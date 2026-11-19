@@ -565,6 +565,19 @@ export const TIPS: readonly Tip[] = [
     icon: "sparkles",
     link: { href: "/ajustes#ajustes-dados", label: "Abrir Ajustes" },
   },
+  {
+    id: "novidade-entrar-com-google",
+    kind: "novidade",
+    routes: ["/ajustes/seguranca"],
+    anchor: "conta-google",
+    title: "Entrar com o Google",
+    body: "Vincule sua conta Google em Ajustes › Segurança e entre com um toque, sem digitar a senha.",
+    since: "2026-11-18",
+    order: 33,
+    when: { flag: "entrar_com_google" },
+    icon: "key",
+    link: { href: "/ajustes/seguranca", label: "Vincular" },
+  },
 ];
 
 /** A screen shows at most this many tips in a row (doc 02 §6.2). */

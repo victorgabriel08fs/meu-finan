@@ -309,6 +309,14 @@ describe("reset links", () => {
       deviceType: "singleDevice",
       backedUp: false,
     });
+    await m.db.insert(m.schema.account).values({
+      id: "google-iara",
+      accountId: "sub-iara",
+      providerId: "google",
+      userId: id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     expect(await sessionsOf(id)).toBe(2);
 
     const first = await m.users.createAccessLink(ANA.id, id, LINKS);
@@ -342,6 +350,17 @@ describe("reset links", () => {
       .from(m.schema.passkey)
       .where(eq(m.schema.passkey.userId, id));
     expect(keys?.total).toBe(0);
+    // Removing the passkeys also cuts the Google link; the password stays.
+    const providers = await m.db
+      .select({ providerId: m.schema.account.providerId })
+      .from(m.schema.account)
+      .where(eq(m.schema.account.userId, id));
+    expect(providers).toEqual([{ providerId: "credential" }]);
+    const [accepted] = (await m.audit.listAuditLog({ limit: 1 })).items;
+    expect(accepted?.metadata).toMatchObject({
+      removedPasskeys: true,
+      removedSocialLinks: true,
+    });
     await expect(signIn("iara@exemplo.com")).rejects.toThrow();
     expect(
       (await signIn("iara@exemplo.com", "a senha nova e longa")).token,
@@ -1074,12 +1093,26 @@ describe("break-glass recovery", () => {
     expect(await accessOf(oldestAdmin.id)).toEqual(untouched);
     expect(await auditCount()).toBe(audits);
 
+    await m.db.insert(m.schema.account).values({
+      id: "google-ana",
+      accountId: "sub-ana",
+      providerId: "google",
+      userId: ANA.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     const recovered = await recovery.recoverOwnerAccess({
       ownerEmail: ANA.email,
       passwordHash: await hashPassword("a senha de emergência"),
       removePasskeys: false,
     });
     expect(recovered?.id).toBe(ANA.id);
+    // Without removing the passkeys, the Google link stays.
+    const [googleLink] = await m.db
+      .select({ id: m.schema.account.id })
+      .from(m.schema.account)
+      .where(eq(m.schema.account.id, "google-ana"));
+    expect(googleLink).toBeDefined();
     const [row] = await m.db
       .select({ role: m.schema.user.role, banned: m.schema.user.banned })
       .from(m.schema.user)

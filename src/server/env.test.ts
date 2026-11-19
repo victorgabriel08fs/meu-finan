@@ -31,6 +31,19 @@ describe("readServerEnvSafe", () => {
     expect(JSON.stringify(bad)).not.toContain("sem-arroba");
   });
 
+  it("checks the shape of the Google OAuth client without echoing it", () => {
+    vi.stubEnv("GOOGLE_CLIENT_ID", "123-abc.apps.googleusercontent.com");
+    expect(readServerEnvSafe("GOOGLE_CLIENT_ID").status).toBe("ok");
+    vi.stubEnv("GOOGLE_CLIENT_ID", "meu-cliente");
+    const badId = readServerEnvSafe("GOOGLE_CLIENT_ID");
+    expect(badId.status).toBe("invalid");
+    expect(JSON.stringify(badId)).not.toContain("meu-cliente");
+    vi.stubEnv("GOOGLE_CLIENT_SECRET", "curto-demais");
+    const badSecret = readServerEnvSafe("GOOGLE_CLIENT_SECRET");
+    expect(badSecret.status).toBe("invalid");
+    expect(JSON.stringify(badSecret)).not.toContain("curto-demais");
+  });
+
   it("accepts on or off for PASSWORD_LEAK_CHECK and refuses anything else", () => {
     vi.stubEnv("PASSWORD_LEAK_CHECK", "off");
     expect(readServerEnvSafe("PASSWORD_LEAK_CHECK")).toEqual({

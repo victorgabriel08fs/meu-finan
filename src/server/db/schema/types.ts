@@ -251,6 +251,11 @@ export type AuditMetadata = {
   replaced?: boolean;
   /** access_link.accepted (reset): the person also removed their passkeys. */
   removedPasskeys?: boolean;
+  /**
+   * access_link.accepted (reset), access.recovered: removing the passkeys
+   * also removed a Google link.
+   */
+  removedSocialLinks?: boolean;
   /** user.sessions_revoked, user.banned: how many sessions ended. */
   sessions?: number;
   /** flag.*: the registry key. */

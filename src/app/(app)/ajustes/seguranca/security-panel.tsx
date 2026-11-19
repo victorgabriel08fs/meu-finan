@@ -20,6 +20,7 @@ import {
   LEAKED_PASSWORD_MESSAGE,
   PASSWORD_COMPROMISED,
 } from "@/lib/security/messages";
+import { SocialCard, type SocialCardProps } from "./social-card";
 
 export type PasskeyItem = {
   id: string;
@@ -72,6 +73,7 @@ export function SecurityPanel({
   firstAccess,
   accessReset = false,
   passkeyConfirmation = null,
+  social = null,
 }: {
   passkeys: PasskeyItem[];
   sessions: SessionItem[];
@@ -83,6 +85,8 @@ export function SecurityPanel({
    * passkey: they confirm with it before touching passkeys or Administração.
    */
   passkeyConfirmation?: string | null;
+  /** "Conta Google", when the deployment has Google and the person may use it. */
+  social?: SocialCardProps | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -156,6 +160,7 @@ export function SecurityPanel({
         </Button>
       ) : null}
 
+      {social ? <SocialCard {...social} /> : null}
       <PasswordCard />
       <SessionsCard sessions={sessions} busy={busy} run={run} />
 

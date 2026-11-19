@@ -3,7 +3,9 @@
 // which creates the first account (an administrator), and the two layers below
 // enforce it even if someone calls the auth API directly. Every other account
 // is created by an administrator in the panel (src/server/domain/users.ts),
-// outside Better Auth, and gets an invite link instead of a password.
+// outside Better Auth, and gets an invite link instead of a password. Google
+// (ADR-15) only signs in to an account that already linked it, by choice, in
+// Ajustes › Segurança: it never creates a user and never links by itself.
 import "server-only";
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
@@ -17,11 +19,16 @@ import { ADMIN_ROLE } from "@/lib/admin/roles";
 import { stampPasskeySession } from "@/lib/admin/second-factor";
 import { DEACTIVATED_MESSAGE } from "@/lib/admin/status";
 import { LEGAL_REQUIRED, LEGAL_VERSION } from "@/lib/legal/version";
-import { classifyAuthOutcome } from "@/lib/observability/auth-events";
+import {
+  classifyAuthOutcome,
+  classifySocialOutcome,
+} from "@/lib/observability/auth-events";
 import {
   guardPasskeyManagement,
   revokeReplacedSession,
 } from "@/server/auth-second-factor";
+import { socialProvidersFromEnv } from "@/server/auth-social";
+import { guardSocialAuth } from "@/server/auth-social-guard";
 import { db } from "@/server/db/client";
 import * as schema from "@/server/db/schema";
 import { authOrigins, readServerEnv } from "@/server/env";
@@ -62,6 +69,18 @@ const signUpClosed = () =>
   new APIError("FORBIDDEN", {
     message: "Cadastro desativado: contas novas só por convite.",
   });
+
+/**
+ * The app keeps only the link to a social account (its `sub`), never the
+ * provider's tokens: the endpoints that would use them are off.
+ */
+const NO_TOKENS = {
+  accessToken: null,
+  refreshToken: null,
+  idToken: null,
+  accessTokenExpiresAt: null,
+  refreshTokenExpiresAt: null,
+};
 
 function refuseSignUp(reason: string, headers: Headers | undefined): void {
   try {
@@ -141,7 +160,33 @@ export const auth = betterAuth({
   advanced: { database: { joins: true } },
   // Nobody changes session fields through the API: passkeyVerifiedAt is set
   // only by the passkey sign-in (databaseHooks below).
-  disabledPaths: [...ADMIN_HTTP_PATHS, "/update-session"],
+  // The Google tokens are never kept, so the endpoints that hand them out are
+  // off too, and so is Better Auth's HTML error page (errors go to /entrar).
+  disabledPaths: [
+    ...ADMIN_HTTP_PATHS,
+    "/update-session",
+    "/get-access-token",
+    "/refresh-token",
+    "/account-info",
+    "/error",
+  ],
+  onAPIError: { errorURL: `${origin}/entrar` },
+  socialProviders: socialProvidersFromEnv().providers,
+  account: {
+    updateAccountOnSignIn: false,
+    accountLinking: {
+      enabled: true,
+      // Only an explicit link from a signed-in session (/link-social), with
+      // the same e-mail, verified by Google (no trusted providers).
+      disableImplicitLinking: true,
+      trustedProviders: [],
+      allowDifferentEmails: false,
+      // Every account keeps its password row, so this only refuses removing
+      // the last door.
+      allowUnlinkingAll: false,
+      updateUserInfoOnLink: false,
+    },
+  },
   user: {
     // The accepted version of the terms (src/lib/legal/version.ts), read by
     // the DAL's gate. `input: false`: /update-user never writes them; only the
@@ -183,6 +228,10 @@ export const auth = betterAuth({
       "/passkey/verify-authentication": { window: 60, max: 10 },
       "/passkey/generate-authenticate-options": { window: 60, max: 20 },
       "/passkey/verify-registration": { window: 600, max: 10 },
+      "/sign-in/social": { window: 60, max: 10 },
+      "/link-social": { window: 600, max: 10 },
+      "/unlink-account": { window: 600, max: 10 },
+      "/callback/*": { window: 60, max: 20 },
     },
   },
   hooks: {
@@ -193,6 +242,7 @@ export const auth = betterAuth({
     // only its own endpoints): see leaked-passwords.ts.
     before: createAuthMiddleware(async (ctx) => {
       await guardPasskeyManagement(ctx);
+      await guardSocialAuth(ctx);
       if (ctx.path === "/sign-in/email") {
         return countEmailSignIn(ctx.body?.email);
       }
@@ -230,10 +280,14 @@ export const auth = betterAuth({
       await revokeReplacedSession(ctx);
       try {
         const returned: unknown = ctx.context.returned;
-        const outcome = classifyAuthOutcome({
-          path: ctx.path,
-          sessionUserId: ctx.context.newSession?.user.id ?? null,
-          error: isAPIError(returned)
+        // The callback answers with a redirect (an APIError with status
+        // 302 and a Location), on success and on failure alike.
+        const redirect =
+          isAPIError(returned) && returned.statusCode === 302
+            ? new Headers(returned.headers).get("location")
+            : undefined;
+        const error =
+          isAPIError(returned) && !redirect
             ? {
                 status: returned.statusCode,
                 code:
@@ -241,8 +295,20 @@ export const auth = betterAuth({
                     ? returned.body.code
                     : undefined,
               }
-            : null,
-        });
+            : null;
+        const sessionUserId = ctx.context.newSession?.user.id ?? null;
+        const outcome =
+          classifyAuthOutcome({ path: ctx.path, sessionUserId, error }) ??
+          classifySocialOutcome({
+            path: ctx.path,
+            provider: ctx.params?.id,
+            sessionUserId:
+              ctx.path === "/unlink-account"
+                ? (ctx.context.session?.user.id ?? null)
+                : sessionUserId,
+            redirectLocation: redirect,
+            error,
+          });
         if (!outcome) return;
         const failed = outcome.event.endsWith("_failed");
         const email =
@@ -282,6 +348,18 @@ export const auth = betterAuth({
         before: async (_session, context) => stampPasskeySession(context?.path),
       },
     },
+    // Pure: these may run inside a transaction.
+    account: {
+      create: {
+        before: async (account) =>
+          account.providerId === "credential"
+            ? undefined
+            : { data: { ...account, ...NO_TOKENS } },
+      },
+      update: {
+        before: async (account) => ({ data: { ...account, ...NO_TOKENS } }),
+      },
+    },
     user: {
       create: {
         // Layer 2, for every path that could create a user through Better
@@ -291,7 +369,13 @@ export const auth = betterAuth({
         // here: this runs inside the sign-up transaction. Runs after the admin
         // plugin's hook, so the role set here wins over its default. Layer 1
         // already required the accepted terms, so the account records them.
-        before: async (user) => {
+        before: async (user, context) => {
+          // Only sign-up creates a user, never a social callback, even on an
+          // empty database with the owner's e-mail.
+          if (context?.path !== "/sign-up/email") {
+            refuseSignUp("not_sign_up_path", undefined);
+            throw signUpClosed();
+          }
           if (!isOwnerEmail(user.email, readServerEnv("OWNER_EMAIL"))) {
             refuseSignUp("not_owner_email", undefined);
             throw signUpClosed();

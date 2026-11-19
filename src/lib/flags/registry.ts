@@ -97,6 +97,15 @@ export const FLAGS = {
     owner: "Compartilhado",
     since: "2026-11-12",
   },
+  entrar_com_google: {
+    label: "Entrar com Google",
+    grammar: { gender: "masculine", plural: false },
+    description:
+      "Botão Continuar com o Google na tela de entrada e vincular a conta Google em Ajustes › Segurança (só funciona com GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET definidos). Ligada só para uma pessoa, ela vincula em Ajustes; o botão da entrada segue o valor para todos. Quando desligado, o botão some, o servidor recusa entrar e vincular pelo Google e os vínculos ficam guardados.",
+    defaultValue: false,
+    owner: "Segurança",
+    since: "2026-11-18",
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAGS;

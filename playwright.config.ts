@@ -40,6 +40,11 @@ export default defineConfig({
       // its switch. Nothing is delivered (no real push service is reached).
       VAPID_PUBLIC_KEY: vapid.publicKey,
       VAPID_PRIVATE_KEY: vapid.privateKey,
+      // Fake Google client: entrar_com_google needs the pair to offer the
+      // button. Nothing reaches Google (e2e/entrar-google.spec.ts intercepts
+      // accounts.google.com).
+      GOOGLE_CLIENT_ID: "123456789-e2e.apps.googleusercontent.com",
+      GOOGLE_CLIENT_SECRET: "e2e-fake-google-client-secret",
     },
   },
 });

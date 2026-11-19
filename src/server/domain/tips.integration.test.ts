@@ -45,6 +45,7 @@ const VIEWER: TipViewer = {
     central_notificacoes: false,
     lancamento_por_texto: false,
     financas_compartilhadas: false,
+    entrar_com_google: false,
   },
 };
 
@@ -77,6 +78,7 @@ describe("tips per user", () => {
         central_notificacoes: false,
         lancamento_por_texto: false,
         financas_compartilhadas: false,
+        entrar_com_google: false,
       },
     });
     expect(admin.context.role).toBe("admin");

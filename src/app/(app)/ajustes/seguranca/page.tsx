@@ -3,14 +3,18 @@ import { headers } from "next/headers";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/app/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GOOGLE_FLAG, socialLinkErrorMessage } from "@/lib/auth/social";
 import { auth } from "@/server/auth";
+import { enabledSocialProviders } from "@/server/auth-social";
 import { getAdminAccess, getSession, requireUser } from "@/server/dal";
+import { getFlags } from "@/server/flags";
 import { describeDevice } from "./device";
 import {
   type PasskeyItem,
   SecurityPanel,
   type SessionItem,
 } from "./security-panel";
+import type { SocialCardProps } from "./social-card";
 
 export const metadata: Metadata = { title: "Segurança" };
 
@@ -37,13 +41,19 @@ async function SecurityContent({
 }) {
   const user = await requireUser();
   const requestHeaders = await headers();
-  const [passkeys, sessions, current, params, adminAccess] = await Promise.all([
-    auth.api.listPasskeys({ headers: requestHeaders }),
-    auth.api.listSessions({ headers: requestHeaders }),
-    getSession(),
-    searchParams,
-    getAdminAccess(),
-  ]);
+  const googleAvailable = enabledSocialProviders().includes("google");
+  const [passkeys, sessions, current, params, adminAccess, accounts, flags] =
+    await Promise.all([
+      auth.api.listPasskeys({ headers: requestHeaders }),
+      auth.api.listSessions({ headers: requestHeaders }),
+      getSession(),
+      searchParams,
+      getAdminAccess(),
+      googleAvailable
+        ? auth.api.listUserAccounts({ headers: requestHeaders })
+        : [],
+      getFlags(user.id),
+    ]);
 
   const passkeyItems: PasskeyItem[] = passkeys.map((item) => ({
     id: item.id,
@@ -60,8 +70,31 @@ async function SecurityContent({
     }))
     .sort((a, b) => Number(b.current) - Number(a.current));
 
+  const googleLink = accounts.find((item) => item.providerId === "google");
+  const canLinkGoogle = flags[GOOGLE_FLAG];
+  // Whoever already linked can always unlink, even with the flag off.
+  const social: SocialCardProps | null =
+    googleAvailable && (canLinkGoogle || googleLink)
+      ? {
+          email: user.email,
+          canLink: canLinkGoogle,
+          linked: googleLink
+            ? {
+                id: googleLink.id,
+                createdAt: new Date(googleLink.createdAt).toISOString(),
+              }
+            : null,
+          notice: params.vinculado === "google",
+          error: socialLinkErrorMessage(
+            typeof params.error === "string" ? params.error : undefined,
+            user.email,
+          ),
+        }
+      : null;
+
   return (
     <SecurityPanel
+      social={social}
       passkeys={passkeyItems}
       sessions={sessionItems}
       firstAccess={params.primeiro === "1"}

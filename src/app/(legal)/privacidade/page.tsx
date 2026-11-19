@@ -137,6 +137,12 @@ export default function PrivacyPage() {
             e de visitas da Vercel não usam cookies nem identificam você.
           </li>
           <li>
+            <strong>Google</strong>, só se você vincular sua conta Google: o
+            Google nos informa seu e-mail e um identificador da conta; guardamos
+            só o identificador, para reconhecer você na entrada. Desvincular em
+            Ajustes › Segurança apaga esse vínculo.
+          </li>
+          <li>
             <strong>Autoridades</strong>, só por obrigação legal ou ordem
             judicial.
           </li>

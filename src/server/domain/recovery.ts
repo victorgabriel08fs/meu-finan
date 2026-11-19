@@ -11,6 +11,7 @@ import { db, type Executor } from "@/server/db/client";
 import { account, passkey, session, user } from "@/server/db/schema";
 import { normalizeEmail } from "@/server/security/guards";
 import { recordAudit } from "./audit";
+import { deleteSocialLinks } from "./social-links";
 
 type Target = { id: string; name: string; email: string };
 
@@ -43,7 +44,7 @@ export async function recoveryTarget(
 
 /**
  * Sets the new password, ends every session, optionally removes the passkeys
- * and makes the account an active administrator again (another administrator
+ * (and the Google link) and makes the account an active administrator again (another administrator
  * may have demoted or deactivated it). Returns null when there is no such
  * account (see recoveryTarget), changing nothing.
  */
@@ -78,8 +79,10 @@ export async function recoverOwnerAccess(input: {
       });
     }
     await tx.delete(session).where(eq(session.userId, target.id));
+    let removedSocialLinks = false;
     if (input.removePasskeys) {
       await tx.delete(passkey).where(eq(passkey.userId, target.id));
+      removedSocialLinks = await deleteSocialLinks(tx, target.id);
     }
     await tx
       .update(user)
@@ -89,7 +92,7 @@ export async function recoverOwnerAccess(input: {
       action: "access.recovered",
       actor: target,
       target,
-      metadata: { removedPasskeys: input.removePasskeys },
+      metadata: { removedPasskeys: input.removePasskeys, removedSocialLinks },
     });
     return target;
   });

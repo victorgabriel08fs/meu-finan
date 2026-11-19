@@ -28,6 +28,7 @@ describe("useFlag", () => {
       central_notificacoes: false,
       lancamento_por_texto: false,
       financas_compartilhadas: false,
+      entrar_com_google: false,
     };
     expect(
       renderToStaticMarkup(
@@ -47,6 +48,7 @@ describe("useFlag", () => {
       central_notificacoes: false,
       lancamento_por_texto: false,
       financas_compartilhadas: false,
+      entrar_com_google: false,
     });
     const html = await prerenderToString(
       <FlagsProvider flags={flags}>

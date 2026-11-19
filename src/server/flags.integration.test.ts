@@ -108,6 +108,23 @@ describe("getFlags", () => {
   });
 });
 
+describe("isFlagEnabledForEveryone", () => {
+  it("follows the global value and the default, never a person's", async () => {
+    expect(await m.flags.isFlagEnabledForEveryone("entrar_com_google")).toBe(
+      false,
+    );
+    await setOwn("bruno", "entrar_com_google", true);
+    expect(await m.flags.isFlagEnabledForEveryone("entrar_com_google")).toBe(
+      false,
+    );
+    await setGlobal("entrar_com_google", true);
+    await setOwn("ana", "entrar_com_google", false);
+    expect(await m.flags.isFlagEnabledForEveryone("entrar_com_google")).toBe(
+      true,
+    );
+  });
+});
+
 describe("importar_extrato off", () => {
   const OFF = "A importação de extratos está desativada no momento.";
   const confirmInput = () => ({
