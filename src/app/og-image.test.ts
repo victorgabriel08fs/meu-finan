@@ -52,7 +52,7 @@ describe("metadados", () => {
     const startup = metadata.appleWebApp;
     expect(startup).toBeTruthy();
     if (startup && typeof startup === "object") {
-      expect(startup.startupImage).toHaveLength(10);
+      expect(startup.startupImage).toHaveLength(11);
     }
     expect(metadata.robots).toEqual({ index: false, follow: false });
   });

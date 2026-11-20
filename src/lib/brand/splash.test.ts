@@ -24,7 +24,7 @@ describe("splash do iOS", () => {
   });
 
   it("não repete tamanho nem mídia e tem 10 aparelhos", () => {
-    expect(SPLASH_SIZES).toHaveLength(10);
+    expect(SPLASH_SIZES).toHaveLength(11);
     const paths = SPLASH_SIZES.map(splashPath);
     expect(new Set(paths).size).toBe(paths.length);
     const medias = SPLASH_SIZES.map(splashMedia);

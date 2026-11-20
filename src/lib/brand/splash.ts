@@ -18,8 +18,9 @@ export const SPLASH_SIZES: readonly SplashSize[] = [
   { w: 428, h: 926, dpr: 3, devices: "iPhone 12/13 Pro Max, 14 Plus" },
   { w: 393, h: 852, dpr: 3, devices: "iPhone 14 Pro, 15, 16" },
   { w: 430, h: 932, dpr: 3, devices: "iPhone 14 Pro Max, 15 Plus, 16 Plus" },
-  { w: 402, h: 874, dpr: 3, devices: "iPhone 16 Pro" },
-  { w: 440, h: 956, dpr: 3, devices: "iPhone 16 Pro Max" },
+  { w: 402, h: 874, dpr: 3, devices: "iPhone 16 Pro, 17, 17 Pro" },
+  { w: 420, h: 912, dpr: 3, devices: "iPhone Air" },
+  { w: 440, h: 956, dpr: 3, devices: "iPhone 16 Pro Max, 17 Pro Max" },
 ];
 
 export function splashPixels(size: SplashSize) {
