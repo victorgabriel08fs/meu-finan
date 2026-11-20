@@ -40,6 +40,9 @@ export const metadata: Metadata = {
     type: "website",
   },
   formatDetection: { telephone: false },
+  // O Next emite só mobile-web-app-capable; o iOS ainda pede a meta da Apple
+  // para usar as apple-touch-startup-image do app instalado.
+  other: { "apple-mobile-web-app-capable": "yes" },
   robots: { index: false, follow: false },
 };
 

@@ -1640,7 +1640,7 @@ export default function manifest(): MetadataRoute.Manifest {
 | Toque | `-webkit-tap-highlight-color: transparent` + estados pressionados próprios; `touch-action: manipulation` em teclas |
 | Seleção de texto | desligada em botões/teclas (`user-select: none`), ligada em valores do detalhe |
 | iOS | `apple-touch-icon` 180 px; barra de status acompanha `theme-color`; Web Push só com o app instalado |
-| Splash do iOS | `apple-touch-startup-image` só escuro (o app abre escuro por padrão), 10 tamanhos de iPhone em retrato (`/splash/dark-{px}.png`, lista em `src/lib/brand/splash.ts`); o iOS guarda o splash na instalação: quem já instalou vê o novo só ao reinstalar. Aparelhos fora da lista e iPad usam o splash padrão |
+| Splash do iOS | `apple-touch-startup-image` só escuro (o app abre escuro por padrão), 11 tamanhos de iPhone em retrato (até o 17 Pro Max e o Air), com a meta `apple-mobile-web-app-capable` explícita (`/splash/dark-{px}.png`, lista em `src/lib/brand/splash.ts`); o iOS guarda o splash na instalação: quem já instalou vê o novo só ao reinstalar. Aparelhos fora da lista e iPad usam o splash padrão |
 | Pré-visualização de link | `og:*` e `twitter:card=summary_large_image` com `/opengraph-image` (1200x630, escura, marca + "Seu dinheiro no prumo."); URL absoluta a partir de `BETTER_AUTH_URL`; a página segue `noindex` |
 | Instalação | card "Instale o app" no Início a partir da 2ª visita (Android: `beforeinstallprompt`; iOS: instruções "Compartilhar → Adicionar à Tela de Início" com ícones); dispensável por 30 dias |
 | Offline | Serwist: precache do shell; `stale-while-revalidate` para `GET /api/v1/*` recentes; página offline amigável |
